@@ -1,12 +1,12 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "1.0.1",
+	"version": "1.0.1-SNAPSHOT",
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.ts",
 	"scripts": {
-		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"clean": "rimraf dist main.js",
+		"build": "svelte-check && npm run lint && webpack",
+		"dev": "NODE_ENV=development webpack && ./sync.sh",
 		"lint": "eslint . --ext .ts"
 	},
 	"keywords": [],
@@ -17,12 +17,21 @@
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
 		"@typescript-eslint/parser": "^5.2.0",
 		"builtin-modules": "^3.2.0",
+		"copy-webpack-plugin": "^10.2.4",
 		"esbuild": "0.13.12",
-		"obsidian": "latest",
+		"obsidian": "^0.14.8",
+		"svelte-check": "^2.7.0",
+		"svelte-preprocess": "^4.10.6",
+		"ts-loader": "^9.3.0",
 		"tslib": "2.3.1",
-		"typescript": "4.4.4"
+		"typescript": "4.4.4",
+		"webpack": "^5.72.0",
+		"webpack-cli": "^4.9.2"
 	},
 	"dependencies": {
-		"axios": "^0.27.2"
+		"axios": "^0.27.2",
+		"gray-matter": "^4.0.3",
+		"nunjucks": "^3.2.3",
+		"sanitize-filename": "^1.6.3"
 	}
 }

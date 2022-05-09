@@ -15,14 +15,15 @@ export const parseMetadata = (book:any): Metadata=> {
 
 export const parseHighlights = (data:any): Highlight[]=> {
         const chapters:[] = data["chapters"]
-        var chapterMap = new Map(chapters.map(chapter => [chapter["chapterUid"], chapter["title"]] as [string, string]));  
-        const highlights:[] = data["update"]
+        console.log("data:",data)
+        // const chapterMap = new Map(chapters.map(chapter => [chapter["chapterUid"], chapter["title"]] as [string, string]));  
+        const highlights:[] = data["updated"]
         return highlights.map(highlight=>{
             return {
                 bookId: highlight["bookId"],
                 created:highlight["author"],
                 chapterUid:highlight["chapterUid"],
-                chapterTitle: chapterMap.get(highlight["chapterUid"]),
+                chapterTitle: 'test',
                 markText:highlight["publishTime"]
             }
         }) 
