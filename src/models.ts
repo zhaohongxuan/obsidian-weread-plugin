@@ -1,5 +1,4 @@
 export type Notebook = {
-    bookId: string;
     metaData: Metadata;
     highlights: Highlight[];
     reviews: Review[];
@@ -29,3 +28,14 @@ export type Review={
     createTime:string;
     content:string;
 }
+
+export type RenderTemplate = {
+    isNewNote: boolean;
+    title: string;
+    author: string;
+    url: string;
+    cover:string;
+    publishTime:string;
+    highlights: Highlight[];
+    reviews: Review[];
+  };
