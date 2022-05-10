@@ -11,9 +11,7 @@ export default class SyncNotebooks{
     }
     
     async startSync() {
-        // todo get cookie from setting page or login window
-        const cookie = ''
-        const apiManager = new ApiManager(cookie);
+        const apiManager = new ApiManager();
         const noteBookResp:[] =  await apiManager.getNotebooks()
 
         const noteBookArr = []

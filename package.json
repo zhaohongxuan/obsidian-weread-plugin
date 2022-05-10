@@ -19,6 +19,8 @@
 		"builtin-modules": "^3.2.0",
 		"copy-webpack-plugin": "^10.2.4",
 		"esbuild": "0.13.12",
+		"express": "^4.18.1",
+		"http-proxy-middleware": "^2.0.6",
 		"obsidian": "^0.14.8",
 		"svelte-check": "^2.7.0",
 		"svelte-preprocess": "^4.10.6",
