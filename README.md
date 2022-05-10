@@ -11,8 +11,8 @@ Obsidian Weread Plugin is an unofficial plugin to synchronize Weread(微信读�
 
 1. 从r.qq.com扫码登录，控制台获取到Cookie
 2. 把Cookie内容粘贴到setting框
-3. ![Cookie 设置](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220510095654.png)
-4. 点击同步按钮，或者执行Command即可同步，默认会覆盖掉之前所有的笔记
+   ![Cookie 设置](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220510095654.png)
+3. 点击左侧Ribbon上的微信读书按钮，或者执行Command即可同步，默认会覆盖掉之前所有的笔记
 ## TODO
 - [x] 解决Obsidian中CORS问题
 - [ ] 弹出扫码框登录自动获取Cookie
