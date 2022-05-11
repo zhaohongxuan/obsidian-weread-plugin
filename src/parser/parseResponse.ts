@@ -7,14 +7,17 @@ import type {
 } from 'src/models';
 import moment from 'moment';
 
-export const parseMetadata = (book: any): Metadata => {
+export const parseMetadata = (noteBook: any): Metadata => {
+	const book = noteBook['book'];
 	const metaData: Metadata = {
 		bookId: book['bookId'],
 		author: book['author'],
 		title: book['title'],
 		url: book['url'],
 		cover: book['cover'],
-		publishTime: book['publishTime']
+		publishTime: book['publishTime'],
+		noteCount: noteBook['noteCount'],
+		reviewCount: noteBook['reviewCount']
 	};
 	return metaData;
 };
@@ -31,12 +34,12 @@ export const parseHighlights = (data: any): Highlight[] => {
 
 	return highlights.map((highlight) => {
 		const chapterUid = highlight['chapterUid'];
-		const createTime = moment(highlight['createTime'] * 1000).format(
-			'YYYY-MM-DD hh:mm:ss'
-		);
+		const created = highlight['createTime'];
+		const createTime = moment(created * 1000).format('YYYY-MM-DD hh:mm:ss');
 		return {
 			bookId: highlight['bookId'],
-			created: createTime,
+			created: created,
+			createTime: createTime,
 			chapterUid: highlight['chapterUid'],
 			range: highlight['range'],
 			chapterTitle: chapterMap.get(chapterUid),
@@ -49,11 +52,11 @@ export const parseReviews = (data: any): Review[] => {
 	const reviews: [] = data['reviews'];
 	return reviews.map((reviewData) => {
 		const review = reviewData['review'];
-		const createTime = moment(review['createTime'] * 1000).format(
-			'YYYY-MM-DD hh:mm:ss'
-		);
+		const created = review['createTime'];
+		const createTime = moment(created * 1000).format('YYYY-MM-DD hh:mm:ss');
 		return {
 			bookId: review['bookId'],
+			created: created,
 			createTime: createTime,
 			chapterUid: review['chapterUid'],
 			chapterTitle: review['chapterTitle'],
@@ -86,9 +89,9 @@ export const parseChapterHighlights = (
 			existChapter.highlights.push(highlight);
 		}
 	}
-	for (const chapter of chapterResult) {
-		chapter.highlights.sort((o1, o2) => o2.range.localeCompare(o1.range));
-	}
+	chapterResult.forEach((chapter) =>
+		chapter.highlights.sort((o1, o2) => o1.created - o2.created)
+	);
 	return chapterResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
 };
 
@@ -101,9 +104,9 @@ export const parseChapterReviews = (reviews: Review[]): ChapterReview[] => {
 		const existChapter = chapterResult.find(
 			(chapter) => chapter.chapterUid == review.chapterUid
 		);
-		const chapterReviews: Review[] = reviews
-			.filter((review) => review.chapterUid == review.chapterUid)
-			.sort((o1, o2) => o1.range.localeCompare(o2.range) * -1);
+		const chapterReviews: Review[] = reviews.filter(
+			(review) => review.chapterUid == review.chapterUid
+		);
 		if (existChapter == null) {
 			const chapter = {
 				chapterUid: chapterUid,
@@ -115,5 +118,8 @@ export const parseChapterReviews = (reviews: Review[]): ChapterReview[] => {
 			existChapter.reviews.push(...chapterReviews);
 		}
 	}
+	chapterResult.forEach((chapter) =>
+		chapter.reviews.sort((o1, o2) => o1.created - o2.created)
+	);
 	return chapterResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
 };

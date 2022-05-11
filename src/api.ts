@@ -2,7 +2,7 @@ import { Notice } from 'obsidian';
 import axios from 'axios';
 export default class ApiManager {
 	//will proxy to  'https://i.weread.qq.com';
-	readonly baseUrl: string = 'http://localhost:8081';
+	readonly baseUrl: string = 'http://localhost:12011';
 
 	private getHeaders() {
 		return {
@@ -10,7 +10,7 @@ export default class ApiManager {
 			'User-Agent':
 				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36',
 			Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
-			// 'Accept-Encoding': 'gzip, deflate, br',
+			'Accept-Encoding': 'gzip, deflate, br',
 			'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
 			'Content-Type': 'application/json'
 		};
@@ -20,14 +20,11 @@ export default class ApiManager {
 		try {
 			let noteBooks = [];
 			const resp = await axios.get(this.baseUrl + '/user/notebooks', {});
-
 			noteBooks = resp.data.books;
-			//todo test code
-			noteBooks = noteBooks.slice(0, 30);
 			return noteBooks;
 		} catch (e) {
 			new Notice(
-				'Failed to fetch weread notebooks . Please check your API token and try again.'
+				'Failed to fetch weread notebooks . Please check your Cookie and try again.'
 			);
 		}
 	}
@@ -40,7 +37,7 @@ export default class ApiManager {
 			return resp.data;
 		} catch (e) {
 			new Notice(
-				'Failed to fetch weread notebook highlights . Please check your API token and try again.'
+				'Failed to fetch weread notebook highlights . Please check your Cookies and try again.'
 			);
 			console.error(e);
 		}
@@ -53,7 +50,7 @@ export default class ApiManager {
 			return resp.data;
 		} catch (e) {
 			new Notice(
-				'Failed to fetch weread notebook reviews . Please check your API token and try again.'
+				'Failed to fetch weread notebook reviews . Please check your Cookies and try again.'
 			);
 			console.error(e);
 		}
