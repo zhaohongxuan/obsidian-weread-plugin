@@ -19,52 +19,24 @@ export default class WereadPlugin extends Plugin {
 	settings: WereadPluginSettings;
 	private syncNotebooks: SyncNotebooks;
 	async onload() {
+		console.log("load weread plugin")
 		await this.loadSettings();
-
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.settings.noteLocation);
-
 		this.syncNotebooks = new SyncNotebooks(fileManager);
-
-
 		const app = express();
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Weread Plugin', (evt: MouseEvent) => {
-			new Notice('start to sync weread notes!');
-			this.startMiddleServer(app).then(server => {
-				this.startSync().then(res => {
-					server.close(() => {
-						console.log('HTTP server closed ', res, server)
-					})
-					new Notice('weread notes sync complete!');
-				})
-			})
-
-
+		const ribbonIconEl = this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
+			this.startSync(app);
 		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new WereadModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
 			id: 'sync-weread-notes-command',
 			name: 'Sync Weread command',
 			callback: () => {
-				this.startSync();
+				this.startSync(app);
 			},
 		});
+
 		// This adds a complex command that can check whether the current state of the app allows execution of the command
 		this.addCommand({
 			id: 'open-sample-modal-complex',
@@ -87,21 +59,23 @@ export default class WereadPlugin extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new WereadSettingTab(this.app, this));
+	}
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
+	async startSync(app:any) {
+		new Notice('start to sync weread notes!');
+		this.startMiddleServer(app).then(server => {
+			console.log('Start syncing Weread note...')
+			this.syncNotebooks.startSync().then(res=>{
+				server.close(() => {
+					console.log('HTTP server closed ', res, server);
+				});
+				new Notice('weread notes sync complete!');
+			})
 		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-
-
 	}
 
 	onunload() {
-
+		console.log('unloading plugin', new Date().toLocaleString());
 	}
 
 	async loadSettings() {
@@ -112,13 +86,8 @@ export default class WereadPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async startSync(): Promise<void> {
-		console.log('Start syncing Weread note...')
-		await this.syncNotebooks.startSync();
-	}
-
 	async startMiddleServer(app: express): Promise<Server> {
-		const cookie = this.settings.cookie
+		const cookie = this.escapeCookie(this.settings.cookie)
 		app.use('/', createProxyMiddleware({
 			target: 'https://i.weread.qq.com',
 			changeOrigin: true,
@@ -127,6 +96,7 @@ export default class WereadPlugin extends Plugin {
 					new Notice("cookie 已失效")
 				}
 				try {
+				
 					proxyReq.setHeader('Cookie', cookie);
 				} catch (error) {
 					new Notice("cookie 设置失败，检查Cookie格式")	
@@ -148,6 +118,17 @@ export default class WereadPlugin extends Plugin {
 		server.close(() => {
 			console.log('HTTP server closed')
 		})
+	}
+	
+	escapeCookie(cookie:string): string {
+		const esacpeCookie = cookie.split(';')
+			.map(v => { 
+				const arr = v.split('=');
+				const decodeCookie = decodeURIComponent(arr[1].trim()) 
+				return arr[0] + "=" + encodeURIComponent(decodeCookie)
+			}).join(";")
+		console.log("escape cookie:", esacpeCookie)
+		return esacpeCookie
 	}
 }
 
@@ -177,9 +158,7 @@ class WereadSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
-
 		containerEl.empty();
-
 		containerEl.createEl('h2', { text: 'Settings Weread plugin.' });
 
 		new Setting(containerEl)
@@ -206,6 +185,7 @@ class WereadSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 	}
+
 }
 
 

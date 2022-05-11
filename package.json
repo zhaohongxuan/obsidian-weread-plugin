@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "1.0.1-SNAPSHOT",
+	"version": "1.0.1",
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.ts",
 	"scripts": {
@@ -13,7 +13,9 @@
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
+		"@types/express": "^4.17.13",
 		"@types/node": "^16.11.6",
+		"@types/nunjucks": "^3.2.1",
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
 		"@typescript-eslint/parser": "^5.2.0",
 		"builtin-modules": "^3.2.0",
@@ -34,7 +36,6 @@
 		"axios": "^0.27.2",
 		"gray-matter": "^4.0.3",
 		"moment": "^2.29.3",
-		"nunjucks": "^3.2.3",
 		"sanitize-filename": "^1.6.3"
 	}
 }

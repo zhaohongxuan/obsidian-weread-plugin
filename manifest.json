@@ -1,9 +1,9 @@
 {
 	"id": "obsidian-weread-plugin",
 	"name": "Weread Plugin",
-	"version": "0.1.8-SNAPSHOT",
+	"version": "1.0.1",
 	"minAppVersion": "0.12.0",
-	"description": "This is a weread plugin for Obsidian.",
+	"description": "This is obsidian plugin for Tencent weread.",
 	"author": "hankzhao",
 	"authorUrl": "https://zhaohongxuan.github.io",
 	"isDesktopOnly": true
