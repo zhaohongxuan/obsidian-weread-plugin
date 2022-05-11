@@ -25,7 +25,7 @@ export default class WereadPlugin extends Plugin {
 		this.syncNotebooks = new SyncNotebooks(fileManager);
 		const app = express();
 
-		const ribbonIconEl = this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
+		this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
 			this.startSync(app);
 		});
 
@@ -86,18 +86,19 @@ export default class WereadPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async startMiddleServer(app: express): Promise<Server> {
-		const cookie = this.escapeCookie(this.settings.cookie)
+	async startMiddleServer(app: any): Promise<Server> {
+		const cookie = this.settings.cookie
+		if (cookie === undefined || cookie == '') {
+			new Notice("cookie未设置，请填写Cookie")
+		}
+		const escapeCookie = this.escapeCookie(cookie)
 		app.use('/', createProxyMiddleware({
 			target: 'https://i.weread.qq.com',
 			changeOrigin: true,
 			onProxyReq: function (proxyReq, req, res) {
-				if (cookie === undefined || cookie == '') {
-					new Notice("cookie 已失效")
-				}
+			
 				try {
-				
-					proxyReq.setHeader('Cookie', cookie);
+					proxyReq.setHeader('Cookie', escapeCookie);
 				} catch (error) {
 					new Notice("cookie 设置失败，检查Cookie格式")	
 				}

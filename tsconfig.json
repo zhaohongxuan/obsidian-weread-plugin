@@ -18,6 +18,5 @@
     ]
   },
   "include": [
-    "**/*.ts"
-, "src/testapi.js"  ]
+    "**/*.ts", "src/testapi.js"  ]
 }

@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "1.0.1",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"version": "0.1.0",
+	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {
 		"clean": "rimraf dist main.js",
