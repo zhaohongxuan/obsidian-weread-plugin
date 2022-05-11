@@ -1,20 +1,12 @@
-## Metadata
-![]({{cover}})
-{% if author %}
-- Author: [{{author}}] {% endif %}
-- Title: {{title}}
-- publishTime :{{publishTime}}
 ## Highlights
 {% for chapter in chapterHighlights %}
 ### 第{{chapter.chapterUid}}章 {{chapter.chapterTitle}}
 {% for highlight in chapter.highlights -%}
-
 - {{highlight.markText}}
-    - Created at {{highlight.created}}
+    - Created at {{highlight.createTime}}
 
 {% endfor %}
 {% endfor %}
-
 ## Reviews
 {% for chapter in chapterReviews %}
 ### 第{{chapter.chapterUid}}章 {{chapter.chapterTitle}}

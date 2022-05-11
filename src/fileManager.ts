@@ -4,8 +4,10 @@ import { sanitizeTitle } from './utils/sanitizeTitle';
 import type { Notebook } from './models';
 import { frontMatterDocType, addFrontMatter } from './utils/frontmatter';
 
-type AnnotationFile = {
+export type AnnotationFile = {
 	bookId?: string;
+	noteCount: number;
+	reviewCount: number;
 	file: TFile;
 };
 
@@ -27,27 +29,25 @@ export default class FileManager {
 	}
 
 	// Save an notebook as markdown file, replacing its existing file if present
-	public async saveNotebook(notebook: Notebook): Promise<boolean> {
-		const existingFile = await this.getNotebookFile(notebook);
-		if (existingFile) {
-			console.log(`Updating ${existingFile.path}`);
-
-			const newMarkdownContent = this.renderer.render(notebook, false);
-			const existingFileContent = await this.vault.cachedRead(
-				existingFile
-			);
-			const fileContent = existingFileContent + newMarkdownContent;
-			await this.vault.modify(existingFile, fileContent);
-			return false;
-		} else {
+	public async saveNotebook(
+		notebook: Notebook,
+		isNew: boolean,
+		localFile: AnnotationFile
+	): Promise<boolean> {
+		if (isNew) {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
-
 			const markdownContent = this.renderer.render(notebook, true);
 			const fileContent = addFrontMatter(markdownContent, notebook);
 
 			await this.vault.create(newFilePath, fileContent);
 			return true;
+		} else {
+			const existingFile = localFile.file;
+			console.log(`Updating ${existingFile.path}`);
+			const freshContent = this.renderer.render(notebook, false);
+			await this.vault.modify(existingFile, freshContent);
+			return false;
 		}
 	}
 
@@ -55,15 +55,7 @@ export default class FileManager {
 		await this.vault.createFolder(folderPath);
 	}
 
-	private async getNotebookFile(notebook: Notebook): Promise<TFile | null> {
-		const files = await this.getNotebookFiles();
-		return (
-			files.find((file) => file.bookId === notebook.metaData.bookId)
-				?.file || null
-		);
-	}
-
-	private async getNotebookFiles(): Promise<AnnotationFile[]> {
+	async getNotebookFiles(): Promise<AnnotationFile[]> {
 		const files = this.vault.getMarkdownFiles();
 
 		return files
@@ -78,7 +70,9 @@ export default class FileManager {
 			.map(
 				({ file, frontmatter }): AnnotationFile => ({
 					file,
-					bookId: frontmatter['bookId']
+					bookId: frontmatter['bookId'],
+					reviewCount: frontmatter['reviewCount'],
+					noteCount: frontmatter['noteCount']
 				})
 			);
 	}

@@ -11,11 +11,14 @@ export type Metadata = {
 	url: string;
 	cover: string;
 	publishTime: string;
+	noteCount: number;
+	reviewCount: number;
 };
 
 export type Highlight = {
 	bookId: string;
-	created: string;
+	created: number;
+	createTime: string;
 	chapterUid: number;
 	chapterTitle: string;
 	markText: string;
@@ -38,6 +41,7 @@ export type Review = {
 	chapterUid: number;
 	chapterTitle: string;
 	createTime: string;
+	created: number;
 	content: string;
 	abstract: string;
 	range: string;
