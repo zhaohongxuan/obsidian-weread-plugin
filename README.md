@@ -1,8 +1,6 @@
-
 # Obsidian Weread Plugin
 
 Obsidian微信读书插件是一个社区插件，用来同步微信读书中所有的高亮文本/划线/以及个人感想，并将这些信息转换为笔记设置到Onbsidian的文件夹中。
-Obsidian Weread Plugin is an unofficial plugin to synchronize Weread(微信读书) hightlights and annotations into your Obsidian Vault.
 
 ## 功能
 - 同步微信读书的划线以及个人感想到Obsidian

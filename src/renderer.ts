@@ -16,13 +16,13 @@ export class Renderer {
   }
 
   render(entry: Notebook, isNew = true): string {
-    const { metaData , highlights, reviews } = entry;
+    const { metaData , chapterHighlights,chapterReviews } = entry;
 
     const context: RenderTemplate = {
        isNewNote: isNew,
        ...metaData,
-       highlights,
-       reviews,
+       chapterHighlights,
+       chapterReviews
     };
 
     const content = nunjucks.renderString(notebookTemplate, context);

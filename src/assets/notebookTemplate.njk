@@ -1,9 +1,27 @@
 ## Metadata
-
-{% if author %}- Author: [{{author}}] {% endif %}
+![]({{cover}})
+{% if author %}
+- Author: [{{author}}] {% endif %}
 - Title: {{title}}
-{% if url %}- Reference: {{url}}{% endif %}
+- publishTime :{{publishTime}}
+## Highlights
+{% for chapter in chapterHighlights %}
+### 第{{chapter.chapterUid}}章 {{chapter.chapterTitle}}
+{% for highlight in chapter.highlights -%}
 
-- Cover : 
-    [cover]({{cover}})
+- {{highlight.markText}}
+    - Created at {{highlight.created}}
 
+{% endfor %}
+{% endfor %}
+
+## Reviews
+{% for chapter in chapterReviews %}
+### 第{{chapter.chapterUid}}章 {{chapter.chapterTitle}}
+{% for review in chapter.reviews %}
+
+- {{review.abstract}}
+    - {{review.content}}
+    - Created at {{review.createTime}}
+{% endfor %}
+{% endfor %}

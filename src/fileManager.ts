@@ -1,52 +1,47 @@
-import type { Vault, MetadataCache, TFile } from 'obsidian';
+import { Vault, MetadataCache, TFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import type { Notebook } from './models';
 import { frontMatterDocType, addFrontMatter } from "./utils/frontmatter"
 
 type AnnotationFile = {
-  url?: string;
+  bookId?: string;
   file: TFile;
 };
 
-const notebookFolderPath = (notebook: Notebook): string => {
-  // todo get path from setting
-  return '/Hypothesis/weread/';
-};
 
 export default class FileManager {
   private vault: Vault;
   private metadataCache: MetadataCache;
   private renderer: Renderer;
+  private noteLocation:string;
 
-  constructor(vault: Vault, metadataCache: MetadataCache) {
+  constructor(vault: Vault, metadataCache: MetadataCache, noteLocation:string) {
     this.vault = vault;
     this.metadataCache = metadataCache;
     this.renderer = new Renderer();
+    this.noteLocation = noteLocation
   }
 
   // Save an notebook as markdown file, replacing its existing file if present
   public async saveNotebook(notebook: Notebook): Promise<boolean> {
     const existingFile = await this.getNotebookFile(notebook);
-    console.log("existingFile",existingFile)
     if (existingFile) {
-      console.debug(`Updating ${existingFile.path}`);
+      console.log(`Updating ${existingFile.path}`);
 
       const newMarkdownContent = this.renderer.render(notebook, false);
       const existingFileContent = await this.vault.cachedRead(existingFile);
       const fileContent = existingFileContent + newMarkdownContent;
-      console.log("fileContent")
       await this.vault.modify(existingFile, fileContent);
       return false;
     } else {
       const newFilePath = await this.getNewNotebookFilePath(notebook);
-      console.debug(`Creating ${newFilePath}`);
+      console.log(`Creating ${newFilePath}`);
 
       const markdownContent = this.renderer.render(notebook, true);
-      console.log("markdown", markdownContent)
-      // const fileContent = addFrontMatter(markdownContent, notebook);
+      const fileContent = addFrontMatter(markdownContent, notebook);
 
-      await this.vault.create(newFilePath, markdownContent);
+      await this.vault.create(newFilePath, fileContent);
       return true;
     }
   }
@@ -58,7 +53,7 @@ export default class FileManager {
 
   private async getNotebookFile(notebook:Notebook): Promise<TFile | null> {
     const files = await this.getNotebookFiles()
-    return files.find((file) => file.url === notebook.metaData.url)?.file || null;
+    return files.find((file) => file.bookId === notebook.metaData.bookId)?.file || null;
   }
 
   private async getNotebookFiles(): Promise<AnnotationFile[]> {
@@ -70,19 +65,17 @@ export default class FileManager {
         return { file, frontmatter: cache?.frontmatter };
       })
       .filter(({ frontmatter }) => frontmatter?.["doc_type"] === frontMatterDocType)
-      .map(({ file, frontmatter }): AnnotationFile => ({ file, url: frontmatter["url"] }))
+      .map(({ file, frontmatter }): AnnotationFile => ({ file, bookId: frontmatter["bookId"] }))
   }
 
   public async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
-    const folderPath = notebookFolderPath(notebook);
-    console.log("folderPath:",folderPath)
+    const folderPath = this.noteLocation;
     if (!(await this.vault.adapter.exists(folderPath))) {
       console.info(`Folder ${folderPath} not found. Will be created`);
       await this.createFolder(folderPath);
     }
 
     const fileName = `${sanitizeTitle(notebook.metaData.title)}.md`;
-    console.log("fileName:",fileName)
 
     const filePath = `${folderPath}/${fileName}`
     return filePath;

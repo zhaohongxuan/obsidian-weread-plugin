@@ -3,7 +3,7 @@ import type {Notebook } from '../models';
 
 type FrontMatterContent = {
     doc_type?: string;
-    url?: string;
+    bookId?: string;
 }
 
 export const frontMatterDocType = "weread-highlights-reviews"
@@ -11,7 +11,7 @@ export const frontMatterDocType = "weread-highlights-reviews"
 export const addFrontMatter = (markdownContent: string, noteBook: Notebook) => {
     const frontMatter: FrontMatterContent = {
         doc_type: frontMatterDocType,
-        url: noteBook.metaData.url,
+        bookId: noteBook.metaData.bookId
     };
     return matter.stringify(markdownContent, frontMatter);
 }

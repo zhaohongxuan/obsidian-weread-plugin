@@ -1,7 +1,7 @@
 import ApiManager from "./api";
 import FileManager from "./fileManager";
 import { Notebook } from "./models";
-import { parseHighlights,parseMetadata,parseReviews } from "./parser/parseResponse";
+import { parseHighlights,parseMetadata,parseReviews,parseChapterHighlights, parseChapterReviews } from "./parser/parseResponse";
 export default class SyncNotebooks{
     
     private fileManager: FileManager;
@@ -21,17 +21,17 @@ export default class SyncNotebooks{
             const book = noteBook["book"]
             const metaData = parseMetadata(book)
             const highlightResp = await apiManager.getNotebookHighlights(bookId)
-            console.log("get hilights",highlightResp)
             const highlights =parseHighlights(highlightResp)
             const reviewResp =  await apiManager.getNotebookReviews(bookId)
-            console.log("get review",reviewResp)
             const reviews =parseReviews(reviewResp)
-
-             const newNotebook =            {
+            const chapterHighlights =parseChapterHighlights(highlights) 
+            const chapterReviews =parseChapterReviews(reviews) 
+            const newNotebook = {
                 metaData:metaData,
-                highlights: highlights,
-                reviews:reviews
+                chapterHighlights:chapterHighlights,
+                chapterReviews:chapterReviews
             }
+            console.log("=====handle book:", metaData.title)
             noteBookArr.push(newNotebook)
         }
 

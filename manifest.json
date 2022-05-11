@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-weread-plugin",
 	"name": "Weread Plugin",
-	"version": "0.1.0-SNAPSHOT",
+	"version": "0.1.8-SNAPSHOT",
 	"minAppVersion": "0.12.0",
 	"description": "This is a weread plugin for Obsidian.",
 	"author": "hankzhao",

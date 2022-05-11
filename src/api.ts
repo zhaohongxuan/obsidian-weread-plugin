@@ -24,12 +24,10 @@ export default class ApiManager {
 
         noteBooks = resp.data.books
         //todo test code
-        noteBooks = noteBooks.slice(0, 2)
-        console.log("get notebooks from weread notebook count: ", noteBooks.length)
+        noteBooks = noteBooks.slice(0, 30)
         return noteBooks
       } catch (e) {
-        // new Notice('Failed to fetch weread notebooks . Please check your API token and try again.')
-        console.error('-----------------------getnote nookk--',e)
+        new Notice('Failed to fetch weread notebooks . Please check your API token and try again.')
       }
   }
   async getNotebookHighlights(bookId:string) {
