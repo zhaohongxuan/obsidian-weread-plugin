@@ -25,7 +25,7 @@ jobs:
           npm install
           npm run build
           mkdir ${{ env.PLUGIN_NAME }}
-          cp main.js manifest.json styles.css ${{ env.PLUGIN_NAME }}
+          cp ./dist/main.js ./dist/manifest.json ${{ env.PLUGIN_NAME }}
           zip -r ${{ env.PLUGIN_NAME }}.zip ${{ env.PLUGIN_NAME }}
           ls
           echo "::set-output name=tag_name::$(git tag --sort version:refname | tail -n 1)"
@@ -74,14 +74,3 @@ jobs:
           asset_path: ./manifest.json
           asset_name: manifest.json
           asset_content_type: application/json
-
-      - name: Upload styles.css
-        id: upload-css
-        uses: actions/upload-release-asset@v1
-        env:
-          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./styles.css
-          asset_name: styles.css
-          asset_content_type: text/css
