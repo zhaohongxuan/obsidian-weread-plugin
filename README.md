@@ -13,11 +13,13 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 3. 重启Obsidian，或者重新刷新community plugin![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220512084836.png)
 ## 使用方法
 
-1. 从r.qq.com扫码登录，控制台获取到Cookie
+1. 先打开微信读书（也即r.qq.com），先不要登录，按 `CMD+Option+i`/`Ctrl+Shift+i` 启动网页控制台
+2. 点击下图所示的网络（Network）栏目，按 `Ctrl+E`/`CMD+E` 启动网络监控
+3. 在微信读书 r.qq.com 扫码登录，控制台获取到Cookie
    ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235931.png)
-2. 把Cookie内容粘贴到setting框
+4. 把Cookie内容粘贴到setting框
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235704.png)
-3. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
+5. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
 
 - Ribbon方式
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235530.png)
