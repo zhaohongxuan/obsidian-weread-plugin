@@ -9,7 +9,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 ## 安装方法
 1. 进入[Release页面](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)下载`obsidian-weread-plugin.zip`插件包
    ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220512084624.png)
-2. 把zip包解压在自己`Obsidian Vault`的根目录 `.obsidian` 
+2. 把zip包解压在自己`Obsidian Vault`的根目录 `.obsidian/plugins` 
 3. 重启Obsidian，或者重新刷新community plugin![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220512084836.png)
 ## 使用方法
 
