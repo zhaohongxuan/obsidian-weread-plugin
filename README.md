@@ -40,7 +40,8 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 - [ ] 设置页面支持设置Template格式
 - [ ] 弹出扫码框登录自动获取Cookie
 
-
+## Weread API
+!(./docs/weread-api.md)
 ## 感谢
 - [wereader](https://github.com/arry-lee/wereader)
 - [Kindle Plugin](https://github.com/hadynz/obsidian-kindle-plugin)

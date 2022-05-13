@@ -13,6 +13,10 @@ export type Metadata = {
 	publishTime: string;
 	noteCount: number;
 	reviewCount: number;
+	isbn?: string;
+	category?: string;
+	publisher?: string;
+	isDuplicated?: boolean;
 };
 
 export type Highlight = {

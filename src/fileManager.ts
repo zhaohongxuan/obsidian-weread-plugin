@@ -8,6 +8,7 @@ export type AnnotationFile = {
 	bookId?: string;
 	noteCount: number;
 	reviewCount: number;
+	new: boolean;
 	file: TFile;
 };
 
@@ -31,23 +32,22 @@ export default class FileManager {
 	// Save an notebook as markdown file, replacing its existing file if present
 	public async saveNotebook(
 		notebook: Notebook,
-		isNew: boolean,
 		localFile: AnnotationFile
-	): Promise<boolean> {
-		if (isNew) {
+	): Promise<void> {
+		if (localFile) {
+			if (localFile.new) {
+				const existingFile = localFile.file;
+				console.log(`Updating ${existingFile.path}`);
+				const freshContent = this.renderer.render(notebook, true);
+				const fileContent = addFrontMatter(freshContent, notebook);
+				await this.vault.modify(existingFile, fileContent);
+			}
+		} else {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
 			const markdownContent = this.renderer.render(notebook, true);
 			const fileContent = addFrontMatter(markdownContent, notebook);
-
 			await this.vault.create(newFilePath, fileContent);
-			return true;
-		} else {
-			const existingFile = localFile.file;
-			console.log(`Updating ${existingFile.path}`);
-			const freshContent = this.renderer.render(notebook, false);
-			await this.vault.modify(existingFile, freshContent);
-			return false;
 		}
 	}
 
@@ -55,9 +55,8 @@ export default class FileManager {
 		await this.vault.createFolder(folderPath);
 	}
 
-	async getNotebookFiles(): Promise<AnnotationFile[]> {
+	public async getNotebookFiles(): Promise<AnnotationFile[]> {
 		const files = this.vault.getMarkdownFiles();
-
 		return files
 			.map((file) => {
 				const cache = this.metadataCache.getFileCache(file);
@@ -72,21 +71,24 @@ export default class FileManager {
 					file,
 					bookId: frontmatter['bookId'],
 					reviewCount: frontmatter['reviewCount'],
-					noteCount: frontmatter['noteCount']
+					noteCount: frontmatter['noteCount'],
+					new: false
 				})
 			);
 	}
 
-	public async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
+	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
 		const folderPath = this.noteLocation;
 		if (!(await this.vault.adapter.exists(folderPath))) {
 			console.info(`Folder ${folderPath} not found. Will be created`);
 			await this.createFolder(folderPath);
 		}
 
-		const fileName = `${sanitizeTitle(notebook.metaData.title)}.md`;
-
-		const filePath = `${folderPath}/${fileName}`;
+		let fileName = `${sanitizeTitle(notebook.metaData.title)}`;
+		if (notebook.metaData.isDuplicated) {
+			fileName += '-' + notebook.metaData.bookId;
+		}
+		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
 	}
 }
