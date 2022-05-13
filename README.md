@@ -28,10 +28,11 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235530.png)
 - Command Pattle方式
    ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235440.png)
-4. 效果图 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220512090456.png)
+5. 效果图 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220513123617.png)
 ## 已知问题
 
 - 微信读书Cookie的有效期有点短，Cookie失效了之后需要重新登录 [r.qq.com](r.qq.com)获取Cookie，手机端获取Cookie不易，所以在Mobile端禁用了
+- 偶尔可能会有网络连接问题，重新点击同步即可，已同步的笔记不会再次更新。
   
 ## TODO
 - [x] 解决Obsidian中CORS问题
