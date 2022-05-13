@@ -31,11 +31,10 @@ export const parseHighlights = (data: any): Highlight[] => {
 		)
 	);
 	const highlights: [] = data['updated'];
-
 	return highlights.map((highlight) => {
 		const chapterUid = highlight['chapterUid'];
 		const created = highlight['createTime'];
-		const createTime = moment(created * 1000).format('YYYY-MM-DD hh:mm:ss');
+		const createTime = moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
 		return {
 			bookId: highlight['bookId'],
 			created: created,
@@ -53,7 +52,7 @@ export const parseReviews = (data: any): Review[] => {
 	return reviews.map((reviewData) => {
 		const review = reviewData['review'];
 		const created = review['createTime'];
-		const createTime = moment(created * 1000).format('YYYY-MM-DD hh:mm:ss');
+		const createTime = moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
 		return {
 			bookId: review['bookId'],
 			created: created,

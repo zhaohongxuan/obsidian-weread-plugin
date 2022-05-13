@@ -25,45 +25,42 @@ export default class SyncNotebooks {
 		for (const noteBook of noteBookResp) {
 			const bookId: string = noteBook['bookId'];
 			const metaData = parseMetadata(noteBook);
-			const isNoteUpdate = this.isNotebookNew(metaData, localFiles);
+			const localNotebookFile = await this.getLocalNotebookFile(
+				metaData,
+				localFiles
+			);
+			if (localNotebookFile && !localNotebookFile.new) {
+				continue;
+			}
 
-			let isNew = true;
-			const localFile =
-				localFiles.find((file) => file.bookId === metaData.bookId) ||
-				null;
-			if (
-				localFile &&
-				localFile.noteCount == metaData.noteCount &&
-				localFile.reviewCount == metaData.reviewCount
-			) {
-				isNew = false;
-			}
-			if (isNoteUpdate) {
-				const highlightResp = await apiManager.getNotebookHighlights(
-					bookId
-				);
-				const highlights = parseHighlights(highlightResp);
-				const reviewResp = await apiManager.getNotebookReviews(bookId);
-				const reviews = parseReviews(reviewResp);
-				const chapterHighlights = parseChapterHighlights(highlights);
-				const chapterReviews = parseChapterReviews(reviews);
-				await this.syncNotebook(
-					{
-						metaData: metaData,
-						chapterHighlights: chapterHighlights,
-						chapterReviews: chapterReviews
-					},
-					isNew,
-					localFile
-				);
-			}
+			const bookDetail = await apiManager.getBook(bookId);
+			metaData['category'] = bookDetail['category'];
+			metaData['publisher'] = bookDetail['publisher'];
+			metaData['isbn'] = bookDetail['isbn'];
+
+			const highlightResp = await apiManager.getNotebookHighlights(
+				bookId
+			);
+			const highlights = parseHighlights(highlightResp);
+			const reviewResp = await apiManager.getNotebookReviews(bookId);
+			const reviews = parseReviews(reviewResp);
+			const chapterHighlights = parseChapterHighlights(highlights);
+			const chapterReviews = parseChapterReviews(reviews);
+			await this.syncNotebook(
+				{
+					metaData: metaData,
+					chapterHighlights: chapterHighlights,
+					chapterReviews: chapterReviews
+				},
+				localNotebookFile
+			);
 		}
 	}
 
-	isNotebookNew(
+	async getLocalNotebookFile(
 		notebookMeta: Metadata,
 		localFiles: AnnotationFile[]
-	): boolean {
+	): Promise<AnnotationFile> {
 		const localFile =
 			localFiles.find((file) => file.bookId === notebookMeta.bookId) ||
 			null;
@@ -72,21 +69,22 @@ export default class SyncNotebooks {
 				localFile.noteCount == notebookMeta.noteCount &&
 				localFile.reviewCount == notebookMeta.reviewCount
 			) {
-				return false;
+				localFile.new = false;
+				return localFile;
 			}
 		}
-		return true;
+		return null;
 	}
 
 	private async syncNotebook(
 		notebook: Notebook,
-		isNew: boolean,
 		localFile: AnnotationFile
 	): Promise<void> {
-		console.log('sync notebook start: ', notebook.metaData.title);
+		console.log('sync notebook: ', notebook.metaData.title);
 		try {
-			this.fileManager.saveNotebook(notebook, isNew, localFile);
+			await this.fileManager.saveNotebook(notebook, localFile);
 		} catch (e) {
+			console.log('sync note book error', notebook.metaData.title, e);
 			new Notice(`同步 ${notebook.metaData.title} 失败`);
 		}
 	}
