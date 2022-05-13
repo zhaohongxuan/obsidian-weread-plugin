@@ -4,6 +4,7 @@ import SyncNotebooks from './src/syncNotebooks';
 import * as express from 'express';
 import { Server, ServerResponse } from 'http';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import cookie from 'cookie'
 
 interface WereadPluginSettings {
 	cookie: string;
@@ -79,7 +80,7 @@ export default class WereadPlugin extends Plugin {
 		if (cookie === undefined || cookie == '') {
 			new Notice('cookie未设置，请填写Cookie');
 		}
-		const escapeCookie = this.escapeCookie(cookie);
+		const escapeCookie = this.escapeCookie(cookie)
 		app.use(
 			'/',
 			createProxyMiddleware({
@@ -111,12 +112,18 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	escapeCookie(cookie: string): string {
+		if(cookie.indexOf('%')!==-1){
+			//alreay escaped
+			return cookie;
+		}
 		const esacpeCookie = cookie
 			.split(';')
 			.map((v) => {
-				const arr = v.split('=');
-				const decodeCookie = decodeURIComponent(arr[1].trim());
-				return arr[0] + '=' + encodeURIComponent(decodeCookie);
+				const equalPos = v.lastIndexOf('=');
+				const key = v.substring(0, equalPos)
+				const value = v.substring(equalPos + 1)
+				const decodeValue = value.indexOf('%') !== -1 ? decodeURIComponent(value) : value
+				return key + '=' + encodeURIComponent(decodeValue);
 			})
 			.join(';');
 		return esacpeCookie;
