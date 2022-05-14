@@ -34,14 +34,12 @@ export default class FileManager {
 		notebook: Notebook,
 		localFile: AnnotationFile
 	): Promise<void> {
-		if (localFile) {
-			if (localFile.new) {
-				const existingFile = localFile.file;
-				console.log(`Updating ${existingFile.path}`);
-				const freshContent = this.renderer.render(notebook, true);
-				const fileContent = addFrontMatter(freshContent, notebook);
-				await this.vault.modify(existingFile, fileContent);
-			}
+		if (localFile && localFile.new) {
+			const existingFile = localFile.file;
+			console.log(`Updating ${existingFile.path}`);
+			const freshContent = this.renderer.render(notebook, true);
+			const fileContent = addFrontMatter(freshContent, notebook);
+			await this.vault.modify(existingFile, fileContent);
 		} else {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
