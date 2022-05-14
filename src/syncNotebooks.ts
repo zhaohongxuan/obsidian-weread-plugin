@@ -1,4 +1,3 @@
-import { Notice } from 'obsidian';
 import ApiManager from './api';
 import FileManager, { AnnotationFile } from './fileManager';
 import { Metadata, Notebook } from './models';
@@ -70,8 +69,10 @@ export default class SyncNotebooks {
 				localFile.reviewCount == notebookMeta.reviewCount
 			) {
 				localFile.new = false;
-				return localFile;
+			} else {
+				localFile.new = true;
 			}
+			return localFile;
 		}
 		return null;
 	}
@@ -80,12 +81,11 @@ export default class SyncNotebooks {
 		notebook: Notebook,
 		localFile: AnnotationFile
 	): Promise<void> {
-		console.log('sync notebook: ', notebook.metaData.title);
+		console.log('sync notebook: ', notebook.metaData.title, localFile);
 		try {
 			await this.fileManager.saveNotebook(notebook, localFile);
 		} catch (e) {
 			console.log('sync note book error', notebook.metaData.title, e);
-			new Notice(`同步 ${notebook.metaData.title} 失败`);
 		}
 	}
 }
