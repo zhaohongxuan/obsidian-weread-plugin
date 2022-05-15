@@ -10,17 +10,18 @@ import {
 } from './parser/parseResponse';
 export default class SyncNotebooks {
 	private fileManager: FileManager;
+	private apiManager: ApiManager;
 
-	constructor(fileManager: FileManager) {
+	constructor(fileManager: FileManager, apiManeger: ApiManager) {
 		this.fileManager = fileManager;
+		this.apiManager = apiManeger;
 	}
 
-	async startSync() {
-		const apiManager = new ApiManager();
-		const noteBookResp: [] = await apiManager.getNotebooks();
+	async startSync(): Promise<number> {
+		const noteBookResp: [] = await this.apiManager.getNotebooks();
 		const localFiles: AnnotationFile[] =
 			await this.fileManager.getNotebookFiles();
-
+		let successCount = 0;
 		for (const noteBook of noteBookResp) {
 			const bookId: string = noteBook['bookId'];
 			const metaData = parseMetadata(noteBook);
@@ -32,16 +33,16 @@ export default class SyncNotebooks {
 				continue;
 			}
 
-			const bookDetail = await apiManager.getBook(bookId);
+			const bookDetail = await this.apiManager.getBook(bookId);
 			metaData['category'] = bookDetail['category'];
 			metaData['publisher'] = bookDetail['publisher'];
 			metaData['isbn'] = bookDetail['isbn'];
 
-			const highlightResp = await apiManager.getNotebookHighlights(
+			const highlightResp = await this.apiManager.getNotebookHighlights(
 				bookId
 			);
 			const highlights = parseHighlights(highlightResp);
-			const reviewResp = await apiManager.getNotebookReviews(bookId);
+			const reviewResp = await this.apiManager.getNotebookReviews(bookId);
 			const reviews = parseReviews(reviewResp);
 			const chapterHighlights = parseChapterHighlights(highlights);
 			const chapterReviews = parseChapterReviews(reviews);
@@ -53,7 +54,9 @@ export default class SyncNotebooks {
 				},
 				localNotebookFile
 			);
+			successCount++;
 		}
+		return successCount;
 	}
 
 	async getLocalNotebookFile(
