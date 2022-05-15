@@ -16,6 +16,15 @@ export default class ApiManager {
 		};
 	}
 
+	async refreshCookie() {
+		try {
+			await axios.get(this.baseUrl + '/refresh');
+		} catch (e) {
+			console.error(e);
+			new Notice('刷新Cookie失败');
+		}
+	}
+
 	async getNotebooks() {
 		try {
 			let noteBooks = [];

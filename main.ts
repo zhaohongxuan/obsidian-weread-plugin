@@ -1,23 +1,25 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
-import * as express from 'express';
-import { Server, ServerResponse } from 'http';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import NetworkManager from './src/networkManager';
+import ApiManager from './src/api';
 
 interface WereadPluginSettings {
-	cookie: string;
+	cookies: string;
 	noteLocation: string;
+	cookieTime: number;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
-	cookie: '',
-	noteLocation: '/weread'
+	cookies: '',
+	noteLocation: '/weread',
+	cookieTime: -1
 };
 
 export default class WereadPlugin extends Plugin {
 	settings: WereadPluginSettings;
 	private syncNotebooks: SyncNotebooks;
+	private networkManager: NetworkManager;
 	async onload() {
 		console.log('load weread plugin');
 		await this.loadSettings();
@@ -26,34 +28,37 @@ export default class WereadPlugin extends Plugin {
 			this.app.metadataCache,
 			this.settings.noteLocation
 		);
-		this.syncNotebooks = new SyncNotebooks(fileManager);
-		const app = express();
+		const apiManager = new ApiManager();
+		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
+		this.networkManager = new NetworkManager(
+			this.settings.cookies,
+			apiManager
+		);
 
 		this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
-			this.startSync(app);
+			this.startSync();
 		});
 
 		this.addCommand({
 			id: 'sync-weread-notes-command',
 			name: 'Sync Weread command',
 			callback: () => {
-				this.startSync(app);
+				this.startSync();
 			}
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new WereadSettingTab(this.app, this));
 	}
 
-	async startSync(app: any) {
-		new Notice('start to sync weread notes!');
-		this.startMiddleServer(app).then((server) => {
-			console.log('Start syncing Weread note...');
-			this.syncNotebooks.startSync().then((res) => {
-				server.close(() => {
-					console.log('HTTP server closed ', res, server);
+	async startSync() {
+		new Notice('微信读书笔记同步开始!');
+		await this.networkManager.startMiddleServer().then((server) => {
+			this.checkCookie().then(() => {
+				console.log('Start syncing Weread note...');
+				this.syncNotebooks.startSync().then((res) => {
+					new Notice(`微信读书笔记同步完成!,本次更新 ${res} 本书`);
+					this.networkManager.shutdownMiddleServer(server);
 				});
-				new Notice('weread notes sync complete!');
 			});
 		});
 	}
@@ -74,61 +79,31 @@ export default class WereadPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async startMiddleServer(app: any): Promise<Server> {
-		const cookie = this.settings.cookie;
-		if (cookie === undefined || cookie == '') {
-			new Notice('cookie未设置，请填写Cookie');
-		}
-		const escapeCookie = this.escapeCookie(cookie);
-		app.use(
-			'/',
-			createProxyMiddleware({
-				target: 'https://i.weread.qq.com',
-				changeOrigin: true,
-				onProxyReq: function (proxyReq, req, res) {
-					try {
-						proxyReq.setHeader('Cookie', escapeCookie);
-					} catch (error) {
-						new Notice('cookie 设置失败，检查Cookie格式');
-					}
-				},
-				onProxyRes: function (proxyRes, req, res: ServerResponse) {
-					if (res.statusCode != 200) {
-						new Notice('获取微信读书服务器数据异常！');
-					}
-					proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-				}
-			})
-		);
-		const server = app.listen(12011);
-		return server;
+	async setCookie(cookie: string) {
+		this.networkManager.setCookie(cookie);
 	}
 
-	async shutdownMiddleServer(server: Server) {
-		server.close(() => {
-			console.log('HTTP server closed');
-		});
-	}
-
-	escapeCookie(cookie: string): string {
-		if (cookie.indexOf('%') !== -1) {
-			//alreay escaped
-			return cookie;
+	async checkCookie() {
+		if (
+			this.settings.cookieTime === -1 ||
+			new Date().getTime() - this.settings.cookieTime > 600 * 1000
+		) {
+			console.log(
+				'last cookie time ',
+				new Date(this.settings.cookieTime).toString(),
+				'try to refresh...'
+			);
+			await this.networkManager.refreshCookie().then(() => {
+				this.updateCookie();
+			});
 		}
-		const esacpeCookie = cookie
-			.split(';')
-			.map((v) => {
-				const equalPos = v.lastIndexOf('=');
-				const key = v.substring(0, equalPos);
-				const value = v.substring(equalPos + 1);
-				const decodeValue =
-					value.indexOf('%') !== -1
-						? decodeURIComponent(value)
-						: value;
-				return key + '=' + encodeURIComponent(decodeValue);
-			})
-			.join(';');
-		return esacpeCookie;
+	}
+	async updateCookie() {
+		const newCookieTime = new Date().getTime();
+		this.settings.cookieTime = newCookieTime;
+		this.settings.cookies = this.networkManager.getCookieString();
+		console.log('update cookie complete, new settings', this.settings);
+		await this.saveSettings();
 	}
 }
 class WereadSettingTab extends PluginSettingTab {
@@ -150,10 +125,11 @@ class WereadSettingTab extends PluginSettingTab {
 			.addTextArea((text) =>
 				text
 					.setPlaceholder('Input you weread Cookie')
-					.setValue(this.plugin.settings.cookie)
+					.setValue(this.plugin.settings.cookies)
 					.onChange(async (value) => {
 						console.log('New Cookie: ' + value);
-						this.plugin.settings.cookie = value;
+						this.plugin.settings.cookies = value;
+						this.plugin.setCookie(value);
 						await this.plugin.saveSettings();
 					})
 			);

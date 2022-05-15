@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "0.1.10",
+	"version": "0.1.11",
 	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {
@@ -35,10 +35,12 @@
 		"webpack-cli": "^4.9.2"
 	},
 	"dependencies": {
+		"@types/set-cookie-parser": "^2.4.2",
 		"axios": "^0.27.2",
 		"gray-matter": "^4.0.3",
 		"moment": "^2.29.3",
 		"nunjucks": "^3.2.3",
-		"sanitize-filename": "^1.6.3"
+		"sanitize-filename": "^1.6.3",
+		"set-cookie-parser": "^2.4.8"
 	}
 }
