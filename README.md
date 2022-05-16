@@ -6,7 +6,8 @@
 Obsidian微信读书插件是一个社区插件，用来同步微信读书中所有的高亮文本/划线/以及个人感想，并将这些信息转换为笔记设置到Onbsidian的文件夹中。
 
 ## 功能
-- 同步微信读书的划线以及个人感想到Obsidian，初次更新会比较慢，后面再去更新的时候只会更新`划线数量`或者`笔记数量`有变化的书籍，一般很快
+- 同步微信读书的划线以及个人感想到Obsidian，初次更新会比较慢，后面再去更新的时候只会更新`划线数量`或者`笔记数量`有变化的书籍，一般速度很快
+- 校验Cookie有效期自动刷新Cookie
 - 自定义笔记生成模板 template （TBD）
 
 ## 安装方法
@@ -21,7 +22,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 4. 点击下图所示的网络（Network）栏目，按 `Ctrl+E`/`CMD+E` 启动网络监控
 5. 在微信读书 r.qq.com 扫码登录（已经登录过的刷新页面），Network选项卡随便找到一个`Fetch/XHR`类型的请求，点击`Header` 选择Cookie，然后右键 `Copy Value`即可拿到`Cookie`
    ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235931.png)
-   注意📢：在console里面输入 `document.cookie`是不全的，必须从请求Header中捕获的Cookie才可以。
+   注意📢：在console里面输入 `document.cookie`不能获取`httpOnly`的Cookie，必须从请求Header中捕获的Cookie才可以正常使用。
 6. 把Cookie内容粘贴到setting框
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235704.png)
 7. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
@@ -29,11 +30,11 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 - Ribbon方式
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235530.png)
 - Command Pattle方式
-   ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235440.png)
+   ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235440.png) 
 8. 效果图 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220513123617.png)
 ## 已知问题
 
-- 微信读书Cookie的有效期有点短，Cookie失效了之后需要重新登录 [r.qq.com](r.qq.com)获取Cookie，手机端获取Cookie不易，所以在Mobile端禁用了
+- 长期不使用本插件Cookie可能会失效，需要重新登录 [r.qq.com](r.qq.com)获取Cookie。
 - 偶尔可能会有网络连接问题，重新点击同步即可，已同步的笔记不会再次更新。
   
 ## TODO
