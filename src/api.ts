@@ -1,5 +1,7 @@
 import { Notice } from 'obsidian';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
+
 export default class ApiManager {
 	//will proxy to  'https://i.weread.qq.com';
 	readonly baseUrl: string = 'http://localhost:12011';
@@ -18,7 +20,7 @@ export default class ApiManager {
 
 	async refreshCookie() {
 		try {
-			await axios.get(this.baseUrl + '/refresh');
+			await axios.head(this.baseUrl + '/refresh');
 		} catch (e) {
 			console.error(e);
 			new Notice('刷新Cookie失败');
@@ -28,13 +30,29 @@ export default class ApiManager {
 	async getNotebooks() {
 		try {
 			let noteBooks = [];
-			const resp = await axios.get(this.baseUrl + '/user/notebooks', {});
+			const client = axios.create();
+			axiosRetry(client, {
+				retries: 3,
+				retryDelay: (retryCount) => {
+					console.log(
+						`weread retry get notebooks attempt: ${retryCount}`
+					);
+					return retryCount * 1000;
+				},
+				retryCondition: (error) => {
+					return error.response.status === 401;
+				}
+			});
+
+			const resp = await client.get(this.baseUrl + '/user/notebooks');
+			if (resp.status === 401) {
+				console.log('微信读书Cookie已失效');
+				new Notice('微信读书Cookie已失效~');
+			}
 			noteBooks = resp.data.books;
 			return noteBooks;
 		} catch (e) {
-			new Notice(
-				'Failed to fetch weread notebooks . Please check your Cookie and try again.'
-			);
+			console.error(e);
 		}
 	}
 

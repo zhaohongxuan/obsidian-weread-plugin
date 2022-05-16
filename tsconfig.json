@@ -17,6 +17,5 @@
       "ES7"
     ]
   },
-  "include": [
-    "**/*.ts", "src/testapi.js"  ]
+  "include": ["**/*.ts" ]
 }

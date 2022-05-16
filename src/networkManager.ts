@@ -1,69 +1,29 @@
-import express from 'express';
+import * as express from 'express';
 import { Server, ServerResponse } from 'http';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { Notice } from 'obsidian';
 import ApiManager from './api';
-import { parse, Cookie } from 'set-cookie-parser';
+import { parse } from 'set-cookie-parser';
+import { get } from 'svelte/store';
+import { settingsStore } from './settings';
+import { getEncodeCookieString, parseCookies } from './utils/cookiesUtil';
 
 export default class NetworkManager {
-	private cookies: Cookie[];
-	private app: express;
+	private app: any;
 	private apiManager: ApiManager;
 
-	constructor(cookie: string, apiManager: ApiManager) {
-		this.setCookie(cookie);
-		this.app = new express();
+	constructor(apiManager: ApiManager) {
+		this.app = express();
 		this.apiManager = apiManager;
 	}
 
-	private parseCookies(cookieInput: string): Cookie[] {
-		if (cookieInput === '') {
-			return [];
-		}
-
-		const pairs = cookieInput.split(';');
-		const splittedPairs = pairs.map((cookie) => cookie.split('='));
-		const cookieArr: Cookie[] = splittedPairs.map((pair) => {
-			return {
-				name: decodeURIComponent(pair[0].trim()),
-				value: decodeURIComponent(pair[1].trim())
-			};
-		});
-		return cookieArr;
-	}
-
-	public getCookieString(): string {
-		return this.cookies
-			.map((cookie) => {
-				const key = cookie.name;
-				const value = cookie.value;
-				const decodeValue =
-					value.indexOf('%') !== -1
-						? decodeURIComponent(value)
-						: value;
-				return key + '=' + encodeURIComponent(decodeValue);
-			})
-			.join(';');
-	}
-
-	public setCookie(cookies: string) {
-		this.cookies = this.parseCookies(cookies);
-	}
-
-	private updateCookie(cookie: Cookie) {
-		this.cookies
-			.filter((localCookie) => localCookie.name == cookie.name)
-			.forEach((localCookie) => {
-				localCookie.value = cookie.value;
-			});
-	}
-
 	public async startMiddleServer(): Promise<Server> {
-		const getCookie = () => {
-			return this.getCookieString();
+		const refreshCookie = async (force: boolean) => {
+			await this.refreshCookie(force);
 		};
-		const updateCookie = (cookie: Cookie) => {
-			this.updateCookie(cookie);
+
+		const updateCookies = (cookies: string[]) => {
+			this.updateCookies(cookies);
 		};
 
 		this.app.use(
@@ -75,16 +35,15 @@ export default class NetworkManager {
 					'^/refresh': '/'
 				},
 				onProxyReq: function (proxyReq, req, res) {
-					const cookie = getCookie();
+					const cookie = getEncodeCookieString();
 					proxyReq.setHeader('Cookie', cookie);
 				},
 				onProxyRes: function (proxyRes, req, res: ServerResponse) {
 					proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+					proxyRes.headers['Access-Control-Allow-Methods'] = '*';
 					const respCookie: string[] = proxyRes.headers['set-cookie'];
 					if (respCookie) {
-						parse(respCookie).forEach((cookie) => {
-							updateCookie(cookie);
-						});
+						updateCookies(respCookie);
 					}
 				}
 			})
@@ -97,7 +56,7 @@ export default class NetworkManager {
 				changeOrigin: true,
 				onProxyReq: function (proxyReq, req, res) {
 					try {
-						const cookie = getCookie();
+						const cookie = getEncodeCookieString();
 						proxyReq.setHeader('Cookie', cookie);
 					} catch (error) {
 						new Notice('cookie 设置失败，检查Cookie格式');
@@ -105,16 +64,29 @@ export default class NetworkManager {
 				},
 				onProxyRes: function (proxyRes, req, res: ServerResponse) {
 					if (proxyRes.statusCode == 401) {
-						new Notice('微信读书Cookie已失效~');
+						refreshCookie(true);
 					} else if (proxyRes.statusCode != 200) {
 						new Notice('获取微信读书服务器数据异常！');
 					}
 					proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+					proxyRes.headers['Access-Control-Allow-Methods'] = '*';
 				}
 			})
 		);
 		const server = this.app.listen(12011);
 		return server;
+	}
+
+	private updateCookies(respCookie: string[]) {
+		const cookies = parseCookies(get(settingsStore).cookies);
+		parse(respCookie).forEach((cookie) => {
+			cookies
+				.filter((localCookie) => localCookie.name == cookie.name)
+				.forEach((localCookie) => {
+					localCookie.value = cookie.value;
+				});
+		});
+		settingsStore.actions.setCookies(cookies);
 	}
 
 	public async shutdownMiddleServer(server: Server) {
@@ -123,8 +95,20 @@ export default class NetworkManager {
 		});
 	}
 
-	async refreshCookie() {
-		console.log('cookie is expired try to refresh cookie ');
-		await this.apiManager.refreshCookie();
+	async refreshCookie(force = false) {
+		const cookieTime = get(settingsStore).cookieTime;
+		if (
+			cookieTime === -1 ||
+			new Date().getTime() - cookieTime > 1800 * 1000 ||
+			force
+		) {
+			console.log('cookie is expired try to refresh cookie ');
+			console.log(
+				'last cookie time ',
+				new Date(cookieTime).toString(),
+				'try to refresh...'
+			);
+			await this.apiManager.refreshCookie();
+		}
 	}
 }

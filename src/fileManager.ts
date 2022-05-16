@@ -3,6 +3,8 @@ import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import type { Notebook } from './models';
 import { frontMatterDocType, addFrontMatter } from './utils/frontmatter';
+import { get } from 'svelte/store';
+import { settingsStore } from './settings';
 
 export type AnnotationFile = {
 	bookId?: string;
@@ -16,30 +18,25 @@ export default class FileManager {
 	private vault: Vault;
 	private metadataCache: MetadataCache;
 	private renderer: Renderer;
-	private noteLocation: string;
 
-	constructor(
-		vault: Vault,
-		metadataCache: MetadataCache,
-		noteLocation: string
-	) {
+	constructor(vault: Vault, metadataCache: MetadataCache) {
 		this.vault = vault;
 		this.metadataCache = metadataCache;
 		this.renderer = new Renderer();
-		this.noteLocation = noteLocation;
 	}
 
-	// Save an notebook as markdown file, replacing its existing file if present
 	public async saveNotebook(
 		notebook: Notebook,
 		localFile: AnnotationFile
 	): Promise<void> {
-		if (localFile && localFile.new) {
-			const existingFile = localFile.file;
-			console.log(`Updating ${existingFile.path}`);
-			const freshContent = this.renderer.render(notebook, true);
-			const fileContent = addFrontMatter(freshContent, notebook);
-			await this.vault.modify(existingFile, fileContent);
+		if (localFile) {
+			if (localFile.new) {
+				const existingFile = localFile.file;
+				console.log(`Updating ${existingFile.path}`);
+				const freshContent = this.renderer.render(notebook, true);
+				const fileContent = addFrontMatter(freshContent, notebook);
+				await this.vault.modify(existingFile, fileContent);
+			}
 		} else {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
@@ -76,7 +73,7 @@ export default class FileManager {
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
-		const folderPath = this.noteLocation;
+		const folderPath = get(settingsStore).noteLocation;
 		if (!(await this.vault.adapter.exists(folderPath))) {
 			console.info(`Folder ${folderPath} not found. Will be created`);
 			await this.createFolder(folderPath);

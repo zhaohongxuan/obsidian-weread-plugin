@@ -7,8 +7,8 @@ export const sanitizeTitle = (title: string): string => {
 
 export const sanitizeTitleExcess = (title: string): string => {
 	const santizedTitle = title
-		.replace(/ *\([^)]*\) */g, '') // remove parenthesis and contents from title
-		.replace(/:.*/g, '') // remove description test after `:` in title
+		.replace(/ *\([^)]*\) */g, '')
+		.replace(/:.*/g, '')
 		.trim();
 
 	return sanitize(santizedTitle);
