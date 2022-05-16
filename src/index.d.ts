@@ -1,5 +1,3 @@
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-
 declare module '*.njk' {
 	const content: any;
 	export default content;
