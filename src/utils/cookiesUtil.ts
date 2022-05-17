@@ -31,8 +31,7 @@ export const getCookieString = (cookies: Cookie[]): string => {
 };
 
 export const getEncodeCookieString = (): string => {
-	const cookiesStr = get(settingsStore).cookies;
-	const cookiesArr = parseCookies(cookiesStr);
+	const cookiesArr = get(settingsStore).cookies;
 	return cookiesArr
 		.map((cookie) => {
 			const key = cookie.name;

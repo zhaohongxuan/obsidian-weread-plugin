@@ -1,15 +1,14 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import NetworkManager from './src/networkManager';
 import ApiManager from './src/api';
-import { get } from 'svelte/store';
 import { settingsStore } from './src/settings';
-import { parseCookies } from './src/utils/cookiesUtil';
-
+import { WereadSettingsTab } from './src/settingTab';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private networkManager: NetworkManager;
+
 	async onload() {
 		console.log('load weread plugin');
 		settingsStore.initialise(this);
@@ -22,7 +21,6 @@ export default class WereadPlugin extends Plugin {
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
 		this.networkManager = new NetworkManager(apiManager);
-
 		this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
 			this.startSync();
 		});
@@ -35,7 +33,11 @@ export default class WereadPlugin extends Plugin {
 			}
 		});
 
-		this.addSettingTab(new WereadSettingTab(this.app, this));
+		this.addSettingTab(new WereadSettingsTab(this.app, this));
+	}
+
+	async startMiddleServer() {
+		await this.networkManager.startMiddleServer();
 	}
 
 	async startSync() {
@@ -43,7 +45,6 @@ export default class WereadPlugin extends Plugin {
 		await this.networkManager.startMiddleServer().then((server) => {
 			this.networkManager.refreshCookie().then(() => {
 				console.log('Start syncing Weread note...');
-
 				this.syncNotebooks
 					.startSync()
 					.then((res) => {
@@ -53,9 +54,8 @@ export default class WereadPlugin extends Plugin {
 						this.networkManager.shutdownMiddleServer(server);
 					})
 					.catch((e) => {
-						new Notice(
-							`微信读书笔记同步失败!,请打开控制台查看详情~`
-						);
+						this.networkManager.shutdownMiddleServer(server);
+						console.log(e);
 					});
 			});
 		});
@@ -63,49 +63,5 @@ export default class WereadPlugin extends Plugin {
 
 	onunload() {
 		console.log('unloading plugin', new Date().toLocaleString());
-	}
-}
-class WereadSettingTab extends PluginSettingTab {
-	plugin: WereadPlugin;
-
-	constructor(app: App, plugin: WereadPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
-		containerEl.createEl('h2', { text: 'Settings Weread plugin.' });
-
-		const cookies = get(settingsStore).cookies;
-		const noteLocation = get(settingsStore).noteLocation;
-
-		new Setting(containerEl)
-			.setName('Cookie')
-			.setDesc('Input you weread Cookies')
-			.addTextArea((text) =>
-				text
-					.setPlaceholder('Input you weread Cookie')
-					.setValue(cookies)
-					.onChange(async (value) => {
-						const cookie = parseCookies(value);
-						console.log('New Cookie: ' + cookie);
-						settingsStore.actions.setCookies(cookie);
-					})
-			);
-
-		new Setting(containerEl)
-			.setName('Notes Location')
-			.setDesc('Your Weread Notes location')
-			.addTextArea((text) =>
-				text
-					.setPlaceholder('Which folder to place your notes')
-					.setValue(noteLocation)
-					.onChange(async (value) => {
-						console.log('Notes Location: ' + value);
-						settingsStore.actions.setNoteLocationFolder(value);
-					})
-			);
 	}
 }

@@ -2,18 +2,21 @@ import { Cookie } from 'set-cookie-parser';
 import { writable } from 'svelte/store';
 
 import WereadPlugin from '../main';
-import { getCookieString } from './utils/cookiesUtil';
 
 interface WereadPluginSettings {
-	cookies: string;
+	cookies: Cookie[];
 	noteLocation: string;
-	cookieTime: number;
+	lastCookieTime: number;
+	isCookieValid: boolean;
+	user: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
-	cookies: '',
+	cookies: [],
 	noteLocation: '/weread',
-	cookieTime: -1
+	lastCookieTime: -1,
+	isCookieValid: false,
+	user: ''
 };
 
 const createSettingsStore = () => {
@@ -28,6 +31,9 @@ const createSettingsStore = () => {
 			await plugin.loadData()
 		);
 		const settings: WereadPluginSettings = { ...data };
+		if (settings.cookies.length > 1) {
+			setUserName(settings.cookies);
+		}
 		store.set(settings);
 		_plugin = plugin;
 	};
@@ -41,12 +47,44 @@ const createSettingsStore = () => {
 		}
 	});
 
-	const setCookies = (cookies: Cookie[]) => {
+	const clearCookies = () => {
 		store.update((state) => {
-			state.cookies = getCookieString(cookies);
-			state.cookieTime = new Date().getTime();
+			state.cookies = [];
+			state.lastCookieTime = new Date().getTime();
+			state.user = '';
+			state.isCookieValid = false;
 			return state;
 		});
+	};
+
+	const setCookies = (cookies: Cookie[]) => {
+		store.update((state) => {
+			state.cookies = cookies;
+			state.lastCookieTime = new Date().getTime();
+			state.isCookieValid = true;
+			setUserName(cookies);
+			return state;
+		});
+	};
+
+	const setCookieFlag = (flag: boolean) => {
+		store.update((state) => {
+			state.isCookieValid = true;
+			return state;
+		});
+	};
+
+	const setUserName = (cookies: Cookie[]) => {
+		const userName = cookies.find(
+			(cookie) => cookie.name == 'wr_name'
+		).value;
+		if (userName !== '') {
+			console.log('setting user name=>', userName);
+			store.update((state) => {
+				state.user = userName;
+				return state;
+			});
+		}
 	};
 
 	const setNoteLocationFolder = (value: string) => {
@@ -61,7 +99,9 @@ const createSettingsStore = () => {
 		initialise,
 		actions: {
 			setNoteLocationFolder,
-			setCookies
+			setCookies,
+			clearCookies,
+			setCookieFlag
 		}
 	};
 };
