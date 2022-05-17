@@ -32,7 +32,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 8. 效果图 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220513123617.png)
 ## 已知问题
 
-- 长期不使用本插件Cookie可能会失效，需要重新登录 [r.qq.com](r.qq.com)获取Cookie。
+- 长期不使用本插件Cookie可能会失效，需要重新登录。
 - 偶尔可能会有网络连接问题，重新点击同步即可，已同步的笔记不会再次更新。
   
 ## TODO
@@ -41,9 +41,9 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 - [x] 优化文件同步逻辑，不需要每次都删除重建，可以根据Note的数量来判断
 - [x] 被动刷新Cookie延长有效期
 - [x] 多处登录导致Cookie失效Fix
+- [ ] 弹出扫码框登录自动获取Cookie
 - [ ] 书名重复导致同步失败
 - [ ] 设置页面支持设置Template格式
-- [x] 弹出扫码框登录自动获取Cookie
 - [ ] 按照是否读完分类
 
 ## Weread API
