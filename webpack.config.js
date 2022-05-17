@@ -56,7 +56,6 @@ module.exports = {
   },
   externals: {
     electron: 'commonjs2 electron',
-    obsidian: 'commonjs2 obsidian',
-    express:'commonjs2 express'
+    obsidian: 'commonjs2 obsidian'
   }
 };
