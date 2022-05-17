@@ -28,32 +28,34 @@ export default class ApiManager {
 	}
 
 	async getNotebooks() {
-		try {
-			let noteBooks = [];
-			const client = axios.create();
-			axiosRetry(client, {
-				retries: 3,
-				retryDelay: (retryCount) => {
-					console.log(
-						`weread retry get notebooks attempt: ${retryCount}`
-					);
-					return retryCount * 1000;
-				},
-				retryCondition: (error) => {
-					return error.response.status === 401;
+		let noteBooks = [];
+		const client = axios.create();
+		axiosRetry(client, {
+			retries: 3,
+			retryDelay: (retryCount) => {
+				console.log(
+					`weread retry get notebooks attempt: ${retryCount}`
+				);
+				return retryCount * 1000;
+			},
+			retryCondition: (error) => {
+				const resp = error.response;
+				// -2012 登录超时，可refresh cookie
+				if (error.response.status === 401) {
+					if (resp.data.errcode == -2012) {
+						this.refreshCookie();
+						return true;
+					} else {
+						new Notice('微信读书未登录或者用户异常');
+						console.log('登录微信读书异常', error.response);
+					}
 				}
-			});
-
-			const resp = await client.get(this.baseUrl + '/user/notebooks');
-			if (resp.status === 401) {
-				console.log('微信读书Cookie已失效');
-				new Notice('微信读书Cookie已失效~');
+				return false;
 			}
-			noteBooks = resp.data.books;
-			return noteBooks;
-		} catch (e) {
-			console.error(e);
-		}
+		});
+		const resp = await client.get(this.baseUrl + '/user/notebooks');
+		noteBooks = resp.data.books;
+		return noteBooks;
 	}
 
 	async getBook(bookId: string) {

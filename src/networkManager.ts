@@ -6,7 +6,7 @@ import ApiManager from './api';
 import { parse } from 'set-cookie-parser';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
-import { getEncodeCookieString, parseCookies } from './utils/cookiesUtil';
+import { getEncodeCookieString } from './utils/cookiesUtil';
 
 export default class NetworkManager {
 	private app: any;
@@ -18,9 +18,6 @@ export default class NetworkManager {
 	}
 
 	public async startMiddleServer(): Promise<Server> {
-		const refreshCookie = async (force: boolean) => {
-			await this.refreshCookie(force);
-		};
 
 		const updateCookies = (cookies: string[]) => {
 			this.updateCookies(cookies);
@@ -63,11 +60,6 @@ export default class NetworkManager {
 					}
 				},
 				onProxyRes: function (proxyRes, req, res: ServerResponse) {
-					if (proxyRes.statusCode == 401) {
-						refreshCookie(true);
-					} else if (proxyRes.statusCode != 200) {
-						new Notice('获取微信读书服务器数据异常！');
-					}
 					proxyRes.headers['Access-Control-Allow-Origin'] = '*';
 					proxyRes.headers['Access-Control-Allow-Methods'] = '*';
 				}
@@ -78,7 +70,7 @@ export default class NetworkManager {
 	}
 
 	private updateCookies(respCookie: string[]) {
-		const cookies = parseCookies(get(settingsStore).cookies);
+		const cookies = get(settingsStore).cookies;
 		parse(respCookie).forEach((cookie) => {
 			cookies
 				.filter((localCookie) => localCookie.name == cookie.name)
@@ -96,7 +88,7 @@ export default class NetworkManager {
 	}
 
 	async refreshCookie(force = false) {
-		const cookieTime = get(settingsStore).cookieTime;
+		const cookieTime = get(settingsStore).lastCookieTime;
 		if (
 			cookieTime === -1 ||
 			new Date().getTime() - cookieTime > 1800 * 1000 ||
