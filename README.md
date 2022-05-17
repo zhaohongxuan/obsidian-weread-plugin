@@ -7,25 +7,23 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 
 ## 功能
 - 同步微信读书的划线以及个人感想到Obsidian，初次更新会比较慢，后面再去更新的时候只会更新`划线数量`或者`笔记数量`有变化的书籍，一般速度很快
+- 支持微信扫码登录，理论上可以和浏览器一样保持长时间不掉线。
 - 校验Cookie有效期自动刷新Cookie
 - 自定义笔记生成模板 template （TBD）
 
 ## 安装方法
+📢 由于本插件还未在插件市场上架，所以目前可以通过github下载release包安装。
 1. 进入[Release页面](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)下载`obsidian-weread-plugin.zip`插件包
    ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220512084624.png)
 2. 打开设置，点击community plugins,点击这个文件夹图标打开plugins目录，把刚才的zip包解压缩到这里![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220514081630.png)
 3. 重新刷新community plugin让他生效![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220512084836.png)
-## 使用方法
+## 设置和使用
 
-1. 先打开微信读书（也即r.qq.com），按 `CMD+Option+i`/`Ctrl+Shift+i` 启动网页控制台
-2. 微信读书网页端设置了`debugger`，进行网络请求前需要先关闭`debugger`，如图所示 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220513183621.png)
-4. 点击下图所示的网络（Network）栏目，按 `Ctrl+E`/`CMD+E` 启动网络监控
-5. 在微信读书 r.qq.com 扫码登录（已经登录过的刷新页面），Network选项卡随便找到一个`Fetch/XHR`类型的请求，点击`Header` 选择Cookie，然后右键 `Copy Value`即可拿到`Cookie`
-   ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235931.png)
-   注意📢：在console里面输入 `document.cookie`不能获取`httpOnly`的Cookie，必须从请求Header中捕获的Cookie才可以正常使用。
-6. 把Cookie内容粘贴到setting框
-![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235704.png)
-7. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
+1. 打开Obsidian点击`设置`进入设置界面，找到`Obsidian Weread Plugin`进入到插件设置页面
+2. 点击右侧`登录`按钮，在弹出的登录页面扫码登录![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220517110221.png)
+   登录完成后，会显示个人昵称：![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220517110048.png)
+3. 注销登录可以清楚Obsidian插件的Cookie信息，注销方法，和网页版微信读书一样，右上角点击头像，点击退出登录 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220517110620.png)。
+4. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
 
 - Ribbon方式
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220511235530.png)
@@ -45,13 +43,15 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 - [x] 多处登录导致Cookie失效Fix
 - [ ] 书名重复导致同步失败
 - [ ] 设置页面支持设置Template格式
-- [ ] 弹出扫码框登录自动获取Cookie
+- [x] 弹出扫码框登录自动获取Cookie
+- [ ] 按照是否读完分类
 
 ## Weread API
 [Weread API](./docs/weread-api.md)
 ## 感谢
 - [wereader](https://github.com/arry-lee/wereader)
 - [Kindle Plugin](https://github.com/hadynz/obsidian-kindle-plugin)
+- [Hypothesis Plugin](https://github.com/weichenw/obsidian-hypothesis-plugin)
 - [Obsidian Plugin Developer Docs](https://marcus.se.net/obsidian-plugin-docs/)
 - [http proxy middleware](https://github.com/chimurai/http-proxy-middleware)
 - [nunjucks](https://github.com/mozilla/nunjucks)
