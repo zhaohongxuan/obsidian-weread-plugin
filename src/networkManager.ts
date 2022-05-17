@@ -18,7 +18,6 @@ export default class NetworkManager {
 	}
 
 	public async startMiddleServer(): Promise<Server> {
-
 		const updateCookies = (cookies: string[]) => {
 			this.updateCookies(cookies);
 		};
