@@ -122,7 +122,6 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 		.sort((o1, o2) => o2.created - o1.created);
 
 	const entireReview = reviews.filter((review) => review.type == 4).first();
-	console.log('=================', reviews, chapterReviews, entireReview);
 	const chapterResult = new Map();
 	for (const review of chapterReviews) {
 		const chapterUid = review['chapterUid'];
@@ -152,7 +151,6 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 	const chapterReviewResult: ChapterReview[] = Array.from(chapterResult.values()).sort(
 		(o1, o2) => o1.chapterUid - o2.chapterUid
 	);
-	console.log('++++++++', chapterReviewResult);
 	return {
 		bookReview: entireReview,
 		chapterReviews: chapterReviewResult
