@@ -48,6 +48,9 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 
 ## Weread API
 [Weread API](./docs/weread-api.md)
+
+## 免责声明
+本程序没有爬取任何书籍内容，只提供登录用户的图书以及笔记信息，没有侵犯书籍作者版权和微信读书官方利益。
 ## 感谢
 - [wereader](https://github.com/arry-lee/wereader)
 - [Kindle Plugin](https://github.com/hadynz/obsidian-kindle-plugin)
