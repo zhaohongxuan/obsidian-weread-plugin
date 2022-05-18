@@ -106,7 +106,7 @@ export const parseReviews = (data: any): Review[] => {
 			chapterTitle: review['chapterTitle'],
 			content: review['content'],
 			reviewId: reviewId.replace('_', '-'),
-			mdContent: mdContent,
+			mdContent: mdContent?mdContent:review['content'],
 			range: review['range'],
 			abstract: review['abstract'],
 			type: review['type']
