@@ -24,10 +24,12 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 
 
 ## 使用
-⚠️ 本插件默认是覆盖式更新，请不要在同步的文件里修改内容，可以使用[Block链接](https://help.obsidian.md/How+to/Link+to+blocks) 的方式，在外部引用进行批注。
+⚠️ 本插件是覆盖式更新，请不要在同步的文件里修改内容，写`永久笔记`（为什么写永久笔记参考[《卡片笔记写作法》](https://book.douban.com/subject/35503571/)）的时候可以使用[Block引用](https://help.obsidian.md/How+to/Link+to+blocks) 的方式，在外部引用进行批注。
+
+
 1. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
 ![同步](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220518124603.png)
-2. 默认模板效果：![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220518123844.png)
+2. 默认模板效果：![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220518190147.png)
 
 ## 已知问题
 - 长期不使用本插件Cookie可能会失效，需要重新登录。
