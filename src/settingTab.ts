@@ -99,7 +99,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.setDesc(descFragment)
 			.addTextArea((text) => {
 				text.inputEl.style.width = '100%';
-				text.inputEl.style.height = '480px';
+				text.inputEl.style.height = '540px';
 				text.inputEl.style.fontSize = '0.8em';
 				text.setValue(get(settingsStore).template).onChange(async (value) => {
 					const isValid = this.renderer.validate(value);
