@@ -15,7 +15,7 @@ interface WereadPluginSettings {
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
 	cookies: [],
-	noteLocation: '/weread',
+	noteLocation: '/',
 	lastCookieTime: -1,
 	isCookieValid: false,
 	user: '',

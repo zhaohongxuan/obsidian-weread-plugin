@@ -7,7 +7,7 @@
 		"clean": "rimraf dist main.js",
 		"build": "svelte-check && npm run lint && webpack",
 		"dev": "NODE_ENV=development webpack && ./sync.sh",
-		"lint": "eslint . --ext .ts"
+		"lint": "eslint . --ext .ts --fix"
 	},
 	"keywords": [],
 	"author": "",

@@ -3,7 +3,7 @@ import moment from 'moment';
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];
-	const cover: string = book['cover'].replace('/s_', '/t6_');
+	const cover: string = book['cover'].replace('/s_', '/t9_');
 	const metaData: Metadata = {
 		bookId: book['bookId'],
 		author: book['author'],

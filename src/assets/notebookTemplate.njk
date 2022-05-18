@@ -1,32 +1,29 @@
 ---
-name: {{metaData.title}}
-author: {{metaData.author}}
 isbn: {{metaData.isbn}}
 category: {{metaData.category}}
 ---
 
 ## 元数据
-![]({{metaData.cover}})
-- 书名： {{metaData.title}}
-- 作者： {{metaData.author}}
-- 出版时间 {{metaData.publishTime}}
-- ISBN： {{metaData.isbn}}
-- 分类： {{metaData.category}}
-- 出版社： {{metaData.publisher}}
+> [!abstract] {{metaData.title}}
+> - ![ {{metaData.title}}|200]({{metaData.cover}})
+> - 书名： {{metaData.title}}
+> - 作者： {{metaData.author}}
+> - 出版时间 {{metaData.publishTime}}
+> - ISBN： {{metaData.isbn}}
+> - 分类： {{metaData.category}}
+> - 出版社： {{metaData.publisher}}
 
 ## 高亮划线
 {% for chapter in chapterHighlights %}
 ### {{chapter.chapterTitle}}
 {% for highlight in chapter.highlights %}{% if highlight.reviewContent %}{% else %}
-- [📌] {{ highlight.markText |trim }}
-    - time: {{highlight.createTime}}
+- [📌] {{ highlight.markText |trim }} ^{{highlight.range}}
 {% endif %} {% endfor %}{% endfor %}
 
 ## 读书笔记
 {% for chapter in chapterHighlights %}{% if chapter.chapterReviewCount >= 1 %}
 ### {{chapter.chapterTitle}}
 {%for highlight in chapter.highlights %}{% if highlight.reviewContent %}
-- [📌] {{highlight.markText |trim }}
-    - time: {{highlight.createTime}}
+- [📌] {{highlight.markText |trim }} ^{{highlight.range}}
     - review: {{highlight.reviewContent}}
 {% endif %} {% endfor %}{% endif %} {% endfor %}
