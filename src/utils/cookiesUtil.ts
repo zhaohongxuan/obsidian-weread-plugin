@@ -23,8 +23,7 @@ export const getCookieString = (cookies: Cookie[]): string => {
 		.map((cookie) => {
 			const key = cookie.name;
 			const value = cookie.value;
-			const decodeValue =
-				value.indexOf('%') !== -1 ? decodeURIComponent(value) : value;
+			const decodeValue = value.indexOf('%') !== -1 ? decodeURIComponent(value) : value;
 			return key + '=' + decodeValue;
 		})
 		.join(';');

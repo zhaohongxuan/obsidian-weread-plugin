@@ -1,6 +1,6 @@
 import { Cookie } from 'set-cookie-parser';
 import { writable } from 'svelte/store';
-
+import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
 
 interface WereadPluginSettings {
@@ -9,14 +9,18 @@ interface WereadPluginSettings {
 	lastCookieTime: number;
 	isCookieValid: boolean;
 	user: string;
+	template: string;
+	noteCountLimit: number;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
 	cookies: [],
-	noteLocation: '/weread',
+	noteLocation: '/',
 	lastCookieTime: -1,
 	isCookieValid: false,
-	user: ''
+	user: '',
+	template: notebookTemolate,
+	noteCountLimit: -1
 };
 
 const createSettingsStore = () => {
@@ -25,11 +29,7 @@ const createSettingsStore = () => {
 	let _plugin!: WereadPlugin;
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
-		const data = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await plugin.loadData()
-		);
+		const data = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
 		const settings: WereadPluginSettings = { ...data };
 		if (settings.cookies.length > 1) {
 			setUserName(settings.cookies);
@@ -75,9 +75,7 @@ const createSettingsStore = () => {
 	};
 
 	const setUserName = (cookies: Cookie[]) => {
-		const userName = cookies.find(
-			(cookie) => cookie.name == 'wr_name'
-		).value;
+		const userName = cookies.find((cookie) => cookie.name == 'wr_name').value;
 		if (userName !== '') {
 			console.log('setting user name=>', userName);
 			store.update((state) => {
@@ -93,6 +91,18 @@ const createSettingsStore = () => {
 			return state;
 		});
 	};
+	const setTemplate = (template: string) => {
+		store.update((state) => {
+			state.template = template;
+			return state;
+		});
+	};
+	const setNoteCountLimit = (noteCountLimit: number) => {
+		store.update((state) => {
+			state.noteCountLimit = noteCountLimit;
+			return state;
+		});
+	};
 
 	return {
 		subscribe: store.subscribe,
@@ -101,7 +111,9 @@ const createSettingsStore = () => {
 			setNoteLocationFolder,
 			setCookies,
 			clearCookies,
-			setCookieFlag
+			setCookieFlag,
+			setTemplate,
+			setNoteCountLimit
 		}
 	};
 };

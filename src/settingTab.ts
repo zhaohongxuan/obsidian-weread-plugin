@@ -1,17 +1,21 @@
 import WereadPlugin from 'main';
+import templateInstructions from './assets/templateInstructions.html';
 import { PluginSettingTab, Setting, App } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import WereadLoginModal from './components/wereadLoginModel';
 import WereadLogoutModal from './components/wereadLogoutModel';
 import pickBy from 'lodash.pickby';
+import { Renderer } from './renderer';
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
+	private renderer: Renderer;
 
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+		this.renderer = new Renderer();
 	}
 
 	display() {
@@ -25,6 +29,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.showLogin();
 		}
 		this.notebookFolder();
+		this.noteCountLimit();
+		this.template();
 	}
 
 	private notebookFolder(): void {
@@ -49,19 +55,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private showLogin(): void {
-		new Setting(this.containerEl)
-			.setName('登录微信读书')
-			.addButton((button) => {
-				return button
-					.setButtonText('登录')
-					.setCta()
-					.onClick(async () => {
-						button.setDisabled(true);
-						const logoutModel = new WereadLoginModal(this);
-						await logoutModel.doLogin();
-						this.display();
-					});
-			});
+		new Setting(this.containerEl).setName('登录微信读书').addButton((button) => {
+			return button
+				.setButtonText('登录')
+				.setCta()
+				.onClick(async () => {
+					button.setDisabled(true);
+					const logoutModel = new WereadLoginModal(this);
+					await logoutModel.doLogin();
+					this.display();
+				});
+		});
 	}
 
 	private showLogout(): void {
@@ -83,6 +87,50 @@ export class WereadSettingsTab extends PluginSettingTab {
 						const logoutModel = new WereadLogoutModal(this);
 						await logoutModel.doLogout();
 						this.display();
+					});
+			});
+	}
+
+	private template(): void {
+		const descFragment = document.createRange().createContextualFragment(templateInstructions);
+
+		new Setting(this.containerEl)
+			.setName('笔记模板')
+			.setDesc(descFragment)
+			.addTextArea((text) => {
+				text.inputEl.style.width = '100%';
+				text.inputEl.style.height = '540px';
+				text.inputEl.style.fontSize = '0.8em';
+				text.setValue(get(settingsStore).template).onChange(async (value) => {
+					const isValid = this.renderer.validate(value);
+
+					if (isValid) {
+						settingsStore.actions.setTemplate(value);
+					}
+					text.inputEl.style.border = isValid ? '' : '2px solid red';
+				});
+				return text;
+			});
+	}
+
+	private noteCountLimit() {
+		new Setting(this.containerEl)
+			.setName('笔记划线数量最小值')
+			.setDesc('划线数量小于该值的笔记将不会被同步')
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOptions({
+						'-1': '无限制',
+						'3': '3条',
+						'5': '5条',
+						'10': '10条',
+						'15': '15条',
+						'30': '30条'
+					})
+					.setValue(get(settingsStore).noteCountLimit.toString())
+					.onChange(async (value) => {
+						console.log('new note count limit', value);
+						settingsStore.actions.setNoteCountLimit(+value);
 					});
 			});
 	}

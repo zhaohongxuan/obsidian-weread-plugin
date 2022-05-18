@@ -29,9 +29,7 @@ export default class WereadLoginModal {
 		session.webRequest.onSendHeaders(filter, (details) => {
 			const cookies = details.requestHeaders['Cookie'];
 			const cookieArr = parseCookies(cookies);
-			const wr_name = cookieArr.find(
-				(cookie) => cookie.name == 'wr_name'
-			).value;
+			const wr_name = cookieArr.find((cookie) => cookie.name == 'wr_name').value;
 			if (wr_name !== '') {
 				settingsStore.actions.setCookies(cookieArr);
 				settingTab.display();

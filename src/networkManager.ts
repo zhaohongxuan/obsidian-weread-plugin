@@ -88,17 +88,9 @@ export default class NetworkManager {
 
 	async refreshCookie(force = false) {
 		const cookieTime = get(settingsStore).lastCookieTime;
-		if (
-			cookieTime === -1 ||
-			new Date().getTime() - cookieTime > 1800 * 1000 ||
-			force
-		) {
+		if (cookieTime === -1 || new Date().getTime() - cookieTime > 1800 * 1000 || force) {
 			console.log('cookie is expired try to refresh cookie ');
-			console.log(
-				'last cookie time ',
-				new Date(cookieTime).toString(),
-				'try to refresh...'
-			);
+			console.log('last cookie time ', new Date(cookieTime).toString(), 'try to refresh...');
 			await this.apiManager.refreshCookie();
 		}
 	}

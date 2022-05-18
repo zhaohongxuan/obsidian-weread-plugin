@@ -18,6 +18,15 @@ export default class ApiManager {
 		};
 	}
 
+	async getShelfBooks(userVid: string) {
+		try {
+			const resp = await axios.get(`${this.baseUrl}/shelf/friendCommon?userVid=${userVid}`);
+			return resp.data;
+		} catch (e) {
+			console.error(e);
+			new Notice('获取书架图书异常');
+		}
+	}
 	async refreshCookie() {
 		try {
 			await axios.head(this.baseUrl + '/refresh');
@@ -33,9 +42,7 @@ export default class ApiManager {
 		axiosRetry(client, {
 			retries: 3,
 			retryDelay: (retryCount) => {
-				console.log(
-					`weread retry get notebooks attempt: ${retryCount}`
-				);
+				console.log(`weread retry get notebooks attempt: ${retryCount}`);
 				return retryCount * 1000;
 			},
 			retryCondition: (error) => {
@@ -60,9 +67,7 @@ export default class ApiManager {
 
 	async getBook(bookId: string) {
 		try {
-			const resp = await axios.get(
-				`${this.baseUrl}/book/info?bookId=${bookId}`
-			);
+			const resp = await axios.get(`${this.baseUrl}/book/info?bookId=${bookId}`);
 			return resp.data;
 		} catch (e) {
 			new Notice(
@@ -74,9 +79,7 @@ export default class ApiManager {
 
 	async getNotebookHighlights(bookId: string) {
 		try {
-			const resp = await axios.get(
-				`${this.baseUrl}/book/bookmarklist?bookId=${bookId}`
-			);
+			const resp = await axios.get(`${this.baseUrl}/book/bookmarklist?bookId=${bookId}`);
 			return resp.data;
 		} catch (e) {
 			new Notice(

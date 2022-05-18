@@ -13,10 +13,7 @@ export default class WereadPlugin extends Plugin {
 		console.log('load weread plugin');
 		settingsStore.initialise(this);
 
-		const fileManager = new FileManager(
-			this.app.vault,
-			this.app.metadataCache
-		);
+		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
@@ -48,9 +45,7 @@ export default class WereadPlugin extends Plugin {
 				this.syncNotebooks
 					.startSync()
 					.then((res) => {
-						new Notice(
-							`微信读书笔记同步完成!,本次更新 ${res} 本书`
-						);
+						new Notice(`微信读书笔记同步完成!,本次更新 ${res} 本书`);
 						this.networkManager.shutdownMiddleServer(server);
 					})
 					.catch((e) => {
