@@ -1,7 +1,6 @@
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlight[];
-	chapterReviews: ChapterReview[];
 };
 
 export type Metadata = {
@@ -26,38 +25,17 @@ export type Highlight = {
 	chapterUid: number;
 	chapterTitle: string;
 	markText: string;
+	reviewContent?: string;
 	range: string;
 };
 export type ChapterHighlight = {
 	chapterUid: number;
 	chapterTitle: string;
+	chapterReviewCount: number;
 	highlights: Highlight[];
 };
 
-export type ChapterReview = {
-	chapterUid: number;
-	chapterTitle: string;
-	reviews: Review[];
-};
-
-export type Review = {
-	bookId: string;
-	chapterUid: number;
-	chapterTitle: string;
-	createTime: string;
-	created: number;
-	content: string;
-	abstract: string;
-	range: string;
-};
-
 export type RenderTemplate = {
-	isNewNote: boolean;
-	title: string;
-	author: string;
-	url: string;
-	cover: string;
-	publishTime: string;
+	metaData: Metadata;
 	chapterHighlights: ChapterHighlight[];
-	chapterReviews: ChapterReview[];
 };

@@ -25,22 +25,19 @@ export default class FileManager {
 		this.renderer = new Renderer();
 	}
 
-	public async saveNotebook(
-		notebook: Notebook,
-		localFile: AnnotationFile
-	): Promise<void> {
+	public async saveNotebook(notebook: Notebook, localFile: AnnotationFile): Promise<void> {
 		if (localFile) {
 			if (localFile.new) {
 				const existingFile = localFile.file;
 				console.log(`Updating ${existingFile.path}`);
-				const freshContent = this.renderer.render(notebook, true);
+				const freshContent = this.renderer.render(notebook);
 				const fileContent = addFrontMatter(freshContent, notebook);
 				await this.vault.modify(existingFile, fileContent);
 			}
 		} else {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
-			const markdownContent = this.renderer.render(notebook, true);
+			const markdownContent = this.renderer.render(notebook);
 			const fileContent = addFrontMatter(markdownContent, notebook);
 			await this.vault.create(newFilePath, fileContent);
 		}
@@ -57,10 +54,7 @@ export default class FileManager {
 				const cache = this.metadataCache.getFileCache(file);
 				return { file, frontmatter: cache?.frontmatter };
 			})
-			.filter(
-				({ frontmatter }) =>
-					frontmatter?.['doc_type'] === frontMatterDocType
-			)
+			.filter(({ frontmatter }) => frontmatter?.['doc_type'] === frontMatterDocType)
 			.map(
 				({ file, frontmatter }): AnnotationFile => ({
 					file,
