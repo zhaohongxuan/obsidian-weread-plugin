@@ -13,7 +13,9 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 - 自定义笔记生成模板 template
 
 ## 安装方法
-📢 由于本插件还未在插件市场上架，所以目前可以通过github下载release包安装。
+📢 由于本插件还未在插件市场上架，所以目前可以通过github下载release包安装，或者通过安装[brat](https://github.com/TfTHacker/obsidian42-brat)插件来安装 感谢@EasyChris 给的[安装建议](https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/21#issue-1239460439) 
+
+
 1. 进入[Release页面](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)下载`obsidian-weread-plugin.zip`插件包
 2. 打开设置，点击community plugins,点击这个文件夹图标打开plugins目录，把刚才的zip包解压缩到这里，然后刷新启用本插件![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220518124443.png)
 ## 设置
