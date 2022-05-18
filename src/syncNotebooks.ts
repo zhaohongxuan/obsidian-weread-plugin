@@ -1,7 +1,12 @@
 import ApiManager from './api';
 import FileManager, { AnnotationFile } from './fileManager';
 import { Metadata, Notebook } from './models';
-import { parseHighlights, parseMetadata, parseChapterHighlights } from './parser/parseResponse';
+import {
+	parseHighlights,
+	parseMetadata,
+	parseChapterHighlights,
+	parseChapterReviews
+} from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 export default class SyncNotebooks {
@@ -21,7 +26,7 @@ export default class SyncNotebooks {
 			const bookId: string = noteBook['bookId'];
 			const metaData = parseMetadata(noteBook);
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
-				console.log(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
+				console.debug(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
 				continue;
 			}
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles);
@@ -38,9 +43,11 @@ export default class SyncNotebooks {
 			const reviewResp = await this.apiManager.getNotebookReviews(bookId);
 			const highlights = parseHighlights(highlightResp, reviewResp);
 			const chapterHighlights = parseChapterHighlights(highlights);
+			const bookReview = parseChapterReviews(reviewResp);
 			await this.syncNotebook(
 				{
 					metaData: metaData,
+					bookReview: bookReview,
 					chapterHighlights: chapterHighlights
 				},
 				localNotebookFile

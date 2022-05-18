@@ -1,6 +1,7 @@
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlight[];
+	bookReview: BookReview;
 };
 
 export type Metadata = {
@@ -19,7 +20,7 @@ export type Metadata = {
 };
 
 export type Highlight = {
-	bookId: string;
+	bookmarkId: string;
 	created: number;
 	createTime: string;
 	chapterUid: number;
@@ -28,6 +29,32 @@ export type Highlight = {
 	reviewContent?: string;
 	range: string;
 };
+
+export type BookReview = {
+	chapterReviews: ChapterReview[];
+	bookReview: Review;
+};
+
+export type ChapterReview = {
+	chapterUid: number;
+	chapterTitle: string;
+	chapterReview?: Review;
+	reviews: Review[];
+};
+
+export type Review = {
+	reviewId: string;
+	chapterUid?: number;
+	chapterTitle?: string;
+	created: number;
+	createTime: string;
+	content: string;
+	mdContent?: string;
+	abstract?: string;
+	range?: string;
+	type: number;
+};
+
 export type ChapterHighlight = {
 	chapterUid: number;
 	chapterTitle: string;
@@ -38,4 +65,5 @@ export type ChapterHighlight = {
 export type RenderTemplate = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlight[];
+	bookReview: BookReview;
 };

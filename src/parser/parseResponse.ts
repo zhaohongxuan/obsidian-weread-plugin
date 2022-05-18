@@ -1,4 +1,12 @@
-import type { ChapterHighlight, Highlight, Metadata } from 'src/models';
+import type {
+	BookReview,
+	ChapterHighlight,
+	ChapterReview,
+	Highlight,
+	Metadata,
+	Review
+} from 'src/models';
+import { NodeHtmlMarkdown } from 'node-html-markdown';
 import moment from 'moment';
 
 export const parseMetadata = (noteBook: any): Metadata => {
@@ -38,8 +46,9 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 		if (review) {
 			reviewContent = review['content'];
 		}
+		const bookmarkId: string = highlight['bookmarkId'];
 		return {
-			bookId: highlight['bookId'],
+			bookmarkId: bookmarkId.replace('_', '-'),
 			created: created,
 			createTime: createTime,
 			chapterUid: highlight['chapterUid'],
@@ -78,4 +87,74 @@ export const parseChapterHighlights = (highlights: Highlight[]): ChapterHighligh
 		chapter.highlights.sort((o1, o2) => o1.created - o2.created)
 	);
 	return chapterResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
+};
+
+export const parseReviews = (data: any): Review[] => {
+	const reviews: [] = data['reviews'];
+	return reviews.map((reviewData) => {
+		const review = reviewData['review'];
+		const created = review['createTime'];
+		const createTime = moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
+		const htmlContent = review['htmlContent'];
+		const mdContent = htmlContent ? NodeHtmlMarkdown.translate(htmlContent) : null;
+		const reviewId: string = review['reviewId'];
+		return {
+			bookId: review['bookId'],
+			created: created,
+			createTime: createTime,
+			chapterUid: review['chapterUid'],
+			chapterTitle: review['chapterTitle'],
+			content: review['content'],
+			reviewId: reviewId.replace('_', '-'),
+			mdContent: mdContent,
+			range: review['range'],
+			abstract: review['abstract'],
+			type: review['type']
+		};
+	});
+};
+
+export const parseChapterReviews = (reviewData: any): BookReview => {
+	const reviews = parseReviews(reviewData);
+
+	const chapterReviews = reviews
+		.filter((review) => review.type == 1)
+		.sort((o1, o2) => o2.created - o1.created);
+
+	const entireReview = reviews.filter((review) => review.type == 4).first();
+	console.log('=================', reviews, chapterReviews, entireReview);
+	const chapterResult = new Map();
+	for (const review of chapterReviews) {
+		const chapterUid = review['chapterUid'];
+		const chapterTitle = review['chapterTitle'];
+		const existChapter = chapterResult.get(review.chapterUid);
+		if (existChapter == null) {
+			const chapter: ChapterReview = {
+				chapterUid: chapterUid,
+				chapterTitle: chapterTitle,
+				reviews: []
+			};
+			if (review.range) {
+				chapter.reviews.push(review);
+			} else {
+				chapter.chapterReview = review;
+			}
+			chapterResult.set(review.chapterUid, chapter);
+		} else {
+			const chapterRview: ChapterReview = chapterResult.get(review.chapterUid);
+			if (review.range) {
+				chapterRview.reviews.push(review);
+			} else {
+				chapterRview.chapterReview = review;
+			}
+		}
+	}
+	const chapterReviewResult: ChapterReview[] = Array.from(chapterResult.values()).sort(
+		(o1, o2) => o1.chapterUid - o2.chapterUid
+	);
+	console.log('++++++++', chapterReviewResult);
+	return {
+		bookReview: entireReview,
+		chapterReviews: chapterReviewResult
+	};
 };
