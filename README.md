@@ -18,8 +18,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中所
 2. 打开设置，点击community plugins,点击这个文件夹图标打开plugins目录，把刚才的zip包解压缩到这里，然后刷新启用本插件![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220518124443.png)
 ## 设置
 1. 打开Obsidian点击`设置`进入设置界面，找到`Obsidian Weread Plugin`进入到插件设置页面
-2. 点击右侧`登录`按钮，在弹出的登录页面扫码登录![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220517112720.png)
-   登录完成后，会显示个人昵称：![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220517110048.png)
+2. 点击右侧`登录`按钮，在弹出的登录页面扫码登录，登录完成后，会显示个人昵称
 3. 注销登录可以清楚Obsidian插件的Cookie信息，注销方法，和网页版微信读书一样，右上角点击头像，点击退出登录
 
 
