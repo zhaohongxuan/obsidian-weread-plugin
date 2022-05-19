@@ -34,6 +34,10 @@ export default class SyncNotebooks {
 				continue;
 			}
 
+			if(metaData.bookType !==0){
+				continue;
+			}
+			
 			const bookDetail = await this.apiManager.getBook(bookId);
 			metaData['category'] = bookDetail['category'];
 			metaData['publisher'] = bookDetail['publisher'];
@@ -41,9 +45,11 @@ export default class SyncNotebooks {
 
 			const highlightResp = await this.apiManager.getNotebookHighlights(bookId);
 			const reviewResp = await this.apiManager.getNotebookReviews(bookId);
+
 			const highlights = parseHighlights(highlightResp, reviewResp);
 			const chapterHighlights = parseChapterHighlights(highlights);
 			const bookReview = parseChapterReviews(reviewResp);
+			
 			await this.syncNotebook(
 				{
 					metaData: metaData,

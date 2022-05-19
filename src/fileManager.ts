@@ -74,9 +74,6 @@ export default class FileManager {
 		}
 
 		let fileName = `${sanitizeTitle(notebook.metaData.title)}`;
-		if (notebook.metaData.isDuplicated) {
-			fileName += '-' + notebook.metaData.bookId;
-		}
 		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
 	}

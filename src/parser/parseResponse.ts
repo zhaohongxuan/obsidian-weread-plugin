@@ -20,7 +20,8 @@ export const parseMetadata = (noteBook: any): Metadata => {
 		cover: cover,
 		publishTime: book['publishTime'],
 		noteCount: noteBook['noteCount'],
-		reviewCount: noteBook['reviewCount']
+		reviewCount: noteBook['reviewCount'],
+		bookType: book["type"]
 	};
 	return metaData;
 };
