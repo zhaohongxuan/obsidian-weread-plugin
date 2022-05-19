@@ -3,8 +3,8 @@ import templateInstructions from './assets/templateInstructions.html';
 import { PluginSettingTab, Setting, App } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
-import WereadLoginModal from './components/wereadLoginModel';
-import WereadLogoutModal from './components/wereadLogoutModel';
+import WereadLoginModel from './components/wereadLoginModel';
+import WereadLogoutModel from './components/wereadLogoutModel';
 import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
 
@@ -61,7 +61,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.setCta()
 				.onClick(async () => {
 					button.setDisabled(true);
-					const logoutModel = new WereadLoginModal(this);
+					const logoutModel = new WereadLoginModel(this);
 					await logoutModel.doLogin();
 					this.display();
 				});
@@ -84,7 +84,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.setCta()
 					.onClick(async () => {
 						button.setDisabled(true);
-						const logoutModel = new WereadLogoutModal(this);
+						const logoutModel = new WereadLogoutModel(this);
 						await logoutModel.doLogout();
 						this.display();
 					});

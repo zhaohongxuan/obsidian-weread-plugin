@@ -43,10 +43,6 @@ export default class FileManager {
 		}
 	}
 
-	public async createFolder(folderPath: string): Promise<void> {
-		await this.vault.createFolder(folderPath);
-	}
-
 	public async getNotebookFiles(): Promise<AnnotationFile[]> {
 		const files = this.vault.getMarkdownFiles();
 		return files
@@ -70,10 +66,10 @@ export default class FileManager {
 		const folderPath = get(settingsStore).noteLocation;
 		if (!(await this.vault.adapter.exists(folderPath))) {
 			console.info(`Folder ${folderPath} not found. Will be created`);
-			await this.createFolder(folderPath);
+			await this.vault.createFolder(folderPath);
 		}
 
-		let fileName = `${sanitizeTitle(notebook.metaData.title)}`;
+		const fileName = `${sanitizeTitle(notebook.metaData.title)}`;
 		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
 	}
