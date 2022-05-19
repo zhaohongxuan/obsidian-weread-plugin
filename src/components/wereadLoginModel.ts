@@ -5,7 +5,7 @@ import { settingsStore } from '../settings';
 import { WereadSettingsTab } from '../settingTab';
 const { BrowserWindow: RemoteBrowserWindow } = remote;
 
-export default class WereadLoginModal {
+export default class WereadLoginModel {
 	private modal: BrowserWindow;
 	private settingTab: WereadSettingsTab;
 	constructor(settingTab: WereadSettingsTab) {

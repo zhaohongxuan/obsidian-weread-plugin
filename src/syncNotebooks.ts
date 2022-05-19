@@ -34,10 +34,10 @@ export default class SyncNotebooks {
 				continue;
 			}
 
-			if(metaData.bookType !==0){
+			if (metaData.bookType !== 0) {
 				continue;
 			}
-			
+
 			const bookDetail = await this.apiManager.getBook(bookId);
 			metaData['category'] = bookDetail['category'];
 			metaData['publisher'] = bookDetail['publisher'];
@@ -49,7 +49,7 @@ export default class SyncNotebooks {
 			const highlights = parseHighlights(highlightResp, reviewResp);
 			const chapterHighlights = parseChapterHighlights(highlights);
 			const bookReview = parseChapterReviews(reviewResp);
-			
+
 			await this.syncNotebook(
 				{
 					metaData: metaData,

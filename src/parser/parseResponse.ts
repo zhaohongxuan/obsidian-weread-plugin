@@ -7,7 +7,6 @@ import type {
 	Review
 } from 'src/models';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
-import moment from 'moment';
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];
@@ -21,7 +20,7 @@ export const parseMetadata = (noteBook: any): Metadata => {
 		publishTime: book['publishTime'],
 		noteCount: noteBook['noteCount'],
 		reviewCount: noteBook['reviewCount'],
-		bookType: book["type"]
+		bookType: book['type']
 	};
 	return metaData;
 };
@@ -37,7 +36,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 	return highlights.map((highlight) => {
 		const chapterUid = highlight['chapterUid'];
 		const created = highlight['createTime'];
-		const createTime = moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
+		const createTime = window.moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
 		const highlightRange = highlight['range'];
 		const review = reviews
 			.map((review) => review['review'])
@@ -95,7 +94,7 @@ export const parseReviews = (data: any): Review[] => {
 	return reviews.map((reviewData) => {
 		const review = reviewData['review'];
 		const created = review['createTime'];
-		const createTime = moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
+		const createTime = window.moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
 		const htmlContent = review['htmlContent'];
 		const mdContent = htmlContent ? NodeHtmlMarkdown.translate(htmlContent) : null;
 		const reviewId: string = review['reviewId'];
@@ -107,7 +106,7 @@ export const parseReviews = (data: any): Review[] => {
 			chapterTitle: review['chapterTitle'],
 			content: review['content'],
 			reviewId: reviewId.replace('_', '-'),
-			mdContent: mdContent?mdContent:review['content'],
+			mdContent: mdContent ? mdContent : review['content'],
 			range: review['range'],
 			abstract: review['abstract'],
 			type: review['type']
