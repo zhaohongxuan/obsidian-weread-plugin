@@ -69,7 +69,7 @@ export default class FileManager {
 			await this.vault.createFolder(folderPath);
 		}
 
-		const fileName = `${sanitizeTitle(notebook.metaData.title)}`;
+		const fileName = `${sanitizeTitle(notebook.metaData.title)}-${notebook.metaData.bookId}`;
 		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
 	}

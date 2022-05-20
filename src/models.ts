@@ -17,6 +17,7 @@ export type Metadata = {
 	isbn?: string;
 	category?: string;
 	publisher?: string;
+	intro?:string
 };
 
 export type Highlight = {
@@ -32,13 +33,13 @@ export type Highlight = {
 
 export type BookReview = {
 	chapterReviews: ChapterReview[];
-	bookReview: Review;
+	bookReviews: Review[];
 };
 
 export type ChapterReview = {
 	chapterUid: number;
 	chapterTitle: string;
-	chapterReview?: Review;
+	chapterReviews?: Review[];
 	reviews: Review[];
 };
 

@@ -24,6 +24,7 @@ export default class SyncNotebooks {
 		let successCount = 0;
 		for (const noteBook of noteBookResp) {
 			const bookId: string = noteBook['bookId'];
+			
 			const metaData = parseMetadata(noteBook);
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.debug(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
@@ -34,14 +35,13 @@ export default class SyncNotebooks {
 				continue;
 			}
 
-			if (metaData.bookType !== 0) {
-				continue;
-			}
-
 			const bookDetail = await this.apiManager.getBook(bookId);
-			metaData['category'] = bookDetail['category'];
-			metaData['publisher'] = bookDetail['publisher'];
-			metaData['isbn'] = bookDetail['isbn'];
+			if(bookDetail){
+				metaData['category'] = bookDetail['category'];
+				metaData['publisher'] = bookDetail['publisher'];
+				metaData['isbn'] = bookDetail['isbn'];
+				metaData['intro'] = bookDetail['intro'];
+			}
 
 			const highlightResp = await this.apiManager.getNotebookHighlights(bookId);
 			const reviewResp = await this.apiManager.getNotebookReviews(bookId);
@@ -82,7 +82,6 @@ export default class SyncNotebooks {
 	}
 
 	private async syncNotebook(notebook: Notebook, localFile: AnnotationFile): Promise<void> {
-		console.log('sync notebook: ', notebook.metaData.title, localFile);
 		try {
 			await this.fileManager.saveNotebook(notebook, localFile);
 		} catch (e) {

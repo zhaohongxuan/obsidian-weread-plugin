@@ -70,9 +70,6 @@ export default class ApiManager {
 			const resp = await axios.get(`${this.baseUrl}/book/info?bookId=${bookId}`);
 			return resp.data;
 		} catch (e) {
-			new Notice(
-				'Failed to fetch weread book detail. Please check your Cookies and try again.'
-			);
 			console.error(e);
 		}
 	}
@@ -82,9 +79,6 @@ export default class ApiManager {
 			const resp = await axios.get(`${this.baseUrl}/book/bookmarklist?bookId=${bookId}`);
 			return resp.data;
 		} catch (e) {
-			new Notice(
-				'Failed to fetch weread notebook highlights . Please check your Cookies and try again.'
-			);
 			console.error(e);
 		}
 	}

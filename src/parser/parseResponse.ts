@@ -10,7 +10,7 @@ import { NodeHtmlMarkdown } from 'node-html-markdown';
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];
-	const cover: string = book['cover'].replace('/s_', '/t9_');
+	const cover: string = book['cover'].replace('/s_', '/t7_');
 	const metaData: Metadata = {
 		bookId: book['bookId'],
 		author: book['author'],
@@ -116,12 +116,11 @@ export const parseReviews = (data: any): Review[] => {
 
 export const parseChapterReviews = (reviewData: any): BookReview => {
 	const reviews = parseReviews(reviewData);
-
 	const chapterReviews = reviews
 		.filter((review) => review.type == 1)
 		.sort((o1, o2) => o2.created - o1.created);
 
-	const entireReview = reviews.filter((review) => review.type == 4).first();
+	const entireReviews = reviews.filter((review) => review.type == 4);
 	const chapterResult = new Map();
 	for (const review of chapterReviews) {
 		const chapterUid = review['chapterUid'];
@@ -131,12 +130,13 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 			const chapter: ChapterReview = {
 				chapterUid: chapterUid,
 				chapterTitle: chapterTitle,
-				reviews: []
+				reviews: [],
+				chapterReviews:[]
 			};
 			if (review.range) {
 				chapter.reviews.push(review);
 			} else {
-				chapter.chapterReview = review;
+				chapter.chapterReviews.push(review);
 			}
 			chapterResult.set(review.chapterUid, chapter);
 		} else {
@@ -144,7 +144,7 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 			if (review.range) {
 				chapterRview.reviews.push(review);
 			} else {
-				chapterRview.chapterReview = review;
+				chapterRview.chapterReviews.push(review);
 			}
 		}
 	}
@@ -152,7 +152,7 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 		(o1, o2) => o1.chapterUid - o2.chapterUid
 	);
 	return {
-		bookReview: entireReview,
+		bookReviews: entireReviews,
 		chapterReviews: chapterReviewResult
 	};
 };
