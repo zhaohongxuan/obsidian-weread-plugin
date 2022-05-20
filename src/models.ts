@@ -17,7 +17,7 @@ export type Metadata = {
 	isbn?: string;
 	category?: string;
 	publisher?: string;
-	intro?:string
+	intro?: string;
 };
 
 export type Highlight = {

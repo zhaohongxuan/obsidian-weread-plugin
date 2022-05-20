@@ -1,7 +1,7 @@
 import { Vault, MetadataCache, TFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
-import type { Notebook } from './models';
+import type { Metadata, Notebook } from './models';
 import { frontMatterDocType, addFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
@@ -63,14 +63,23 @@ export default class FileManager {
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
-		const folderPath = get(settingsStore).noteLocation;
+		const folderPath = `${get(settingsStore).noteLocation}/${this.getCategoryPath(
+			notebook.metaData
+		)}`;
 		if (!(await this.vault.adapter.exists(folderPath))) {
 			console.info(`Folder ${folderPath} not found. Will be created`);
 			await this.vault.createFolder(folderPath);
 		}
-
 		const fileName = `${sanitizeTitle(notebook.metaData.title)}-${notebook.metaData.bookId}`;
 		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
+	}
+
+	private getCategoryPath(metaData: Metadata): string {
+		if (metaData.category) {
+			return metaData.category;
+		} else {
+			return metaData.author === '公众号' ? '公众号' : '未分类';
+		}
 	}
 }

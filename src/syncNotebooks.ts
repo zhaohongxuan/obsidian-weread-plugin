@@ -24,7 +24,7 @@ export default class SyncNotebooks {
 		let successCount = 0;
 		for (const noteBook of noteBookResp) {
 			const bookId: string = noteBook['bookId'];
-			
+
 			const metaData = parseMetadata(noteBook);
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.debug(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
@@ -36,7 +36,7 @@ export default class SyncNotebooks {
 			}
 
 			const bookDetail = await this.apiManager.getBook(bookId);
-			if(bookDetail){
+			if (bookDetail) {
 				metaData['category'] = bookDetail['category'];
 				metaData['publisher'] = bookDetail['publisher'];
 				metaData['isbn'] = bookDetail['isbn'];
