@@ -131,7 +131,7 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 				chapterUid: chapterUid,
 				chapterTitle: chapterTitle,
 				reviews: [],
-				chapterReviews:[]
+				chapterReviews: []
 			};
 			if (review.range) {
 				chapter.reviews.push(review);
