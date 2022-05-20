@@ -5,7 +5,6 @@ type FrontMatterContent = {
 	doc_type: string;
 	bookId: string;
 	noteCount: number;
-	category: string;
 	reviewCount: number;
 };
 
@@ -15,7 +14,6 @@ export const addFrontMatter = (markdownContent: string, noteBook: Notebook) => {
 	const frontMatter: FrontMatterContent = {
 		doc_type: frontMatterDocType,
 		bookId: noteBook.metaData.bookId,
-		category: noteBook.metaData.category,
 		reviewCount: noteBook.metaData.reviewCount,
 		noteCount: noteBook.metaData.noteCount
 	};
