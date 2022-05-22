@@ -63,7 +63,7 @@ export default class FileManager {
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
-		const folderPath = `${get(settingsStore).noteLocation}/${this.getCategoryPath(
+		const folderPath = `${get(settingsStore).noteLocation}/${this.getSubFolderPath(
 			notebook.metaData
 		)}`;
 		if (!(await this.vault.adapter.exists(folderPath))) {
@@ -75,11 +75,17 @@ export default class FileManager {
 		return filePath;
 	}
 
-	private getCategoryPath(metaData: Metadata): string {
-		if (metaData.category) {
-			return metaData.category;
-		} else {
-			return metaData.author === '公众号' ? '公众号' : '未分类';
+	private getSubFolderPath(metaData: Metadata): string {
+		const folderType = get(settingsStore).subFolderType;
+		if (folderType == 'title') {
+			return metaData.title;
+		} else if (folderType == 'category') {
+			if (metaData.category) {
+				return metaData.category.split('-')[0];
+			} else {
+				return metaData.author === '公众号' ? '公众号' : '未分类';
+			}
 		}
+		return '';
 	}
 }
