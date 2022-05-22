@@ -30,6 +30,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 		this.notebookFolder();
 		this.noteCountLimit();
+		this.subFolderType();
 		this.template();
 	}
 
@@ -66,6 +67,24 @@ export class WereadSettingsTab extends PluginSettingTab {
 					this.display();
 				});
 		});
+	}
+
+	private subFolderType(): void {
+		new Setting(this.containerEl)
+			.setName('文件夹分类')
+			.setDesc('请选择按照哪个维度对笔记文件进行分类')
+			.addDropdown((dropdown) => {
+				dropdown.addOptions({
+					'-1': '无分类',
+					title: '书名',
+					category: '图书分类'
+				});
+				return dropdown
+					.setValue(get(settingsStore).subFolderType)
+					.onChange(async (value) => {
+						settingsStore.actions.setSubFolderType(value);
+					});
+			});
 	}
 
 	private showLogout(): void {
