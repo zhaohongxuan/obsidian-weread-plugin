@@ -17,6 +17,8 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - 支持微信扫码登录，理论上可以和浏览器一样保持长时间不掉线。
 - 校验Cookie有效期自动刷新Cookie
 - 自定义笔记生成模板 template
+- 自定义文件名（TBD）
+- 阅读完成时间
 
 ## 安装方法
 📢 由于本插件还未在插件市场上架，所以目前可以通过github下载release包安装，或者通过安装[brat](https://github.com/TfTHacker/obsidian42-brat)插件来安装 感谢@EasyChris 给的[安装建议](https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/21#issue-1239460439) 
@@ -51,7 +53,9 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - [x] 弹出扫码框登录自动获取Cookie
 - [x] 书名重复导致同步失败
 - [x] 设置页面支持设置Template格式
-- [ ] 按照是否读完分类
+- [ ] 文件名模板
+- [ ] 阅读相关元数据（读书时长，完成时间等）
+
 
 ## Weread API
 [Weread API](./docs/weread-api.md)
