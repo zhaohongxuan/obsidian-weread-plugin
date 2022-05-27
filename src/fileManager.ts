@@ -5,7 +5,6 @@ import type { Metadata, Notebook } from './models';
 import { frontMatterDocType, addFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
-import * as e from 'express';
 
 export type AnnotationFile = {
 	bookId?: string;
@@ -71,27 +70,26 @@ export default class FileManager {
 			console.info(`Folder ${folderPath} not found. Will be created`);
 			await this.vault.createFolder(folderPath);
 		}
-		const fileName = this.getFileName(notebook.metaData)
+		const fileName = this.getFileName(notebook.metaData);
 		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
 	}
 
 	private getFileName(metaData: Metadata): string {
-		const fileNameType = get(settingsStore).fileNameType
+		const fileNameType = get(settingsStore).fileNameType;
 		const baseFileName = sanitizeTitle(metaData.title);
-		if(fileNameType == 'BOOK_NAME-AUTHOR'){
-			if(metaData.duplicate){
+		if (fileNameType == 'BOOK_NAME-AUTHOR') {
+			if (metaData.duplicate) {
 				return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
 			}
 			return `${baseFileName}-${metaData.author}`;
-		}else{
-			if(metaData.duplicate || fileNameType =='BOOK_NAME-BOOKID'){
-				return `${baseFileName}-${metaData.bookId}`	
+		} else {
+			if (metaData.duplicate || fileNameType == 'BOOK_NAME-BOOKID') {
+				return `${baseFileName}-${metaData.bookId}`;
 			}
 			return baseFileName;
 		}
 	}
-
 
 	private getSubFolderPath(metaData: Metadata): string {
 		const folderType = get(settingsStore).subFolderType;

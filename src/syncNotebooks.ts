@@ -22,9 +22,9 @@ export default class SyncNotebooks {
 		const noteBookResp: [] = await this.apiManager.getNotebooks();
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		let successCount = 0;
-		const metaDataArr = noteBookResp.map(noteBook=>parseMetadata(noteBook))
+		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
-		for (const metaData of metaDataArr){
+		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.debug(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
 				continue;
@@ -33,7 +33,7 @@ export default class SyncNotebooks {
 			if (localNotebookFile && !localNotebookFile.new) {
 				continue;
 			}
-			if(duplicateBookSet.has(metaData.title)){
+			if (duplicateBookSet.has(metaData.title)) {
 				metaData.duplicate = true;
 			}
 			const bookDetail = await this.apiManager.getBook(metaData.bookId);
@@ -57,15 +57,15 @@ export default class SyncNotebooks {
 				},
 				localNotebookFile
 			);
-			successCount++;	
+			successCount++;
 		}
 		return successCount;
 	}
 
-	private getDuplicateBooks(metaDatas:Metadata[]):Set<string>{
-		const bookArr = metaDatas.map(metaData=>metaData.title)
+	private getDuplicateBooks(metaDatas: Metadata[]): Set<string> {
+		const bookArr = metaDatas.map((metaData) => metaData.title);
 		const uniqueElements = new Set(bookArr);
-		const filteredElements = bookArr.filter(item => {
+		const filteredElements = bookArr.filter((item) => {
 			if (uniqueElements.has(item)) {
 				uniqueElements.delete(item);
 			} else {

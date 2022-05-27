@@ -18,7 +18,7 @@ export type Metadata = {
 	category?: string;
 	publisher?: string;
 	intro?: string;
-	duplicate?:boolean
+	duplicate?: boolean;
 };
 
 export type Highlight = {

@@ -12,7 +12,7 @@ interface WereadPluginSettings {
 	template: string;
 	noteCountLimit: number;
 	subFolderType: string;
-	fileNameType:string;
+	fileNameType: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	template: notebookTemolate,
 	noteCountLimit: -1,
 	subFolderType: '-1',
-	fileNameType :'BOOK_NAME',
+	fileNameType: 'BOOK_NAME'
 };
 
 const createSettingsStore = () => {

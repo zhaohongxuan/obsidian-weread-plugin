@@ -94,9 +94,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.setDesc('你选择你喜欢的文件名模板，重复的书会在文件名后加上ID')
 			.addDropdown((dropdown) => {
 				dropdown.addOptions({
-					'BOOK_NAME': '书名',
+					BOOK_NAME: '书名',
 					'BOOK_NAME-AUTHOR': '书名-作者名',
-					'BOOK_NAME-ID': '书名-bookId',
+					'BOOK_NAME-ID': '书名-bookId'
 				});
 				return dropdown
 					.setValue(get(settingsStore).fileNameType)
