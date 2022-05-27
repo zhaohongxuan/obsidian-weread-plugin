@@ -80,10 +80,14 @@ export default class FileManager {
 		const fileNameType = get(settingsStore).fileNameType
 		const baseFileName = sanitizeTitle(metaData.title);
 		if(fileNameType == 'BOOK_NAME-AUTHOR'){
+			if(metaData.duplicate){
+				return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
+			}
 			return `${baseFileName}-${metaData.author}`;
-		}else if(fileNameType =='BOOK_NAME-BOOKID'){
-			return `${baseFileName}-${metaData.bookId}`;
 		}else{
+			if(metaData.duplicate || fileNameType =='BOOK_NAME-BOOKID'){
+				return `${baseFileName}-${metaData.bookId}`	
+			}
 			return baseFileName;
 		}
 	}

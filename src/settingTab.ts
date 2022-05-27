@@ -30,6 +30,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 		this.notebookFolder();
 		this.noteCountLimit();
+		this.fileNameType();
 		this.subFolderType();
 		this.template();
 	}
@@ -89,7 +90,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private fileNameType(): void {
 		new Setting(this.containerEl)
-			.setName('文件名')
+			.setName('文件名模板')
 			.setDesc('你选择你喜欢的文件名模板，重复的书会在文件名后加上ID')
 			.addDropdown((dropdown) => {
 				dropdown.addOptions({
