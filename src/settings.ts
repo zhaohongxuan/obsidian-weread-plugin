@@ -12,6 +12,7 @@ interface WereadPluginSettings {
 	template: string;
 	noteCountLimit: number;
 	subFolderType: string;
+	fileNameType: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -22,7 +23,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	user: '',
 	template: notebookTemolate,
 	noteCountLimit: -1,
-	subFolderType: '-1'
+	subFolderType: '-1',
+	fileNameType: 'BOOK_NAME'
 };
 
 const createSettingsStore = () => {
@@ -112,6 +114,13 @@ const createSettingsStore = () => {
 			return state;
 		});
 	};
+
+	const setFileNameType = (fileNameType: string) => {
+		store.update((state) => {
+			state.fileNameType = fileNameType;
+			return state;
+		});
+	};
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -122,7 +131,8 @@ const createSettingsStore = () => {
 			setCookieFlag,
 			setTemplate,
 			setNoteCountLimit,
-			setSubFolderType
+			setSubFolderType,
+			setFileNameType
 		}
 	};
 };

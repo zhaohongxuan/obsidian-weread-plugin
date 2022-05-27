@@ -30,6 +30,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 		this.notebookFolder();
 		this.noteCountLimit();
+		this.fileNameType();
 		this.subFolderType();
 		this.template();
 	}
@@ -83,6 +84,24 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.setValue(get(settingsStore).subFolderType)
 					.onChange(async (value) => {
 						settingsStore.actions.setSubFolderType(value);
+					});
+			});
+	}
+
+	private fileNameType(): void {
+		new Setting(this.containerEl)
+			.setName('文件名模板')
+			.setDesc('你选择你喜欢的文件名模板，重复的书会在文件名后加上ID')
+			.addDropdown((dropdown) => {
+				dropdown.addOptions({
+					BOOK_NAME: '书名',
+					'BOOK_NAME-AUTHOR': '书名-作者名',
+					'BOOK_NAME-ID': '书名-bookId'
+				});
+				return dropdown
+					.setValue(get(settingsStore).fileNameType)
+					.onChange(async (value) => {
+						settingsStore.actions.setFileNameType(value);
 					});
 			});
 	}

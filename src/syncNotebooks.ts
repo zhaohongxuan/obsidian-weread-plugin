@@ -22,10 +22,9 @@ export default class SyncNotebooks {
 		const noteBookResp: [] = await this.apiManager.getNotebooks();
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		let successCount = 0;
-		for (const noteBook of noteBookResp) {
-			const bookId: string = noteBook['bookId'];
-
-			const metaData = parseMetadata(noteBook);
+		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
+		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
+		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.debug(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
 				continue;
@@ -34,8 +33,10 @@ export default class SyncNotebooks {
 			if (localNotebookFile && !localNotebookFile.new) {
 				continue;
 			}
-
-			const bookDetail = await this.apiManager.getBook(bookId);
+			if (duplicateBookSet.has(metaData.title)) {
+				metaData.duplicate = true;
+			}
+			const bookDetail = await this.apiManager.getBook(metaData.bookId);
 			if (bookDetail) {
 				metaData['category'] = bookDetail['category'];
 				metaData['publisher'] = bookDetail['publisher'];
@@ -43,9 +44,8 @@ export default class SyncNotebooks {
 				metaData['intro'] = bookDetail['intro'];
 			}
 
-			const highlightResp = await this.apiManager.getNotebookHighlights(bookId);
-			const reviewResp = await this.apiManager.getNotebookReviews(bookId);
-
+			const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
+			const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
 			const highlights = parseHighlights(highlightResp, reviewResp);
 			const chapterHighlights = parseChapterHighlights(highlights);
 			const bookReview = parseChapterReviews(reviewResp);
@@ -60,6 +60,19 @@ export default class SyncNotebooks {
 			successCount++;
 		}
 		return successCount;
+	}
+
+	private getDuplicateBooks(metaDatas: Metadata[]): Set<string> {
+		const bookArr = metaDatas.map((metaData) => metaData.title);
+		const uniqueElements = new Set(bookArr);
+		const filteredElements = bookArr.filter((item) => {
+			if (uniqueElements.has(item)) {
+				uniqueElements.delete(item);
+			} else {
+				return item;
+			}
+		});
+		return new Set(filteredElements);
 	}
 
 	async getLocalNotebookFile(

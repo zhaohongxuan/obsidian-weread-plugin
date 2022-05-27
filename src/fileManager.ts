@@ -70,9 +70,25 @@ export default class FileManager {
 			console.info(`Folder ${folderPath} not found. Will be created`);
 			await this.vault.createFolder(folderPath);
 		}
-		const fileName = `${sanitizeTitle(notebook.metaData.title)}-${notebook.metaData.bookId}`;
+		const fileName = this.getFileName(notebook.metaData);
 		const filePath = `${folderPath}/${fileName}.md`;
 		return filePath;
+	}
+
+	private getFileName(metaData: Metadata): string {
+		const fileNameType = get(settingsStore).fileNameType;
+		const baseFileName = sanitizeTitle(metaData.title);
+		if (fileNameType == 'BOOK_NAME-AUTHOR') {
+			if (metaData.duplicate) {
+				return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
+			}
+			return `${baseFileName}-${metaData.author}`;
+		} else {
+			if (metaData.duplicate || fileNameType == 'BOOK_NAME-BOOKID') {
+				return `${baseFileName}-${metaData.bookId}`;
+			}
+			return baseFileName;
+		}
 	}
 
 	private getSubFolderPath(metaData: Metadata): string {
