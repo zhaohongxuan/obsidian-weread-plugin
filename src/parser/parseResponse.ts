@@ -11,6 +11,7 @@ import { NodeHtmlMarkdown } from 'node-html-markdown';
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];
 	const cover: string = book['cover'].replace('/s_', '/t7_');
+	const lastReadDate = window.moment(noteBook['sort'] * 1000).format('YYYY-MM-DD')
 	const metaData: Metadata = {
 		bookId: book['bookId'],
 		author: book['author'],
@@ -20,7 +21,8 @@ export const parseMetadata = (noteBook: any): Metadata => {
 		publishTime: book['publishTime'],
 		noteCount: noteBook['noteCount'],
 		reviewCount: noteBook['reviewCount'],
-		bookType: book['type']
+		bookType: book['type'],
+		lastReadDate: lastReadDate
 	};
 	return metaData;
 };
