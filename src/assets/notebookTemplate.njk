@@ -19,7 +19,7 @@ lastReadDate: {{metaData.lastReadDate}}
 ## {{chapter.chapterTitle}}
 {% for highlight in chapter.highlights %}
 {% if highlight.reviewContent %}{% else %}
-- 📌 {{ highlight.markText |trim }} ^{{highlight.chapterUid}}-{{highlight.range}}
+- 📌 {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
     - ⏱ {{highlight.createTime}}{% endif %} {% endfor %}{% endfor %}
 # 读书笔记
 {% for chapter in bookReview.chapterReviews %}{% if chapter.reviews or chapter.chapterReview %}
@@ -35,6 +35,7 @@ lastReadDate: {{metaData.lastReadDate}}
 {% endfor %} {%endif %} {% endif %} {% endfor %}
 # 本书评论
 {% if bookReview.bookReviews %}{% for bookReview in bookReview.bookReviews %}
-## 书评 No.{{loop.index}} {{bookReview.mdContent}} ^{{bookReview.reviewId}}
+## 书评 No.{{loop.index}} 
+{{bookReview.mdContent}} ^{{bookReview.reviewId}}
 ⏱ {{bookReview.createTime}}
 {% endfor%}{% endif %}
