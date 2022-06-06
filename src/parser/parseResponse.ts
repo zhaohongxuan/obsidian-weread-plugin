@@ -28,15 +28,15 @@ export const parseMetadata = (noteBook: any): Metadata => {
 };
 
 export const parseHighlights = (highlightData: any, reviewData: any): Highlight[] => {
-	const chapters: [] = highlightData['chapters'];
+	const chapters: [] = highlightData['chapters'].length ===0 ? highlightData["refMpInfos"] : highlightData['chapters'];
 	const chapterMap = new Map(
-		chapters.map((chapter) => [chapter['chapterUid'], chapter['title']] as [string, string])
+		chapters.map((chapter) => [chapter['chapterUid'] || chapter['reviewId'], chapter['title']] as [string, string])
 	);
 	const highlights: [] = highlightData['updated'];
 	const reviews: [] = reviewData['reviews'];
 
 	return highlights.map((highlight) => {
-		const chapterUid = highlight['chapterUid'];
+		const chapterUid = highlight['chapterUid'] || highlight['refMpReviewId'];
 		const created = highlight['createTime'];
 		const createTime = window.moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
 		const highlightRange = highlight['range'];
@@ -48,12 +48,15 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 		if (review) {
 			reviewContent = review['content'];
 		}
-		const bookmarkId: string = highlight['bookmarkId'];
+		let bookmarkId: string = highlight['bookmarkId'];
+		if(bookmarkId.startsWith("MP_WXS")){
+			bookmarkId = highlight["range"]
+		}
 		return {
 			bookmarkId: bookmarkId.replace('_', '-'),
 			created: created,
 			createTime: createTime,
-			chapterUid: highlight['chapterUid'],
+			chapterUid: chapterUid,
 			range: highlight['range'],
 			chapterTitle: chapterMap.get(chapterUid),
 			markText: highlight['markText'],
@@ -104,8 +107,8 @@ export const parseReviews = (data: any): Review[] => {
 			bookId: review['bookId'],
 			created: created,
 			createTime: createTime,
-			chapterUid: review['chapterUid'],
-			chapterTitle: review['chapterTitle'],
+			chapterUid: review['chapterUid'] || review["refMpInfo"]?.["reviewId"],
+			chapterTitle: review['chapterTitle'] || review["refMpInfo"]?.["title"],
 			content: review['content'],
 			reviewId: reviewId.replace('_', '-'),
 			mdContent: mdContent ? mdContent : review['content'],
