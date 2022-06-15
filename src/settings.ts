@@ -52,6 +52,7 @@ const createSettingsStore = () => {
 	});
 
 	const clearCookies = () => {
+		console.log("[weread plugin] cookie已失效，清理cookie...")
 		store.update((state) => {
 			state.cookies = [];
 			state.lastCookieTime = new Date().getTime();
@@ -81,7 +82,7 @@ const createSettingsStore = () => {
 	const setUserName = (cookies: Cookie[]) => {
 		const userName = cookies.find((cookie) => cookie.name == 'wr_name').value;
 		if (userName !== '') {
-			console.log('setting user name=>', userName);
+			console.log('[weread plugin] setting user name=>', userName);
 			store.update((state) => {
 				state.user = userName;
 				return state;

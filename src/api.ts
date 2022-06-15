@@ -1,6 +1,7 @@
 import { Notice } from 'obsidian';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
+import { settingsStore } from './settings';
 
 export default class ApiManager {
 	//will proxy to  'https://i.weread.qq.com';
@@ -53,8 +54,10 @@ export default class ApiManager {
 						this.refreshCookie();
 						return true;
 					} else {
-						new Notice('微信读书未登录或者用户异常');
-						console.log('登录微信读书异常', error.response);
+						new Notice('微信读书未登录或者用户异常，请在设置中重新登录！')
+						console.log('微信读书未登录或者用户异常，请重新登录', error.response);
+						settingsStore.actions.clearCookies()
+
 					}
 				}
 				return false;

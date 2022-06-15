@@ -9,6 +9,7 @@ import {
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
+import { Notice } from 'obsidian';
 export default class SyncNotebooks {
 	private fileManager: FileManager;
 	private apiManager: ApiManager;
@@ -19,14 +20,17 @@ export default class SyncNotebooks {
 	}
 
 	async startSync(): Promise<number> {
+		new Notice('微信读书笔记同步开始!');
 		const noteBookResp: [] = await this.apiManager.getNotebooks();
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		let successCount = 0;
 		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
+		let skipCount =0;
 		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
-				console.debug(`skip book ${metaData.title} note count: ${metaData.noteCount}`);
+				console.debug(`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`);
+				skipCount++;
 				continue;
 			}
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles);
@@ -59,6 +63,7 @@ export default class SyncNotebooks {
 			);
 			successCount++;
 		}
+		new Notice(`微信读书笔记同步完成!,总共${metaDataArr.length}本书，跳过${skipCount}本, 本次更新 ${successCount} 本书`);
 		return successCount;
 	}
 
@@ -98,7 +103,7 @@ export default class SyncNotebooks {
 		try {
 			await this.fileManager.saveNotebook(notebook, localFile);
 		} catch (e) {
-			console.log('sync note book error', notebook.metaData.title, e);
+			console.log('[weread plugin] sync note book error', notebook.metaData.title, e);
 		}
 	}
 }

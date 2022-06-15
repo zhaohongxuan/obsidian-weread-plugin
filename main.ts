@@ -29,7 +29,6 @@ export default class WereadPlugin extends Plugin {
 				this.startSync();
 			}
 		});
-
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
@@ -38,14 +37,12 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	async startSync() {
-		new Notice('微信读书笔记同步开始!');
 		const server = await this.networkManager.startMiddleServer();
 		this.networkManager.refreshCookie().then(() => {
 			console.log('Start syncing Weread note...');
 			this.syncNotebooks
 				.startSync()
 				.then((res) => {
-					new Notice(`微信读书笔记同步完成!,本次更新 ${res} 本书`);
 					this.networkManager.shutdownMiddleServer(server);
 				})
 				.catch((e) => {
