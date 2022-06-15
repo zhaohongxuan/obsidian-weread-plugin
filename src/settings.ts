@@ -52,7 +52,7 @@ const createSettingsStore = () => {
 	});
 
 	const clearCookies = () => {
-		console.log("[weread plugin] cookie已失效，清理cookie...")
+		console.log('[weread plugin] cookie已失效，清理cookie...');
 		store.update((state) => {
 			state.cookies = [];
 			state.lastCookieTime = new Date().getTime();

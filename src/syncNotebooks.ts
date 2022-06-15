@@ -26,10 +26,12 @@ export default class SyncNotebooks {
 		let successCount = 0;
 		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
-		let skipCount =0;
+		let skipCount = 0;
 		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
-				console.debug(`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`);
+				console.debug(
+					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
+				);
 				skipCount++;
 				continue;
 			}
@@ -63,7 +65,9 @@ export default class SyncNotebooks {
 			);
 			successCount++;
 		}
-		new Notice(`微信读书笔记同步完成!,总共${metaDataArr.length}本书，跳过${skipCount}本, 本次更新 ${successCount} 本书`);
+		new Notice(
+			`微信读书笔记同步完成!,总共${metaDataArr.length}本书，跳过${skipCount}本, 本次更新 ${successCount} 本书`
+		);
 		return successCount;
 	}
 

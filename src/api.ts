@@ -54,10 +54,9 @@ export default class ApiManager {
 						this.refreshCookie();
 						return true;
 					} else {
-						new Notice('微信读书未登录或者用户异常，请在设置中重新登录！')
+						new Notice('微信读书未登录或者用户异常，请在设置中重新登录！');
 						console.log('微信读书未登录或者用户异常，请重新登录', error.response);
-						settingsStore.actions.clearCookies()
-
+						settingsStore.actions.clearCookies();
 					}
 				}
 				return false;

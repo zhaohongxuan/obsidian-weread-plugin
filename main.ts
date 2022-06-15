@@ -1,4 +1,4 @@
-import { Notice, Plugin } from 'obsidian';
+import { Plugin } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import NetworkManager from './src/networkManager';

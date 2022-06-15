@@ -2,7 +2,7 @@ import { Vault, MetadataCache, TFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import type { Metadata, Notebook } from './models';
-import { frontMatterDocType, addFrontMatter,updateFrontMatter } from './utils/frontmatter';
+import { frontMatterDocType, addFrontMatter, updateFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
 
@@ -32,7 +32,7 @@ export default class FileManager {
 				console.log(`Updating ${existingFile.path}`);
 				const existFileContent = await this.vault.cachedRead(existingFile);
 				const freshContent = this.renderer.render(notebook);
-				const fileContent = updateFrontMatter(freshContent, notebook,existFileContent);
+				const fileContent = updateFrontMatter(freshContent, notebook, existFileContent);
 				await this.vault.modify(existingFile, fileContent);
 			}
 		} else {

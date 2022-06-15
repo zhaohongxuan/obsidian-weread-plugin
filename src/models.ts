@@ -19,7 +19,7 @@ export type Metadata = {
 	publisher?: string;
 	intro?: string;
 	duplicate?: boolean;
-	lastReadDate:string;
+	lastReadDate: string;
 };
 
 export type Highlight = {
