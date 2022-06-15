@@ -167,7 +167,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 					})
 					.setValue(get(settingsStore).noteCountLimit.toString())
 					.onChange(async (value) => {
-						console.log('new note count limit', value);
+						console.log('[weread plugin] new note count limit', value);
 						settingsStore.actions.setNoteCountLimit(+value);
 					});
 			});
