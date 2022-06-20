@@ -19,9 +19,9 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - 自定义笔记生成模板 template
 - 文件名支持多种格式设置
 - 自定义FrontMatter，可在头部yaml文件中增加自己需要的字段，比如标签，阅读状态等
-- 公众号划线和笔记归类同步（TBD）
+- 公众号划线和笔记归类同步
+- 移动端支持(TBD)
 - 同步热门划线到笔记中（TBD）
-- 阅读完成时间
 
 ## 安装方法
 📢 由于本插件还未在插件市场上架，所以目前可以通过github下载release包安装，或者通过安装[brat](https://github.com/TfTHacker/obsidian42-brat)插件来安装 感谢@EasyChris 给的[安装建议](https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/21#issue-1239460439) 
@@ -61,6 +61,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - [x] 设置页面支持设置Template格式
 - [x] 文件名模板
 - [ ] 阅读相关元数据（读书时长，完成时间等）
+- [ ] 移动端适配
 
 
 ## Weread API
