@@ -1,13 +1,11 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
-import NetworkManager from './src/networkManager';
 import ApiManager from './src/api';
 import { settingsStore } from './src/settings';
 import { WereadSettingsTab } from './src/settingTab';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
-	private networkManager: NetworkManager;
 
 	async onload() {
 		console.log('load weread plugin');
@@ -17,7 +15,6 @@ export default class WereadPlugin extends Plugin {
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
-		this.networkManager = new NetworkManager(apiManager);
 		this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
 			this.startSync();
 		});
@@ -32,24 +29,14 @@ export default class WereadPlugin extends Plugin {
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
-	async startMiddleServer() {
-		await this.networkManager.startMiddleServer();
-	}
-
 	async startSync() {
-		const server = await this.networkManager.startMiddleServer();
-		this.networkManager.refreshCookie().then(() => {
-			console.log('Start syncing Weread note...');
-			this.syncNotebooks
-				.startSync()
-				.then((res) => {
-					this.networkManager.shutdownMiddleServer(server);
-				})
-				.catch((e) => {
-					this.networkManager.shutdownMiddleServer(server);
-					console.log(e);
-				});
-		});
+		console.log('Start syncing Weread note...');
+		try{
+			await this.syncNotebooks.startSync();
+		}catch(e){
+			new Notice("同步微信读书笔记异常,请打开控制台查看详情")
+			console.error("同步微信读书笔记异常",e)
+		}
 	}
 
 	onunload() {

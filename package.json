@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "0.2.5",
+	"version": "0.2.6",
 	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {
@@ -13,7 +13,6 @@
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
-		"@types/express": "^4.17.13",
 		"@types/node": "^16.11.35",
 		"@types/nunjucks": "^3.2.1",
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
@@ -23,8 +22,6 @@
 		"esbuild": "0.13.12",
 		"eslint-config-prettier": "^8.5.0",
 		"eslint-plugin-prettier": "^4.0.0",
-		"express": "^4.18.1",
-		"http-proxy-middleware": "^2.0.6",
 		"obsidian": "^0.14.8",
 		"svelte-check": "^2.7.0",
 		"svelte-preprocess": "^4.10.6",
@@ -37,9 +34,7 @@
 	"dependencies": {
 		"@types/lodash.pickby": "^4.6.7",
 		"@types/set-cookie-parser": "^2.4.2",
-		"axios": "^0.27.2",
-		"axios-retry": "^3.2.5",
-		"electron": "^18.2.3",
+		"electron": "^19.0.6",
 		"gray-matter": "^4.0.3",
 		"lodash.pickby": "^4.6.0",
 		"node-html-markdown": "^1.2.0",
