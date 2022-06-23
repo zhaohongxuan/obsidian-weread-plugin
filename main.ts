@@ -30,9 +30,11 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	async startSync() {
-		console.log('Start syncing Weread note...');
+		console.log('syncing Weread note start');
 		try{
 			await this.syncNotebooks.startSync();
+			console.log('syncing Weread note finish');
+
 		}catch(e){
 			new Notice("同步微信读书笔记异常,请打开控制台查看详情")
 			console.error("同步微信读书笔记异常",e)
