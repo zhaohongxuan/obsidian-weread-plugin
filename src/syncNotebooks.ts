@@ -21,7 +21,7 @@ export default class SyncNotebooks {
 
 	async startSync(): Promise<number> {
 		new Notice('微信读书笔记同步开始!');
-		const noteBookResp: [] = await this.apiManager.getNotebooks();
+		const noteBookResp: [] = await this.apiManager.getNotebooksWithRetry();
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		let successCount = 0;
 		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
@@ -66,7 +66,7 @@ export default class SyncNotebooks {
 			successCount++;
 		}
 		new Notice(
-			`微信读书笔记同步完成!,总共${metaDataArr.length}本书，跳过${skipCount}本, 本次更新 ${successCount} 本书`
+			`微信读书笔记同步完成!,总共${metaDataArr.length-skipCount}本书, 本次更新 ${successCount} 本书`
 		);
 		return successCount;
 	}

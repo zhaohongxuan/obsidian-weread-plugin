@@ -72,13 +72,6 @@ const createSettingsStore = () => {
 		});
 	};
 
-	const setCookieFlag = (flag: boolean) => {
-		store.update((state) => {
-			state.isCookieValid = true;
-			return state;
-		});
-	};
-
 	const setUserName = (cookies: Cookie[]) => {
 		const userName = cookies.find((cookie) => cookie.name == 'wr_name').value;
 		if (userName !== '') {
@@ -129,7 +122,6 @@ const createSettingsStore = () => {
 			setNoteLocationFolder,
 			setCookies,
 			clearCookies,
-			setCookieFlag,
 			setTemplate,
 			setNoteCountLimit,
 			setSubFolderType,

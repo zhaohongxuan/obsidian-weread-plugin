@@ -30,7 +30,7 @@ export const parseMetadata = (noteBook: any): Metadata => {
 export const parseHighlights = (highlightData: any, reviewData: any): Highlight[] => {
 	const chapters: [] =
 		highlightData['chapters'].length === 0
-			? highlightData['refMpInfos']||[]
+			? highlightData['refMpInfos'] || []
 			: highlightData['chapters'];
 	const chapterMap = new Map(
 		chapters.map(
