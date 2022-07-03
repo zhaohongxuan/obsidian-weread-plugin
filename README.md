@@ -24,7 +24,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - 同步热门划线到笔记中（TBD）
 
 ## 安装方法
-插件市场直接搜索`weread`，找到`Weread Plugin`安装，点击`Enable`使插件启用。
+插件市场直接搜索`weread`，找到`Weread Plugin`点击`install`安装，安装完成后点击`Enable`使插件启用。
 <img width="1872" alt="image" src="https://user-images.githubusercontent.com/8613196/177021391-60000ee5-a2ef-4391-98d6-875e63de8180.png">
 ## 设置
 1. 打开Obsidian点击`设置`进入设置界面，找到`Obsidian Weread Plugin`进入到插件设置页面
