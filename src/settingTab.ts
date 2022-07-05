@@ -1,6 +1,6 @@
 import WereadPlugin from 'main';
 import templateInstructions from './assets/templateInstructions.html';
-import { PluginSettingTab, Setting, App } from 'obsidian';
+import { PluginSettingTab, Setting, App, Platform } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
@@ -33,6 +33,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.fileNameType();
 		this.subFolderType();
 		this.template();
+		this.showDebugHelp();
 	}
 
 	private notebookFolder(): void {
@@ -171,5 +172,21 @@ export class WereadSettingsTab extends PluginSettingTab {
 						settingsStore.actions.setNoteCountLimit(+value);
 					});
 			});
+	}
+
+	private showDebugHelp() {
+		const info = this.containerEl.createDiv();
+		info.setAttr('align', 'center');
+		info.setText(
+			'查看控制台日志: 使用以下快捷键快速打开控制台，查看本插件以及其他插件的运行日志'
+		);
+		const keys = this.containerEl.createDiv();
+		keys.setAttr('align', 'center');
+		keys.style.margin = '10px';
+		if (Platform.isMacOS === true) {
+			keys.createEl('kbd', { text: 'CMD (⌘) + OPTION (⌥) + I' });
+		} else {
+			keys.createEl('kbd', { text: 'CTRL + SHIFT + I' });
+		}
 	}
 }

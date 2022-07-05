@@ -59,7 +59,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 			bookmarkId = highlight['range'];
 		}
 		return {
-			bookmarkId: bookmarkId.replace('_', '-'),
+			bookmarkId: bookmarkId.replace(/_/gi, '-'),
 			created: created,
 			createTime: createTime,
 			chapterUid: chapterUid,
@@ -116,7 +116,7 @@ export const parseReviews = (data: any): Review[] => {
 			chapterUid: review['chapterUid'] || review['refMpInfo']?.['reviewId'],
 			chapterTitle: review['chapterTitle'] || review['refMpInfo']?.['title'],
 			content: review['content'],
-			reviewId: reviewId.replace('_', '-'),
+			reviewId: reviewId.replace(/_/gi, '-'),
 			mdContent: mdContent ? mdContent : review['content'],
 			range: review['range'],
 			abstract: review['abstract'],
