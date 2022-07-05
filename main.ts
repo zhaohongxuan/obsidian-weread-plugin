@@ -21,23 +21,30 @@ export default class WereadPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'sync-weread-notes-command',
-			name: 'Sync Weread command',
+			name: 'Sync Weread Notes',
 			callback: () => {
 				this.startSync();
+			}
+		});
+
+		this.addCommand({
+			id: 'sync-weread-notes-command',
+			name: 'Force Sync Weread Notes',
+			callback: () => {
+				this.startSync(true);
 			}
 		});
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
-	async startSync() {
+	async startSync(force = false) {
 		console.log('syncing Weread note start');
-		try{
-			await this.syncNotebooks.startSync();
+		try {
+			await this.syncNotebooks.startSync(force);
 			console.log('syncing Weread note finish');
-
-		}catch(e){
-			new Notice("同步微信读书笔记异常,请打开控制台查看详情")
-			console.error("同步微信读书笔记异常",e)
+		} catch (e) {
+			new Notice('同步微信读书笔记异常,请打开控制台查看详情');
+			console.error('同步微信读书笔记异常', e);
 		}
 	}
 

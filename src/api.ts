@@ -27,11 +27,11 @@ export default class ApiManager {
 		this.updateCookies(respCookie);
 	}
 
-	async getNotebooksWithRetry(){
+	async getNotebooksWithRetry() {
 		let noteBookResp: [] = await this.getNotebooks();
-		if(noteBookResp === undefined){
+		if (noteBookResp === undefined) {
 			//retry get notebooks
-			noteBookResp =  await this.getNotebooks(); 
+			noteBookResp = await this.getNotebooks();
 		}
 		return noteBookResp;
 	}
@@ -43,12 +43,11 @@ export default class ApiManager {
 			method: 'GET',
 			headers: this.getHeaders()
 		};
-		let resp = await requestUrl(req);
+		const resp = await requestUrl(req);
 		if (resp.status === 401) {
 			if (resp.json.errcode == -2012) {
-				console.log("weread cookie expire retry refresh cookie... ")
+				console.log('weread cookie expire retry refresh cookie... ');
 				await this.refreshCookie();
-			
 			} else {
 				new Notice('微信读书未登录或者用户异常，请在设置中重新登录！');
 				console.log('微信读书未登录或者用户异常，请重新登录', resp.json.errcode);

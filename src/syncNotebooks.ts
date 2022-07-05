@@ -19,8 +19,12 @@ export default class SyncNotebooks {
 		this.apiManager = apiManeger;
 	}
 
-	async startSync(): Promise<number> {
-		new Notice('微信读书笔记同步开始!');
+	async startSync(force = false): Promise<number> {
+		if (force) {
+			new Notice('强制同步微信读书笔记开始!');
+		} else {
+			new Notice('同步微信读书笔记开始!');
+		}
 		const noteBookResp: [] = await this.apiManager.getNotebooksWithRetry();
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		let successCount = 0;
@@ -29,14 +33,14 @@ export default class SyncNotebooks {
 		let skipCount = 0;
 		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
-				console.debug(
+				console.info(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
 				skipCount++;
 				continue;
 			}
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles);
-			if (localNotebookFile && !localNotebookFile.new) {
+			if (localNotebookFile && !localNotebookFile.new && !force) {
 				continue;
 			}
 			if (duplicateBookSet.has(metaData.title)) {
@@ -66,7 +70,9 @@ export default class SyncNotebooks {
 			successCount++;
 		}
 		new Notice(
-			`微信读书笔记同步完成!,总共${metaDataArr.length-skipCount}本书, 本次更新 ${successCount} 本书`
+			`微信读书笔记同步完成!,总共${
+				metaDataArr.length - skipCount
+			}本书, 本次更新 ${successCount} 本书`
 		);
 		return successCount;
 	}
