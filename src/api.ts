@@ -1,4 +1,4 @@
-import { Notice, requestUrl, RequestUrlParam } from 'obsidian';
+import { Notice, requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import { getCookieString } from './utils/cookiesUtil';
@@ -49,7 +49,11 @@ export default class ApiManager {
 				console.log('weread cookie expire retry refresh cookie... ');
 				await this.refreshCookie();
 			} else {
-				new Notice('微信读书未登录或者用户异常，请在设置中重新登录！');
+				if (Platform.isDesktopApp) {
+					new Notice('微信读书未登录或者用户异常，请在设置中重新登录！');
+				} else {
+					new Notice('微信读书未登录或者用户异常，请在电脑端重新登录！');
+				}
 				console.log('微信读书未登录或者用户异常，请重新登录', resp.json.errcode);
 				settingsStore.actions.clearCookies();
 			}

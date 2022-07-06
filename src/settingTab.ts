@@ -23,17 +23,38 @@ export class WereadSettingsTab extends PluginSettingTab {
 		containerEl.empty();
 		containerEl.createEl('h2', { text: '设置微信读书插件' });
 		const isCookieValid = get(settingsStore).isCookieValid;
-		if (isCookieValid) {
-			this.showLogout();
+		if (Platform.isDesktopApp) {
+			if (isCookieValid) {
+				this.showLogout();
+			} else {
+				this.showLogin();
+			}
 		} else {
-			this.showLogin();
+			if (isCookieValid) {
+				this.showMobileLogout();
+			} else {
+				this.showMobileLogin();
+			}
 		}
+
 		this.notebookFolder();
 		this.noteCountLimit();
 		this.fileNameType();
 		this.subFolderType();
 		this.template();
 		this.showDebugHelp();
+	}
+
+	private showMobileLogin() {
+		const info = this.containerEl.createDiv();
+		info.setAttr('align', 'center');
+		info.setText('请先在电脑端登录！');
+	}
+
+	private showMobileLogout() {
+		const info = this.containerEl.createDiv();
+		info.setAttr('align', 'center');
+		info.setText(`微信读书已登录，用户名：${get(settingsStore).user},请现在电脑端操作注销！`);
 	}
 
 	private notebookFolder(): void {
