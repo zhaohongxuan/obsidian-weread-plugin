@@ -1,4 +1,4 @@
-import { Notice, Plugin } from 'obsidian';
+import { Notice, Platform, Plugin } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
@@ -43,7 +43,11 @@ export default class WereadPlugin extends Plugin {
 			await this.syncNotebooks.startSync(force);
 			console.log('syncing Weread note finish');
 		} catch (e) {
-			new Notice('同步微信读书笔记异常,请打开控制台查看详情');
+			if (Platform.isDesktopApp) {
+				new Notice('同步微信读书笔记异常,请打开控制台查看详情');
+			} else {
+				new Notice('同步微信读书笔记异常,请使用电脑端打开控制台查看详情');
+			}
 			console.error('同步微信读书笔记异常', e);
 		}
 	}

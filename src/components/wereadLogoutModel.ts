@@ -1,21 +1,19 @@
-import { remote, BrowserWindow } from 'electron';
 import { settingsStore } from '../settings';
 import { WereadSettingsTab } from '../settingTab';
 
-const { BrowserWindow: RemoteBrowserWindow } = remote;
-
 export default class WereadLoginModel {
-	private modal: BrowserWindow;
+	private modal: any;
 	private settingTab: WereadSettingsTab;
 	constructor(settingTab: WereadSettingsTab) {
 		this.settingTab = settingTab;
+		const { remote } = require('electron');
+		const { BrowserWindow: RemoteBrowserWindow } = remote;
 		this.modal = new RemoteBrowserWindow({
 			parent: remote.getCurrentWindow(),
 			width: 960,
 			height: 540,
 			show: false
 		});
-
 		this.modal.once('ready-to-show', () => {
 			this.modal.setTitle('注销微信读书，右上角头像点击退出登录~');
 			this.modal.show();

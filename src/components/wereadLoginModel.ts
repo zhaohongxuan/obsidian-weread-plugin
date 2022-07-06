@@ -1,15 +1,15 @@
-import { remote, BrowserWindow } from 'electron';
 import { Notice } from 'obsidian';
 import { parseCookies } from '../utils/cookiesUtil';
 import { settingsStore } from '../settings';
 import { WereadSettingsTab } from '../settingTab';
-const { BrowserWindow: RemoteBrowserWindow } = remote;
 
 export default class WereadLoginModel {
-	private modal: BrowserWindow;
+	private modal: any;
 	private settingTab: WereadSettingsTab;
 	constructor(settingTab: WereadSettingsTab) {
 		this.settingTab = settingTab;
+		const { remote } = require('electron');
+		const { BrowserWindow: RemoteBrowserWindow } = remote;
 		this.modal = new RemoteBrowserWindow({
 			parent: remote.getCurrentWindow(),
 			width: 960,
