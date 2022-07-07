@@ -2,7 +2,7 @@ import { Notice, requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import { getCookieString } from './utils/cookiesUtil';
-import { parse } from 'set-cookie-parser';
+import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -19,12 +19,17 @@ export default class ApiManager {
 	async refreshCookie() {
 		const req: RequestUrlParam = {
 			url: `https://weread.qq.com`,
-			method: 'GET',
+			method: 'HEAD',
 			headers: this.getHeaders()
 		};
 		const resp = await requestUrl(req);
-		const respCookie: string = resp.headers['set-cookie'];
-		this.updateCookies(respCookie);
+		const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
+		if (respCookie === undefined) {
+			new Notice('cookie已过期，尝试刷新Cookie失败');
+		} else {
+			new Notice('cookie已过期，尝试刷新Cookie成功');
+			this.updateCookies(respCookie);
+		}
 	}
 
 	async getNotebooksWithRetry() {
@@ -105,13 +110,19 @@ export default class ApiManager {
 	}
 
 	private updateCookies(respCookie: string) {
+		let refreshCookies: Cookie[];
+		if (Array.isArray(respCookie)) {
+			refreshCookies = parse(respCookie);
+		} else {
+			const arrCookies = splitCookiesString(respCookie);
+			refreshCookies = parse(arrCookies);
+		}
 		const cookies = get(settingsStore).cookies;
-		parse(respCookie).forEach((cookie) => {
-			cookies
-				.filter((localCookie) => localCookie.name == cookie.name)
-				.forEach((localCookie) => {
-					localCookie.value = cookie.value;
-				});
+		cookies.forEach((cookie) => {
+			const newCookie = refreshCookies.find((freshCookie) => freshCookie.name == cookie.name);
+			if (newCookie) {
+				cookie.value = newCookie.value;
+			}
 		});
 		settingsStore.actions.setCookies(cookies);
 	}

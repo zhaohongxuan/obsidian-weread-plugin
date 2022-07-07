@@ -46,7 +46,7 @@ export default class WereadPlugin extends Plugin {
 			if (Platform.isDesktopApp) {
 				new Notice('同步微信读书笔记异常,请打开控制台查看详情');
 			} else {
-				new Notice('同步微信读书笔记异常,请使用电脑端打开控制台查看详情');
+				new Notice('同步微信读书笔记异常,请使用电脑端打开控制台查看详情' + e);
 			}
 			console.error('同步微信读书笔记异常', e);
 		}

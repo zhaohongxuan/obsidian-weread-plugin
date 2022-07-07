@@ -40,6 +40,6 @@
 		"node-html-markdown": "^1.2.0",
 		"nunjucks": "^3.2.3",
 		"sanitize-filename": "^1.6.3",
-		"set-cookie-parser": "^2.4.8"
+		"set-cookie-parser": "^2.5.0"
 	}
 }
