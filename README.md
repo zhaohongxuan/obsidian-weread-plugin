@@ -20,7 +20,7 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - 文件名支持多种格式设置
 - 自定义FrontMatter，可在头部yaml文件中增加自己需要的字段，比如标签，阅读状态等
 - 公众号划线和笔记归类同步
-- 移动端支持(TBD)
+- 支持移动端同步，可以在手机和平板上使用本插件
 - 同步热门划线到笔记中（TBD）
 
 ## 安装方法
@@ -57,8 +57,9 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - [x] 书名重复导致同步失败
 - [x] 设置页面支持设置Template格式
 - [x] 文件名模板
-- [ ] 阅读相关元数据（读书时长，完成时间等）
-- [ ] 移动端适配
+- [x] 移动端适配
+- [ ] 导出热门划线 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/42
+- [ ] 设置页面，目录选择优化 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/39
 
 
 ## Weread API
