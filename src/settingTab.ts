@@ -42,19 +42,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.fileNameType();
 		this.subFolderType();
 		this.template();
-		this.showDebugHelp();
+		if (Platform.isDesktopApp) {
+			this.showDebugHelp();
+		}
 	}
 
 	private showMobileLogin() {
 		const info = this.containerEl.createDiv();
-		info.setAttr('align', 'center');
-		info.setText('请先在电脑端登录！');
+		info.setText('微信读书未登录，请先在电脑端登录！');
 	}
 
 	private showMobileLogout() {
 		const info = this.containerEl.createDiv();
-		info.setAttr('align', 'center');
-		info.setText(`微信读书已登录，用户名：${get(settingsStore).user},请现在电脑端操作注销！`);
+		info.setText(`微信读书已登录，用户名：${get(settingsStore).user}`);
 	}
 
 	private notebookFolder(): void {
