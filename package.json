@@ -20,6 +20,7 @@
 		"builtin-modules": "^3.2.0",
 		"copy-webpack-plugin": "^10.2.4",
 		"esbuild": "0.13.12",
+		"eslint": "^8.19.0",
 		"eslint-config-prettier": "^8.5.0",
 		"eslint-plugin-prettier": "^4.0.0",
 		"obsidian": "^0.14.8",
