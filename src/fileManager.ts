@@ -5,7 +5,7 @@ import type { DailyNoteReferenece, Metadata, Notebook } from './models';
 import { frontMatterDocType, addFrontMatter, updateFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
-import { escapeRegExp, getLinesInString } from './utils/fileUtils';
+import { getLinesInString } from './utils/fileUtils';
 
 export type AnnotationFile = {
 	bookId?: string;
@@ -96,7 +96,7 @@ export default class FileManager {
 
 	private async insertAfter(fileContent: string, formatted: string): Promise<string> {
 		const targetString: string = get(settingsStore).insertAfter;
-		const targetRegex = new RegExp(`s*${escapeRegExp(targetString.replace('\\n', ''))}s*`);
+		const targetRegex = new RegExp(`s*${targetString.replace('\\n', '')}s*`);
 		const fileContentLines: string[] = getLinesInString(fileContent);
 
 		const targetPosition = fileContentLines.findIndex((line) => targetRegex.test(line));
