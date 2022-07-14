@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin } from 'obsidian';
+import { App, Modal, Notice, Platform, Plugin } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
@@ -34,6 +34,17 @@ export default class WereadPlugin extends Plugin {
 				this.startSync(true);
 			}
 		});
+
+		this.addCommand({
+			id: 'testInput',
+			name: 'Test Input (dev)',
+			callback: async () => {
+				const p = new ExampleModal(this.app);
+				p.open();
+				console.log(p);
+			}
+		});
+
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
@@ -54,5 +65,21 @@ export default class WereadPlugin extends Plugin {
 
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
+	}
+}
+
+export class ExampleModal extends Modal {
+	constructor(app: App) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.setText("Look at me, I'm a modal! 👀");
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
 	}
 }
