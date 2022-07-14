@@ -8,6 +8,7 @@ interface WereadPluginSettings {
 	noteLocation: string;
 	dailyNotesLocation: string;
 	dailyNotesFormat: string;
+	insertAfter: string;
 	lastCookieTime: number;
 	isCookieValid: boolean;
 	user: string;
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	cookies: [],
 	noteLocation: '/',
 	dailyNotesLocation: '/',
+	insertAfter: 'Reading',
 	dailyNotesFormat: 'YYYY-MM-DD',
 	lastCookieTime: -1,
 	isCookieValid: false,
@@ -136,6 +138,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setInsertAfter = (value: string) => {
+		store.update((state) => {
+			state.insertAfter = value;
+			return state;
+		});
+	};
+
 	const setFileNameType = (fileNameType: string) => {
 		store.update((state) => {
 			state.fileNameType = fileNameType;
@@ -155,7 +164,8 @@ const createSettingsStore = () => {
 			setFileNameType,
 			setDailyNotesToggle,
 			setDailyNotesFolder,
-			setDailyNotesFormat
+			setDailyNotesFormat,
+			setInsertAfter
 		}
 	};
 };

@@ -1,10 +1,11 @@
-import { Vault, MetadataCache, TFile, TFolder, Notice } from 'obsidian';
+import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
-import type { Highlight, Metadata, Notebook } from './models';
+import type { DailyNoteReferenece, Metadata, Notebook } from './models';
 import { frontMatterDocType, addFrontMatter, updateFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
+import { escapeRegExp, getLinesInString } from './utils/fileUtils';
 
 export type AnnotationFile = {
 	bookId?: string;
@@ -25,37 +26,42 @@ export default class FileManager {
 		this.renderer = new Renderer();
 	}
 
-	public async saveDailyNotes(metaData: Metadata, highlights: Highlight[]) {
-		const dailyNotePath = this.getDailyNotePath();
-		console.log('get daily note path', dailyNotePath);
+	public async saveDailyNotes(dailyNotePath: string, dailyNoteRefs: DailyNoteReferenece[]) {
 		const fileExist = await this.fileExists(dailyNotePath);
-		if (!fileExist) {
+		const toInsertContent = this.buildAppendContent(dailyNoteRefs);
+		if (fileExist) {
+			const dailyNoteFile = await this.getFileByPath(dailyNotePath);
+			const existFileContent = await this.vault.cachedRead(dailyNoteFile);
+			const freshContext = await this.insertAfter(existFileContent, toInsertContent);
 			new Notice('没有找到Daily Note，请先创建' + dailyNotePath);
-			return;
+			this.vault.modify(dailyNoteFile, freshContext);
+		} else {
+			this.vault.create(dailyNotePath, toInsertContent);
 		}
-
-		const fileContent = this.buildAppendContent(metaData, highlights);
-		const dailyNoteFile = await this.getFileByPath(dailyNotePath);
-		const existFileContent = await this.vault.cachedRead(dailyNoteFile);
-		this.vault.modify(dailyNoteFile, existFileContent + '\n' + fileContent);
 	}
 
-	private buildAppendContent(metaData: Metadata, highlights: Highlight[]): string {
-		const readingNotesRef = highlights.map((highlight) => {
-			return `![[${metaData.title}#^${highlight.bookmarkId}]]`;
-		});
-		const headContent: string = '### '.concat(metaData.title).concat('\n');
-		const bodyContent = readingNotesRef.join('\n');
-		const finalContent = headContent + bodyContent;
-		return finalContent;
+	private buildAppendContent(dailyNoteRefs: DailyNoteReferenece[]): string {
+		const appendContent = dailyNoteRefs
+			.map((dailyNoteRef) => {
+				const headContent: string = '\n### '.concat(dailyNoteRef.bookName).concat('\n');
+				const blockList = dailyNoteRef.refBlocks.map((refBlock) => {
+					return `![[${dailyNoteRef.bookName}#^${refBlock.refBlockId}]]`;
+				});
+				const bodyContent = blockList.join('\n');
+				const finalContent = headContent + bodyContent;
+				return finalContent;
+			})
+			.join('\n');
+
+		return appendContent;
 	}
 
-	private getDailyNotePath(): string {
+	public getDailyNotePath(date: moment.Moment): string {
 		let dailyNoteFileName;
 		const dailyNotesFormat = get(settingsStore).dailyNotesFormat;
 
 		try {
-			dailyNoteFileName = window.moment().format(dailyNotesFormat);
+			dailyNoteFileName = date.format(dailyNotesFormat);
 		} catch (e) {
 			new Notice('Daily Notes 日期格式不正确' + dailyNotesFormat);
 			throw e;
@@ -84,6 +90,28 @@ export default class FileManager {
 		if (file instanceof TFile) {
 			return file;
 		}
+	}
+
+	private async insertAfter(fileContent: string, formatted: string): Promise<string> {
+		const targetString: string = get(settingsStore).insertAfter;
+		const targetRegex = new RegExp(`s*${escapeRegExp(targetString.replace('\\n', ''))}s*`);
+		const fileContentLines: string[] = getLinesInString(fileContent);
+
+		const targetPosition = fileContentLines.findIndex((line) => targetRegex.test(line));
+		const targetNotFound = targetPosition === -1;
+		if (targetNotFound) {
+			const insertAfterDefault = `${targetString}\n${formatted}`;
+			new Notice(`没有在Daily Note中找到 ${targetString},将在末尾插入笔记`);
+			return `${fileContent}\n${insertAfterDefault}`;
+		}
+		return this.insertTextAfterPosition(formatted, fileContent, targetPosition);
+	}
+
+	private insertTextAfterPosition(text: string, body: string, pos: number): string {
+		const splitContent = body.split('\n');
+		const pre = splitContent.slice(0, pos + 1).join('\n');
+		const post = splitContent.slice(pos + 1).join('\n');
+		return `${pre}\n${text}${post}`;
 	}
 
 	public async saveNotebook(notebook: Notebook, localFile: AnnotationFile): Promise<void> {
