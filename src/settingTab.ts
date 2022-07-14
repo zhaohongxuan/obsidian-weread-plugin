@@ -45,6 +45,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (dailyNotesToggle) {
 			this.dailyNotesFolder();
 			this.dailyNoteFormat();
+			this.insertAfter();
 		}
 		this.template();
 		if (Platform.isDesktopApp) {
@@ -138,6 +139,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.addText((input) => {
 				input.setValue(get(settingsStore).dailyNotesFormat).onChange((value: string) => {
 					settingsStore.actions.setDailyNotesFormat(value);
+				});
+			});
+	}
+
+	private insertAfter() {
+		new Setting(this.containerEl)
+			.setName('在特定标题之后插入')
+			.setDesc('请填写Daily Notes中每日阅读标题，默认为：Reading')
+			.addText((input) => {
+				input.setValue(get(settingsStore).insertAfter).onChange((value: string) => {
+					settingsStore.actions.setInsertAfter(value);
 				});
 			});
 	}

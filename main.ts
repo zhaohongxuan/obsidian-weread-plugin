@@ -37,10 +37,10 @@ export default class WereadPlugin extends Plugin {
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
-	async startSync(force = false) {
+	async startSync(force = false, journalDate: moment.Moment = window.moment()) {
 		console.log('syncing Weread note start');
 		try {
-			await this.syncNotebooks.startSync(force);
+			await this.syncNotebooks.startSync(force, journalDate);
 			console.log('syncing Weread note finish');
 		} catch (e) {
 			if (Platform.isDesktopApp) {

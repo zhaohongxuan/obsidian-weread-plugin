@@ -4,6 +4,7 @@ import type {
 	ChapterReview,
 	Highlight,
 	Metadata,
+	RefBlockDetail,
 	Review
 } from 'src/models';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
@@ -58,6 +59,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 		if (bookmarkId.startsWith('MP_WXS')) {
 			bookmarkId = highlight['range'];
 		}
+		const markText: string = highlight['markText'];
 		return {
 			bookmarkId: bookmarkId.replace(/_/gi, '-'),
 			created: created,
@@ -65,7 +67,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 			chapterUid: chapterUid,
 			range: highlight['range'],
 			chapterTitle: chapterMap.get(chapterUid),
-			markText: highlight['markText'],
+			markText: markText.replace(/\n/gi, ''),
 			reviewContent: reviewContent
 		};
 	});
@@ -98,6 +100,24 @@ export const parseChapterHighlights = (highlights: Highlight[]): ChapterHighligh
 		chapter.highlights.sort((o1, o2) => o1.created - o2.created)
 	);
 	return chapterResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
+};
+
+export const parseDailyNoteReferences = (highlights: Highlight[]): RefBlockDetail[] => {
+	const today = window.moment().format('YYYYMMDD');
+	const todayHighlights = highlights.filter((highlight) => {
+		const createTime = window.moment(highlight.created * 1000).format('YYYYMMDD');
+		return today === createTime;
+	});
+	const todayHighlightBlocks: RefBlockDetail[] = [];
+	if (todayHighlights) {
+		for (const highlight of todayHighlights) {
+			todayHighlightBlocks.push({
+				refBlockId: highlight.bookmarkId,
+				createTime: highlight.created
+			});
+		}
+	}
+	return todayHighlightBlocks;
 };
 
 export const parseReviews = (data: any): Review[] => {

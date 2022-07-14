@@ -1,11 +1,12 @@
 import ApiManager from './api';
 import FileManager, { AnnotationFile } from './fileManager';
-import { Highlight, Metadata, Notebook } from './models';
+import { DailyNoteReferenece, Metadata, Notebook } from './models';
 import {
 	parseHighlights,
 	parseMetadata,
 	parseChapterHighlights,
-	parseChapterReviews
+	parseChapterReviews,
+	parseDailyNoteReferences
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -19,7 +20,7 @@ export default class SyncNotebooks {
 		this.apiManager = apiManeger;
 	}
 
-	async startSync(force = false): Promise<number> {
+	async startSync(force = false, journalDate: moment.Moment): Promise<number> {
 		if (force) {
 			new Notice('强制同步微信读书笔记开始!');
 		} else {
@@ -31,6 +32,8 @@ export default class SyncNotebooks {
 		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
 		let skipCount = 0;
+		const dailyNoteRefereneces: DailyNoteReferenece[] = [];
+
 		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.debug(
@@ -68,7 +71,11 @@ export default class SyncNotebooks {
 				localNotebookFile
 			);
 			if (get(settingsStore).dailyNotesToggle) {
-				this.saveToDailyNotes(metaData, highlights);
+				const refBlocks = parseDailyNoteReferences(highlights);
+				dailyNoteRefereneces.push({
+					bookName: metaData.title,
+					refBlocks: refBlocks
+				});
 			}
 			successCount++;
 		}
@@ -77,20 +84,12 @@ export default class SyncNotebooks {
 				metaDataArr.length - skipCount
 			}本书, 本次更新 ${successCount} 本书`
 		);
-		return successCount;
-	}
-
-	private saveToDailyNotes(metaData: Metadata, highlights: Highlight[]) {
-		const today = window.moment().format('YYYYMMDD');
-		const todayHighlights = highlights.filter((highlight) => {
-			const createTime = window.moment(highlight.created * 1000).format('YYYYMMDD');
-			return today === createTime;
-		});
-		if (todayHighlights) {
-			// save highlights
-			console.debug('todayHighlights', todayHighlights);
-			this.fileManager.saveDailyNotes(metaData, todayHighlights);
+		if (get(settingsStore).dailyNotesToggle) {
+			const dailyNotePath = this.fileManager.getDailyNotePath(journalDate);
+			console.log('get daily note path', dailyNotePath);
+			this.fileManager.saveDailyNotes(dailyNotePath, dailyNoteRefereneces);
 		}
+		return successCount;
 	}
 
 	private getDuplicateBooks(metaDatas: Metadata[]): Set<string> {
