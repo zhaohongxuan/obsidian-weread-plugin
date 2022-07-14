@@ -70,3 +70,13 @@ export type RenderTemplate = {
 	chapterHighlights: ChapterHighlight[];
 	bookReview: BookReview;
 };
+
+export type DailyNoteReferenece = {
+	bookName: string;
+	refBlocks: RefBlockDetail[];
+};
+
+export type RefBlockDetail = {
+	refBlockId: string;
+	createTime: number;
+};

@@ -33,10 +33,12 @@ export default class FileManager {
 			const dailyNoteFile = await this.getFileByPath(dailyNotePath);
 			const existFileContent = await this.vault.cachedRead(dailyNoteFile);
 			const freshContext = await this.insertAfter(existFileContent, toInsertContent);
-			new Notice('没有找到Daily Note，请先创建' + dailyNotePath);
 			this.vault.modify(dailyNoteFile, freshContext);
 		} else {
-			this.vault.create(dailyNotePath, toInsertContent);
+			new Notice('没有找到Daily Note，请先创建' + dailyNotePath);
+			return;
+			// todo toggle whether create auto
+			// this.vault.create(dailyNotePath, toInsertContent);
 		}
 	}
 
