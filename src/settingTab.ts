@@ -11,7 +11,6 @@ import { Renderer } from './renderer';
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
 	private renderer: Renderer;
-
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
@@ -41,6 +40,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.noteCountLimit();
 		this.fileNameType();
 		this.subFolderType();
+		this.dailyNotes();
+		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
+		if (dailyNotesToggle) {
+			this.dailyNotesFolder();
+			this.dailyNoteFormat();
+		}
 		this.template();
 		if (Platform.isDesktopApp) {
 			this.showDebugHelp();
@@ -90,6 +95,51 @@ export class WereadSettingsTab extends PluginSettingTab {
 					this.display();
 				});
 		});
+	}
+
+	private dailyNotes(): void {
+		new Setting(this.containerEl)
+			.setName('是否保存到 DailyNotes？')
+			.setHeading()
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).dailyNotesToggle).onChange((value) => {
+					console.debug('set daily notes toggle to', value);
+					settingsStore.actions.setDailyNotesToggle(value);
+					this.display();
+				});
+			});
+	}
+
+	private dailyNotesFolder() {
+		new Setting(this.containerEl)
+			.setName('Daily Notes文件夹')
+			.setDesc('请选择Daily Notes文件夹')
+			.addDropdown((dropdown) => {
+				const files = (this.app.vault.adapter as any).files;
+				const folders = pickBy(files, (val: any) => {
+					return val.type === 'folder';
+				});
+
+				Object.keys(folders).forEach((val) => {
+					dropdown.addOption(val, val);
+				});
+				return dropdown
+					.setValue(get(settingsStore).dailyNotesLocation)
+					.onChange(async (value) => {
+						settingsStore.actions.setDailyNotesFolder(value);
+					});
+			});
+	}
+
+	private dailyNoteFormat() {
+		new Setting(this.containerEl)
+			.setName('Daily Notes Format')
+			.setDesc('请填写Daily Notes文件名格式')
+			.addText((input) => {
+				input.setValue(get(settingsStore).dailyNotesFormat).onChange((value: string) => {
+					settingsStore.actions.setDailyNotesFormat(value);
+				});
+			});
 	}
 
 	private subFolderType(): void {

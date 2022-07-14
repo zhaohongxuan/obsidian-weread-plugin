@@ -6,6 +6,8 @@ import WereadPlugin from '../main';
 interface WereadPluginSettings {
 	cookies: Cookie[];
 	noteLocation: string;
+	dailyNotesLocation: string;
+	dailyNotesFormat: string;
 	lastCookieTime: number;
 	isCookieValid: boolean;
 	user: string;
@@ -13,18 +15,22 @@ interface WereadPluginSettings {
 	noteCountLimit: number;
 	subFolderType: string;
 	fileNameType: string;
+	dailyNotesToggle: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
 	cookies: [],
 	noteLocation: '/',
+	dailyNotesLocation: '/',
+	dailyNotesFormat: 'YYYY-MM-DD',
 	lastCookieTime: -1,
 	isCookieValid: false,
 	user: '',
 	template: notebookTemolate,
 	noteCountLimit: -1,
 	subFolderType: '-1',
-	fileNameType: 'BOOK_NAME'
+	fileNameType: 'BOOK_NAME',
+	dailyNotesToggle: false
 };
 
 const createSettingsStore = () => {
@@ -109,6 +115,27 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setDailyNotesToggle = (dailyNotesToggle: boolean) => {
+		store.update((state) => {
+			state.dailyNotesToggle = dailyNotesToggle;
+			return state;
+		});
+	};
+
+	const setDailyNotesFolder = (value: string) => {
+		store.update((state) => {
+			state.dailyNotesLocation = value;
+			return state;
+		});
+	};
+
+	const setDailyNotesFormat = (value: string) => {
+		store.update((state) => {
+			state.dailyNotesFormat = value;
+			return state;
+		});
+	};
+
 	const setFileNameType = (fileNameType: string) => {
 		store.update((state) => {
 			state.fileNameType = fileNameType;
@@ -125,7 +152,10 @@ const createSettingsStore = () => {
 			setTemplate,
 			setNoteCountLimit,
 			setSubFolderType,
-			setFileNameType
+			setFileNameType,
+			setDailyNotesToggle,
+			setDailyNotesFolder,
+			setDailyNotesFormat
 		}
 	};
 };

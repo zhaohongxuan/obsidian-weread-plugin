@@ -1,6 +1,6 @@
 import ApiManager from './api';
 import FileManager, { AnnotationFile } from './fileManager';
-import { Metadata, Notebook } from './models';
+import { Highlight, Metadata, Notebook } from './models';
 import {
 	parseHighlights,
 	parseMetadata,
@@ -33,7 +33,7 @@ export default class SyncNotebooks {
 		let skipCount = 0;
 		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
-				console.info(
+				console.debug(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
 				skipCount++;
@@ -67,6 +67,9 @@ export default class SyncNotebooks {
 				},
 				localNotebookFile
 			);
+			if (get(settingsStore).dailyNotesToggle) {
+				this.saveToDailyNotes(metaData, highlights);
+			}
 			successCount++;
 		}
 		new Notice(
@@ -75,6 +78,19 @@ export default class SyncNotebooks {
 			}本书, 本次更新 ${successCount} 本书`
 		);
 		return successCount;
+	}
+
+	private saveToDailyNotes(metaData: Metadata, highlights: Highlight[]) {
+		const today = window.moment().format('YYYYMMDD');
+		const todayHighlights = highlights.filter((highlight) => {
+			const createTime = window.moment(highlight.created * 1000).format('YYYYMMDD');
+			return today === createTime;
+		});
+		if (todayHighlights) {
+			// save highlights
+			console.debug('todayHighlights', todayHighlights);
+			this.fileManager.saveDailyNotes(metaData, todayHighlights);
+		}
 	}
 
 	private getDuplicateBooks(metaDatas: Metadata[]): Set<string> {
