@@ -1,3 +1,5 @@
+import { TFile } from 'obsidian';
+
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlight[];
@@ -20,6 +22,7 @@ export type Metadata = {
 	intro?: string;
 	duplicate?: boolean;
 	lastReadDate: string;
+	file?: AnnotationFile;
 };
 
 export type Highlight = {
@@ -79,4 +82,18 @@ export type DailyNoteReferenece = {
 export type RefBlockDetail = {
 	refBlockId: string;
 	createTime: number;
+};
+
+export type AnnotationFile = {
+	bookId?: string;
+	noteCount: number;
+	reviewCount: number;
+	new: boolean;
+	file: TFile;
+};
+
+export type RecentBook = {
+	bookId: string;
+	title: string;
+	recentTime: number;
 };

@@ -2,8 +2,11 @@ import type {
 	BookReview,
 	ChapterHighlight,
 	ChapterReview,
+	DailyNoteReferenece,
 	Highlight,
 	Metadata,
+	Notebook,
+	RecentBook,
 	RefBlockDetail,
 	Review
 } from 'src/models';
@@ -102,20 +105,30 @@ export const parseChapterHighlights = (highlights: Highlight[]): ChapterHighligh
 	return chapterResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
 };
 
-export const parseDailyNoteReferences = (highlights: Highlight[]): RefBlockDetail[] => {
+export const parseDailyNoteReferences = (notebooks: Notebook[]): DailyNoteReferenece[] => {
 	const today = window.moment().format('YYYYMMDD');
-	const todayHighlights = highlights.filter((highlight) => {
-		const createTime = window.moment(highlight.created * 1000).format('YYYYMMDD');
-		return today === createTime;
-	});
-	const todayHighlightBlocks: RefBlockDetail[] = [];
-	if (todayHighlights) {
-		for (const highlight of todayHighlights) {
-			todayHighlightBlocks.push({
-				refBlockId: highlight.bookmarkId,
-				createTime: highlight.created
+	const todayHighlightBlocks: DailyNoteReferenece[] = [];
+	for (const notebook of notebooks) {
+		const chapterHighlights = notebook.chapterHighlights;
+		const todayHighlights = chapterHighlights
+			.flatMap((chapterHighlight) => chapterHighlight.highlights)
+			.filter((highlight) => {
+				const createTime = window.moment(highlight.created * 1000).format('YYYYMMDD');
+				return today === createTime;
 			});
+		const refBlocks: RefBlockDetail[] = [];
+		if (todayHighlights) {
+			for (const highlight of todayHighlights) {
+				refBlocks.push({
+					refBlockId: highlight.bookmarkId,
+					createTime: highlight.created
+				});
+			}
 		}
+		todayHighlightBlocks.push({
+			bookName: notebook.metaData.title,
+			refBlocks: refBlocks
+		});
 	}
 	return todayHighlightBlocks;
 };
@@ -141,6 +154,16 @@ export const parseReviews = (data: any): Review[] => {
 			range: review['range'],
 			abstract: review['abstract'],
 			type: review['type']
+		};
+	});
+};
+
+export const parseRecentBooks = (data: []): RecentBook[] => {
+	return data.map((book) => {
+		return {
+			bookId: book['bookId'],
+			title: book['title'],
+			recentTime: book['readUpdateTime']
 		};
 	});
 };

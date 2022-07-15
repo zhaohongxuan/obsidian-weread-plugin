@@ -1,19 +1,11 @@
 import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
-import type { DailyNoteReferenece, Metadata, Notebook } from './models';
+import type { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
 import { frontMatterDocType, addFrontMatter, updateFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
 import { getLinesInString } from './utils/fileUtils';
-
-export type AnnotationFile = {
-	bookId?: string;
-	noteCount: number;
-	reviewCount: number;
-	new: boolean;
-	file: TFile;
-};
 
 export default class FileManager {
 	private vault: Vault;
@@ -96,15 +88,13 @@ export default class FileManager {
 
 	private async insertAfter(fileContent: string, formatted: string): Promise<string> {
 		const targetString: string = get(settingsStore).insertAfter;
-		const targetRegex = new RegExp(`s*${targetString.replace('\\n', '')}s*`);
+		const targetRegex = new RegExp(`s*${targetString}s*`);
 		const fileContentLines: string[] = getLinesInString(fileContent);
-
 		const targetPosition = fileContentLines.findIndex((line) => targetRegex.test(line));
 		const targetNotFound = targetPosition === -1;
 		if (targetNotFound) {
-			const insertAfterDefault = `${targetString}\n${formatted}`;
-			new Notice(`没有在Daily Note中找到 ${targetString},将在末尾插入笔记`);
-			return `${fileContent}\n${insertAfterDefault}`;
+			new Notice(`没有在Daily Note中找到区间开始：${targetString}！请检查Daily Notes设置`);
+			throw new Error('cannot find ' + targetString);
 		}
 		return this.insertTextAfterPosition(formatted, fileContent, targetPosition);
 	}
@@ -112,11 +102,23 @@ export default class FileManager {
 	private insertTextAfterPosition(text: string, body: string, pos: number): string {
 		const splitContent = body.split('\n');
 		const pre = splitContent.slice(0, pos + 1).join('\n');
-		const post = splitContent.slice(pos + 1).join('\n');
-		return `${pre}\n${text}${post}`;
+		const remainContent = splitContent.slice(pos + 1);
+		const insertBefore = get(settingsStore).insertBefore;
+		const endPostion = remainContent.findIndex((line) =>
+			new RegExp(`s*${insertBefore}s*`).test(line)
+		);
+		const targetNotFound = endPostion === -1;
+		if (targetNotFound) {
+			new Notice(`没有在Daily Note中找到区间结束：${insertBefore}！请检查Daily Notes设置`);
+			throw new Error('cannot find ' + insertBefore);
+		}
+
+		const post = remainContent.slice(endPostion - 1).join('\n');
+		return `${pre}\n${text}\n${post}`;
 	}
 
-	public async saveNotebook(notebook: Notebook, localFile: AnnotationFile): Promise<void> {
+	public async saveNotebook(notebook: Notebook): Promise<void> {
+		const localFile = notebook.metaData.file;
 		if (localFile) {
 			if (localFile.new) {
 				const existingFile = localFile.file;

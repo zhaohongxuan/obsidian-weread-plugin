@@ -9,9 +9,11 @@ interface WereadPluginSettings {
 	dailyNotesLocation: string;
 	dailyNotesFormat: string;
 	insertAfter: string;
+	insertBefore: string;
 	lastCookieTime: number;
 	isCookieValid: boolean;
 	user: string;
+	userVid: string;
 	template: string;
 	noteCountLimit: number;
 	subFolderType: string;
@@ -23,11 +25,13 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	cookies: [],
 	noteLocation: '/',
 	dailyNotesLocation: '/',
-	insertAfter: 'Reading',
+	insertAfter: '<!-- start of weread -->',
+	insertBefore: '<!-- end of weread -->',
 	dailyNotesFormat: 'YYYY-MM-DD',
 	lastCookieTime: -1,
 	isCookieValid: false,
 	user: '',
+	userVid: '',
 	template: notebookTemolate,
 	noteCountLimit: -1,
 	subFolderType: '-1',
@@ -43,8 +47,9 @@ const createSettingsStore = () => {
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
 		const data = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
 		const settings: WereadPluginSettings = { ...data };
+		console.log('--------init cookie------', settings.cookies);
 		if (settings.cookies.length > 1) {
-			setUserName(settings.cookies);
+			setUser(settings.cookies);
 		}
 		store.set(settings);
 		_plugin = plugin;
@@ -65,6 +70,7 @@ const createSettingsStore = () => {
 			state.cookies = [];
 			state.lastCookieTime = new Date().getTime();
 			state.user = '';
+			state.userVid = '';
 			state.isCookieValid = false;
 			return state;
 		});
@@ -75,19 +81,31 @@ const createSettingsStore = () => {
 			state.cookies = cookies;
 			state.lastCookieTime = new Date().getTime();
 			state.isCookieValid = true;
-			setUserName(cookies);
+			setUser(cookies);
 			return state;
 		});
 	};
 
-	const setUserName = (cookies: Cookie[]) => {
-		const userName = cookies.find((cookie) => cookie.name == 'wr_name').value;
-		if (userName !== '') {
-			console.log('[weread plugin] setting user name=>', userName);
-			store.update((state) => {
-				state.user = userName;
-				return state;
-			});
+	const setUser = (cookies: Cookie[]) => {
+		for (const cookie of cookies) {
+			if (cookie.name == 'wr_name') {
+				if (cookie.value !== '') {
+					console.log('[weread plugin] setting user name=>', cookie.value);
+					store.update((state) => {
+						state.user = cookie.value;
+						return state;
+					});
+				}
+			}
+			if (cookie.name == 'wr_vid') {
+				if (cookie.value !== '') {
+					console.log('[weread plugin] setting user vid=>', cookie.value);
+					store.update((state) => {
+						state.userVid = cookie.value;
+						return state;
+					});
+				}
+			}
 		}
 	};
 
@@ -145,6 +163,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setInsertBefore = (value: string) => {
+		store.update((state) => {
+			state.insertBefore = value;
+			return state;
+		});
+	};
+
 	const setFileNameType = (fileNameType: string) => {
 		store.update((state) => {
 			state.fileNameType = fileNameType;
@@ -165,7 +190,8 @@ const createSettingsStore = () => {
 			setDailyNotesToggle,
 			setDailyNotesFolder,
 			setDailyNotesFormat,
-			setInsertAfter
+			setInsertAfter,
+			setInsertBefore
 		}
 	};
 };
