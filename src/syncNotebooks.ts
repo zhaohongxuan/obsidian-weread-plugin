@@ -1,12 +1,13 @@
 import ApiManager from './api';
 import FileManager, { AnnotationFile } from './fileManager';
-import { DailyNoteReferenece, Metadata, Notebook } from './models';
+import { Metadata, Notebook } from './models';
 import {
 	parseHighlights,
 	parseMetadata,
 	parseChapterHighlights,
 	parseChapterReviews,
-	parseDailyNoteReferences
+	parseDailyNoteReferences,
+	parseRecentBooks
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -20,20 +21,54 @@ export default class SyncNotebooks {
 		this.apiManager = apiManeger;
 	}
 
-	async startSync(force = false, journalDate: moment.Moment): Promise<number> {
-		if (force) {
-			new Notice('强制同步微信读书笔记开始!');
-		} else {
-			new Notice('同步微信读书笔记开始!');
-		}
-		const noteBookResp: [] = await this.apiManager.getNotebooksWithRetry();
-		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
-		let successCount = 0;
-		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
-		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
-		let skipCount = 0;
-		const dailyNoteRefereneces: DailyNoteReferenece[] = [];
+	async syncNotebooks(force = false, journalDate: string) {
+		const metaDataArr = await this.getALlMetadata();
+		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
+		const notebooks = await Promise.all(
+			filterMetaArr.map(async (meta) => {
+				return this.convertToNotebook(meta);
+			})
+		);
 
+		for (const note of notebooks) {
+			await this.syncNotebook(note);
+		}
+
+		this.saveToJounal(journalDate, metaDataArr);
+		new Notice(`微信读书笔记同步完成!, 本次更新 ${notebooks.length} 本书`);
+	}
+
+	public async syncNotesToJounal(journalDate: string) {
+		const metaDataArr = await this.getALlMetadata();
+		this.saveToJounal(journalDate, metaDataArr);
+	}
+
+	private async convertToNotebook(metaData: Metadata): Promise<Notebook> {
+		const bookDetail = await this.apiManager.getBook(metaData.bookId);
+		if (bookDetail) {
+			metaData['category'] = bookDetail['category'];
+			metaData['publisher'] = bookDetail['publisher'];
+			metaData['isbn'] = bookDetail['isbn'];
+			metaData['intro'] = bookDetail['intro'];
+		}
+
+		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
+		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
+		const highlights = parseHighlights(highlightResp, reviewResp);
+		const chapterHighlights = parseChapterHighlights(highlights);
+		const bookReview = parseChapterReviews(reviewResp);
+		return {
+			metaData: metaData,
+			bookReview: bookReview,
+			chapterHighlights: chapterHighlights
+		};
+	}
+
+	private async filterNoteMetas(force = false, metaDataArr: Metadata[]): Promise<Metadata[]> {
+		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
+		let skipCount = 0;
+		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
+		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.debug(
@@ -46,50 +81,53 @@ export default class SyncNotebooks {
 			if (localNotebookFile && !localNotebookFile.new && !force) {
 				continue;
 			}
+			metaData.file = localNotebookFile;
 			if (duplicateBookSet.has(metaData.title)) {
 				metaData.duplicate = true;
 			}
-			const bookDetail = await this.apiManager.getBook(metaData.bookId);
-			if (bookDetail) {
-				metaData['category'] = bookDetail['category'];
-				metaData['publisher'] = bookDetail['publisher'];
-				metaData['isbn'] = bookDetail['isbn'];
-				metaData['intro'] = bookDetail['intro'];
-			}
-
-			const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
-			const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
-			const highlights = parseHighlights(highlightResp, reviewResp);
-			const chapterHighlights = parseChapterHighlights(highlights);
-			const bookReview = parseChapterReviews(reviewResp);
-			await this.syncNotebook(
-				{
-					metaData: metaData,
-					bookReview: bookReview,
-					chapterHighlights: chapterHighlights
-				},
-				localNotebookFile
-			);
-			if (get(settingsStore).dailyNotesToggle) {
-				const refBlocks = parseDailyNoteReferences(highlights);
-				dailyNoteRefereneces.push({
-					bookName: metaData.title,
-					refBlocks: refBlocks
-				});
-			}
-			successCount++;
+			filterMetaArr.push(metaData);
 		}
-		new Notice(
-			`微信读书笔记同步完成!,总共${
-				metaDataArr.length - skipCount
-			}本书, 本次更新 ${successCount} 本书`
+		new Notice('跳过更新' + skipCount + '本没有更新的书');
+		return filterMetaArr;
+	}
+
+	private async getALlMetadata() {
+		const noteBookResp: [] = await this.apiManager.getNotebooksWithRetry();
+		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
+		return metaDataArr;
+	}
+
+	private async saveToJounal(journalDate: string, metaDataArr: Metadata[]) {
+		const books = await this.getBookReadInDate(journalDate);
+		const metaDataArrInDate = metaDataArr.filter((meta) => books.contains(meta.bookId));
+
+		const notebooksInDate = await Promise.all(
+			metaDataArrInDate.map(async (meta) => {
+				return this.convertToNotebook(meta);
+			})
 		);
 		if (get(settingsStore).dailyNotesToggle) {
-			const dailyNotePath = this.fileManager.getDailyNotePath(journalDate);
-			console.log('get daily note path', dailyNotePath);
+			const dailyNoteRefereneces = parseDailyNoteReferences(notebooksInDate);
+			const dailyNotePath = this.fileManager.getDailyNotePath(window.moment());
+			console.log(
+				'get daily note path',
+				dailyNotePath,
+				' size:',
+				dailyNoteRefereneces.length
+			);
 			this.fileManager.saveDailyNotes(dailyNotePath, dailyNoteRefereneces);
 		}
-		return successCount;
+	}
+
+	private async getBookReadInDate(journalDate: string): Promise<string[]> {
+		const recentBookData: [] = await this.apiManager.getRecentBooks();
+		const recentBooks = parseRecentBooks(recentBookData);
+		const journalBookIds = recentBooks
+			.filter(
+				(book) => window.moment(book.recentTime * 1000).format('YYYY-MM-DD') === journalDate
+			)
+			.map((book) => book.bookId);
+		return journalBookIds;
 	}
 
 	private getDuplicateBooks(metaDatas: Metadata[]): Set<string> {
@@ -124,9 +162,9 @@ export default class SyncNotebooks {
 		return null;
 	}
 
-	private async syncNotebook(notebook: Notebook, localFile: AnnotationFile): Promise<void> {
+	private async syncNotebook(notebook: Notebook): Promise<void> {
 		try {
-			await this.fileManager.saveNotebook(notebook, localFile);
+			await this.fileManager.saveNotebook(notebook);
 		} catch (e) {
 			console.log('[weread plugin] sync note book error', notebook.metaData.title, e);
 		}

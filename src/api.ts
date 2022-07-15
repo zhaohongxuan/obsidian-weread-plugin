@@ -41,6 +41,22 @@ export default class ApiManager {
 		return noteBookResp;
 	}
 
+	async getRecentBooks() {
+		const vid = get(settingsStore).userVid;
+		console.debug('get userVid settings', vid);
+		const req: RequestUrlParam = {
+			url: this.baseUrl + '/shelf/friendCommon?userVid=' + vid,
+			method: 'GET',
+			headers: this.getHeaders()
+		};
+		try {
+			const resp = await requestUrl(req);
+			return resp.json.recentBooks;
+		} catch (e) {
+			console.error(e);
+		}
+	}
+
 	async getNotebooks() {
 		let noteBooks = [];
 		const req: RequestUrlParam = {

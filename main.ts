@@ -28,7 +28,7 @@ export default class WereadPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'sync-weread-notes-command',
+			id: 'Force-sync-weread-notes-command',
 			name: 'Force Sync Weread Notes',
 			callback: () => {
 				this.startSync(true);
@@ -36,22 +36,27 @@ export default class WereadPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'testInput',
-			name: 'Test Input (dev)',
-			callback: async () => {
-				const p = new ExampleModal(this.app);
-				p.open();
-				console.log(p);
+			id: 'sync-weread-notes-to-daily-note',
+			name: 'Sync Weread Notes To Daily Note',
+			callback: () => {
+				const journalDate = window.moment().format('YYYY-MM-DD');
+				new Notice('开始同步微信读书笔记到DailyNotes!' + journalDate);
+				this.syncNotebooks.syncNotesToJounal(journalDate);
 			}
 		});
 
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
-	async startSync(force = false, journalDate: moment.Moment = window.moment()) {
+	async startSync(force = false) {
 		console.log('syncing Weread note start');
+		if (force) {
+			new Notice('强制同步微信读书笔记开始!');
+		} else {
+			new Notice('同步微信读书笔记开始!');
+		}
 		try {
-			await this.syncNotebooks.startSync(force, journalDate);
+			await this.syncNotebooks.syncNotebooks(force, window.moment().format('YYYY-MM-DD'));
 			console.log('syncing Weread note finish');
 		} catch (e) {
 			if (Platform.isDesktopApp) {

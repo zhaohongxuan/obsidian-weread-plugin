@@ -100,7 +100,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private dailyNotes(): void {
 		new Setting(this.containerEl)
-			.setName('是否保存到 DailyNotes？')
+			.setName('是否保存笔记到 DailyNotes？')
 			.setHeading()
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).dailyNotesToggle).onChange((value) => {
@@ -135,7 +135,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private dailyNoteFormat() {
 		new Setting(this.containerEl)
 			.setName('Daily Notes Format')
-			.setDesc('请填写Daily Notes文件名格式')
+			.setDesc(
+				'请填写Daily Notes文件名格式，支持官方Daily Notes插件的格式，比如：YYYY-MM-DD \
+				 和 Periodic Notes的嵌套格式，比如 YYYY/[W]ww/YYYY-MM-DD'
+			)
 			.addText((input) => {
 				input.setValue(get(settingsStore).dailyNotesFormat).onChange((value: string) => {
 					settingsStore.actions.setDailyNotesFormat(value);
@@ -145,11 +148,21 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private insertAfter() {
 		new Setting(this.containerEl)
-			.setName('在特定标题之后插入')
-			.setDesc('请填写Daily Notes中每日阅读标题，默认为：Reading')
+			.setName('在特定区间之内插入')
+			.setDesc(
+				'请填写Daily Notes中希望读书笔记插入的区间，使用前记得修改Daily Notes模板🫡, 💥注意: 区间之内的内容会被覆盖，请不要在区间内修改内容，'
+			)
 			.addText((input) => {
 				input.setValue(get(settingsStore).insertAfter).onChange((value: string) => {
 					settingsStore.actions.setInsertAfter(value);
+				});
+			})
+			.addButton((btn) => {
+				return (btn.setButtonText('至').buttonEl.style.borderStyle = 'none');
+			})
+			.addText((input) => {
+				input.setValue(get(settingsStore).insertBefore).onChange((value: string) => {
+					settingsStore.actions.setInsertBefore(value);
 				});
 			});
 	}
