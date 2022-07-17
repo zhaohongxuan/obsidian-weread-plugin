@@ -72,19 +72,3 @@ export default class WereadPlugin extends Plugin {
 		console.log('unloading weread plugin', new Date().toLocaleString());
 	}
 }
-
-export class ExampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText("Look at me, I'm a modal! 👀");
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
