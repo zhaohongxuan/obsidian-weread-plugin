@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Platform, Plugin } from 'obsidian';
+import { Notice, Platform, Plugin } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
