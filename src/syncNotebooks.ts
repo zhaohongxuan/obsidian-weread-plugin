@@ -24,11 +24,11 @@ export default class SyncNotebooks {
 	async syncNotebooks(force = false, journalDate: string) {
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
-		const notebooks = await Promise.all(
-			filterMetaArr.map(async (meta) => {
-				return this.convertToNotebook(meta);
-			})
-		);
+		const notebooks = [];
+		for (const meta of filterMetaArr) {
+			const notebook = await this.convertToNotebook(meta);
+			notebooks.push(notebook);
+		}
 
 		for (const note of notebooks) {
 			await this.syncNotebook(note);
@@ -101,11 +101,12 @@ export default class SyncNotebooks {
 		const books = await this.getBookReadInDate(journalDate);
 		const metaDataArrInDate = metaDataArr.filter((meta) => books.contains(meta.bookId));
 
-		const notebooksInDate = await Promise.all(
-			metaDataArrInDate.map(async (meta) => {
-				return this.convertToNotebook(meta);
-			})
-		);
+		const notebooksInDate = [];
+		for (const meta of metaDataArrInDate) {
+			const notebook = await this.convertToNotebook(meta);
+			notebooksInDate.push(notebook);
+		}
+
 		if (get(settingsStore).dailyNotesToggle) {
 			const dailyNoteRefereneces = parseDailyNoteReferences(notebooksInDate);
 			const dailyNotePath = this.fileManager.getDailyNotePath(window.moment());
