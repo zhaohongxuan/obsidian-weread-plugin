@@ -44,20 +44,22 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 	);
 	const highlights: [] = highlightData['updated'];
 	const reviews: [] = reviewData['reviews'];
-
 	return highlights.map((highlight) => {
 		const chapterUid = highlight['chapterUid'] || highlight['refMpReviewId'];
 		const created = highlight['createTime'];
 		const createTime = window.moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
 		const highlightRange = highlight['range'];
-		const review = reviews
-			.map((review) => review['review'])
-			.filter((review) => review['range'] === highlightRange)
-			.first();
 		let reviewContent;
-		if (review) {
-			reviewContent = review['content'];
+		if (reviews) {
+			const review = reviews
+				.map((review) => review['review'])
+				.filter((review) => review['range'] === highlightRange)
+				.first();
+			if (review) {
+				reviewContent = review['content'];
+			}
 		}
+
 		let bookmarkId: string = highlight['bookmarkId'];
 		if (bookmarkId.startsWith('MP_WXS')) {
 			bookmarkId = highlight['range'];
