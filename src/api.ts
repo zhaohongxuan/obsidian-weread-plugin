@@ -53,7 +53,7 @@ export default class ApiManager {
 			const resp = await requestUrl(req);
 			return resp.json.recentBooks;
 		} catch (e) {
-			console.error(e);
+			console.error('get recent books error: vid' + vid, e);
 		}
 	}
 
@@ -64,7 +64,23 @@ export default class ApiManager {
 			method: 'GET',
 			headers: this.getHeaders()
 		};
-		const resp = await requestUrl(req);
+		let resp;
+		try {
+			resp = await requestUrl(req);
+		} catch (e) {
+			console.error('weread query notebook enter error', JSON.stringify(e));
+			console.log(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
+			if (e.status === 401) {
+				console.error('weread cookie expire retry refresh cookie... ');
+				await this.refreshCookie();
+				return;
+			}
+		}
+
+		if (resp === undefined) {
+			throw new Error('search note book empty');
+		}
+
 		if (resp.status === 401) {
 			if (resp.json.errcode == -2012) {
 				console.log('weread cookie expire retry refresh cookie... ');
@@ -83,6 +99,49 @@ export default class ApiManager {
 		return noteBooks;
 	}
 
+	private parseToCurl(req: RequestUrlParam) {
+		const command = ['curl'];
+		command.push(req.url);
+		const requestHeaders = req.headers;
+		Object.keys(requestHeaders).forEach((name) => {
+			command.push('-H');
+			command.push(
+				this.escapeStringPosix(name.replace(/^:/, '') + ': ' + requestHeaders[name])
+			);
+		});
+		command.push('  --compressed');
+		return command.join(' ');
+	}
+
+	private escapeStringPosix(str: string) {
+		function escapeCharacter(x) {
+			let code = x.charCodeAt(0);
+			if (code < 256) {
+				// Add leading zero when needed to not care about the next character.
+				return code < 16 ? '\\x0' + code.toString(16) : '\\x' + code.toString(16);
+			}
+			code = code.toString(16);
+			return '\\u' + ('0000' + code).substr(code.length, 4);
+		}
+
+		if (/[^\x20-\x7E]|'/.test(str)) {
+			// Use ANSI-C quoting syntax.
+			return (
+				"$'" +
+				str
+					.replace(/\\/g, '\\\\')
+					.replace(/'/g, "\\'")
+					.replace(/\n/g, '\\n')
+					.replace(/\r/g, '\\r')
+					.replace(/[^\x20-\x7E]/g, escapeCharacter) +
+				"'"
+			);
+		} else {
+			// Use single quote syntax.
+			return "'" + str + "'";
+		}
+	}
+
 	async getBook(bookId: string) {
 		try {
 			const req: RequestUrlParam = {
@@ -93,7 +152,7 @@ export default class ApiManager {
 			const resp = await requestUrl(req);
 			return resp.json;
 		} catch (e) {
-			console.error(e);
+			console.error('get book detail error', e);
 		}
 	}
 
@@ -107,7 +166,7 @@ export default class ApiManager {
 			const resp = await requestUrl(req);
 			return resp.json;
 		} catch (e) {
-			console.error(e);
+			console.error('get book highlight error' + bookId, e);
 		}
 	}
 
@@ -121,7 +180,7 @@ export default class ApiManager {
 			new Notice(
 				'Failed to fetch weread notebook reviews . Please check your Cookies and try again.'
 			);
-			console.error(e);
+			console.error('get book review error' + bookId, e);
 		}
 	}
 
