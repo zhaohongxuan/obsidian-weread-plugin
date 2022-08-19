@@ -1,8 +1,8 @@
-import { Notice, requestUrl, RequestUrlParam, Platform } from 'obsidian';
-import { settingsStore } from './settings';
-import { get } from 'svelte/store';
-import { getCookieString } from './utils/cookiesUtil';
-import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
+import {Notice, requestUrl, RequestUrlParam, Platform} from 'obsidian';
+import {settingsStore} from './settings';
+import {get} from 'svelte/store';
+import {getCookieString} from './utils/cookiesUtil';
+import {Cookie, parse, splitCookiesString} from 'set-cookie-parser';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -25,7 +25,7 @@ export default class ApiManager {
 		const resp = await requestUrl(req);
 		const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 		if (respCookie === undefined) {
-			new Notice('cookie已过期，尝试刷新Cookie失败');
+			new Notice('尝试刷新Cookie失败');
 		} else {
 			new Notice('cookie已过期，尝试刷新Cookie成功');
 			this.updateCookies(respCookie);
@@ -91,7 +91,7 @@ export default class ApiManager {
 				} else {
 					new Notice('微信读书未登录或者用户异常，请在电脑端重新登录！');
 				}
-				console.log('微信读书未登录或者用户异常，请重新登录', resp.json.errcode);
+				console.log('微信读书未登录或者用户异常，请重新登录, http status code:', resp.json.errcode);
 				settingsStore.actions.clearCookies();
 			}
 		}
@@ -173,7 +173,7 @@ export default class ApiManager {
 	async getNotebookReviews(bookId: string) {
 		try {
 			const url = `${this.baseUrl}/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
-			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
+			const req: RequestUrlParam = {url: url, method: 'GET', headers: this.getHeaders()};
 			const resp = await requestUrl(req);
 			return resp.json;
 		} catch (e) {
