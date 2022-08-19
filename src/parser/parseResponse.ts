@@ -127,10 +127,13 @@ export const parseDailyNoteReferences = (notebooks: Notebook[]): DailyNoteRefere
 				});
 			}
 		}
-		todayHighlightBlocks.push({
-			bookName: notebook.metaData.title,
-			refBlocks: refBlocks
-		});
+		// only record book have notes
+		if (refBlocks.length > 0) {
+			todayHighlightBlocks.push({
+				bookName: notebook.metaData.title,
+				refBlocks: refBlocks
+			});
+		}
 	}
 	return todayHighlightBlocks;
 };

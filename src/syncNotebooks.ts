@@ -1,6 +1,6 @@
 import ApiManager from './api';
-import FileManager, { AnnotationFile } from './fileManager';
-import { Metadata, Notebook } from './models';
+import FileManager from './fileManager';
+import { Metadata, Notebook, AnnotationFile } from './models';
 import {
 	parseHighlights,
 	parseMetadata,
