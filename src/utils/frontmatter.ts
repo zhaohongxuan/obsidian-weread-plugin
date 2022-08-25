@@ -1,4 +1,4 @@
-import * as matter from 'gray-matter';
+import { Notice, parseYaml, stringifyYaml, TFile } from 'obsidian';
 import type { Notebook } from '../models';
 
 type FrontMatterContent = {
@@ -12,23 +12,10 @@ type FrontMatterContent = {
 
 export const frontMatterDocType = 'weread-highlights-reviews';
 
-export const addFrontMatter = (markdownContent: string, noteBook: Notebook) => {
-	const frontMatter: FrontMatterContent = {
-		doc_type: frontMatterDocType,
-		bookId: noteBook.metaData.bookId,
-		author: noteBook.metaData.author,
-		cover: noteBook.metaData.cover,
-		reviewCount: noteBook.metaData.reviewCount,
-		noteCount: noteBook.metaData.noteCount
-	};
-
-	return matter.stringify(markdownContent, frontMatter);
-};
-
-export const updateFrontMatter = (
+export const buildFrontMatter = (
 	markdownContent: string,
 	noteBook: Notebook,
-	existFileContent: string
+	existFile?: TFile
 ) => {
 	const frontMatter: FrontMatterContent = {
 		doc_type: frontMatterDocType,
@@ -38,7 +25,23 @@ export const updateFrontMatter = (
 		reviewCount: noteBook.metaData.reviewCount,
 		noteCount: noteBook.metaData.noteCount
 	};
-	const existFrontMatter = matter(existFileContent);
-	const freshFrontMatter = { ...existFrontMatter.data, ...frontMatter };
-	return matter.stringify(markdownContent, freshFrontMatter);
+	let existFrontMatter = Object();
+	if (existFile) {
+		const cache = app.metadataCache.getFileCache(existFile);
+		existFrontMatter = cache.frontmatter;
+		if (existFrontMatter === undefined) {
+			new Notice('weread front matter invalid');
+			throw Error('weread front matter invalid');
+		}
+		delete existFrontMatter['position'];
+	}
+
+	const startInd = markdownContent.indexOf('---') + 4;
+	const endInd = markdownContent.substring(startInd).indexOf('---') - 1;
+	const templateYmlRaw = markdownContent.substring(startInd, startInd + endInd);
+	const templateFrontMatter = parseYaml(templateYmlRaw);
+	const freshMarkdownContent = markdownContent.substring(markdownContent.lastIndexOf('---') + 4);
+	const freshFrontMatter = { ...existFrontMatter, ...frontMatter, ...templateFrontMatter };
+	const frontMatterStr = stringifyYaml(freshFrontMatter);
+	return '---\n' + frontMatterStr + '---\n' + freshMarkdownContent;
 };

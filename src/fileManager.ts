@@ -2,7 +2,7 @@ import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obs
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import type { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
-import { frontMatterDocType, addFrontMatter, updateFrontMatter } from './utils/frontmatter';
+import { frontMatterDocType, buildFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
 import { getLinesInString } from './utils/fileUtils';
@@ -123,16 +123,15 @@ export default class FileManager {
 			if (localFile.new) {
 				const existingFile = localFile.file;
 				console.log(`Updating ${existingFile.path}`);
-				const existFileContent = await this.vault.cachedRead(existingFile);
 				const freshContent = this.renderer.render(notebook);
-				const fileContent = updateFrontMatter(freshContent, notebook, existFileContent);
+				const fileContent = buildFrontMatter(freshContent, notebook, existingFile);
 				await this.vault.modify(existingFile, fileContent);
 			}
 		} else {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
 			const markdownContent = this.renderer.render(notebook);
-			const fileContent = addFrontMatter(markdownContent, notebook);
+			const fileContent = buildFrontMatter(markdownContent, notebook);
 			await this.vault.create(newFilePath, fileContent);
 		}
 	}
