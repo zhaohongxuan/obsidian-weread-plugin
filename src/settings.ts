@@ -51,6 +51,12 @@ const createSettingsStore = () => {
 		if (settings.cookies.length > 1) {
 			setUser(settings.cookies);
 		}
+
+		const wr_vid = settings.cookies.find((cookie) => cookie.name === 'wr_vid');
+		if (wr_vid === undefined || wr_vid.value === '') {
+			settings.userVid = '';
+			settings.isCookieValid = false;
+		}
 		store.set(settings);
 		_plugin = plugin;
 	};

@@ -1,8 +1,8 @@
-import {Notice, requestUrl, RequestUrlParam, Platform} from 'obsidian';
-import {settingsStore} from './settings';
-import {get} from 'svelte/store';
-import {getCookieString} from './utils/cookiesUtil';
-import {Cookie, parse, splitCookiesString} from 'set-cookie-parser';
+import { Notice, requestUrl, RequestUrlParam, Platform } from 'obsidian';
+import { settingsStore } from './settings';
+import { get } from 'svelte/store';
+import { getCookieString } from './utils/cookiesUtil';
+import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -34,9 +34,13 @@ export default class ApiManager {
 
 	async getNotebooksWithRetry() {
 		let noteBookResp: [] = await this.getNotebooks();
-		if (noteBookResp === undefined) {
+		if (noteBookResp === undefined || noteBookResp.length === 0) {
 			//retry get notebooks
 			noteBookResp = await this.getNotebooks();
+		}
+		if (noteBookResp === undefined || noteBookResp.length === 0) {
+			new Notice('获取微信读书数据为空，打开控制台查看更多详情');
+			throw Error('get weread note book error after retry');
 		}
 		return noteBookResp;
 	}
@@ -64,38 +68,34 @@ export default class ApiManager {
 			method: 'GET',
 			headers: this.getHeaders()
 		};
-		let resp;
+
 		try {
-			resp = await requestUrl(req);
-		} catch (e) {
-			console.error('weread query notebook enter error', JSON.stringify(e));
-			console.log(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
-			if (e.status === 401) {
-				console.error('weread cookie expire retry refresh cookie... ');
-				await this.refreshCookie();
-				return;
-			}
-		}
-
-		if (resp === undefined) {
-			throw new Error('search note book empty');
-		}
-
-		if (resp.status === 401) {
-			if (resp.json.errcode == -2012) {
-				console.log('weread cookie expire retry refresh cookie... ');
-				await this.refreshCookie();
-			} else {
-				if (Platform.isDesktopApp) {
-					new Notice('微信读书未登录或者用户异常，请在设置中重新登录！');
+			const resp = await requestUrl(req);
+			if (resp.status === 401) {
+				if (resp.json.errcode == -2012) {
+					console.log('weread cookie expire retry refresh cookie... ');
+					await this.refreshCookie();
 				} else {
-					new Notice('微信读书未登录或者用户异常，请在电脑端重新登录！');
+					if (Platform.isDesktopApp) {
+						new Notice('微信读书未登录或者用户异常，请在设置中重新登录！');
+					} else {
+						new Notice('微信读书未登录或者用户异常，请在电脑端重新登录！');
+					}
+					console.log(
+						'微信读书未登录或者用户异常，请重新登录, http status code:',
+						resp.json.errcode
+					);
+					settingsStore.actions.clearCookies();
 				}
-				console.log('微信读书未登录或者用户异常，请重新登录, http status code:', resp.json.errcode);
-				settingsStore.actions.clearCookies();
+			}
+			noteBooks = resp.json.books;
+		} catch (e) {
+			if (e.status == 401) {
+				console.log(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
+				await this.refreshCookie();
 			}
 		}
-		noteBooks = resp.json.books;
+
 		return noteBooks;
 	}
 
@@ -173,7 +173,7 @@ export default class ApiManager {
 	async getNotebookReviews(bookId: string) {
 		try {
 			const url = `${this.baseUrl}/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
-			const req: RequestUrlParam = {url: url, method: 'GET', headers: this.getHeaders()};
+			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
 			const resp = await requestUrl(req);
 			return resp.json;
 		} catch (e) {
