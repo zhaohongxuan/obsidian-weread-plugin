@@ -39,8 +39,8 @@ export default class ApiManager {
 			noteBookResp = await this.getNotebooks();
 		}
 		if (noteBookResp === undefined || noteBookResp.length === 0) {
-			new Notice('获取微信读书数据失败');
-			throw Error('get weread note book error');
+			new Notice('获取微信读书数据为空，打开控制台查看更多详情');
+			throw Error('get weread note book error after retry');
 		}
 		return noteBookResp;
 	}
