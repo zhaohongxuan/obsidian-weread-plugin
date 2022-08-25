@@ -7,6 +7,7 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
+import { ShowDebugInfoModal } from './components/ShowDebugInfo';
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
@@ -223,6 +224,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 						await logoutModel.doLogout();
 						this.display();
 					});
+			})
+			.addButton((button) => {
+				return button
+					.setButtonText('Show Cookie')
+					.setCta()
+					.onClick(async () => {
+						new ShowDebugInfoModal(this.app).open();
+					});
 			});
 	}
 
@@ -276,6 +285,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		info.setText(
 			'查看控制台日志: 使用以下快捷键快速打开控制台，查看本插件以及其他插件的运行日志'
 		);
+
 		const keys = this.containerEl.createDiv();
 		keys.setAttr('align', 'center');
 		keys.style.margin = '10px';
