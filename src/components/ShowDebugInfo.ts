@@ -18,7 +18,6 @@ export class ShowDebugInfoModal extends Modal {
 
 		const cookie = contentEl.createDiv();
 		cookie.createEl('kbd', { text: cookieStr });
-
 	}
 
 	onClose() {

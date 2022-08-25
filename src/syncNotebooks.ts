@@ -79,6 +79,7 @@ export default class SyncNotebooks {
 			}
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles);
 			if (localNotebookFile && !localNotebookFile.new && !force) {
+				skipCount++;
 				continue;
 			}
 			metaData.file = localNotebookFile;
