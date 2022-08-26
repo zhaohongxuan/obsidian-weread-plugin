@@ -36,10 +36,14 @@ export const buildFrontMatter = (
 		delete existFrontMatter['position'];
 	}
 
-	const startInd = markdownContent.indexOf('---') + 4;
-	const endInd = markdownContent.substring(startInd).indexOf('---') - 1;
-	const templateYmlRaw = markdownContent.substring(startInd, startInd + endInd);
-	const templateFrontMatter = parseYaml(templateYmlRaw);
+	const idx = markdownContent.indexOf('---');
+	let templateFrontMatter = Object();
+	if (idx !== -1) {
+		const startInd = markdownContent.indexOf('---') + 4;
+		const endInd = markdownContent.substring(startInd).indexOf('---') - 1;
+		const templateYmlRaw = markdownContent.substring(startInd, startInd + endInd);
+		templateFrontMatter = parseYaml(templateYmlRaw);
+	}
 	const freshMarkdownContent = markdownContent.substring(markdownContent.lastIndexOf('---') + 4);
 	const freshFrontMatter = { ...existFrontMatter, ...frontMatter, ...templateFrontMatter };
 	const frontMatterStr = stringifyYaml(freshFrontMatter);
