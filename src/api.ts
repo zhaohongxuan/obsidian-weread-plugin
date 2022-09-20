@@ -39,7 +39,8 @@ export default class ApiManager {
 			noteBookResp = await this.getNotebooks();
 		}
 		if (noteBookResp === undefined || noteBookResp.length === 0) {
-			new Notice('获取微信读书数据为空，打开控制台查看更多详情');
+			new Notice('长时间未登录，Cookie已失效，请重新扫码登录！');
+			settingsStore.actions.clearCookies();
 			throw Error('get weread note book error after retry');
 		}
 		return noteBookResp;
