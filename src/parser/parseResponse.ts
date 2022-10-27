@@ -102,7 +102,11 @@ export const parseChapterHighlights = (highlights: Highlight[]): ChapterHighligh
 		}
 	}
 	chapterResult.forEach((chapter) =>
-		chapter.highlights.sort((o1, o2) => o1.created - o2.created)
+		chapter.highlights.sort((o1, o2) => {
+			const o1Start = parseInt(o1.range.split('-')[0]);
+			const o2Start = parseInt(o2.range.split('-')[0]);
+			return o1Start - o2Start;
+		})
 	);
 	return chapterResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
 };
