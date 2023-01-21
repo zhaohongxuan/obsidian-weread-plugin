@@ -32,7 +32,7 @@ export type Highlight = {
 	chapterUid: number;
 	chapterTitle: string;
 	markText: string;
-	type:number;
+	style: number;
 	reviewContent?: string;
 	range: string;
 };
