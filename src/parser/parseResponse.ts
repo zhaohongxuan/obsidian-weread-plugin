@@ -71,6 +71,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 			createTime: createTime,
 			chapterUid: chapterUid,
 			range: highlight['range'],
+			type: highlight['type'],
 			chapterTitle: chapterMap.get(chapterUid),
 			markText: markText.replace(/\n/gi, ''),
 			reviewContent: reviewContent
