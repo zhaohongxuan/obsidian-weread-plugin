@@ -72,6 +72,11 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 ## Weread API
 [Weread API](./docs/weread-api.md)
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=zhaohongxuan/obsidian-weread-plugin&type=Date)](https://star-history.com/#zhaohongxuan/obsidian-weread-plugin&Date)
+
+
 ## 免责声明
 本程序没有爬取任何书籍内容，只提供登录用户的图书以及笔记信息，没有侵犯书籍作者版权和微信读书官方利益。
 ## 感谢
