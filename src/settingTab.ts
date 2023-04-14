@@ -38,6 +38,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 
 		this.notebookFolder();
+		this.notebookBlacklist();
 		this.noteCountLimit();
 		this.fileNameType();
 		this.subFolderType();
@@ -82,6 +83,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						settingsStore.actions.setNoteLocationFolder(value);
 					});
+			});
+	}
+
+	private notebookBlacklist(): void {
+		new Setting(this.containerEl)
+			.setName('不同步的书籍')
+			.setDesc('请填写不同步的bookID,bookId可在meta信息中找到，多本书使用逗号「，」隔开')
+			.addText((input) => {
+				input.setValue(get(settingsStore).notesBlacklist).onChange((value: string) => {
+					settingsStore.actions.setNoteBlacklist(value);
+				});
 			});
 	}
 
