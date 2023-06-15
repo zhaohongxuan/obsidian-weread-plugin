@@ -88,8 +88,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private notebookBlacklist(): void {
 		new Setting(this.containerEl)
-			.setName('不同步的书籍')
-			.setDesc('请填写不同步的bookId,bookId可在meta信息中找到，多本书使用逗号「，」隔开')
+			.setName('书籍黑名单')
+			.setDesc('请填写不同步的bookId，bookId可在meta信息中找到，多本书使用逗号「，」隔开')
 			.addText((input) => {
 				input.setValue(get(settingsStore).notesBlacklist).onChange((value: string) => {
 					settingsStore.actions.setNoteBlacklist(value);
