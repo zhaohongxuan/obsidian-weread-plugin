@@ -37,9 +37,13 @@ export default class FileManager {
 	private buildAppendContent(dailyNoteRefs: DailyNoteReferenece[]): string {
 		const appendContent = dailyNoteRefs
 			.map((dailyNoteRef) => {
-				const headContent: string = '\n### '.concat(dailyNoteRef.bookName).concat('\n');
+				const headContent: string = '\n### '
+					.concat(this.getFileName(dailyNoteRef.metaData))
+					.concat('\n');
 				const blockList = dailyNoteRef.refBlocks.map((refBlock) => {
-					return `![[${dailyNoteRef.bookName}#^${refBlock.refBlockId}]]`;
+					return `![[${this.getFileName(dailyNoteRef.metaData)}#^${
+						refBlock.refBlockId
+					}]]`;
 				});
 				const bodyContent = blockList.join('\n');
 				const finalContent = headContent + bodyContent;
