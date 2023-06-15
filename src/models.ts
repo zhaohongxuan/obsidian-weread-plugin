@@ -76,7 +76,7 @@ export type RenderTemplate = {
 };
 
 export type DailyNoteReferenece = {
-	bookName: string;
+	metaData: Metadata;
 	refBlocks: RefBlockDetail[];
 };
 

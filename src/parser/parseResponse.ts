@@ -135,7 +135,7 @@ export const parseDailyNoteReferences = (notebooks: Notebook[]): DailyNoteRefere
 		// only record book have notes
 		if (refBlocks.length > 0) {
 			todayHighlightBlocks.push({
-				bookName: notebook.metaData.title,
+				metaData: notebook.metaData,
 				refBlocks: refBlocks
 			});
 		}
