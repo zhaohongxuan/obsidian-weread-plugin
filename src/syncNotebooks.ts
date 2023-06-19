@@ -82,6 +82,14 @@ export default class SyncNotebooks {
 				skipCount++;
 				continue;
 			}
+			const isNoteBlacklisted = get(settingsStore).notesBlacklist.includes(metaData.bookId);
+			if (isNoteBlacklisted) {
+				console.info(
+					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId}for blacklist`
+				);
+				skipCount++;
+				continue;
+			}
 			metaData.file = localNotebookFile;
 			if (duplicateBookSet.has(metaData.title)) {
 				metaData.duplicate = true;

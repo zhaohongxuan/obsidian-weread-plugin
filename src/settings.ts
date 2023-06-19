@@ -19,6 +19,7 @@ interface WereadPluginSettings {
 	subFolderType: string;
 	fileNameType: string;
 	dailyNotesToggle: boolean;
+	notesBlacklist: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -36,7 +37,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	noteCountLimit: -1,
 	subFolderType: '-1',
 	fileNameType: 'BOOK_NAME',
-	dailyNotesToggle: false
+	dailyNotesToggle: false,
+	notesBlacklist: ''
 };
 
 const createSettingsStore = () => {
@@ -182,6 +184,12 @@ const createSettingsStore = () => {
 			return state;
 		});
 	};
+	const setNoteBlacklist = (notebookBlacklist: string) => {
+		store.update((state) => {
+			state.notesBlacklist = notebookBlacklist;
+			return state;
+		});
+	};
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -197,7 +205,8 @@ const createSettingsStore = () => {
 			setDailyNotesFolder,
 			setDailyNotesFormat,
 			setInsertAfter,
-			setInsertBefore
+			setInsertBefore,
+			setNoteBlacklist
 		}
 	};
 };
