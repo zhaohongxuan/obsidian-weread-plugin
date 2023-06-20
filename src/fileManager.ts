@@ -38,7 +38,7 @@ export default class FileManager {
 		const appendContent = dailyNoteRefs
 			.map((dailyNoteRef) => {
 				const headContent: string = '\n### '
-					.concat(this.getFileName(dailyNoteRef.metaData))
+					.concat(dailyNoteRef.metaData.title)
 					.concat('\n');
 				const blockList = dailyNoteRef.refBlocks.map((refBlock) => {
 					return `![[${this.getFileName(dailyNoteRef.metaData)}#^${
