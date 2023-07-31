@@ -28,7 +28,6 @@ lastReadDate: {{metaData.lastReadDate}}
 ### 章节评论 No.{{loop.index}}
 - {{chapterReview.content}} ^{{chapterReview.reviewId}}
     - ⏱ {{chapterReview.createTime}} {% endfor%}{%endif %}{% if chapter.reviews %}{%for review in chapter.reviews %}
-### 划线评论
 - 📌 {{review.abstract |trim }}  ^{{review.reviewId}}
     - 💭 {{review.content}}
     - ⏱ {{review.createTime}}
