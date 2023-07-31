@@ -23,6 +23,8 @@ export type Metadata = {
 	duplicate?: boolean;
 	lastReadDate: string;
 	file?: AnnotationFile;
+	totalWords?: number;
+	rating?: string;
 };
 
 export type Highlight = {

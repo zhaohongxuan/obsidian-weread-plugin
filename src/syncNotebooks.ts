@@ -50,6 +50,9 @@ export default class SyncNotebooks {
 			metaData['publisher'] = bookDetail['publisher'];
 			metaData['isbn'] = bookDetail['isbn'];
 			metaData['intro'] = bookDetail['intro'];
+			metaData['totalWords'] = bookDetail['totalWords'];
+			const newRating = parseInt(bookDetail['newRating']);
+			metaData['rating'] = `${newRating / 10}%`;
 		}
 
 		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);

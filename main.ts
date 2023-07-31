@@ -15,7 +15,7 @@ export default class WereadPlugin extends Plugin {
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
-		this.addRibbonIcon('book-open', 'Weread', (evt: MouseEvent) => {
+		this.addRibbonIcon('book-open', 'Weread', () => {
 			this.startSync();
 		});
 

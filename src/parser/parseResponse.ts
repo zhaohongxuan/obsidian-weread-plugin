@@ -182,7 +182,17 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 	const reviews = parseReviews(reviewData);
 	const chapterReviews = reviews
 		.filter((review) => review.type == 1)
-		.sort((o1, o2) => o2.created - o1.created);
+		.sort((o1, o2) => {
+			const o1Start = parseInt(o1.range.split('-')[0]);
+			const o2Start = parseInt(o2.range.split('-')[0]);
+			return o1Start - o2Start;
+		});
+
+	chapterReviews.sort((o1, o2) => {
+		const o1Start = parseInt(o1.range.split('-')[0]);
+		const o2Start = parseInt(o2.range.split('-')[0]);
+		return o1Start - o2Start;
+	});
 
 	const entireReviews = reviews.filter((review) => review.type == 4);
 	const chapterResult = new Map();

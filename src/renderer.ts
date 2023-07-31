@@ -12,6 +12,7 @@ export class Renderer {
 			nunjucks.renderString(template, {});
 			return true;
 		} catch (error) {
+			console.error('validate weread template error,please check', error);
 			return false;
 		}
 	}
