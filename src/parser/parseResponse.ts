@@ -1,9 +1,12 @@
 import type {
 	BookReview,
+	BookReviewResponse,
 	ChapterHighlight,
 	ChapterReview,
 	DailyNoteReferenece,
 	Highlight,
+	HighlightResponse,
+	ChapterMark,
 	Metadata,
 	Notebook,
 	RecentBook,
@@ -229,4 +232,71 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 		bookReviews: entireReviews,
 		chapterReviews: chapterReviewResult
 	};
+};
+
+export const mergeHighlightsAndReview = (
+	highlightsResp: HighlightResponse,
+	bookReviewResp: BookReviewResponse
+) => {
+	const chapterMetaMap: Record<number, HighlightResponse['chapters'][number]> = {};
+	highlightsResp.chapters.forEach((chapter) => {
+		chapterMetaMap[chapter.chapterUid] = chapter;
+	});
+	const chapters: {
+		[key in number]: ChapterMark;
+	} = {};
+	const keyMapper = {
+		createTime: 'createTime',
+		range: 'range'
+	};
+	const hlKeyMapper = {
+		...keyMapper,
+		id: 'bookmarkId',
+		markText: 'markText'
+	};
+	const rvKeyMapper = {
+		...keyMapper,
+		id: 'reviewId',
+		markText: 'abstract',
+		review: 'content'
+	};
+	function transform(record: any, keys: Record<string, string>) {
+		if (chapters[record.chapterUid]) {
+			chapters[record.chapterUid].highlights.push({
+				id: record[keys['id']],
+				createTime: window
+					.moment(record[keys['createTime']] * 1000)
+					.format('YYYY-MM-DD HH:mm:ss'),
+				markText: record[keys['markText']],
+				range: record[keys['range']].split('-').map((n: string) => Number(n)),
+				review: keys['review'] ? record[keys['review']] : undefined
+			});
+		} else {
+			chapters[record.chapterUid] = {
+				chapterUid: record.chapterUid,
+				chapterTitle: record.chapterName || chapterMetaMap[record.chapterUid].title,
+				highlights: [
+					{
+						id: record[keys['id']],
+						createTime: window
+							.moment(record[keys['createTime']] * 1000)
+							.format('YYYY-MM-DD HH:mm:ss'),
+						markText: record[keys['markText']],
+						range: record[keys['range']].split('-').map((n: string) => Number(n)),
+						review: keys['review'] ? record[keys['review']] : undefined
+					}
+				]
+			};
+		}
+	}
+	highlightsResp.updated.forEach((hl) => transform(hl, hlKeyMapper));
+	bookReviewResp.reviews.map(({ review }) => transform(review, rvKeyMapper));
+	return Object.values(chapters)
+		.map((chapter) => {
+			return {
+				...chapter,
+				highlights: chapter.highlights.sort((c, n) => c.range[0] - n.range[0])
+			};
+		})
+		.sort((c, n) => c.chapterUid - n.chapterUid);
 };

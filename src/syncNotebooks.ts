@@ -7,7 +7,8 @@ import {
 	parseChapterHighlights,
 	parseChapterReviews,
 	parseDailyNoteReferences,
-	parseRecentBooks
+	parseRecentBooks,
+	mergeHighlightsAndReview
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -60,10 +61,12 @@ export default class SyncNotebooks {
 		const highlights = parseHighlights(highlightResp, reviewResp);
 		const chapterHighlights = parseChapterHighlights(highlights);
 		const bookReview = parseChapterReviews(reviewResp);
+		const chapterMarks = mergeHighlightsAndReview(highlightResp, reviewResp);
 		return {
 			metaData: metaData,
 			bookReview: bookReview,
-			chapterHighlights: chapterHighlights
+			chapterHighlights: chapterHighlights,
+			chapterMarks
 		};
 	}
 

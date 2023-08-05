@@ -3,6 +3,7 @@ import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import { getCookieString } from './utils/cookiesUtil';
 import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
+import { BookReviewResponse, HighlightResponse } from './models';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -115,14 +116,13 @@ export default class ApiManager {
 	}
 
 	private escapeStringPosix(str: string) {
-		function escapeCharacter(x) {
-			let code = x.charCodeAt(0);
+		function escapeCharacter(x: string) {
+			const code = x.charCodeAt(0);
 			if (code < 256) {
 				// Add leading zero when needed to not care about the next character.
 				return code < 16 ? '\\x0' + code.toString(16) : '\\x' + code.toString(16);
 			}
-			code = code.toString(16);
-			return '\\u' + ('0000' + code).substr(code.length, 4);
+			return '\\u' + ('0000' + code).substr(code.toString(16).length, 4);
 		}
 
 		if (/[^\x20-\x7E]|'/.test(str)) {
@@ -157,7 +157,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getNotebookHighlights(bookId: string) {
+	async getNotebookHighlights(bookId: string): Promise<HighlightResponse> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/book/bookmarklist?bookId=${bookId}`,
@@ -171,7 +171,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getNotebookReviews(bookId: string) {
+	async getNotebookReviews(bookId: string): Promise<BookReviewResponse> {
 		try {
 			const url = `${this.baseUrl}/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };

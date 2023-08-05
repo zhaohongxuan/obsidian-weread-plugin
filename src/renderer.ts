@@ -18,12 +18,13 @@ export class Renderer {
 	}
 
 	render(entry: Notebook): string {
-		const { metaData, chapterHighlights, bookReview } = entry;
+		const { metaData, chapterHighlights, bookReview, chapterMarks } = entry;
 
 		const context: RenderTemplate = {
 			metaData,
 			chapterHighlights,
-			bookReview
+			bookReview,
+			chapterMarks
 		};
 
 		const template = get(settingsStore).template;
