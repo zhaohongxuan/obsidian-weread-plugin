@@ -66,14 +66,14 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 		}
 		const markText: string = highlight['markText'];
 		return {
-			bookmarkId: bookmarkId.replace(/_/gi, '-'),
+			bookmarkId: bookmarkId?.replace(/_/gi, '-'),
 			created: created,
 			createTime: createTime,
 			chapterUid: chapterUid,
 			range: highlight['range'],
 			style: highlight['style'],
 			chapterTitle: chapterMap.get(chapterUid),
-			markText: markText.replace(/\n/gi, ''),
+			markText: markText?.replace(/\n/gi, ''),
 			reviewContent: reviewContent
 		};
 	});
@@ -159,7 +159,7 @@ export const parseReviews = (data: any): Review[] => {
 			chapterUid: review['chapterUid'] || review['refMpInfo']?.['reviewId'],
 			chapterTitle: review['chapterTitle'] || review['refMpInfo']?.['title'],
 			content: review['content'],
-			reviewId: reviewId.replace(/_/gi, '-'),
+			reviewId: reviewId?.replace(/_/gi, '-'),
 			mdContent: mdContent ? mdContent : review['content'],
 			range: review['range'],
 			abstract: review['abstract'],
@@ -180,18 +180,20 @@ export const parseRecentBooks = (data: []): RecentBook[] => {
 
 export const parseChapterReviews = (reviewData: any): BookReview => {
 	const reviews = parseReviews(reviewData);
-	const chapterReviews = reviews
-		.filter((review) => review.type == 1)
-		.sort((o1, o2) => {
+	const chapterReviews = reviews.filter((review) => review.type == 1);
+
+	chapterReviews.sort((o1, o2) => {
+		if (o1.range === undefined && o2.range === undefined) {
+			return 0;
+		} else if (o1.range === undefined) {
+			return 1;
+		} else if (o2.range === undefined) {
+			return -1;
+		} else {
 			const o1Start = parseInt(o1.range.split('-')[0]);
 			const o2Start = parseInt(o2.range.split('-')[0]);
 			return o1Start - o2Start;
-		});
-
-	chapterReviews.sort((o1, o2) => {
-		const o1Start = parseInt(o1.range.split('-')[0]);
-		const o2Start = parseInt(o2.range.split('-')[0]);
-		return o1Start - o2Start;
+		}
 	});
 
 	const entireReviews = reviews.filter((review) => review.type == 4);
