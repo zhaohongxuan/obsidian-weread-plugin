@@ -110,8 +110,7 @@ export default class SyncNotebooks {
 	}
 
 	private async saveToJounal(journalDate: string, metaDataArr: Metadata[]) {
-		const books = await this.getBookReadInDate(journalDate);
-		const metaDataArrInDate = metaDataArr.filter((meta) => books.contains(meta.bookId));
+		const metaDataArrInDate = metaDataArr.filter((meta) => meta.lastReadDate === journalDate);
 
 		const notebooksInDate = [];
 		for (const meta of metaDataArrInDate) {
@@ -130,17 +129,6 @@ export default class SyncNotebooks {
 			);
 			this.fileManager.saveDailyNotes(dailyNotePath, dailyNoteRefereneces);
 		}
-	}
-
-	private async getBookReadInDate(journalDate: string): Promise<string[]> {
-		const recentBookData: [] = await this.apiManager.getRecentBooks();
-		const recentBooks = parseRecentBooks(recentBookData);
-		const journalBookIds = recentBooks
-			.filter(
-				(book) => window.moment(book.recentTime * 1000).format('YYYY-MM-DD') === journalDate
-			)
-			.map((book) => book.bookId);
-		return journalBookIds;
 	}
 
 	private getDuplicateBooks(metaDatas: Metadata[]): Set<string> {
