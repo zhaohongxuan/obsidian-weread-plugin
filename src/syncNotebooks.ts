@@ -6,8 +6,7 @@ import {
 	parseMetadata,
 	parseChapterHighlights,
 	parseChapterReviews,
-	parseDailyNoteReferences,
-	parseRecentBooks
+	parseDailyNoteReferences
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
