@@ -11,6 +11,7 @@ export type Metadata = {
 	author: string;
 	title: string;
 	url: string;
+	pcUrl?: string;
 	cover: string;
 	bookType: number;
 	publishTime: string;
@@ -35,6 +36,7 @@ export type Highlight = {
 	chapterTitle: string;
 	markText: string;
 	style: number;
+	colorStyle: string;
 	reviewContent?: string;
 	range: string;
 };

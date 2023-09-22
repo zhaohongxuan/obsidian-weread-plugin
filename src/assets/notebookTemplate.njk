@@ -13,13 +13,14 @@ lastReadDate: {{metaData.lastReadDate}}
 > - ISBN： {{metaData.isbn}}
 > - 分类： {{metaData.category}}
 > - 出版社： {{metaData.publisher}}
+> - PC地址：{{metaData.pcUrl}}
 
 # 高亮划线
 {% for chapter in chapterHighlights %}
 ## {{chapter.chapterTitle}}
 {% for highlight in chapter.highlights %}
 {% if highlight.reviewContent %}{% else %}
-- 📌 {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
+- 📌 {{ highlight.markText |trim }}  ^{{highlight.bookmarkId}}
     - ⏱ {{highlight.createTime}}{% endif %} {% endfor %}{% endfor %}
 # 读书笔记
 {% for chapter in bookReview.chapterReviews %}{% if chapter.reviews or chapter.chapterReview %}

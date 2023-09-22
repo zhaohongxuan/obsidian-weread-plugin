@@ -185,6 +185,20 @@ export default class ApiManager {
 		}
 	}
 
+	async getChapters(bookId: string) {
+		try {
+			const url = `${this.baseUrl}/book/chapterInfos?bookIds=${bookId}&synckey=0`;
+			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
+			const resp = await requestUrl(req);
+			return resp.json;
+		} catch (e) {
+			new Notice(
+				'Failed to fetch weread notebook chapters . Please check your Cookies and try again.'
+			);
+			console.error('get book chapters error' + bookId, e);
+		}
+	}
+
 	private updateCookies(respCookie: string) {
 		let refreshCookies: Cookie[];
 		if (Array.isArray(respCookie)) {
