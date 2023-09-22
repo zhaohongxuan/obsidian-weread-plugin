@@ -11,11 +11,14 @@ import type {
 	Review
 } from 'src/models';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
+import * as CryptoJS from 'crypto-js';
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];
 	const cover: string = book['cover'].replace('/s_', '/t7_');
 	const lastReadDate = window.moment(noteBook['sort'] * 1000).format('YYYY-MM-DD');
+	const bookId = book['bookId'];
+	const pcUrl = getPcUrl(bookId);
 	const metaData: Metadata = {
 		bookId: book['bookId'],
 		author: book['author'],
@@ -26,7 +29,8 @@ export const parseMetadata = (noteBook: any): Metadata => {
 		noteCount: noteBook['noteCount'],
 		reviewCount: noteBook['reviewCount'],
 		bookType: book['type'],
-		lastReadDate: lastReadDate
+		lastReadDate: lastReadDate,
+		pcUrl: pcUrl
 	};
 	return metaData;
 };
@@ -65,6 +69,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 			bookmarkId = highlight['range'];
 		}
 		const markText: string = highlight['markText'];
+		const colorStyle: string = highlight['colorStyle'];
 		return {
 			bookmarkId: bookmarkId?.replace(/_/gi, '-'),
 			created: created,
@@ -72,6 +77,7 @@ export const parseHighlights = (highlightData: any, reviewData: any): Highlight[
 			chapterUid: chapterUid,
 			range: highlight['range'],
 			style: highlight['style'],
+			colorStyle: colorStyle,
 			chapterTitle: chapterMap.get(chapterUid),
 			markText: markText?.replace(/\n/gi, ''),
 			reviewContent: reviewContent
@@ -231,4 +237,49 @@ export const parseChapterReviews = (reviewData: any): BookReview => {
 		bookReviews: entireReviews,
 		chapterReviews: chapterReviewResult
 	};
+};
+
+const getFa = (id: string): [string, string[]] => {
+	if (/^\d*$/.test(id)) {
+		const c: string[] = [];
+		for (let a = 0; a < id.length; a += 9) {
+			const b = id.slice(a, Math.min(a + 9, id.length));
+			c.push(parseInt(b, 10).toString(16));
+		}
+		return ['3', c];
+	}
+	let d = '';
+	for (let i = 0; i < id.length; i++) {
+		d += id.charCodeAt(i).toString(16);
+	}
+	return ['4', [d]];
+};
+
+const getPcUrl = (bookId: string): string => {
+	const str = CryptoJS.MD5(bookId).toString(CryptoJS.enc.Hex);
+	const fa = getFa(bookId);
+	let strSub = str.substr(0, 3);
+	strSub += fa[0];
+	strSub += '2' + str.substr(str.length - 2, 2);
+
+	for (let j = 0; j < fa[1].length; j++) {
+		const n = fa[1][j].length.toString(16);
+		if (n.length === 1) {
+			strSub += '0' + n;
+		} else {
+			strSub += n;
+		}
+		strSub += fa[1][j];
+		if (j < fa[1].length - 1) {
+			strSub += 'g';
+		}
+	}
+
+	if (strSub.length < 20) {
+		strSub += str.substr(0, 20 - strSub.length);
+	}
+
+	strSub += CryptoJS.MD5(strSub).toString(CryptoJS.enc.Hex).substr(0, 3);
+	const prefix = 'https://weread.qq.com/web/reader/';
+	return prefix + strSub;
 };
