@@ -72,8 +72,12 @@ export default class SyncNotebooks {
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
+			// skip 公众号
+			if (metaData.bookType === 3) {
+				continue;
+			}
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
-				console.debug(
+				console.info(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
 				skipCount++;

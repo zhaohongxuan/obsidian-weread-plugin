@@ -43,9 +43,12 @@ export const buildFrontMatter = (
 		const endInd = markdownContent.substring(startInd).indexOf('---') - 1;
 		const templateYmlRaw = markdownContent.substring(startInd, startInd + endInd);
 		templateFrontMatter = parseYaml(templateYmlRaw);
+		const freshMarkdownContent = markdownContent.substring(endInd + 4);
+		const freshFrontMatter = { ...existFrontMatter, ...frontMatter, ...templateFrontMatter };
+		const frontMatterStr = stringifyYaml(freshFrontMatter);
+		return '---\n' + frontMatterStr + '---\n' + freshMarkdownContent;
 	}
-	const freshMarkdownContent = markdownContent.substring(markdownContent.lastIndexOf('---') + 4);
-	const freshFrontMatter = { ...existFrontMatter, ...frontMatter, ...templateFrontMatter };
-	const frontMatterStr = stringifyYaml(freshFrontMatter);
-	return '---\n' + frontMatterStr + '---\n' + freshMarkdownContent;
+
+	const frontMatterStr = stringifyYaml(frontMatter);
+	return '---\n' + frontMatterStr + '---\n' + markdownContent;
 };
