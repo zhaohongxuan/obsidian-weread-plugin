@@ -3,6 +3,7 @@ import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import { getCookieString } from './utils/cookiesUtil';
 import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
+import { HighlightResponse, BookReviewResponse } from './models';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -157,7 +158,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getNotebookHighlights(bookId: string) {
+	async getNotebookHighlights(bookId: string): Promise<HighlightResponse> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/book/bookmarklist?bookId=${bookId}`,
@@ -171,7 +172,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getNotebookReviews(bookId: string) {
+	async getNotebookReviews(bookId: string): Promise<BookReviewResponse> {
 		try {
 			const url = `${this.baseUrl}/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };

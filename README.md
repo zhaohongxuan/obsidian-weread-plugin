@@ -65,6 +65,8 @@ Obsidian微信读书插件是一个社区插件，用来同步微信读书中书
 - [x] 设置页面支持设置Template格式
 - [x] 文件名模板
 - [x] 移动端适配
+- [ ] 按照章节Index进行排序
+- [ ] 保留多个章节层级
 - [ ] 导出热门划线 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/42
 - [ ] 设置页面，目录选择优化 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/39
 

@@ -1,5 +1,116 @@
 import { TFile } from 'obsidian';
 
+export interface HighlightResponse {
+	synckey: number;
+	updated: {
+		bookId: string;
+		bookVersion: number;
+		chapterName: string;
+		chapterUid: number;
+		colorStyle: number;
+		contextAbstract: string;
+		markText: string;
+		range: string;
+		style: number;
+		type: number;
+		createTime: number;
+		bookmarkId: string;
+	}[];
+	removed: any[];
+	chapters: {
+		bookId: string;
+		chapterUid: number;
+		chapterIdx: number;
+		title: string;
+	}[];
+	book: {
+		bookId: string;
+		version: number;
+		format: string;
+		soldout: number;
+		bookStatus: number;
+		cover: string;
+		title: string;
+		author: string;
+		coverBoxInfo: {
+			blurhash: string;
+			colors: {
+				key: string;
+				hex: string;
+			}[];
+			dominate_color: {
+				hex: string;
+				hsv: number[];
+			};
+			custom_cover: string;
+			custom_rec_cover: string;
+		};
+	};
+}
+
+export interface BookReviewResponse {
+	synckey: number;
+	totalCount: number;
+	reviews: {
+		reviewId: string;
+		review: {
+			abstract: string;
+			atUserVids: any[];
+			bookId: string;
+			bookVersion: number;
+			chapterName: string;
+			chapterUid: number;
+			content: string;
+			contextAbstract: string;
+			friendship: number;
+			htmlContent: string;
+			isPrivate: number;
+			range: string;
+			createTime: number;
+			title: string;
+			type: number;
+			reviewId: string;
+			userVid: number;
+			topics: any[];
+			isLike: number;
+			isReposted: number;
+			book: {
+				bookId: string;
+				format: string;
+				version: number;
+				soldout: number;
+				bookStatus: number;
+				type: number;
+				cover: string;
+				title: string;
+				author: string;
+				payType: number;
+			};
+			chapterIdx: number;
+			chapterTitle: string;
+			author: {
+				userVid: number;
+				name: string;
+				avatar: string;
+				isFollowing: number;
+				isFollower: number;
+				isHide: number;
+				medalInfo: {
+					id: string;
+					desc: string;
+					title: string;
+					levelIndex: number;
+				};
+			};
+		};
+	}[];
+	removed: any[];
+	atUsers: any[];
+	refUsers: any[];
+	columns: any[];
+	hasMore: number;
+}
+
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlight[];
@@ -33,10 +144,11 @@ export type Highlight = {
 	created: number;
 	createTime: string;
 	chapterUid: number;
+	chapterIdx: number;
 	chapterTitle: string;
 	markText: string;
 	style: number;
-	colorStyle: string;
+	colorStyle: number;
 	reviewContent?: string;
 	range: string;
 };
@@ -68,6 +180,7 @@ export type Review = {
 
 export type ChapterHighlight = {
 	chapterUid: number;
+	chapterIdx: number;
 	chapterTitle: string;
 	chapterReviewCount: number;
 	highlights: Highlight[];

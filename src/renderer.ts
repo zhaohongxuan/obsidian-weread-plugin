@@ -25,7 +25,6 @@ export class Renderer {
 			chapterHighlights,
 			bookReview
 		};
-
 		const template = get(settingsStore).template;
 		const content = nunjucks.renderString(template, context);
 		return content;
