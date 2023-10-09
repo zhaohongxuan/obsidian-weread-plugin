@@ -36,6 +36,7 @@
 		"@types/crypto-js": "^4.1.2",
 		"@types/lodash.pickby": "^4.6.7",
 		"@types/set-cookie-parser": "^2.4.2",
+		"crypto-js": "^4.1.1",
 		"electron": "^19.0.6",
 		"lodash.pickby": "^4.6.0",
 		"node-html-markdown": "^1.2.0",
