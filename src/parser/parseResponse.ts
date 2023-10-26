@@ -65,7 +65,7 @@ export const parseHighlights = (
 			range: highlight.range,
 			style: highlight.style,
 			colorStyle: highlight.colorStyle,
-			chapterTitle: chapterInfo.title,
+			chapterTitle: chapterInfo?.title || '未知章节',
 			markText: highlight.markText?.replace(/\n/gi, ''),
 			reviewContent: reviewContent
 		};
