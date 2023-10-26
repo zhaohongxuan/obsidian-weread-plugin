@@ -61,7 +61,7 @@ export const parseHighlights = (
 			created: highlight.createTime,
 			createTime: window.moment(highlight.createTime * 1000).format('YYYY-MM-DD HH:mm:ss'),
 			chapterUid: highlight.chapterUid,
-			chapterIdx: chapterInfo.chapterIdx || highlight.chapterUid,
+			chapterIdx: chapterInfo?.chapterIdx || highlight.chapterUid,
 			range: highlight.range,
 			style: highlight.style,
 			colorStyle: highlight.colorStyle,
