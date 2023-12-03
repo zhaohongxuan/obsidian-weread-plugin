@@ -1,6 +1,5 @@
 ---
 isbn: {{metaData.isbn}}
-category: {{metaData.category}}
 lastReadDate: {{metaData.lastReadDate}}
 ---
 # 元数据
@@ -17,11 +16,12 @@ lastReadDate: {{metaData.lastReadDate}}
 
 # 高亮划线
 {% for chapter in chapterHighlights %}
-## {{chapter.chapterTitle}}
-{% for highlight in chapter.highlights %}
-{% if highlight.reviewContent %}{% else %}
-- 📌 {{ highlight.markText |trim }}  ^{{highlight.bookmarkId}}
-    - ⏱ {{highlight.createTime}}{% endif %} {% endfor %}{% endfor %}
+{% if chapter.level == 1 %}## {{chapter.chapterTitle}}{% elif chapter.level == 2 %}### {{chapter.chapterTitle}}{% elif chapter.level == 3 %}#### {{chapter.chapterTitle}}{% endif %}
+{% for highlight in chapter.highlights %}{% if highlight.reviewContent %}
+> 📌  {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
+- 💭 {{highlight.reviewContent}} - ⏱ {{highlight.createTime}} {% else %}
+> 📌 {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
+- ⏱ {{highlight.createTime}}{% endif %} {% endfor %}{% endfor %}
 # 读书笔记
 {% for chapter in bookReview.chapterReviews %}{% if chapter.reviews or chapter.chapterReview %}
 ## {{chapter.chapterTitle}}
@@ -30,7 +30,7 @@ lastReadDate: {{metaData.lastReadDate}}
 - {{chapterReview.content}} ^{{chapterReview.reviewId}}
     - ⏱ {{chapterReview.createTime}} {% endfor%}{%endif %}{% if chapter.reviews %}{%for review in chapter.reviews %}
 ### 划线评论
-- 📌 {{review.abstract |trim }}  ^{{review.reviewId}}
+> 📌 {{review.abstract |trim }}  ^{{review.reviewId}}
     - 💭 {{review.content}}
     - ⏱ {{review.createTime}}
 {% endfor %} {%endif %} {% endif %} {% endfor %}

@@ -3,7 +3,7 @@ import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import { getCookieString } from './utils/cookiesUtil';
 import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
-import { HighlightResponse, BookReviewResponse } from './models';
+import { HighlightResponse, BookReviewResponse, ChapterResponse } from './models';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -186,10 +186,20 @@ export default class ApiManager {
 		}
 	}
 
-	async getChapters(bookId: string) {
+	async getChapters(bookId: string): Promise<ChapterResponse> {
 		try {
 			const url = `${this.baseUrl}/book/chapterInfos?bookIds=${bookId}&synckey=0`;
-			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
+			const reqBody = {
+				bookIds: [bookId],
+				synckeys: [0],
+				teenmode: 0
+			};
+			const req: RequestUrlParam = {
+				url: url,
+				method: 'POST',
+				headers: this.getHeaders(),
+				body: JSON.stringify(reqBody)
+			};
 			const resp = await requestUrl(req);
 			return resp.json;
 		} catch (e) {
