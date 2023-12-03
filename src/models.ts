@@ -111,9 +111,26 @@ export interface BookReviewResponse {
 	hasMore: number;
 }
 
+export type ChapterResponse = {
+	data: {
+		bookId: string;
+		chapterUpdateTime: number;
+		updated: Chapter[];
+	}[];
+};
+
+export type Chapter = {
+	chapterUid: number;
+	chapterIdx: number;
+	updateTime: number;
+	title: string;
+	isMPChapter: number;
+	level: number;
+};
+
 export type Notebook = {
 	metaData: Metadata;
-	chapterHighlights: ChapterHighlight[];
+	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
 };
 
@@ -178,17 +195,20 @@ export type Review = {
 	type: number;
 };
 
-export type ChapterHighlight = {
+export type ChapterHighlightReview = {
 	chapterUid: number;
 	chapterIdx: number;
 	chapterTitle: string;
-	chapterReviewCount: number;
-	highlights: Highlight[];
+	level: number;
+	isMPChapter: number;
+	// highlight and review can be empty, just output title
+	highlights?: Highlight[];
+	chapterReviews?: Review[];
 };
 
 export type RenderTemplate = {
 	metaData: Metadata;
-	chapterHighlights: ChapterHighlight[];
+	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
 };
 

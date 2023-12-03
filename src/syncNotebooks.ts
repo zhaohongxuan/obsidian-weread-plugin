@@ -4,9 +4,10 @@ import { Metadata, Notebook, AnnotationFile } from './models';
 import {
 	parseHighlights,
 	parseMetadata,
-	parseChapterHighlights,
+	parseChapterHighlightReview,
 	parseChapterReviews,
-	parseDailyNoteReferences
+	parseDailyNoteReferences,
+	parseReviews
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -56,13 +57,21 @@ export default class SyncNotebooks {
 
 		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
 		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
+		const chapterResp = await this.apiManager.getChapters(metaData.bookId);
+
 		const highlights = parseHighlights(highlightResp, reviewResp);
-		const chapterHighlights = parseChapterHighlights(highlights);
+		const reviews = parseReviews(reviewResp);
+		const chapterHighlightReview = parseChapterHighlightReview(
+			chapterResp,
+			highlights,
+			reviews
+		);
+		console.log('chapter highlight and review :', chapterHighlightReview);
 		const bookReview = parseChapterReviews(reviewResp);
 		return {
 			metaData: metaData,
-			bookReview: bookReview,
-			chapterHighlights: chapterHighlights
+			chapterHighlights: chapterHighlightReview,
+			bookReview: bookReview
 		};
 	}
 

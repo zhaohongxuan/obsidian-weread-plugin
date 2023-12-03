@@ -1,7 +1,8 @@
 import type {
 	BookReview,
 	BookReviewResponse,
-	ChapterHighlight,
+	ChapterHighlightReview,
+	ChapterResponse,
 	ChapterReview,
 	DailyNoteReferenece,
 	Highlight,
@@ -72,37 +73,59 @@ export const parseHighlights = (
 	});
 };
 
-export const parseChapterHighlights = (highlights: Highlight[]): ChapterHighlight[] => {
-	const chapterResult: ChapterHighlight[] = [];
-	for (const highlight of highlights) {
-		const chapterUid = highlight.chapterUid;
-		const chapterTitle = highlight.chapterTitle;
-		const existChapter = chapterResult.find(
-			(chapter) => chapter.chapterUid == highlight.chapterUid
-		);
-		const reviewCount = highlight.reviewContent ? 1 : 0;
-		if (existChapter == null) {
-			const currentHighlight = [highlight];
-			const chapter = {
-				chapterUid: chapterUid,
-				chapterTitle: chapterTitle,
-				chapterReviewCount: reviewCount,
-				highlights: currentHighlight,
-				chapterIdx: highlight.chapterIdx
-			};
-			chapterResult.push(chapter);
-		} else {
-			existChapter.chapterReviewCount += reviewCount;
-			existChapter.highlights.push(highlight);
-		}
+export const parseChapterHighlightReview = (
+	chapterResp: ChapterResponse,
+	highlights: Highlight[],
+	reviews?: Review[]
+): ChapterHighlightReview[] => {
+	const chapterResult: ChapterHighlightReview[] = [];
+
+	if (chapterResp === undefined || chapterResp.data[0] === undefined) {
+		return chapterResult;
 	}
-	chapterResult.forEach((chapter) =>
-		chapter.highlights.sort((o1, o2) => {
-			const o1Start = parseInt(o1.range.split('-')[0]);
-			const o2Start = parseInt(o2.range.split('-')[0]);
-			return o1Start - o2Start;
-		})
-	);
+
+	for (const chapter of chapterResp.data[0].updated) {
+		const chapterUid = chapter.chapterUid;
+		const chapterIdx = chapter.chapterIdx;
+		const chapterTitle = chapter.title;
+
+		// find highlights by chapterUid
+		const chapterHighlights = highlights
+			.filter((highlight) => highlight.chapterUid == chapterUid)
+			.sort((o1, o2) => {
+				const o1Start = parseInt(o1.range.split('-')[0]);
+				const o2Start = parseInt(o2.range.split('-')[0]);
+				return o1Start - o2Start;
+			});
+		let chapterReviews;
+		if (chapterHighlights && reviews) {
+			chapterReviews = reviews
+				.filter((review) => chapterUid == review.chapterUid && review.type == 1)
+				.sort((o1, o2) => {
+					if (o1.range === undefined && o2.range === undefined) {
+						return 0;
+					} else if (o1.range === undefined) {
+						return 1;
+					} else if (o2.range === undefined) {
+						return -1;
+					} else {
+						const o1Start = parseInt(o1.range.split('-')[0]);
+						const o2Start = parseInt(o2.range.split('-')[0]);
+						return o1Start - o2Start;
+					}
+				});
+		}
+		chapterResult.push({
+			chapterUid: chapterUid,
+			chapterIdx: chapterIdx,
+			chapterTitle: chapterTitle,
+			level: chapter.level,
+			isMPChapter: chapter.isMPChapter,
+			chapterReviews: chapterReviews,
+			highlights: chapterHighlights
+		});
+	}
+
 	return chapterResult.sort((o1, o2) => o1.chapterIdx - o2.chapterIdx);
 };
 
