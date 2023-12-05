@@ -7,8 +7,8 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
-import { ShowDebugInfoModal } from './components/ShowDebugInfo';
-
+import { getEncodeCookieString } from './utils/cookiesUtil';
+import { Notice } from 'obsidian';
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
 	private renderer: Renderer;
@@ -239,10 +239,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 			})
 			.addButton((button) => {
 				return button
-					.setButtonText('Show Cookie')
+					.setButtonText('拷贝Cookie')
 					.setCta()
 					.onClick(async () => {
-						new ShowDebugInfoModal(this.app).open();
+						const cookieStr = getEncodeCookieString();
+						navigator.clipboard.writeText(cookieStr).then(
+							function () {
+								new Notice('拷贝Cookie到剪切板成功！');
+							},
+							function (error) {
+								new Notice('拷贝Cookie到剪切板失败！');
+								console.error('拷贝微信读书Cookie失败', error);
+							}
+						);
 					});
 			});
 	}

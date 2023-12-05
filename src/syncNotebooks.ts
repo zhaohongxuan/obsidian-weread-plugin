@@ -66,7 +66,6 @@ export default class SyncNotebooks {
 			highlights,
 			reviews
 		);
-		console.log('chapter highlight and review :', chapterHighlightReview);
 		const bookReview = parseChapterReviews(reviewResp);
 		return {
 			metaData: metaData,
