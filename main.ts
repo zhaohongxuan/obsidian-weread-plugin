@@ -6,6 +6,7 @@ import { settingsStore } from './src/settings';
 import { WereadSettingsTab } from './src/settingTab';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
+	private syncing = false;
 
 	async onload() {
 		console.log('load weread plugin');
@@ -35,26 +36,15 @@ export default class WereadPlugin extends Plugin {
 			}
 		});
 
-		this.addCommand({
-			id: 'sync-weread-notes-to-daily-note',
-			name: 'Sync Weread Notes To Daily Note',
-			callback: () => {
-				const journalDate = window.moment().format('YYYY-MM-DD');
-				new Notice('开始同步微信读书笔记到DailyNotes!' + journalDate);
-				this.syncNotebooks.syncNotesToJounal(journalDate);
-			}
-		});
-
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
 	async startSync(force = false) {
-		console.log('syncing Weread note start');
-		if (force) {
-			new Notice('强制同步微信读书笔记开始!');
-		} else {
-			new Notice('同步微信读书笔记开始!');
+		if (this.syncing) {
+			new Notice('正在同步微信读书笔记，请勿重复点击');
+			return;
 		}
+		this.syncing = true;
 		try {
 			await this.syncNotebooks.syncNotebooks(force, window.moment().format('YYYY-MM-DD'));
 			console.log('syncing Weread note finish');
@@ -65,6 +55,8 @@ export default class WereadPlugin extends Plugin {
 				new Notice('同步微信读书笔记异常,请使用电脑端打开控制台查看详情' + e);
 			}
 			console.error('同步微信读书笔记异常', e);
+		} finally {
+			this.syncing = false;
 		}
 	}
 

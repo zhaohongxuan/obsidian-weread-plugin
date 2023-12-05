@@ -22,20 +22,33 @@ export default class SyncNotebooks {
 	}
 
 	async syncNotebooks(force = false, journalDate: string) {
+		const progressNotice = new Notice('微信读书笔记同步开始!', 60000);
+		const syncStartTime = new Date().getTime();
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
-		const notebooks = [];
+		let syncedNotebooks = 0;
 		for (const meta of filterMetaArr) {
 			const notebook = await this.convertToNotebook(meta);
-			notebooks.push(notebook);
+			await this.saveNotebook(notebook);
+			syncedNotebooks++;
+			if (syncedNotebooks % 10 === 0 || syncedNotebooks === filterMetaArr.length) {
+				const progress = (syncedNotebooks / filterMetaArr.length) * 100;
+				progressNotice.setMessage(
+					`微信读书笔记同步中, 请稍后！正在更新 ${
+						filterMetaArr.length
+					} 本书 ，更新进度 ${progress.toFixed(0)}%`
+				);
+			}
 		}
-
-		for (const note of notebooks) {
-			await this.syncNotebook(note);
-		}
-
+		progressNotice.hide();
 		this.saveToJounal(journalDate, metaDataArr);
-		new Notice(`微信读书笔记同步完成!, 本次更新 ${notebooks.length} 本书`);
+		const syncEndTime = new Date().getTime();
+		const syncTimeInMilliseconds = syncEndTime - syncStartTime;
+		const syncTimeInSeconds = (syncTimeInMilliseconds / 1000).toFixed(2);
+
+		new Notice(
+			`微信读书笔记同步完成!, 总共 ${metaDataArr.length} 本书 ， 本次更新 ${filterMetaArr.length} 本书, 耗时${syncTimeInSeconds} 秒`
+		);
 	}
 
 	public async syncNotesToJounal(journalDate: string) {
@@ -76,7 +89,6 @@ export default class SyncNotebooks {
 
 	private async filterNoteMetas(force = false, metaDataArr: Metadata[]): Promise<Metadata[]> {
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
-		let skipCount = 0;
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
@@ -88,12 +100,10 @@ export default class SyncNotebooks {
 				console.info(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
-				skipCount++;
 				continue;
 			}
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles);
 			if (localNotebookFile && !localNotebookFile.new && !force) {
-				skipCount++;
 				continue;
 			}
 			const isNoteBlacklisted = get(settingsStore).notesBlacklist.includes(metaData.bookId);
@@ -101,7 +111,6 @@ export default class SyncNotebooks {
 				console.info(
 					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId}for blacklist`
 				);
-				skipCount++;
 				continue;
 			}
 			metaData.file = localNotebookFile;
@@ -110,7 +119,6 @@ export default class SyncNotebooks {
 			}
 			filterMetaArr.push(metaData);
 		}
-		new Notice('跳过更新' + skipCount + '本没有更新的书');
 		return filterMetaArr;
 	}
 
@@ -174,7 +182,7 @@ export default class SyncNotebooks {
 		return null;
 	}
 
-	private async syncNotebook(notebook: Notebook): Promise<void> {
+	private async saveNotebook(notebook: Notebook): Promise<void> {
 		try {
 			await this.fileManager.saveNotebook(notebook);
 		} catch (e) {
