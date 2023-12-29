@@ -1,0 +1,21 @@
+---
+isbn: {{metaData.isbn}}
+lastReadDate: {{metaData.lastReadDate}}
+---
+《{{metaData.title}}》
+{{metaData.author}}
+{{metaData.noteCount}}个笔记
+{% if bookReview.bookReviews %}{% for bookReview in bookReview.bookReviews %}
+◆ 点评
+{{bookReview.createTime}}
+{{bookReview.mdContent}}{% endfor%}{% endif %}
+{% for chapter in chapterHighlights %}
+{% if chapter.level == 1 %}## ◆ {{chapter.chapterTitle}}{% elif chapter.level == 2 %}### ◆ {{chapter.chapterTitle}}{% elif chapter.level == 3 %}#### ◆ {{chapter.chapterTitle}}{% endif %}
+{% for highlight in chapter.highlights %}{% if highlight.reviewContent %}
+{{highlight.createTime}} 发表想法
+{{highlight.reviewContent}}
+
+> {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
+ {% else %}
+
+> {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}{% endif %}{% endfor %}{% endfor %}

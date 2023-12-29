@@ -175,13 +175,13 @@ export default class FileManager {
 	private getFileName(metaData: Metadata): string {
 		const fileNameType = get(settingsStore).fileNameType;
 		const baseFileName = sanitizeTitle(metaData.title);
-		if (fileNameType == 'BOOK_NAME-AUTHOR') {
+		if (fileNameType == 'BOOK_NAME_AUTHOR') {
 			if (metaData.duplicate) {
 				return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
 			}
 			return `${baseFileName}-${metaData.author}`;
 		} else {
-			if (metaData.duplicate || fileNameType == 'BOOK_NAME-BOOKID') {
+			if (metaData.duplicate || fileNameType == 'BOOK_NAME_BOOKID') {
 				return `${baseFileName}-${metaData.bookId}`;
 			}
 			return baseFileName;

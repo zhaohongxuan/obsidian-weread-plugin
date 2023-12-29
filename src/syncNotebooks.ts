@@ -22,11 +22,12 @@ export default class SyncNotebooks {
 	}
 
 	async syncNotebooks(force = false, journalDate: string) {
-		const progressNotice = new Notice('微信读书笔记同步开始!', 60000);
+		new Notice('微信读书笔记同步开始!');
 		const syncStartTime = new Date().getTime();
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
 		let syncedNotebooks = 0;
+		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 60000);
 		for (const meta of filterMetaArr) {
 			const notebook = await this.convertToNotebook(meta);
 			await this.saveNotebook(notebook);

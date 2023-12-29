@@ -20,6 +20,7 @@ interface WereadPluginSettings {
 	fileNameType: string;
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
+	showEmptyChapterTitleToggle: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -38,7 +39,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	subFolderType: '-1',
 	fileNameType: 'BOOK_NAME',
 	dailyNotesToggle: false,
-	notesBlacklist: ''
+	notesBlacklist: '',
+	showEmptyChapterTitleToggle: false
 };
 
 const createSettingsStore = () => {
@@ -190,6 +192,14 @@ const createSettingsStore = () => {
 			return state;
 		});
 	};
+
+	const setEmptyChapterTitleToggle = (emtpyChapterTitleToggle: boolean) => {
+		store.update((state) => {
+			state.showEmptyChapterTitleToggle = emtpyChapterTitleToggle;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -206,7 +216,8 @@ const createSettingsStore = () => {
 			setDailyNotesFormat,
 			setInsertAfter,
 			setInsertBefore,
-			setNoteBlacklist
+			setNoteBlacklist,
+			setEmptyChapterTitleToggle
 		}
 	};
 };

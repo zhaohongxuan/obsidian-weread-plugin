@@ -14,6 +14,8 @@ import type {
 } from 'src/models';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import * as CryptoJS from 'crypto-js';
+import { settingsStore } from '../settings';
+import { get } from 'svelte/store';
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];
@@ -67,7 +69,7 @@ export const parseHighlights = (
 			style: highlight.style,
 			colorStyle: highlight.colorStyle,
 			chapterTitle: chapterInfo?.title || '未知章节',
-			markText: highlight.markText?.replace(/\n/gi, ''),
+			markText: highlight.markText,
 			reviewContent: reviewContent
 		};
 	});
@@ -98,7 +100,7 @@ export const parseChapterHighlightReview = (
 				return o1Start - o2Start;
 			});
 		let chapterReviews;
-		if (chapterHighlights && reviews) {
+		if (chapterHighlights && chapterHighlights.length > 0 && reviews) {
 			chapterReviews = reviews
 				.filter((review) => chapterUid == review.chapterUid && review.type == 1)
 				.sort((o1, o2) => {
@@ -115,15 +117,20 @@ export const parseChapterHighlightReview = (
 					}
 				});
 		}
-		chapterResult.push({
-			chapterUid: chapterUid,
-			chapterIdx: chapterIdx,
-			chapterTitle: chapterTitle,
-			level: chapter.level,
-			isMPChapter: chapter.isMPChapter,
-			chapterReviews: chapterReviews,
-			highlights: chapterHighlights
-		});
+
+		const showEmptyChapterTitleToggle = get(settingsStore).showEmptyChapterTitleToggle;
+		// if showEmptyChapterTitle is true, will set chapter even there is no highlight in this chapter
+		if ((chapterHighlights && chapterHighlights.length > 0) || showEmptyChapterTitleToggle) {
+			chapterResult.push({
+				chapterUid: chapterUid,
+				chapterIdx: chapterIdx,
+				chapterTitle: chapterTitle,
+				level: chapter.level,
+				isMPChapter: chapter.isMPChapter,
+				chapterReviews: chapterReviews,
+				highlights: chapterHighlights
+			});
+		}
 	}
 
 	return chapterResult.sort((o1, o2) => o1.chapterIdx - o2.chapterIdx);
