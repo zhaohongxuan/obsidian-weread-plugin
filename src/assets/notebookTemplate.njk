@@ -20,8 +20,9 @@ lastReadDate: {{metaData.lastReadDate}}
 {% for highlight in chapter.highlights %}{% if highlight.reviewContent %}
 > 📌  {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
 - 💭 {{highlight.reviewContent}} - ⏱ {{highlight.createTime}} {% else %}
-> 📌 {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
-- ⏱ {{highlight.createTime}}{% endif %} {% endfor %}{% endfor %}
+> 📌 {{ highlight.markText |trim }} 
+> ⏱ {{highlight.createTime}} ^{{highlight.bookmarkId}}{% endif %}
+{% endfor %}{% endfor %}
 # 读书笔记
 {% for chapter in bookReview.chapterReviews %}{% if chapter.reviews or chapter.chapterReview %}
 ## {{chapter.chapterTitle}}

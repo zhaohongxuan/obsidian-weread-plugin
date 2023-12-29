@@ -9,6 +9,7 @@ import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
 import { getEncodeCookieString } from './utils/cookiesUtil';
 import { Notice } from 'obsidian';
+
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
 	private renderer: Renderer;
@@ -42,6 +43,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.noteCountLimit();
 		this.fileNameType();
 		this.subFolderType();
+		this.showEmptyChapterTitleToggle();
 		this.dailyNotes();
 		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
 		if (dailyNotesToggle) {
@@ -205,8 +207,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.addDropdown((dropdown) => {
 				dropdown.addOptions({
 					BOOK_NAME: '书名',
-					'BOOK_NAME-AUTHOR': '书名-作者名',
-					'BOOK_NAME-ID': '书名-bookId'
+					BOOK_NAME_AUTHOR: '书名-作者名',
+					BOOK_NAME_BOOKID: '书名-bookId'
 				});
 				return dropdown
 					.setValue(get(settingsStore).fileNameType)
@@ -315,5 +317,21 @@ export class WereadSettingsTab extends PluginSettingTab {
 		} else {
 			keys.createEl('kbd', { text: 'CTRL + SHIFT + I' });
 		}
+	}
+
+	private showEmptyChapterTitleToggle(): void {
+		new Setting(this.containerEl)
+			.setName('是否展示空白章节标题？')
+			.setDesc('如果启用，则章节内没有划线也将展示章节标题')
+			.setHeading()
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).showEmptyChapterTitleToggle)
+					.onChange((value) => {
+						console.debug('set empty chapter title toggle to', value);
+						settingsStore.actions.setEmptyChapterTitleToggle(value);
+						this.display();
+					});
+			});
 	}
 }

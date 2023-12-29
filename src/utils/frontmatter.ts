@@ -46,7 +46,7 @@ export const buildFrontMatter = (
 		const freshMarkdownContent = markdownContent.substring(endInd + 4);
 		const freshFrontMatter = { ...existFrontMatter, ...frontMatter, ...templateFrontMatter };
 		const frontMatterStr = stringifyYaml(freshFrontMatter);
-		return '---\n' + frontMatterStr + '---\n' + freshMarkdownContent;
+		return '---\n' + frontMatterStr + freshMarkdownContent;
 	}
 
 	const frontMatterStr = stringifyYaml(frontMatter);
