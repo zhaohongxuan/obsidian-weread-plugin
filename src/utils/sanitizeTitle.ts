@@ -9,6 +9,7 @@ export const sanitizeTitleExcess = (title: string): string => {
 	const santizedTitle = title
 		.replace(/ *\([^)]*\) */g, '')
 		.replace(/:.*/g, '')
+		.replace(/\|/g, '')
 		.trim();
 
 	return sanitize(santizedTitle);

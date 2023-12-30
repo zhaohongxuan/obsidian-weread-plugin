@@ -1,7 +1,6 @@
-export const formatTimeDuration = (duration: number): string => {
-	const hours = Math.floor(duration / 60);
-	const minutes = duration % 60;
-
+export const formatTimeDuration = (durationInSeconds: number): string => {
+	const hours: number = Math.floor(durationInSeconds / 3600);
+	const minutes: number = Math.floor((durationInSeconds % 3600) / 60);
 	const formattedDuration = `${hours}小时${minutes}分钟`;
 
 	return formattedDuration;
