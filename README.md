@@ -68,8 +68,9 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - [x] 设置页面支持设置Template格式
 - [x] 文件名模板
 - [x] 移动端适配
-- [ ] 按照章节Index进行排序
-- [ ] 保留多个章节层级
+- [x] 阅读状态元数据，比如阅读中，阅读完成等等，以及阅读时间的分布等
+- [x] 按照章节Index进行排序
+- [x] 保留多个章节层级
 - [ ] 导出热门划线 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/42
 - [ ] 设置页面，目录选择优化 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/39
 
