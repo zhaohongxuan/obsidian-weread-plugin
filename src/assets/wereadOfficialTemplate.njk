@@ -12,6 +12,7 @@ lastReadDate: {{metaData.lastReadDate}}
 {% for chapter in chapterHighlights %}
 {% if chapter.level == 1 %}## ◆ {{chapter.chapterTitle}}{% elif chapter.level == 2 %}### ◆ {{chapter.chapterTitle}}{% elif chapter.level == 3 %}#### ◆ {{chapter.chapterTitle}}{% endif %}
 {% for highlight in chapter.highlights %}{% if highlight.reviewContent %}
+
 {{highlight.createTime}} 发表想法
 {{highlight.reviewContent}}
 
