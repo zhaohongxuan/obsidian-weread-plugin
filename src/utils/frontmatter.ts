@@ -1,5 +1,6 @@
 import { Notice, parseYaml, stringifyYaml, TFile } from 'obsidian';
 import type { Notebook } from '../models';
+import { formatTimeDuration, formatTimestampToDate } from './dateUtil';
 
 type FrontMatterContent = {
 	doc_type: string;
@@ -8,9 +9,22 @@ type FrontMatterContent = {
 	cover: string;
 	noteCount: number;
 	reviewCount: number;
+	readingStatus?: string;
+	progress?: string;
+	readingTime?: string;
+	totalReadDay?: number;
+	readingDate?: string;
+	finishedDate?: string;
 };
 
 export const frontMatterDocType = 'weread-highlights-reviews';
+
+enum ReadingStatus {
+	'未标记' = 1,
+	'在读' = 2,
+	'读过' = 3,
+	'读完' = 4
+}
 
 export const buildFrontMatter = (
 	markdownContent: string,
@@ -25,6 +39,18 @@ export const buildFrontMatter = (
 		reviewCount: noteBook.metaData.reviewCount,
 		noteCount: noteBook.metaData.noteCount
 	};
+
+	const readInfo = noteBook.metaData.readInfo;
+	if (readInfo) {
+		frontMatter.readingStatus = ReadingStatus[readInfo.markedStatus];
+		frontMatter.progress = readInfo.readingProgress + '%';
+		frontMatter.totalReadDay = readInfo.totalReadDay;
+		frontMatter.readingTime = formatTimeDuration(readInfo.readingTime);
+		frontMatter.readingDate = formatTimestampToDate(readInfo.readingBookDate);
+		if (readInfo.finishedDate) {
+			frontMatter.finishedDate = formatTimestampToDate(readInfo.finishedDate);
+		}
+	}
 	let existFrontMatter = Object();
 	if (existFile) {
 		const cache = app.metadataCache.getFileCache(existFile);

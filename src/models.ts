@@ -119,6 +119,80 @@ export type ChapterResponse = {
 	}[];
 };
 
+export type BookReadInfoResponse = {
+	finishedBookCount: number;
+	finishedBookIndex: number;
+	finishedDate: number;
+	readingBookCount: number;
+	readingBookDate: number;
+	readingProgress: number;
+	readingReviewId: string;
+	canCancelReadstatus: number;
+	markedStatus: number;
+	readingTime: number;
+	totalReadDay: number;
+	recordReadingTime: number;
+	continueReadDays: number;
+	continueBeginDate: number;
+	continueEndDate: number;
+	showSummary: number;
+	showDetail: number;
+	readDetail: {
+		totalReadingTime: number;
+		totalReadDay: number;
+		continueReadDays: number;
+		continueBeginDate: number;
+		continueEndDate: number;
+		beginReadingDate: number;
+		lastReadingDate: number;
+		longestReadingDate: number;
+		avgReadingTime: number;
+		longestReadingTime: number;
+		data: {
+			readDate: number;
+			readTime: number;
+		}[];
+	};
+	bookInfo: {
+		bookId: string;
+		title: string;
+		author: string;
+		translator: string;
+		intro: string;
+		cover: string;
+		version: number;
+		format: string;
+		type: number;
+		soldout: number;
+		bookStatus: number;
+		payType: number;
+		finished: number;
+		maxFreeChapter: number;
+		free: number;
+		mcardDiscount: number;
+		ispub: number;
+		extra_type: number;
+		cpid: number;
+		publishTime: string;
+		lastChapterIdx: number;
+		paperBook: {
+			skuId: string;
+		};
+		centPrice: number;
+		readingCount: number;
+		maxfreeInfo: {
+			maxfreeChapterIdx: number;
+			maxfreeChapterUid: number;
+			maxfreeChapterRatio: number;
+		};
+		blockSaveImg: number;
+		language: string;
+		hideUpdateTime: boolean;
+		isEPUBComics: number;
+		webBookControl: number;
+	};
+};
+
 export type Chapter = {
 	chapterUid: number;
 	chapterIdx: number;
@@ -154,6 +228,19 @@ export type Metadata = {
 	file?: AnnotationFile;
 	totalWords?: number;
 	rating?: string;
+	readInfo?: {
+		markedStatus: number;
+		readingTime: number;
+		totalReadDay: number;
+		continueReadDays: number;
+		readingBookCount: number;
+		readingBookIndex: number;
+		readingBookDate: number;
+		finishedBookCount: number;
+		finishedBookIndex: number;
+		finishedDate: number;
+		readingProgress: number;
+	};
 };
 
 export type Highlight = {

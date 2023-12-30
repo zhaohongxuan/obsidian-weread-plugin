@@ -3,7 +3,12 @@ import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import { getCookieString } from './utils/cookiesUtil';
 import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
-import { HighlightResponse, BookReviewResponse, ChapterResponse } from './models';
+import {
+	HighlightResponse,
+	BookReviewResponse,
+	ChapterResponse,
+	BookReadInfoResponse
+} from './models';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
 
@@ -207,6 +212,19 @@ export default class ApiManager {
 				'Failed to fetch weread notebook chapters . Please check your Cookies and try again.'
 			);
 			console.error('get book chapters error' + bookId, e);
+		}
+	}
+	async getBookReadInfo(bookId: string): Promise<BookReadInfoResponse> {
+		try {
+			const url = `${this.baseUrl}/book/readinfo?bookId=${bookId}&readingDetail=1&readingBookIndex=1&finishedDate=1`;
+			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
+			const resp = await requestUrl(req);
+			return resp.json;
+		} catch (e) {
+			new Notice(
+				'Failed to fetch weread notebook read info . Please check your Cookies and try again.'
+			);
+			console.error('get book read info error' + bookId, e);
 		}
 	}
 

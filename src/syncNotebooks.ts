@@ -60,14 +60,20 @@ export default class SyncNotebooks {
 	private async convertToNotebook(metaData: Metadata): Promise<Notebook> {
 		const bookDetail = await this.apiManager.getBook(metaData.bookId);
 		if (bookDetail) {
-			metaData['category'] = bookDetail['category'];
-			metaData['publisher'] = bookDetail['publisher'];
-			metaData['isbn'] = bookDetail['isbn'];
-			metaData['intro'] = bookDetail['intro'];
-			metaData['totalWords'] = bookDetail['totalWords'];
+			metaData.category = bookDetail['category'];
+			metaData.publisher = bookDetail['publisher'];
+			metaData.isbn = bookDetail['isbn'];
+			metaData.intro = bookDetail['intro'];
+			metaData.totalWords = bookDetail['totalWords'];
 			const newRating = parseInt(bookDetail['newRating']);
-			metaData['rating'] = `${newRating / 10}%`;
+			metaData.rating = `${newRating / 10}%`;
 		}
+
+		const readInfo = await this.apiManager.getBookReadInfo(metaData.bookId);
+		if (readInfo) {
+			metaData.readInfo = Object.assign({}, readInfo);
+		}
+		console.log('meta read info', readInfo);
 
 		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
 		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
