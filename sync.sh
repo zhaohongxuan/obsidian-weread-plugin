@@ -1,2 +1,2 @@
 #!/bin/sh
-rsync -av --delete --include={"main.js",'manifest.json'} --exclude='*' ./dist/ ~/Library/Mobile\ Documents/iCloud~md~obsidian/Documents/xuan/.obsidian/plugins/obsidian-weread-plugin
+rsync -av --delete --include={"main.js","style.css", "manifest.json"} --exclude='*' ./dist/ ~/Library/Mobile\ Documents/iCloud~md~obsidian/Documents/xuan/.obsidian/plugins/obsidian-weread-plugin
