@@ -5,6 +5,7 @@ import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
+
 import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
 import { getEncodeCookieString } from './utils/cookiesUtil';
@@ -13,6 +14,7 @@ import { Notice } from 'obsidian';
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
 	private renderer: Renderer;
+
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;

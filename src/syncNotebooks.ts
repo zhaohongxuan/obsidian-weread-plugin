@@ -103,7 +103,7 @@ export default class SyncNotebooks {
 			if (metaData.bookType === 3) {
 				continue;
 			}
-			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
+			if (metaData.noteCount < +get(settingsStore).noteCountLimit && !force) {
 				console.info(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
@@ -116,7 +116,7 @@ export default class SyncNotebooks {
 			const isNoteBlacklisted = get(settingsStore).notesBlacklist.includes(metaData.bookId);
 			if (isNoteBlacklisted) {
 				console.info(
-					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId}for blacklist`
+					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for blacklist`
 				);
 				continue;
 			}
