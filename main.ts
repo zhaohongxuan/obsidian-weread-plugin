@@ -1,4 +1,10 @@
-import { Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
+import {
+	MarkdownView,
+	Notice,
+	Platform,
+	Plugin,
+	WorkspaceLeaf
+} from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
@@ -47,6 +53,41 @@ export default class WereadPlugin extends Plugin {
 				this.activateReadingView();
 			}
 		});
+
+		this.registerEvent(
+			this.app.workspace.on('editor-menu', (menu, editor, view) => {
+				const noteFile = fileManager.getWereadNoteAnnotationFile(view.file);
+				if (noteFile == null) {
+					return;
+				}
+
+				menu.addSeparator();
+				menu.addItem((item) =>
+					item
+						.setIcon('refresh-ccw')
+						.setTitle('Sync current weread note')
+						.onClick(() => {
+							this.syncNotebooks.syncNotebook(noteFile);
+						})
+				);
+			})
+		);
+
+		this.registerEvent(
+			this.app.workspace.on('editor-change', (editor, view) => {
+				const noteFile = fileManager.getWereadNoteAnnotationFile(view.file);
+				if (noteFile == null) {
+					return;
+				}
+
+				view.addAction('refresh-ccw', 'refresh weread notes', () => {
+					this.syncNotebooks.syncNotebook(noteFile);
+				});
+			})
+		);
+
+		const item = this.addStatusBarItem();
+		item.createEl('span', { text: 'Sync Current Notes' });
 
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}

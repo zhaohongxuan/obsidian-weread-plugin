@@ -21,6 +21,18 @@ export default class SyncNotebooks {
 		this.apiManager = apiManeger;
 	}
 
+	async syncNotebook(noteFile: AnnotationFile) {
+		const metaDataArr: Metadata[] = await this.getALlMetadata();
+		const currentBookMeta = metaDataArr.find((metaData) => metaData.bookId === noteFile.bookId);
+		currentBookMeta.file = noteFile;
+		if (currentBookMeta) {
+			const notebook = await this.convertToNotebook(currentBookMeta);
+			await this.saveNotebook(notebook);
+			new Notice(`当前笔记 《${currentBookMeta.title}》 同步成功!`);
+		} else {
+			new Notice(`当前笔记元数据缺少，同步失败!`);
+		}
+	}
 	async syncNotebooks(force = false, journalDate: string) {
 		new Notice('微信读书笔记同步开始!');
 		const syncStartTime = new Date().getTime();
@@ -60,20 +72,18 @@ export default class SyncNotebooks {
 	private async convertToNotebook(metaData: Metadata): Promise<Notebook> {
 		const bookDetail = await this.apiManager.getBook(metaData.bookId);
 		if (bookDetail) {
-			metaData.category = bookDetail['category'];
-			metaData.publisher = bookDetail['publisher'];
-			metaData.isbn = bookDetail['isbn'];
-			metaData.intro = bookDetail['intro'];
-			metaData.totalWords = bookDetail['totalWords'];
-			const newRating = parseInt(bookDetail['newRating']);
-			metaData.rating = `${newRating / 10}%`;
+			metaData.category = bookDetail.category;
+			metaData.publisher = bookDetail.publisher;
+			metaData.isbn = bookDetail.isbn;
+			metaData.intro = bookDetail.intro;
+			metaData.totalWords = bookDetail.totalWords;
+			metaData.rating = `${bookDetail.newRating / 10}%`;
 		}
 
 		const readInfo = await this.apiManager.getBookReadInfo(metaData.bookId);
 		if (readInfo) {
 			metaData.readInfo = Object.assign({}, readInfo);
 		}
-		console.log('meta read info', readInfo);
 
 		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
 		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);

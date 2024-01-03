@@ -140,6 +140,26 @@ export default class FileManager {
 		}
 	}
 
+	public getWereadNoteAnnotationFile = (file: TFile): AnnotationFile | null => {
+		const cache = this.metadataCache.getFileCache(file);
+		const frontmatter = cache?.frontmatter;
+
+		if (
+			frontmatter?.['doc_type'] === frontMatterDocType &&
+			frontmatter?.['bookId'] !== undefined
+		) {
+			return {
+				file,
+				bookId: frontmatter['bookId'],
+				reviewCount: frontmatter['reviewCount'],
+				noteCount: frontmatter['noteCount'],
+				new: true
+			};
+		}
+
+		return null;
+	};
+
 	public async getNotebookFiles(): Promise<AnnotationFile[]> {
 		const files = this.vault.getMarkdownFiles();
 		return files

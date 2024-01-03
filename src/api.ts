@@ -7,7 +7,8 @@ import {
 	HighlightResponse,
 	BookReviewResponse,
 	ChapterResponse,
-	BookReadInfoResponse
+	BookReadInfoResponse,
+	BookDetailResponse
 } from './models';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://i.weread.qq.com';
@@ -149,7 +150,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getBook(bookId: string) {
+	async getBook(bookId: string): Promise<BookDetailResponse> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/book/info?bookId=${bookId}`,
