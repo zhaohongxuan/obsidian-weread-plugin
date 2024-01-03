@@ -73,22 +73,6 @@ export default class WereadPlugin extends Plugin {
 			})
 		);
 
-		this.registerEvent(
-			this.app.workspace.on('editor-change', (editor, view) => {
-				const noteFile = fileManager.getWereadNoteAnnotationFile(view.file);
-				if (noteFile == null) {
-					return;
-				}
-
-				view.addAction('refresh-ccw', 'refresh weread notes', () => {
-					this.syncNotebooks.syncNotebook(noteFile);
-				});
-			})
-		);
-
-		const item = this.addStatusBarItem();
-		item.createEl('span', { text: 'Sync Current Notes' });
-
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
 	}
 
