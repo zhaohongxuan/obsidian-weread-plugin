@@ -39,21 +39,25 @@ export default class SyncNotebooks {
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
 		let syncedNotebooks = 0;
-		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 60000);
-		for (const meta of filterMetaArr) {
-			const notebook = await this.convertToNotebook(meta);
-			await this.saveNotebook(notebook);
-			syncedNotebooks++;
-			if (syncedNotebooks % 10 === 0 || syncedNotebooks === filterMetaArr.length) {
-				const progress = (syncedNotebooks / filterMetaArr.length) * 100;
-				progressNotice.setMessage(
-					`微信读书笔记同步中, 请稍后！正在更新 ${
-						filterMetaArr.length
-					} 本书 ，更新进度 ${progress.toFixed(0)}%`
-				);
+		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 300000);
+
+		try {
+			for (const meta of filterMetaArr) {
+				const notebook = await this.convertToNotebook(meta);
+				await this.saveNotebook(notebook);
+				syncedNotebooks++;
+				if (syncedNotebooks % 10 === 0 || syncedNotebooks === filterMetaArr.length) {
+					const progress = (syncedNotebooks / filterMetaArr.length) * 100;
+					progressNotice.setMessage(
+						`微信读书笔记同步中, 请稍后！正在更新 ${
+							filterMetaArr.length
+						} 本书 ，更新进度 ${progress.toFixed(0)}%`
+					);
+				}
 			}
+		} finally {
+			progressNotice.hide();
 		}
-		progressNotice.hide();
 		this.saveToJounal(journalDate, metaDataArr);
 		const syncEndTime = new Date().getTime();
 		const syncTimeInMilliseconds = syncEndTime - syncStartTime;
@@ -113,14 +117,14 @@ export default class SyncNotebooks {
 			if (metaData.bookType === 3) {
 				continue;
 			}
-			if (metaData.noteCount < +get(settingsStore).noteCountLimit && !force) {
+			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
 				console.info(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
 				continue;
 			}
-			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles);
-			if (localNotebookFile && !localNotebookFile.new && !force) {
+			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
+			if (localNotebookFile && !localNotebookFile.new) {
 				continue;
 			}
 			const isNoteBlacklisted = get(settingsStore).notesBlacklist.includes(metaData.bookId);
@@ -182,13 +186,15 @@ export default class SyncNotebooks {
 
 	async getLocalNotebookFile(
 		notebookMeta: Metadata,
-		localFiles: AnnotationFile[]
+		localFiles: AnnotationFile[],
+		force = false
 	): Promise<AnnotationFile> {
 		const localFile = localFiles.find((file) => file.bookId === notebookMeta.bookId) || null;
 		if (localFile) {
 			if (
 				localFile.noteCount == notebookMeta.noteCount &&
-				localFile.reviewCount == notebookMeta.reviewCount
+				localFile.reviewCount == notebookMeta.reviewCount &&
+				!force
 			) {
 				localFile.new = false;
 			} else {

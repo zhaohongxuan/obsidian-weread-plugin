@@ -153,7 +153,7 @@ export default class FileManager {
 				bookId: frontmatter['bookId'],
 				reviewCount: frontmatter['reviewCount'],
 				noteCount: frontmatter['noteCount'],
-				new: true
+				new: false
 			};
 		}
 
@@ -174,7 +174,7 @@ export default class FileManager {
 					bookId: frontmatter['bookId'],
 					reviewCount: frontmatter['reviewCount'],
 					noteCount: frontmatter['noteCount'],
-					new: false
+					new: true
 				})
 			);
 	}
