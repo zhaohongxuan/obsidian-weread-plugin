@@ -1,10 +1,4 @@
-import {
-	MarkdownView,
-	Notice,
-	Platform,
-	Plugin,
-	WorkspaceLeaf
-} from 'obsidian';
+import { Menu, Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
@@ -24,8 +18,32 @@ export default class WereadPlugin extends Plugin {
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
-		this.addRibbonIcon('book-open', 'Weread', () => {
+		const ribbonEl = this.addRibbonIcon('book-open', '同步微信读书笔记', () => {
 			this.startSync();
+		});
+
+		ribbonEl.addEventListener('contextmenu', (event: MouseEvent) => {
+			event.preventDefault();
+			const menu = new Menu();
+			menu.addItem((item) =>
+				item
+					.setTitle('同步微信读书笔记')
+					.setIcon('refresh-ccw')
+					.onClick(() => {
+						this.startSync();
+					})
+			);
+
+			menu.addItem((item) =>
+				item
+					.setTitle('强制同步微信读书笔记')
+					.setIcon('refresh-ccw')
+					.onClick(() => {
+						this.startSync(true);
+					})
+			);
+
+			menu.showAtMouseEvent(event);
 		});
 
 		this.addCommand({
@@ -38,7 +56,7 @@ export default class WereadPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'Force-sync-weread-notes-command',
-			name: '同步微信读书笔记（强制刷新）',
+			name: '强制同步微信读书笔记',
 			callback: () => {
 				this.startSync(true);
 			}
@@ -65,7 +83,7 @@ export default class WereadPlugin extends Plugin {
 				menu.addItem((item) =>
 					item
 						.setIcon('refresh-ccw')
-						.setTitle('Sync current weread note')
+						.setTitle('同步当前读书笔记')
 						.onClick(() => {
 							this.syncNotebooks.syncNotebook(noteFile);
 						})
