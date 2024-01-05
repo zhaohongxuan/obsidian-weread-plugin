@@ -43,6 +43,24 @@ export default class WereadPlugin extends Plugin {
 					})
 			);
 
+			menu.addItem((item) =>
+				item
+					.setTitle('在新标签页打开微信读书')
+					.setIcon('book-open')
+					.onClick(() => {
+						this.activateReadingView('TAB');
+					})
+			);
+
+			menu.addItem((item) =>
+				item
+					.setTitle('在窗口打开微信读书')
+					.setIcon('book-open')
+					.onClick(() => {
+						this.activateReadingView('WINDOW');
+					})
+			);
+
 			menu.showAtMouseEvent(event);
 		});
 
@@ -66,9 +84,17 @@ export default class WereadPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'open-weread-reading-view',
-			name: '打开网页版微信读书',
+			name: '在新标签页打开微信读书',
 			callback: () => {
-				this.activateReadingView();
+				this.activateReadingView('TAB');
+			}
+		});
+
+		this.addCommand({
+			id: 'open-weread-reading-view',
+			name: '在新窗口打开微信读书',
+			callback: () => {
+				this.activateReadingView('WINDOW');
 			}
 		});
 
@@ -115,7 +141,7 @@ export default class WereadPlugin extends Plugin {
 		}
 	}
 
-	async activateReadingView() {
+	async activateReadingView(type: string) {
 		const { workspace } = this.app;
 
 		let leaf: WorkspaceLeaf | null = null;
@@ -125,7 +151,11 @@ export default class WereadPlugin extends Plugin {
 			// A leaf with our view already exists, use that
 			leaf = leaves[0];
 		} else {
-			leaf = workspace.getLeaf('split', 'vertical');
+			if (type === 'TAB') {
+				leaf = workspace.getLeaf('split', 'vertical');
+			} else if (type === 'WINDOW') {
+				leaf = workspace.openPopoutLeaf();
+			}
 			await leaf.setViewState({ type: WEREAD_BROWSER_VIEW_ID, active: true });
 		}
 
