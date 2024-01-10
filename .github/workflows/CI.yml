@@ -27,3 +27,8 @@ jobs:
         run: |
           npm install
           npm run build
+
+      - name: Lint
+        id: lint
+        run: |
+          npm run lint
