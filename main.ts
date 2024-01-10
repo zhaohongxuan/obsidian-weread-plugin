@@ -24,6 +24,15 @@ export default class WereadPlugin extends Plugin {
 
 		ribbonEl.addEventListener('contextmenu', (event: MouseEvent) => {
 			event.preventDefault();
+			event.stopPropagation(); // 阻止事件传播
+
+			const preventDefaultMouseDown = (mouseDownEvent: MouseEvent) => {
+				mouseDownEvent.preventDefault();
+			};
+
+			// 额外阻止mousedown事件的默认行为
+			window.addEventListener('mousedown', preventDefaultMouseDown);
+
 			const menu = new Menu();
 			menu.addItem((item) =>
 				item
@@ -62,6 +71,9 @@ export default class WereadPlugin extends Plugin {
 			);
 
 			menu.showAtMouseEvent(event);
+			menu.onHide(() => {
+				window.removeEventListener('mousedown', preventDefaultMouseDown);
+			});
 		});
 
 		this.addCommand({

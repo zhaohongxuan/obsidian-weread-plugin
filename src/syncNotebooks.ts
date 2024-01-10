@@ -24,6 +24,7 @@ export default class SyncNotebooks {
 	async syncNotebook(noteFile: AnnotationFile) {
 		const metaDataArr: Metadata[] = await this.getALlMetadata();
 		const currentBookMeta = metaDataArr.find((metaData) => metaData.bookId === noteFile.bookId);
+		noteFile.new = true;
 		currentBookMeta.file = noteFile;
 		if (currentBookMeta) {
 			const notebook = await this.convertToNotebook(currentBookMeta);
