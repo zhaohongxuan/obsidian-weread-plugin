@@ -18,8 +18,10 @@ export default class WereadPlugin extends Plugin {
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
-		const ribbonEl = this.addRibbonIcon('book-open', '同步微信读书笔记', () => {
-			this.startSync();
+		const ribbonEl = this.addRibbonIcon('book-open', '同步微信读书笔记', (event) => {
+			if (event.button === 0) {
+				this.startSync();
+			}
 		});
 
 		ribbonEl.addEventListener('contextmenu', (event: MouseEvent) => {
@@ -46,7 +48,7 @@ export default class WereadPlugin extends Plugin {
 			menu.addItem((item) =>
 				item
 					.setTitle('强制同步微信读书笔记')
-					.setIcon('refresh-ccw')
+					.setIcon('refresh-ccw-dot')
 					.onClick(() => {
 						this.startSync(true);
 					})
@@ -55,7 +57,7 @@ export default class WereadPlugin extends Plugin {
 			menu.addItem((item) =>
 				item
 					.setTitle('在新标签页打开微信读书')
-					.setIcon('book-open')
+					.setIcon('book-open-text')
 					.onClick(() => {
 						this.activateReadingView('TAB');
 					})
@@ -64,7 +66,7 @@ export default class WereadPlugin extends Plugin {
 			menu.addItem((item) =>
 				item
 					.setTitle('在窗口打开微信读书')
-					.setIcon('book-open')
+					.setIcon('app-window')
 					.onClick(() => {
 						this.activateReadingView('WINDOW');
 					})
