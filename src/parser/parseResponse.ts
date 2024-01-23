@@ -23,9 +23,10 @@ export const parseMetadata = (noteBook: any): Metadata => {
 	const lastReadDate = window.moment(noteBook['sort'] * 1000).format('YYYY-MM-DD');
 	const bookId = book['bookId'];
 	const pcUrl = getPcUrl(bookId);
+	const author = book['author'].replace(/\[(.*?)\]/g, "【$1】");
 	const metaData: Metadata = {
 		bookId: book['bookId'],
-		author: book['author'],
+		author: author,
 		title: book['title'],
 		url: book['url'],
 		cover: cover,
