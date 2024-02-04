@@ -28,13 +28,13 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - 同步热门划线到笔记中（TBD）
 
 ## 安装方法
-插件市场直接搜索`weread`，找到`Weread Plugin`点击`install`安装，安装完成后点击`Enable`使插件启用。
-<img width="1872" alt="image" src="https://user-images.githubusercontent.com/8613196/177021391-60000ee5-a2ef-4391-98d6-875e63de8180.png">
+插件市场直接搜索`weread`，找到`Weread Plugin`点击`install`安装，安装完成后点击`Enable`使插件启用，也可以直接在[release](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)页面手动下载。
 ## 设置
 1. 打开Obsidian点击`设置`进入设置界面，找到`Obsidian Weread Plugin`进入到插件设置页面
 2. 点击右侧`登录`按钮，在弹出的登录页面扫码登录，登录完成后，会显示个人昵称
 3. 注销登录可以清除Obsidian插件的Cookie信息，注销方法，和网页版微信读书一样，右上角点击头像，点击退出登录
-4. 设置笔记保存位置，笔记最小划线数量，笔记文件夹分类 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220522221635.png)
+4. 设置笔记保存位置，笔记最小划线数量，笔记文件夹分类 <img width="1175" alt="image" src="https://github.com/zhaohongxuan/obsidian-weread-plugin/assets/8613196/9eb6b00e-425c-430a-a305-c9ae681e022b">
+
 
 
 ## 使用
@@ -79,6 +79,7 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - [x] 阅读状态元数据，比如阅读中，阅读完成等等，以及阅读时间的分布等
 - [x] 按照章节Index进行排序
 - [x] 保留多个章节层级
+- [ ] 模板预览功能
 - [ ] 导出热门划线 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/42
 - [ ] 设置页面，目录选择优化 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/39
 
