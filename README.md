@@ -38,20 +38,28 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 
 
 ## 使用
+
 ⚠️ 本插件是覆盖式更新，请不要在同步的文件里修改内容，写`永久笔记`（为什么写永久笔记参考[《卡片笔记写作法》](https://book.douban.com/subject/35503571/)）的时候可以使用[Block引用](https://help.obsidian.md/How+to/Link+to+blocks) 的方式，在外部引用进行批注。
 
-### 基础使用
+<details>
+	
+<summary>基础使用</summary>
+
 1. 点击左侧Ribbon上的微信读书按钮，或者command+P(windows ctrl+P)调出Command Pattle 输入Weread 找到`Sync Weread command`即可同步。
 ![sync|50](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220522222015.png)
 2. 默认模板效果(theme:minimal) ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220522221449.png)
 使用dataview+minimal cards的显示效果，[参考这里](https://github.com/zhaohongxuan/obsidian-weread-plugin/wiki/%E4%BD%BF%E7%94%A8Dataview%E8%BF%9B%E8%A1%8C%E4%B9%A6%E7%B1%8D%E7%AE%A1%E7%90%86)：
 ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220529135016.png)
+</details>
 
-### 同步笔记到Daily Notes
+<details>
+<summary>同步笔记到Daily Notes</summary>
+	
 1. 在设置中打开同步到Daily Notes的开关，然后分别设置Daily Notes的目录以及文件格式
 2. 如果Daily Note是Periodic Notes管理的，可以改成Periodic Notes的格式，比如我使用的格式`YYYY/[W]ww/YYYY-MM-DD`，就会按照 年/周/日的维度在文件夹中寻找Daily Notes.
-3. 设置在Daily Notes的特定的区间插入，可以修改默认值为你想要的markdown格式的内容，比如在`某两个标题`之间插入，注意📢，区间内的内容是会被覆盖的，不要在区间内修改文本。
+3. 设置在Daily Notes的特定的区间插入，可以修改默认值为你想要的markdown格式的内容，比如在`某两个标题`之间插入，注意📢，区间内的内容是会被覆盖的，不要在区间内修改文本。	
 ![](https://user-images.githubusercontent.com/8613196/179385400-d556527f-8d73-4ca7-b348-62810df96fe2.png)
+</details>
 
 ## 已知问题
 - 长期不使用本插件Cookie可能会失效，需要重新登录。
@@ -78,10 +86,9 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 ## Weread API
 [Weread API](./docs/weread-api.md)
 
-## Star History
+## 赞赏
 
-[![Star History Chart](https://api.star-history.com/svg?repos=zhaohongxuan/obsidian-weread-plugin&type=Date)](https://star-history.com/#zhaohongxuan/obsidian-weread-plugin&Date)
-
+<img src=https://github.com/zhaohongxuan/obsidian-weread-plugin/assets/8613196/661a1d1b-6f45-493b-adb5-6f53fbf2d499 width=30% />
 
 ## 免责声明
 本程序没有爬取任何书籍内容，只提供登录用户的图书以及笔记信息，没有侵犯书籍作者版权和微信读书官方利益。
