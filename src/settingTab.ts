@@ -262,7 +262,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private trimBlocks(): void {
 		new Setting(this.containerEl)
 			.setName('是否去除模板中空白字符和换行')
-			.setDesc('注意：更改此选项可能会让笔记内错错乱！！需要重启插件才能生效。默认不去除换行，如果启用此项，模板中的代码块前后的空白字符/换行将会被删除，模板看起来结构更清晰')
+			.setDesc('⚠️:：更改此选项需要同时修改模板代码且重启插件才能生效！！默认不去除换行，如果启用此项，模板中的代码块前后的空白字符/换行将会被删除，模板看起来结构更清晰')
 			.setHeading()
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).trimBlocks).onChange((value) => {
