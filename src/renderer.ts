@@ -2,9 +2,12 @@ import * as nunjucks from 'nunjucks';
 import type { Notebook, RenderTemplate } from './models';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
+import { ConfigureOptions } from 'nunjucks';
+
 export class Renderer {
-	constructor() {
-		nunjucks.configure({ autoescape: false });
+
+	constructor(renderOpts: ConfigureOptions) {
+		nunjucks.configure(renderOpts);
 	}
 
 	validate(template: string): boolean {

@@ -7,18 +7,16 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 
 import pickBy from 'lodash.pickby';
-import { Renderer } from './renderer';
 import { getEncodeCookieString } from './utils/cookiesUtil';
 import { Notice } from 'obsidian';
 
 export class WereadSettingsTab extends PluginSettingTab {
+
 	private plugin: WereadPlugin;
-	private renderer: Renderer;
 
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
-		this.renderer = new Renderer();
 	}
 
 	display() {
@@ -53,6 +51,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.dailyNoteFormat();
 			this.insertAfter();
 		}
+		this.trimBlocks();
 		this.template();
 		if (Platform.isDesktopApp) {
 			this.showDebugHelp();
@@ -248,10 +247,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onClick(async () => {
 						const cookieStr = getEncodeCookieString();
 						navigator.clipboard.writeText(cookieStr).then(
-							function () {
+							function() {
 								new Notice('拷贝Cookie到剪切板成功！');
 							},
-							function (error) {
+							function(error) {
 								new Notice('拷贝Cookie到剪切板失败！');
 								console.error('拷贝微信读书Cookie失败', error);
 							}
@@ -260,6 +259,18 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 	}
 
+	private trimBlocks(): void {
+		new Setting(this.containerEl)
+			.setName('是否去除模板中空白字符和换行')
+			.setDesc('注意：更改此选项可能会让笔记内错错乱！！需要重启插件才能生效。默认不去除换行，如果启用此项，模板中的代码块前后的空白字符/换行将会被删除，模板看起来结构更清晰')
+			.setHeading()
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).trimBlocks).onChange((value) => {
+					settingsStore.actions.setTrimBlocks(value);
+					this.display();
+				});
+			});
+	}
 	private template(): void {
 		const descFragment = document.createRange().createContextualFragment(templateInstructions);
 
@@ -271,7 +282,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 				text.inputEl.style.height = '540px';
 				text.inputEl.style.fontSize = '0.8em';
 				text.setValue(get(settingsStore).template).onChange(async (value) => {
-					const isValid = this.renderer.validate(value);
+					const isValid = this.plugin.validateTemplate(value)
 
 					if (isValid) {
 						settingsStore.actions.setTemplate(value);

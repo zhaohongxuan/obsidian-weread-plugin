@@ -12,10 +12,10 @@ export default class FileManager {
 	private metadataCache: MetadataCache;
 	private renderer: Renderer;
 
-	constructor(vault: Vault, metadataCache: MetadataCache) {
+	constructor(vault: Vault, metadataCache: MetadataCache, renderer: Renderer) {
 		this.vault = vault;
 		this.metadataCache = metadataCache;
-		this.renderer = new Renderer();
+		this.renderer = renderer;
 	}
 
 	public async saveDailyNotes(dailyNotePath: string, dailyNoteRefs: DailyNoteReferenece[]) {
@@ -41,9 +41,8 @@ export default class FileManager {
 					.concat(dailyNoteRef.metaData.title)
 					.concat('\n');
 				const blockList = dailyNoteRef.refBlocks.map((refBlock) => {
-					return `![[${this.getFileName(dailyNoteRef.metaData)}#^${
-						refBlock.refBlockId
-					}]]`;
+					return `![[${this.getFileName(dailyNoteRef.metaData)}#^${refBlock.refBlockId
+						}]]`;
 				});
 				const bodyContent = blockList.join('\n');
 				const finalContent = headContent + bodyContent;

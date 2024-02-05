@@ -21,6 +21,7 @@ interface WereadPluginSettings {
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
 	showEmptyChapterTitleToggle: boolean;
+	trimBlocks: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -40,7 +41,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	fileNameType: 'BOOK_NAME',
 	dailyNotesToggle: false,
 	notesBlacklist: '',
-	showEmptyChapterTitleToggle: false
+	showEmptyChapterTitleToggle: false,
+	trimBlocks: false
 };
 
 const createSettingsStore = () => {
@@ -51,7 +53,6 @@ const createSettingsStore = () => {
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
 		const data = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
 		const settings: WereadPluginSettings = { ...data };
-		console.log('--------init cookie------', settings.cookies);
 		if (settings.cookies.length > 1) {
 			setUser(settings.cookies);
 		}
@@ -61,6 +62,7 @@ const createSettingsStore = () => {
 			settings.userVid = '';
 			settings.isCookieValid = false;
 		}
+		console.log("initialise weread plugin settings,", settings)
 		store.set(settings);
 		_plugin = plugin;
 	};
@@ -200,6 +202,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setTrimBlocks = (trimBlocks: boolean) => {
+		store.update((state) => {
+			state.trimBlocks = trimBlocks;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -217,7 +226,8 @@ const createSettingsStore = () => {
 			setInsertAfter,
 			setInsertBefore,
 			setNoteBlacklist,
-			setEmptyChapterTitleToggle
+			setEmptyChapterTitleToggle,
+			setTrimBlocks
 		}
 	};
 };

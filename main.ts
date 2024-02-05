@@ -6,15 +6,21 @@ import { settingsStore } from './src/settings';
 import { WereadSettingsTab } from './src/settingTab';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
 import './style.css';
+import { Renderer } from './src/renderer';
+import { get } from 'svelte/store';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private syncing = false;
+	private renderer: Renderer;
 
 	async onload() {
 		console.log('load weread plugin');
-		settingsStore.initialise(this);
+		await settingsStore.initialise(this);
 
-		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
+		const trimBlocks = get(settingsStore).trimBlocks;
+		console.log("trim", trimBlocks);
+		this.renderer = new Renderer({ autoescape: false, trimBlocks: trimBlocks, lstripBlocks: trimBlocks });
+		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.renderer);
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
@@ -153,6 +159,10 @@ export default class WereadPlugin extends Plugin {
 		} finally {
 			this.syncing = false;
 		}
+	}
+
+	validateTemplate(tempalte: string): boolean {
+		return this.renderer.validate(tempalte);
 	}
 
 	async activateReadingView(type: string) {
