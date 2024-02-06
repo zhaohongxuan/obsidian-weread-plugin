@@ -14,7 +14,18 @@ export default class WereadPlugin extends Plugin {
 		console.log('load weread plugin');
 		settingsStore.initialise(this);
 
+<<<<<<< HEAD
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
+=======
+		const trimBlocks = get(settingsStore).trimBlocks;
+		console.log('trim', trimBlocks);
+		this.renderer = new Renderer({
+			autoescape: false,
+			trimBlocks: trimBlocks,
+			lstripBlocks: trimBlocks
+		});
+		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.renderer);
+>>>>>>> 61366f2 (feat: convert tag to bilink)
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 

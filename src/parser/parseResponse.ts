@@ -23,7 +23,7 @@ export const parseMetadata = (noteBook: any): Metadata => {
 	const lastReadDate = window.moment(noteBook['sort'] * 1000).format('YYYY-MM-DD');
 	const bookId = book['bookId'];
 	const pcUrl = getPcUrl(bookId);
-	const author = book['author'].replace(/\[(.*?)\]/g, "【$1】");
+	const author = book['author'].replace(/\[(.*?)\]/g, '【$1】');
 	const metaData: Metadata = {
 		bookId: book['bookId'],
 		author: author,
@@ -40,10 +40,16 @@ export const parseMetadata = (noteBook: any): Metadata => {
 	return metaData;
 };
 
+const convertTagToBiLink = (review: string) => {
+	return review.replace(/(?<=^|\s)#([^\s]+)/g, '[[$1]]');
+};
+
 export const parseHighlights = (
 	highlightData: HighlightResponse,
 	reviewData: BookReviewResponse
 ): Highlight[] => {
+	const convertTags = get(settingsStore).convertTags;
+
 	return highlightData.updated.map((highlight) => {
 		const highlightRange = highlight.range;
 		let reviewContent;
@@ -53,7 +59,7 @@ export const parseHighlights = (
 				.filter((review) => review.range === highlightRange)
 				.first();
 			if (review) {
-				reviewContent = review.content;
+				reviewContent = convertTags ? convertTagToBiLink(review.content) : review.content;
 			}
 		}
 
@@ -169,12 +175,18 @@ export const parseDailyNoteReferences = (notebooks: Notebook[]): DailyNoteRefere
 };
 
 export const parseReviews = (resp: BookReviewResponse): Review[] => {
+	const convertTags = get(settingsStore).convertTags;
 	return resp.reviews.map((reviewData) => {
 		const review = reviewData.review;
 		const created = review.createTime;
 		const createTime = window.moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
-		const htmlContent = review.htmlContent;
-		const mdContent = htmlContent ? NodeHtmlMarkdown.translate(htmlContent) : null;
+
+		const mdContent = review.htmlContent
+			? NodeHtmlMarkdown.translate(review.htmlContent)
+			: null;
+		const content = mdContent || review.content;
+		const finalMdContent = convertTags ? convertTagToBiLink(content) : content;
+
 		const reviewId: string = review.reviewId;
 		return {
 			bookId: review.bookId,
@@ -182,9 +194,9 @@ export const parseReviews = (resp: BookReviewResponse): Review[] => {
 			createTime: createTime,
 			chapterUid: review.chapterUid,
 			chapterTitle: review.chapterTitle,
-			content: review.content,
+			content: convertTags ? convertTagToBiLink(review.content) : review.content,
 			reviewId: reviewId?.replace(/_/gi, '-'),
-			mdContent: mdContent ? mdContent : review['content'],
+			mdContent: finalMdContent,
 			range: review.range,
 			abstract: review.abstract,
 			type: review.type

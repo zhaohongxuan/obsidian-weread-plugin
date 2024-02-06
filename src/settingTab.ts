@@ -45,6 +45,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.noteCountLimit();
 		this.fileNameType();
 		this.subFolderType();
+		this.convertTagToggle();
 		this.showEmptyChapterTitleToggle();
 		this.dailyNotes();
 		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
@@ -113,6 +114,18 @@ export class WereadSettingsTab extends PluginSettingTab {
 					this.display();
 				});
 		});
+	}
+
+	private convertTagToggle(): void {
+		new Setting(this.containerEl)
+			.setName('是否将笔记中标签转换为双链？')
+			.setDesc('开启此选项会笔记中的#标签转换为[[标签]]')
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).convertTags).onChange((value) => {
+					settingsStore.actions.setConvertTags(value);
+					this.display();
+				});
+			});
 	}
 
 	private dailyNotes(): void {
@@ -272,7 +285,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 				text.inputEl.style.fontSize = '0.8em';
 				text.setValue(get(settingsStore).template).onChange(async (value) => {
 					const isValid = this.renderer.validate(value);
-
 					if (isValid) {
 						settingsStore.actions.setTemplate(value);
 					}
