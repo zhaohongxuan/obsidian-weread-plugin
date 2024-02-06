@@ -18,8 +18,12 @@ export default class WereadPlugin extends Plugin {
 		await settingsStore.initialise(this);
 
 		const trimBlocks = get(settingsStore).trimBlocks;
-		console.log("trim", trimBlocks);
-		this.renderer = new Renderer({ autoescape: false, trimBlocks: trimBlocks, lstripBlocks: trimBlocks });
+		console.log('trim', trimBlocks);
+		this.renderer = new Renderer({
+			autoescape: false,
+			trimBlocks: trimBlocks,
+			lstripBlocks: trimBlocks
+		});
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.renderer);
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);

@@ -22,6 +22,7 @@ interface WereadPluginSettings {
 	notesBlacklist: string;
 	showEmptyChapterTitleToggle: boolean;
 	trimBlocks: boolean;
+	convertTags: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -42,7 +43,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	dailyNotesToggle: false,
 	notesBlacklist: '',
 	showEmptyChapterTitleToggle: false,
-	trimBlocks: false
+	trimBlocks: false,
+	convertTags: false
 };
 
 const createSettingsStore = () => {
@@ -62,7 +64,7 @@ const createSettingsStore = () => {
 			settings.userVid = '';
 			settings.isCookieValid = false;
 		}
-		console.log("initialise weread plugin settings,", settings)
+		console.log('initialise weread plugin settings,', settings);
 		store.set(settings);
 		_plugin = plugin;
 	};
@@ -209,6 +211,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setConvertTags = (convertTags: boolean) => {
+		store.update((state) => {
+			state.convertTags = convertTags;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -227,7 +236,8 @@ const createSettingsStore = () => {
 			setInsertBefore,
 			setNoteBlacklist,
 			setEmptyChapterTitleToggle,
-			setTrimBlocks
+			setTrimBlocks,
+			setConvertTags
 		}
 	};
 };

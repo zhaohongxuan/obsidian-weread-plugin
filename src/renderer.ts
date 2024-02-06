@@ -5,7 +5,6 @@ import { get } from 'svelte/store';
 import { ConfigureOptions } from 'nunjucks';
 
 export class Renderer {
-
 	constructor(renderOpts: ConfigureOptions) {
 		nunjucks.configure(renderOpts);
 	}
