@@ -21,6 +21,7 @@ interface WereadPluginSettings {
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
 	showEmptyChapterTitleToggle: boolean;
+	convertTags: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -40,7 +41,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	fileNameType: 'BOOK_NAME',
 	dailyNotesToggle: false,
 	notesBlacklist: '',
-	showEmptyChapterTitleToggle: false
+	showEmptyChapterTitleToggle: false,
+	convertTags: false
 };
 
 const createSettingsStore = () => {
@@ -200,6 +202,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setConvertTags = (convertTags: boolean) => {
+		store.update((state) => {
+			state.convertTags = convertTags;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -217,7 +226,8 @@ const createSettingsStore = () => {
 			setInsertAfter,
 			setInsertBefore,
 			setNoteBlacklist,
-			setEmptyChapterTitleToggle
+			setEmptyChapterTitleToggle,
+			setConvertTags
 		}
 	};
 };
