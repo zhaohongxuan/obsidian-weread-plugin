@@ -2,7 +2,6 @@ import { Cookie } from 'set-cookie-parser';
 import { writable } from 'svelte/store';
 import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
-import { NOTE_NAME_TYPE } from './models';
 
 interface WereadPluginSettings {
 	cookies: Cookie[];
@@ -54,8 +53,8 @@ const createSettingsStore = () => {
 	let _plugin!: WereadPlugin;
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
-		const data = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
-		const settings: WereadPluginSettings = { ...data };
+		const userSettings: WereadPluginSettings = { ... await plugin.loadData() };
+		const settings: WereadPluginSettings = Object.assign({}, DEFAULT_SETTINGS, userSettings);
 		if (settings.cookies.length > 1) {
 			setUser(settings.cookies);
 		}

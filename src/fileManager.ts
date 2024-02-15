@@ -1,7 +1,7 @@
 import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
-import { AnnotationFile, DailyNoteReferenece, Metadata, Notebook, NOTE_NAME_TYPE } from './models';
+import { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
 import { frontMatterDocType, buildFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
