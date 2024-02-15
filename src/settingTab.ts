@@ -119,7 +119,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private convertTagToggle(): void {
 		new Setting(this.containerEl)
 			.setName('是否将笔记中标签转换为双链？')
-			.setDesc('开启此选项会笔记中的#标签转换为[[标签]]')
+			.setDesc('开启此选项会笔记中的 #标签 转换为：[[标签]]')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).convertTags).onChange((value) => {
 					settingsStore.actions.setConvertTags(value);
@@ -221,6 +221,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.setDesc('你选择你喜欢的文件名模板，重复的书会在文件名后加上ID')
 			.addDropdown((dropdown) => {
 				dropdown.addOptions({
+					BOOK_ID: 'bookId',
 					BOOK_NAME: '书名',
 					BOOK_NAME_AUTHOR: '书名-作者名',
 					BOOK_NAME_BOOKID: '书名-bookId'
