@@ -117,7 +117,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private convertTagToggle(): void {
 		new Setting(this.containerEl)
 			.setName('是否将笔记中标签转换为双链？')
-			.setDesc('开启此选项会笔记中的#标签转换为[[标签]]')
+			.setDesc('开启此选项会笔记中的 #标签 转换为：[[标签]]')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).convertTags).onChange((value) => {
 					settingsStore.actions.setConvertTags(value);
@@ -219,6 +219,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.setDesc('你选择你喜欢的文件名模板，重复的书会在文件名后加上ID')
 			.addDropdown((dropdown) => {
 				dropdown.addOptions({
+					BOOK_ID: 'bookId',
 					BOOK_NAME: '书名',
 					BOOK_NAME_AUTHOR: '书名-作者名',
 					BOOK_NAME_BOOKID: '书名-bookId'
@@ -259,10 +260,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onClick(async () => {
 						const cookieStr = getEncodeCookieString();
 						navigator.clipboard.writeText(cookieStr).then(
-							function () {
+							function() {
 								new Notice('拷贝Cookie到剪切板成功！');
 							},
-							function (error) {
+							function(error) {
 								new Notice('拷贝Cookie到剪切板失败！');
 								console.error('拷贝微信读书Cookie失败', error);
 							}
@@ -272,10 +273,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private trimBlocks(): void {
+		const descFragment = document.createRange().createContextualFragment(`
+			<p>默认不去除换行，如果用此项，模板中的代码块前后的空白字符/换行将会被删除，模板看起来结构更清晰 <br/>
+			详细说明参见：<a href ="https://github.com/zhaohongxuan/obsidian-weread-plugin/wiki/去除模板中的block前后的空白字符和换行"> 去除模板中的block前后的空白字符和换行</a>
+			</p>`);
 		new Setting(this.containerEl)
-			.setName('是否去除模板中空白字符和换行')
+			.setName('是否去除模板中block前后的空白字符和换行(需重启)')
 			.setDesc(
-				'⚠️:：更改此选项需要同时修改模板代码且重启插件才能生效！！默认不去除换行，如果启用此项，模板中的代码块前后的空白字符/换行将会被删除，模板看起来结构更清晰'
+				descFragment
 			)
 			.setHeading()
 			.addToggle((toggle) => {

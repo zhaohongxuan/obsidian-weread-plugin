@@ -2,6 +2,7 @@ import { Cookie } from 'set-cookie-parser';
 import { writable } from 'svelte/store';
 import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
+import { NOTE_NAME_TYPE } from './models';
 
 interface WereadPluginSettings {
 	cookies: Cookie[];

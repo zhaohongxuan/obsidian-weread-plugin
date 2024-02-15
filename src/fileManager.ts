@@ -1,7 +1,7 @@
 import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
-import type { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
+import { AnnotationFile, DailyNoteReferenece, Metadata, Notebook, NOTE_NAME_TYPE } from './models';
 import { frontMatterDocType, buildFrontMatter } from './utils/frontmatter';
 import { get } from 'svelte/store';
 import { settingsStore } from './settings';
@@ -41,9 +41,8 @@ export default class FileManager {
 					.concat(dailyNoteRef.metaData.title)
 					.concat('\n');
 				const blockList = dailyNoteRef.refBlocks.map((refBlock) => {
-					return `![[${this.getFileName(dailyNoteRef.metaData)}#^${
-						refBlock.refBlockId
-					}]]`;
+					return `![[${this.getFileName(dailyNoteRef.metaData)}#^${refBlock.refBlockId
+						}]]`;
 				});
 				const bodyContent = blockList.join('\n');
 				const finalContent = headContent + bodyContent;
@@ -195,16 +194,28 @@ export default class FileManager {
 	private getFileName(metaData: Metadata): string {
 		const fileNameType = get(settingsStore).fileNameType;
 		const baseFileName = sanitizeTitle(metaData.title);
-		if (fileNameType == 'BOOK_NAME_AUTHOR') {
-			if (metaData.duplicate) {
-				return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
-			}
-			return `${baseFileName}-${metaData.author}`;
-		} else {
-			if (metaData.duplicate || fileNameType == 'BOOK_NAME_BOOKID') {
+
+		switch (fileNameType) {
+			case 'BOOK_ID':
+				return metaData.bookId;
+
+			case 'BOOK_NAME_AUTHOR':
+				if (metaData.duplicate) {
+					return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
+				}
+				return `${baseFileName}-${metaData.author}`;
+
+			case 'BOOK_NAME_BOOKID':
 				return `${baseFileName}-${metaData.bookId}`;
-			}
-			return baseFileName;
+
+			case 'BOOK_NAME':
+				if (metaData.duplicate) {
+					return `${baseFileName}-${metaData.bookId}`;
+				}
+				return baseFileName;
+
+			default:
+				return baseFileName;
 		}
 	}
 
