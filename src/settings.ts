@@ -53,7 +53,7 @@ const createSettingsStore = () => {
 	let _plugin!: WereadPlugin;
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
-		const userSettings: WereadPluginSettings = { ... await plugin.loadData() };
+		const userSettings: WereadPluginSettings = { ...(await plugin.loadData()) };
 		const settings: WereadPluginSettings = Object.assign({}, DEFAULT_SETTINGS, userSettings);
 		if (settings.cookies.length > 1) {
 			setUser(settings.cookies);

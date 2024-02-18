@@ -260,10 +260,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onClick(async () => {
 						const cookieStr = getEncodeCookieString();
 						navigator.clipboard.writeText(cookieStr).then(
-							function() {
+							function () {
 								new Notice('拷贝Cookie到剪切板成功！');
 							},
-							function(error) {
+							function (error) {
 								new Notice('拷贝Cookie到剪切板失败！');
 								console.error('拷贝微信读书Cookie失败', error);
 							}
@@ -274,14 +274,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private trimBlocks(): void {
 		const descFragment = document.createRange().createContextualFragment(`
-			<p>默认不去除换行，如果用此项，模板中的代码块前后的空白字符/换行将会被删除，模板看起来结构更清晰 <br/>
+			<p>默认不去除换行，如果用此项，模板中的代码块前后的空白字符/换行将会被删除（老用户需升级模板，否则笔记可能会混乱)，模板看起来结构更清晰 <br/>
 			详细说明参见：<a href ="https://github.com/zhaohongxuan/obsidian-weread-plugin/wiki/去除模板中的block前后的空白字符和换行"> 去除模板中的block前后的空白字符和换行</a>
 			</p>`);
 		new Setting(this.containerEl)
 			.setName('是否去除模板中block前后的空白字符和换行(需重启)')
-			.setDesc(
-				descFragment
-			)
+			.setDesc(descFragment)
 			.setHeading()
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).trimBlocks).onChange((value) => {
