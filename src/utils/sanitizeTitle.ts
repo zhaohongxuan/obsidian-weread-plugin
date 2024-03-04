@@ -5,12 +5,3 @@ export const sanitizeTitle = (title: string): string => {
 	return sanitize(santizedTitle);
 };
 
-export const sanitizeTitleExcess = (title: string): string => {
-	const santizedTitle = title
-		.replace(/ *\([^)]*\) */g, '')
-		.replace(/:.*/g, '')
-		.replace(/\|/g, '')
-		.trim();
-
-	return sanitize(santizedTitle);
-};

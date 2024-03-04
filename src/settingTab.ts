@@ -119,7 +119,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private saveArticleToggle(): void {
 		new Setting(this.containerEl)
-			.setName('是否同步公众号文章?')
+			.setName('同步公众号文章?')
 			.setDesc('开启此选项会将同步公众号文章到单独的笔记中')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
@@ -130,7 +130,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 	private convertTagToggle(): void {
 		new Setting(this.containerEl)
-			.setName('是否将笔记中标签转换为双链？')
+			.setName('将标签转换为双链？')
 			.setDesc('开启此选项会笔记中的 #标签 转换为：[[标签]]')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).convertTags).onChange((value) => {
@@ -348,7 +348,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private showEmptyChapterTitleToggle(): void {
 		new Setting(this.containerEl)
-			.setName('是否展示空白章节标题？')
+			.setName('展示空白章节标题？')
 			.setDesc('如果启用，则章节内没有划线也将展示章节标题')
 			.setHeading()
 			.addToggle((toggle) => {
