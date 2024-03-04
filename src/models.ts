@@ -15,6 +15,7 @@ export interface HighlightResponse {
 		type: number;
 		createTime: number;
 		bookmarkId: string;
+		refMpReviewId?: string;
 	}[];
 	removed: any[];
 	chapters: {
@@ -22,6 +23,12 @@ export interface HighlightResponse {
 		chapterUid: number;
 		chapterIdx: number;
 		title: string;
+	}[];
+	refMpInfos?: {
+		reviewId: string;
+		title: string;
+		pic_url: string;
+		createTime: number;
 	}[];
 	book: {
 		bookId: string;
@@ -58,6 +65,12 @@ export interface BookReviewResponse {
 			atUserVids: any[];
 			bookId: string;
 			bookVersion: number;
+			refMpInfo: {
+				reviewId: string;
+				title: string;
+				pic_url: string;
+				createTime: number;
+			};
 			chapterName: string;
 			chapterUid: number;
 			content: string;
@@ -273,11 +286,12 @@ export type BookDetailResponse = {
 };
 
 export type Chapter = {
-	chapterUid: number;
-	chapterIdx: number;
+	chapterUid?: number;
+	chapterIdx?: number;
 	updateTime: number;
 	title: string;
 	isMPChapter: number;
+	refMpReviewId?: string;
 	level: number;
 };
 
@@ -333,6 +347,7 @@ export type Highlight = {
 	colorStyle: number;
 	reviewContent?: string;
 	range: string;
+	refMpReviewId?: string;
 };
 
 export type BookReview = {
@@ -358,11 +373,17 @@ export type Review = {
 	abstract?: string;
 	range?: string;
 	type: number;
+	refMpInfo?: {
+		reviewId: string;
+		title: string;
+		pic_url: string;
+		createTime: number;
+	};
 };
 
 export type ChapterHighlightReview = {
-	chapterUid: number;
-	chapterIdx: number;
+	chapterUid?: number;
+	chapterIdx?: number;
 	chapterTitle: string;
 	level: number;
 	isMPChapter: number;

@@ -41,9 +41,11 @@ export const buildFrontMatter = (
 	};
 
 	const readInfo = noteBook.metaData.readInfo;
+
 	if (readInfo) {
 		frontMatter.readingStatus = ReadingStatus[readInfo.markedStatus];
-		frontMatter.progress = readInfo.readingProgress + '%';
+		frontMatter.progress =
+			readInfo.readingProgress === undefined ? '-1' : readInfo.readingProgress + '%';
 		frontMatter.totalReadDay = readInfo.totalReadDay;
 		frontMatter.readingTime = formatTimeDuration(readInfo.readingTime);
 		frontMatter.readingDate = formatTimestampToDate(readInfo.readingBookDate);
