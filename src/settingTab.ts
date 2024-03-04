@@ -46,6 +46,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.fileNameType();
 		this.subFolderType();
 		this.convertTagToggle();
+		this.saveArticleToggle();
 		this.showEmptyChapterTitleToggle();
 		this.dailyNotes();
 		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
@@ -116,6 +117,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 		});
 	}
 
+	private saveArticleToggle(): void {
+		new Setting(this.containerEl)
+			.setName('是否同步公众号文章?')
+			.setDesc('开启此选项会将同步公众号文章到单独的笔记中')
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
+					settingsStore.actions.setSaveArticleToggle(value);
+					this.display();
+				});
+			});
+	}
 	private convertTagToggle(): void {
 		new Setting(this.containerEl)
 			.setName('是否将笔记中标签转换为双链？')

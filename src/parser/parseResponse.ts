@@ -1,6 +1,7 @@
 import type {
 	BookReview,
 	BookReviewResponse,
+	Chapter,
 	ChapterHighlightReview,
 	ChapterResponse,
 	ChapterReview,
@@ -72,6 +73,7 @@ export const parseHighlights = (
 			createTime: window.moment(highlight.createTime * 1000).format('YYYY-MM-DD HH:mm:ss'),
 			chapterUid: highlight.chapterUid,
 			chapterIdx: chapterInfo?.chapterIdx || highlight.chapterUid,
+			refMpReviewId: highlight.refMpReviewId,
 			range: highlight.range,
 			style: highlight.style,
 			colorStyle: highlight.colorStyle,
@@ -82,18 +84,65 @@ export const parseHighlights = (
 	});
 };
 
-export const parseChapterHighlightReview = (
-	chapterResp: ChapterResponse,
+export const parseArticleHighlightReview = (
+	chapters: Chapter[],
 	highlights: Highlight[],
 	reviews?: Review[]
 ): ChapterHighlightReview[] => {
 	const chapterResult: ChapterHighlightReview[] = [];
 
-	if (chapterResp === undefined || chapterResp.data[0] === undefined) {
-		return chapterResult;
+	for (const chapter of chapters) {
+		const refMpReviewId = chapter.refMpReviewId;
+		const chapterTitle = chapter.title;
+
+		// find highlights by chapterUid
+		const chapterHighlights = highlights
+			.filter((highlight) => highlight.refMpReviewId === refMpReviewId)
+			.sort((o1, o2) => {
+				const o1Start = parseInt(o1.range.split('-')[0]);
+				const o2Start = parseInt(o2.range.split('-')[0]);
+				return o1Start - o2Start;
+			});
+		let chapterReviews;
+		if (chapterHighlights && chapterHighlights.length > 0 && reviews) {
+			chapterReviews = reviews
+				.filter((review) => refMpReviewId == review.refMpInfo?.reviewId)
+				.sort((o1, o2) => {
+					if (o1.range === undefined && o2.range === undefined) {
+						return 0;
+					} else if (o1.range === undefined) {
+						return 1;
+					} else if (o2.range === undefined) {
+						return -1;
+					} else {
+						const o1Start = parseInt(o1.range.split('-')[0]);
+						const o2Start = parseInt(o2.range.split('-')[0]);
+						return o1Start - o2Start;
+					}
+				});
+		}
+
+		if (chapterHighlights && chapterHighlights.length > 0) {
+			chapterResult.push({
+				chapterTitle: chapterTitle,
+				level: chapter.level,
+				isMPChapter: chapter.isMPChapter,
+				chapterReviews: chapterReviews,
+				highlights: chapterHighlights
+			});
+		}
 	}
 
-	for (const chapter of chapterResp.data[0].updated) {
+	return chapterResult.sort((o1, o2) => o1.chapterIdx - o2.chapterIdx);
+};
+export const parseChapterHighlightReview = (
+	chapters: Chapter[],
+	highlights: Highlight[],
+	reviews?: Review[]
+): ChapterHighlightReview[] => {
+	const chapterResult: ChapterHighlightReview[] = [];
+
+	for (const chapter of chapters) {
 		const chapterUid = chapter.chapterUid;
 		const chapterIdx = chapter.chapterIdx;
 		const chapterTitle = chapter.title;
@@ -141,6 +190,32 @@ export const parseChapterHighlightReview = (
 	}
 
 	return chapterResult.sort((o1, o2) => o1.chapterIdx - o2.chapterIdx);
+};
+
+export const parseChapterResp = (
+	chapterResp: ChapterResponse,
+	highlightResp: HighlightResponse
+): Chapter[] => {
+	if (chapterResp === undefined) {
+		return [];
+	}
+
+	if (chapterResp.data !== undefined && chapterResp.data[0].updated.length > 0) {
+		return chapterResp.data[0].updated;
+	}
+
+	if (highlightResp.refMpInfos !== undefined) {
+		return highlightResp.refMpInfos.map((mpInfo) => {
+			return {
+				refMpReviewId: mpInfo.reviewId,
+				updateTime: mpInfo.createTime,
+				title: mpInfo.title,
+				isMPChapter: 1,
+				level: 2
+			};
+		});
+	}
+	return [];
 };
 
 export const parseDailyNoteReferences = (notebooks: Notebook[]): DailyNoteReferenece[] => {
@@ -193,7 +268,7 @@ export const parseReviews = (resp: BookReviewResponse): Review[] => {
 			created: created,
 			createTime: createTime,
 			chapterUid: review.chapterUid,
-			chapterTitle: review.chapterTitle,
+			chapterTitle: review.chapterTitle || review.refMpInfo?.title,
 			content: convertTags ? convertTagToBiLink(review.content) : review.content,
 			reviewId: reviewId?.replace(/_/gi, '-'),
 			mdContent: finalMdContent,

@@ -7,7 +7,9 @@ import {
 	parseChapterHighlightReview,
 	parseChapterReviews,
 	parseDailyNoteReferences,
-	parseReviews
+	parseReviews,
+	parseChapterResp,
+	parseArticleHighlightReview
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -96,11 +98,17 @@ export default class SyncNotebooks {
 
 		const highlights = parseHighlights(highlightResp, reviewResp);
 		const reviews = parseReviews(reviewResp);
-		const chapterHighlightReview = parseChapterHighlightReview(
-			chapterResp,
-			highlights,
-			reviews
-		);
+		const chapters = parseChapterResp(chapterResp, highlightResp);
+		let chapterHighlightReview;
+		if (metaData.bookType === 3) {
+			//公众号文章
+			console.log('sync 公众号：', metaData.title);
+			chapterHighlightReview = parseArticleHighlightReview(chapters, highlights, reviews);
+			console.log('sync 公众号 result', metaData.title, chapterHighlightReview);
+		} else {
+			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
+		}
+		console.log('chapters:', chapters, chapterHighlightReview, highlightResp);
 		const bookReview = parseChapterReviews(reviewResp);
 		return {
 			metaData: metaData,
@@ -115,7 +123,8 @@ export default class SyncNotebooks {
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
 			// skip 公众号
-			if (metaData.bookType === 3) {
+			const saveArticle = get(settingsStore).saveArticleToggle;
+			if (!saveArticle && metaData.bookType === 3) {
 				continue;
 			}
 			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
