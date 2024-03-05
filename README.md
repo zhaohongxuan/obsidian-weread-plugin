@@ -101,3 +101,5 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - [http proxy middleware](https://github.com/chimurai/http-proxy-middleware)
 - [nunjucks](https://github.com/mozilla/nunjucks)
 
+## Supported By
+<a href="https://jb.gg/OpenSourceSupport" target="_blank"><img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.png" height='128' style='border:0px;height:128px;' alt="JetBrains Logo (Main) logo."></a>
