@@ -79,6 +79,7 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - [x] 阅读状态元数据，比如阅读中，阅读完成等等，以及阅读时间的分布等
 - [x] 按照章节Index进行排序
 - [x] 保留多个章节层级
+- [x] 同步微信公众号文章
 - [ ] 模板预览功能
 - [ ] 导出热门划线 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/42
 - [ ] 设置页面，目录选择优化 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/39
