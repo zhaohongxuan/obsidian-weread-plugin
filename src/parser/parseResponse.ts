@@ -67,6 +67,8 @@ export const parseHighlights = (
 		const chapterInfo = highlightData.chapters
 			.filter((chapter) => chapter.chapterUid === highlight.chapterUid)
 			.first();
+		const intentMarkText = 	addIndentToParagraphs(highlight.markText)
+		console.log(intentMarkText);
 		return {
 			bookmarkId: highlight.bookmarkId?.replace(/_/gi, '-'),
 			created: highlight.createTime,
@@ -78,11 +80,28 @@ export const parseHighlights = (
 			style: highlight.style,
 			colorStyle: highlight.colorStyle,
 			chapterTitle: chapterInfo?.title || '未知章节',
-			markText: highlight.markText,
-			reviewContent: reviewContent
+			markText: intentMarkText,
+			reviewContent: addIndentToParagraphs(reviewContent)
 		};
 	});
 };
+
+
+const addIndentToParagraphs = (content: string): string  =>{
+	if(content === undefined || content == ""){
+		return content;
+	}
+	// 将字符串按换行符分割成段落数组
+	const paragraphs = content.split('\n');
+
+	// 遍历段落数组，从第二个段落开始前面加上两个空格
+	for (let i = 1; i < paragraphs.length; i++) {
+		paragraphs[i] = '   ' + paragraphs[i];
+	}
+	
+	// 将段落数组重新组合成一个字符串
+	return paragraphs.join('\n');
+  }
 
 export const parseArticleHighlightReview = (
 	chapters: Chapter[],
