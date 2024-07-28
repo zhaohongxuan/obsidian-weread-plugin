@@ -47,6 +47,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.subFolderType();
 		this.convertTagToggle();
 		this.saveArticleToggle();
+		this.saveReadingInfoToggle();
 		this.showEmptyChapterTitleToggle();
 		this.dailyNotes();
 		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
@@ -124,6 +125,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
 					settingsStore.actions.setSaveArticleToggle(value);
+					this.display();
+				});
+			});
+	}
+	private saveReadingInfoToggle(): void {
+		new Setting(this.containerEl)
+			.setName('保存阅读元数据?')
+			.setDesc('开启此选项会阅读数据写入frontmatter')
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).saveReadingInfoToggle).onChange((value) => {
+					settingsStore.actions.setSaveReadingInfoToggle(value);
 					this.display();
 				});
 			});

@@ -23,6 +23,7 @@ interface WereadPluginSettings {
 	showEmptyChapterTitleToggle: boolean;
 	convertTags: boolean;
 	saveArticleToggle: boolean;
+	saveReadingInfoToggle: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -44,7 +45,9 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	notesBlacklist: '',
 	showEmptyChapterTitleToggle: false,
 	convertTags: false,
-	saveArticleToggle: true
+	saveArticleToggle: true,
+	saveReadingInfoToggle: true,
+
 };
 
 const createSettingsStore = () => {
@@ -218,6 +221,12 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setSaveReadingInfoToggle = (saveReadingInfoToggle: boolean) => {
+		store.update((state) => {
+			state.saveReadingInfoToggle = saveReadingInfoToggle;
+			return state;
+		});
+	};
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -237,7 +246,8 @@ const createSettingsStore = () => {
 			setNoteBlacklist,
 			setEmptyChapterTitleToggle,
 			setConvertTags,
-			setSaveArticleToggle
+			setSaveArticleToggle,
+			setSaveReadingInfoToggle,
 		}
 	};
 };

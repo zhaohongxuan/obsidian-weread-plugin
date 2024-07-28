@@ -1,14 +1,16 @@
 import { Notice, parseYaml, stringifyYaml, TFile } from 'obsidian';
 import type { Notebook } from '../models';
 import { formatTimeDuration, formatTimestampToDate } from './dateUtil';
+import { settingsStore } from '../settings';
+import { get } from 'svelte/store';
 
 type FrontMatterContent = {
 	doc_type: string;
 	bookId: string;
-	author: string;
-	cover: string;
 	noteCount: number;
 	reviewCount: number;
+	author?: string;
+	cover?: string;
 	readingStatus?: string;
 	progress?: string;
 	readingTime?: string;
@@ -34,24 +36,31 @@ export const buildFrontMatter = (
 	const frontMatter: FrontMatterContent = {
 		doc_type: frontMatterDocType,
 		bookId: noteBook.metaData.bookId,
-		author: noteBook.metaData.author,
-		cover: noteBook.metaData.cover,
 		reviewCount: noteBook.metaData.reviewCount,
 		noteCount: noteBook.metaData.noteCount
 	};
 
-	const readInfo = noteBook.metaData.readInfo;
 
-	if (readInfo) {
-		frontMatter.readingStatus = ReadingStatus[readInfo.markedStatus];
-		frontMatter.progress =
-			readInfo.readingProgress === undefined ? '-1' : readInfo.readingProgress + '%';
-		frontMatter.totalReadDay = readInfo.totalReadDay;
-		frontMatter.readingTime = formatTimeDuration(readInfo.readingTime);
-		frontMatter.readingDate = formatTimestampToDate(readInfo.readingBookDate);
-		if (readInfo.finishedDate) {
-			frontMatter.finishedDate = formatTimestampToDate(readInfo.finishedDate);
+	const saveReadingInfoToggle = get(settingsStore).saveReadingInfoToggle;
+
+	if (saveReadingInfoToggle) {
+		frontMatter.author = noteBook.metaData.author,
+		frontMatter.cover = noteBook.metaData.cover
+
+		const readInfo = noteBook.metaData.readInfo;
+		if (readInfo) {
+			frontMatter.readingStatus = ReadingStatus[readInfo.markedStatus];
+			frontMatter.progress =
+				readInfo.readingProgress === undefined ? '-1' : readInfo.readingProgress + '%';
+			frontMatter.totalReadDay = readInfo.totalReadDay;
+			frontMatter.readingTime = formatTimeDuration(readInfo.readingTime);
+			frontMatter.readingDate = formatTimestampToDate(readInfo.readingBookDate);
+			if (readInfo.finishedDate) {
+				frontMatter.finishedDate = formatTimestampToDate(readInfo.finishedDate);
+			}
+
 		}
+
 	}
 	let existFrontMatter = Object();
 	if (existFile) {
