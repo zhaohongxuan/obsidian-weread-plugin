@@ -68,7 +68,6 @@ export const parseHighlights = (
 			.filter((chapter) => chapter.chapterUid === highlight.chapterUid)
 			.first();
 		const intentMarkText = 	addIndentToParagraphs(highlight.markText)
-		console.log(intentMarkText);
 		return {
 			bookmarkId: highlight.bookmarkId?.replace(/_/gi, '-'),
 			created: highlight.createTime,
