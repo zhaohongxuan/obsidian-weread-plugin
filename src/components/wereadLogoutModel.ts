@@ -15,15 +15,15 @@ export default class WereadLoginModel {
 			show: false
 		});
 		this.modal.once('ready-to-show', () => {
-			this.modal.setTitle('注销微信读书，右上角头像点击退出登录~');
+			this.modal.setTitle('注销微信读书，点击头像选择->退出登录');
 			this.modal.show();
 		});
 		const session = this.modal.webContents.session;
 		const filter = {
-			urls: ['https://weread.qq.com/web/logout']
+			urls: ['https://weread.qq.com/api/auth/logout']
 		};
 		session.webRequest.onCompleted(filter, (details) => {
-			if (details.statusCode == 200) {
+			if (details.statusCode == 200 || details.statusCode ==204) {
 				console.log('weread logout success, clear cookies...');
 				settingsStore.actions.clearCookies();
 				this.settingTab.display();
@@ -33,7 +33,7 @@ export default class WereadLoginModel {
 	}
 
 	async doLogout() {
-		await this.modal.loadURL('https://weread.qq.com/web/shelf/#logout');
+		await this.modal.loadURL('https://weread.qq.com');
 	}
 
 	onClose() {

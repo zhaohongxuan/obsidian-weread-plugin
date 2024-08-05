@@ -23,6 +23,18 @@ export default class WereadLoginModel {
 		});
 
 		const session = this.modal.webContents.session;
+
+		const loginFilter = {
+			urls: ['https://weread.qq.com/api/auth/getLoginInfo?uid=*']
+		};
+
+		session.webRequest.onCompleted(loginFilter, (details) => {
+			if (details.statusCode == 200) {
+				console.log('weread login success, redirect to weread shelf');
+				this.modal.loadURL('https://weread.qq.com/web/shelf')
+			}
+		});
+
 		const filter = {
 			urls: ['https://weread.qq.com/web/user?userVid=*']
 		};
