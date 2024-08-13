@@ -69,7 +69,7 @@ export const parseHighlights = (
 			.first();
 		const intentMarkText = 	addIndentToParagraphs(highlight.markText)
 		return {
-			bookmarkId: highlight.bookmarkId?.replace(/_/gi, '-'),
+			bookmarkId: highlight.bookmarkId?.replace(/[_~]/g, '-'),
 			created: highlight.createTime,
 			createTime: window.moment(highlight.createTime * 1000).format('YYYY-MM-DD HH:mm:ss'),
 			chapterUid: highlight.chapterUid,
@@ -288,7 +288,7 @@ export const parseReviews = (resp: BookReviewResponse): Review[] => {
 			chapterUid: review.chapterUid,
 			chapterTitle: review.chapterTitle || review.refMpInfo?.title,
 			content: convertTags ? convertTagToBiLink(review.content) : review.content,
-			reviewId: reviewId?.replace(/_/gi, '-'),
+			reviewId: reviewId?.replace(/[_~]/g, '-'),
 			mdContent: finalMdContent,
 			range: review.range,
 			abstract: review.abstract,
