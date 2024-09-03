@@ -7,7 +7,7 @@ lastReadDate: {{metaData.lastReadDate}}
 > - ![ {{metaData.title}}|200]({{metaData.cover}})
 > - 书名： {{metaData.title}}
 > - 作者： {{metaData.author}}
-> - 简介： {{metaData.intro}}
+> - 简介： {% set intro = metaData.intro | replace("\n","") | replace("\r","") %}{{intro}}
 > - 出版时间： {{metaData.publishTime}}
 > - ISBN： {{metaData.isbn}}
 > - 分类： {{metaData.category}}
