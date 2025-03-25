@@ -4,7 +4,13 @@ import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 export class Renderer {
 	constructor() {
-		nunjucks.configure({ autoescape: false });
+		nunjucks.configure({ autoescape: false })
+		// 自定义函数 https://mozilla.github.io/nunjucks/api.html#addfilter
+		.addFilter('replace', function(str, regex, replacement) {
+			if (!str) return ''; // 处理 undefined 或 null 情况
+			return str.replace(regex, replacement);
+		  })
+		  ;
 	}
 
 	validate(template: string): boolean {
