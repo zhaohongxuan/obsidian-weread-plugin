@@ -8,10 +8,11 @@ import {
 	BookReviewResponse,
 	ChapterResponse,
 	BookReadInfoResponse,
-	BookDetailResponse
+	BookDetailResponse,
+	BookProgressResponse
 } from './models';
 export default class ApiManager {
-	readonly baseUrl: string = 'https://i.weread.qq.com';
+	readonly baseUrl: string = 'https://weread.qq.com';
 
 	private getHeaders() {
 		return {
@@ -19,13 +20,15 @@ export default class ApiManager {
 				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36',
 			'Accept-Encoding': 'gzip, deflate, br',
 			'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+			accept: 'application/json, text/plain, */*',
+			'Content-Type': 'application/json',
 			Cookie: getCookieString(get(settingsStore).cookies)
 		};
 	}
 
 	async refreshCookie() {
 		const req: RequestUrlParam = {
-			url: `https://weread.qq.com`,
+			url: this.baseUrl,
 			method: 'HEAD',
 			headers: this.getHeaders()
 		};
@@ -53,26 +56,10 @@ export default class ApiManager {
 		return noteBookResp;
 	}
 
-	async getRecentBooks() {
-		const vid = get(settingsStore).userVid;
-		console.debug('get userVid settings', vid);
-		const req: RequestUrlParam = {
-			url: this.baseUrl + '/shelf/friendCommon?userVid=' + vid,
-			method: 'GET',
-			headers: this.getHeaders()
-		};
-		try {
-			const resp = await requestUrl(req);
-			return resp.json.recentBooks;
-		} catch (e) {
-			console.error('get recent books error: vid' + vid, e);
-		}
-	}
-
 	async getNotebooks() {
 		let noteBooks = [];
 		const req: RequestUrlParam = {
-			url: this.baseUrl + '/user/notebooks',
+			url: `${this.baseUrl}/api/user/notebook`,
 			method: 'GET',
 			headers: this.getHeaders()
 		};
@@ -81,6 +68,7 @@ export default class ApiManager {
 			const resp = await requestUrl(req);
 			if (resp.status === 401) {
 				if (resp.json.errcode == -2012) {
+					// 登录超时 -2012
 					console.log('weread cookie expire retry refresh cookie... ');
 					await this.refreshCookie();
 				} else {
@@ -94,6 +82,11 @@ export default class ApiManager {
 						resp.json.errcode
 					);
 					settingsStore.actions.clearCookies();
+				}
+			} else {
+				if (resp.json.errcode == -2012) {
+					console.log('weread cookie expire retry refresh cookie... ');
+					await this.refreshCookie();
 				}
 			}
 			noteBooks = resp.json.books;
@@ -153,7 +146,7 @@ export default class ApiManager {
 	async getBook(bookId: string): Promise<BookDetailResponse> {
 		try {
 			const req: RequestUrlParam = {
-				url: `${this.baseUrl}/book/info?bookId=${bookId}`,
+				url: `${this.baseUrl}/web/book/info?bookId=${bookId}`,
 				method: 'GET',
 				headers: this.getHeaders()
 			};
@@ -167,7 +160,7 @@ export default class ApiManager {
 	async getNotebookHighlights(bookId: string): Promise<HighlightResponse> {
 		try {
 			const req: RequestUrlParam = {
-				url: `${this.baseUrl}/book/bookmarklist?bookId=${bookId}`,
+				url: `${this.baseUrl}/web/book/bookmarklist?bookId=${bookId}`,
 				method: 'GET',
 				headers: this.getHeaders()
 			};
@@ -180,7 +173,7 @@ export default class ApiManager {
 
 	async getNotebookReviews(bookId: string): Promise<BookReviewResponse> {
 		try {
-			const url = `${this.baseUrl}/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
+			const url = `${this.baseUrl}/web/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
 			const resp = await requestUrl(req);
 			return resp.json;
@@ -194,18 +187,19 @@ export default class ApiManager {
 
 	async getChapters(bookId: string): Promise<ChapterResponse> {
 		try {
-			const url = `${this.baseUrl}/book/chapterInfos?bookIds=${bookId}&synckey=0`;
+			const url = `${this.baseUrl}/web/book/chapterInfos`;
 			const reqBody = {
-				bookIds: [bookId],
-				synckeys: [0],
-				teenmode: 0
+				bookIds: [bookId]
 			};
+
 			const req: RequestUrlParam = {
 				url: url,
 				method: 'POST',
 				headers: this.getHeaders(),
 				body: JSON.stringify(reqBody)
 			};
+			console.log('get book chapters req:', req);
+
 			const resp = await requestUrl(req);
 			return resp.json;
 		} catch (e) {
@@ -215,9 +209,29 @@ export default class ApiManager {
 			console.error('get book chapters error' + bookId, e);
 		}
 	}
+	/**
+	 * 获取书籍阅读进度信息
+	 * @param bookId 书籍ID
+	 * @returns 书籍阅读进度信息
+	 */
+	async getProgress(bookId: string): Promise<BookProgressResponse> {
+		try {
+			const url = `${this.baseUrl}/web/book/getProgress?bookId=${bookId}`;
+			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
+			const resp = await requestUrl(req);
+			return resp.json;
+		} catch (e) {
+			new Notice('获取微信读书阅读进度信息失败，请检查您的 Cookies 并重试。');
+			console.error('get book progress error for bookId: ' + bookId, e);
+		}
+	}
+
+	/**
+	 * @deprecated 该方法新 API 中已废弃，请使用 getProgress 方法代替
+	 */
 	async getBookReadInfo(bookId: string): Promise<BookReadInfoResponse> {
 		try {
-			const url = `${this.baseUrl}/book/readinfo?bookId=${bookId}&readingDetail=1&readingBookIndex=1&finishedDate=1`;
+			const url = `${this.baseUrl}/web/book/readinfo?bookId=${bookId}&readingDetail=1&readingBookIndex=1&finishedDate=1`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
 			const resp = await requestUrl(req);
 			return resp.json;

@@ -1,6 +1,6 @@
 import ApiManager from './api';
 import FileManager from './fileManager';
-import { Metadata, Notebook, AnnotationFile } from './models';
+import { Metadata, Notebook, AnnotationFile, BookProgressResponse } from './models';
 import {
 	parseHighlights,
 	parseMetadata,
@@ -87,9 +87,14 @@ export default class SyncNotebooks {
 			metaData.rating = `${bookDetail.newRating / 10}%`;
 		}
 
-		const readInfo = await this.apiManager.getBookReadInfo(metaData.bookId);
-		if (readInfo) {
-			metaData.readInfo = Object.assign({}, readInfo);
+		const progress: BookProgressResponse = await this.apiManager.getProgress(metaData.bookId);
+		if (progress && progress.book) {
+			metaData.readInfo = {
+				readingProgress: progress.book.progress,
+				readingTime: progress.book.readingTime,
+				readingBookDate: progress.book.startReadingTime,
+				finishedDate: progress.book.finishTime
+			};
 		}
 
 		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);

@@ -67,7 +67,7 @@ export const parseHighlights = (
 		const chapterInfo = highlightData.chapters
 			.filter((chapter) => chapter.chapterUid === highlight.chapterUid)
 			.first();
-		const intentMarkText = 	addIndentToParagraphs(highlight.markText)
+		const intentMarkText = addIndentToParagraphs(highlight.markText);
 		return {
 			bookmarkId: highlight.bookmarkId?.replace(/[_~]/g, '-'),
 			created: highlight.createTime,
@@ -85,9 +85,8 @@ export const parseHighlights = (
 	});
 };
 
-
-const addIndentToParagraphs = (content: string): string  =>{
-	if(content === undefined || content == ""){
+const addIndentToParagraphs = (content: string): string => {
+	if (content === undefined || content == '') {
 		return content;
 	}
 	// 将字符串按换行符分割成段落数组
@@ -97,10 +96,10 @@ const addIndentToParagraphs = (content: string): string  =>{
 	for (let i = 1; i < paragraphs.length; i++) {
 		paragraphs[i] = '   ' + paragraphs[i];
 	}
-	
+
 	// 将段落数组重新组合成一个字符串
 	return paragraphs.join('\n');
-  }
+};
 
 export const parseArticleHighlightReview = (
 	chapters: Chapter[],
