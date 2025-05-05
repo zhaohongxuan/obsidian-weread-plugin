@@ -131,6 +131,31 @@ export type ChapterResponse = {
 		updated: Chapter[];
 	}[];
 };
+export interface BookProgressResponse {
+	bookId: string;
+	book: {
+		appId: string;
+		bookVersion: number;
+		reviewId: string;
+		chapterUid: number;
+		chapterOffset: number;
+		chapterIdx: number;
+		updateTime: number;
+		synckey: number;
+		summary: string;
+		repairOffsetTime: number;
+		readingTime: number;
+		progress: number;
+		isStartReading: number;
+		ttsTime: number;
+		startReadingTime: number;
+		installId: string;
+		recordReadingTime: number;
+		finishTime: number;
+	};
+	canFreeRead: number;
+	timestamp: number;
+}
 
 export type BookReadInfoResponse = {
 	finishedBookCount: number;
@@ -322,14 +347,14 @@ export type Metadata = {
 	totalWords?: number;
 	rating?: string;
 	readInfo?: {
-		markedStatus: number;
+		markedStatus?: number;
 		readingTime: number;
-		totalReadDay: number;
-		continueReadDays: number;
-		readingBookCount: number;
+		totalReadDay?: number;
+		continueReadDays?: number;
+		readingBookCount?: number;
 		readingBookDate: number;
-		finishedBookCount: number;
-		finishedBookIndex: number;
+		finishedBookCount?: number;
+		finishedBookIndex?: number;
 		finishedDate: number;
 		readingProgress: number;
 	};
