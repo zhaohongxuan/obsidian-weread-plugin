@@ -151,6 +151,11 @@ export default class ApiManager {
 				headers: this.getHeaders()
 			};
 			const resp = await requestUrl(req);
+			if (resp.json.errCode == -2012) {
+				// 登录超时 -2012
+				console.log('weread cookie expire retry refresh cookie... ');
+				await this.refreshCookie();
+			}
 			return resp.json;
 		} catch (e) {
 			console.error('get book detail error', e);
@@ -198,7 +203,6 @@ export default class ApiManager {
 				headers: this.getHeaders(),
 				body: JSON.stringify(reqBody)
 			};
-			console.log('get book chapters req:', req);
 
 			const resp = await requestUrl(req);
 			return resp.json;
