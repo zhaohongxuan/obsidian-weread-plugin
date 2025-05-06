@@ -86,7 +86,6 @@ export default class SyncNotebooks {
 			metaData.totalWords = bookDetail.totalWords;
 			metaData.rating = `${bookDetail.newRating / 10}%`;
 		}
-
 		const progress: BookProgressResponse = await this.apiManager.getProgress(metaData.bookId);
 		if (progress && progress.book) {
 			metaData.readInfo = {
@@ -100,7 +99,6 @@ export default class SyncNotebooks {
 		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
 		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
 		const chapterResp = await this.apiManager.getChapters(metaData.bookId);
-
 		const highlights = parseHighlights(highlightResp, reviewResp);
 		const reviews = parseReviews(reviewResp);
 		const chapters = parseChapterResp(chapterResp, highlightResp);
@@ -113,7 +111,6 @@ export default class SyncNotebooks {
 		} else {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
-		console.log('chapters:', chapters, chapterHighlightReview, highlightResp);
 		const bookReview = parseChapterReviews(reviewResp);
 		return {
 			metaData: metaData,
