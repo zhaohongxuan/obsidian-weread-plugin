@@ -31,7 +31,7 @@ export default class WereadLoginModel {
 		session.webRequest.onCompleted(loginFilter, (details) => {
 			if (details.statusCode == 200) {
 				console.log('weread login success, redirect to weread shelf');
-				this.modal.loadURL('https://weread.qq.com/web/shelf')
+				this.modal.loadURL('https://weread.qq.com/web/shelf');
 			}
 		});
 

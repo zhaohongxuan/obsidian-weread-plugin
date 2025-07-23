@@ -40,12 +40,11 @@ export const buildFrontMatter = (
 		noteCount: noteBook.metaData.noteCount
 	};
 
-
 	const saveReadingInfoToggle = get(settingsStore).saveReadingInfoToggle;
 
 	if (saveReadingInfoToggle) {
-		frontMatter.author = noteBook.metaData.author,
-		frontMatter.cover = noteBook.metaData.cover
+		(frontMatter.author = noteBook.metaData.author),
+			(frontMatter.cover = noteBook.metaData.cover);
 
 		const readInfo = noteBook.metaData.readInfo;
 		if (readInfo) {
@@ -58,9 +57,7 @@ export const buildFrontMatter = (
 			if (readInfo.finishedDate) {
 				frontMatter.finishedDate = formatTimestampToDate(readInfo.finishedDate);
 			}
-
 		}
-
 	}
 	let existFrontMatter = Object();
 	if (existFile) {
