@@ -44,6 +44,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.notebookBlacklist();
 		this.noteCountLimit();
 		this.fileNameType();
+		this.removeParens();
 		this.subFolderType();
 		this.convertTagToggle();
 		this.saveArticleToggle();
@@ -134,10 +135,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.setName('保存阅读元数据?')
 			.setDesc('开启此选项会阅读数据写入frontmatter')
 			.addToggle((toggle) => {
-				return toggle.setValue(get(settingsStore).saveReadingInfoToggle).onChange((value) => {
-					settingsStore.actions.setSaveReadingInfoToggle(value);
-					this.display();
-				});
+				return toggle
+					.setValue(get(settingsStore).saveReadingInfoToggle)
+					.onChange((value) => {
+						settingsStore.actions.setSaveReadingInfoToggle(value);
+						this.display();
+					});
 			});
 	}
 	private convertTagToggle(): void {
@@ -255,6 +258,18 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						settingsStore.actions.setFileNameType(value);
 					});
+			});
+	}
+
+	private removeParens(): void {
+		new Setting(this.containerEl)
+			.setName('移除书名中的括号内容')
+			.setDesc('是否移除书名中的括号及其内部文字（注：谨慎启用，可能导致重名）')
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).removeParens).onChange((value) => {
+					settingsStore.actions.setRemoveParens(value);
+					this.display();
+				});
 			});
 	}
 

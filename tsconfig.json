@@ -11,6 +11,7 @@
     "importHelpers": true,
     "isolatedModules": true,
     "lib": [
+      "ES2021",
       "DOM",
       "ES5",
       "ES6",

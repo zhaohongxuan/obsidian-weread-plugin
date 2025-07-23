@@ -196,27 +196,32 @@ export default class FileManager {
 		const fileNameType = get(settingsStore).fileNameType;
 		const baseFileName = sanitizeTitle(metaData.title);
 
+		const removeParens = get(settingsStore).removeParens;
+		const removedParensBaseFileName = baseFileName.replace(/（.*）/g, '');
+
+		const fileName = removeParens ? removedParensBaseFileName : baseFileName;
+
 		switch (fileNameType) {
 			case 'BOOK_ID':
 				return metaData.bookId;
 
 			case 'BOOK_NAME_AUTHOR':
 				if (metaData.duplicate) {
-					return `${baseFileName}-${metaData.author}-${metaData.bookId}`;
+					return `${fileName}-${metaData.author}-${metaData.bookId}`;
 				}
-				return `${baseFileName}-${metaData.author}`;
+				return `${fileName}-${metaData.author}`;
 
 			case 'BOOK_NAME_BOOKID':
-				return `${baseFileName}-${metaData.bookId}`;
+				return `${fileName}-${metaData.bookId}`;
 
 			case 'BOOK_NAME':
 				if (metaData.duplicate) {
-					return `${baseFileName}-${metaData.bookId}`;
+					return `${fileName}-${metaData.bookId}`;
 				}
-				return baseFileName;
+				return fileName;
 
 			default:
-				return baseFileName;
+				return fileName;
 		}
 	}
 
