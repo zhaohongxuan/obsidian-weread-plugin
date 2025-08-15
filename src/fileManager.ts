@@ -195,11 +195,18 @@ export default class FileManager {
 	private getFileName(metaData: Metadata): string {
 		const fileNameType = get(settingsStore).fileNameType;
 		const baseFileName = sanitizeTitle(metaData.title);
-
 		const removeParens = get(settingsStore).removeParens;
-		const removedParensBaseFileName = baseFileName.replace(/（.*）/g, '');
-
-		const fileName = removeParens ? removedParensBaseFileName : baseFileName;
+		const whitelistRaw = get(settingsStore).removeParensWhitelist || '';
+		const whitelistArr = whitelistRaw
+			.split(/\r?\n/)
+			.map((s) => s.trim())
+			.filter(Boolean);
+		// 判断是否命中白名单
+		const isWhitelisted = whitelistArr.some((keyword) => baseFileName.includes(keyword));
+		let fileName = baseFileName;
+		if (removeParens && !isWhitelisted) {
+			fileName = baseFileName.replace(/（.*）/g, '');
+		}
 
 		switch (fileNameType) {
 			case 'BOOK_ID':

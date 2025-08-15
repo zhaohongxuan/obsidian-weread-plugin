@@ -271,6 +271,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 					this.display();
 				});
 			});
+		// 白名单 textarea，仅在启用移除括号时显示
+		if (get(settingsStore).removeParens) {
+			new Setting(this.containerEl)
+				.setName('括号移除白名单')
+				.setDesc('如文件名包含下列任意文本，则不移除括号。每行一个关键词。')
+				.addTextArea((text) => {
+					text.setValue(get(settingsStore).removeParensWhitelist || '').onChange(
+						(value: string) => {
+							settingsStore.actions.setRemoveParensWhitelist(value);
+						}
+					);
+				});
+		}
 	}
 
 	private showLogout(): void {

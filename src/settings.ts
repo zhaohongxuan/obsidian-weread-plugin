@@ -19,6 +19,7 @@ interface WereadPluginSettings {
 	subFolderType: string;
 	fileNameType: string;
 	removeParens: boolean;
+	removeParensWhitelist: string;
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
 	showEmptyChapterTitleToggle: boolean;
@@ -43,6 +44,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	subFolderType: '-1',
 	fileNameType: 'BOOK_NAME',
 	removeParens: false,
+	removeParensWhitelist: '',
 	dailyNotesToggle: false,
 	notesBlacklist: '',
 	showEmptyChapterTitleToggle: false,
@@ -202,6 +204,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setRemoveParensWhitelist = (whitelist: string) => {
+		store.update((state) => {
+			state.removeParensWhitelist = whitelist;
+			return state;
+		});
+	};
+
 	const setNoteBlacklist = (notebookBlacklist: string) => {
 		store.update((state) => {
 			state.notesBlacklist = notebookBlacklist;
@@ -248,6 +257,7 @@ const createSettingsStore = () => {
 			setSubFolderType,
 			setFileNameType,
 			setRemoveParens,
+			setRemoveParensWhitelist,
 			setDailyNotesToggle,
 			setDailyNotesFolder,
 			setDailyNotesFormat,
