@@ -97,7 +97,7 @@ export default class WereadPlugin extends Plugin {
 		this.registerView(WEREAD_BROWSER_VIEW_ID, (leaf) => new WereadReadingView(leaf));
 
 		this.addCommand({
-			id: 'open-weread-reading-view',
+			id: 'open-weread-reading-view-tab',
 			name: '在新标签页打开微信读书',
 			callback: () => {
 				this.activateReadingView('TAB');
@@ -105,7 +105,7 @@ export default class WereadPlugin extends Plugin {
 		});
 
 		this.addCommand({
-			id: 'open-weread-reading-view',
+			id: 'open-weread-reading-view-window',
 			name: '在新窗口打开微信读书',
 			callback: () => {
 				this.activateReadingView('WINDOW');
