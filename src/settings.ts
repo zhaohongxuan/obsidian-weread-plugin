@@ -27,6 +27,7 @@ interface WereadPluginSettings {
 	convertTags: boolean;
 	saveArticleToggle: boolean;
 	saveReadingInfoToggle: boolean;
+	trimBlocks: boolean;
 	cookieCloudInfo: {
 		serverUrl: string;
 		uuid: string;
@@ -58,6 +59,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	convertTags: false,
 	saveArticleToggle: true,
 	saveReadingInfoToggle: true,
+	trimBlocks: false,
 	cookieCloudInfo: {
 		serverUrl: '',
 		uuid: '',
@@ -272,6 +274,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setTrimBlocks = (trimBlocks: boolean) => {
+		store.update((state) => {
+			state.trimBlocks = trimBlocks;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -296,7 +305,8 @@ const createSettingsStore = () => {
 			setConvertTags,
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
-			setCookieCloudInfo
+			setCookieCloudInfo,
+			setTrimBlocks
 		}
 	};
 };

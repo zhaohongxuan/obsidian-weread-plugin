@@ -9,3 +9,593 @@
 	border: none;
 	background-clip: content-box;
 }
+
+/* Template Editor Modal Styles */
+.weread-template-editor-modal {
+	width: 95vw;
+	height: 90vh;
+	max-width: none;
+	max-height: none;
+}
+
+.weread-template-editor-modal .modal-content {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+}
+
+.weread-editor-titlebar {
+	padding: 12px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background-color: var(--background-secondary);
+}
+
+.weread-editor-titlebar h2 {
+	margin: 0;
+	font-size: 1.3em;
+	font-weight: 600;
+	flex: 1;
+}
+
+.weread-editor-buttons {
+	display: flex;
+	gap: 8px;
+}
+
+.weread-editor-container {
+	display: flex;
+	flex: 1;
+	overflow: hidden;
+	height: 100%;
+}
+
+/* 左侧：说明文档面板 */
+.weread-editor-instructions {
+	width: 300px;
+	min-width: 250px;
+	flex-shrink: 0;
+	background-color: var(--background-secondary);
+	border-right: 1px solid var(--background-modifier-border);
+	overflow-y: auto;
+	padding: 20px;
+}
+
+.weread-editor-instructions h2 {
+	font-size: 1.2em;
+	margin-bottom: 16px;
+	color: var(--text-normal);
+}
+
+.weread-editor-instructions h3 {
+	font-size: 1em;
+	margin-top: 16px;
+	margin-bottom: 8px;
+	color: var(--text-normal);
+}
+
+.weread-editor-instructions p,
+.weread-editor-instructions ul,
+.weread-editor-instructions ol {
+	font-size: 0.9em;
+	line-height: 1.6;
+	margin-bottom: 12px;
+	color: var(--text-muted);
+}
+
+.weread-editor-instructions code {
+	background-color: var(--background-primary-alt);
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+	color: var(--text-accent);
+}
+
+.weread-editor-instructions ul,
+.weread-editor-instructions ol {
+	padding-left: 20px;
+}
+
+/* 中间：编辑器面板 */
+.weread-editor-panel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--background-primary);
+	border-right: 1px solid var(--background-modifier-border);
+	min-width: 0;
+}
+
+.weread-editor-panel .panel-header {
+	padding: 10px 16px;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: 0.9em;
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.weread-editor-textarea {
+	flex: 1;
+	width: 100%;
+	padding: 16px;
+	border: none;
+	resize: none;
+	font-family: var(--font-monospace);
+	font-size: 13px;
+	line-height: 1.6;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	outline: none;
+}
+
+.weread-editor-textarea:focus {
+	outline: none;
+}
+
+/* 右侧：预览面板 */
+.weread-editor-preview {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--background-primary);
+	min-width: 0;
+}
+
+.weread-editor-preview .panel-header {
+	padding: 10px 16px;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: 0.9em;
+	font-weight: 500;
+	color: var(--text-normal);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+/* Toggle 开关容器 */
+.weread-toggle-container {
+	display: flex;
+	gap: 16px;
+	align-items: center;
+}
+
+.weread-toggle-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.weread-toggle-label {
+	font-size: 0.85em;
+	color: var(--text-normal);
+	white-space: nowrap;
+}
+
+/* Toggle 开关样式 */
+.weread-toggle-switch {
+	position: relative;
+	width: 40px;
+	height: 20px;
+	background-color: var(--background-modifier-border);
+	border-radius: 10px;
+	cursor: pointer;
+	transition: background-color 0.3s;
+}
+
+.weread-toggle-switch::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	background-color: white;
+	border-radius: 50%;
+	transition: transform 0.3s;
+}
+
+.weread-toggle-switch.is-enabled {
+	background-color: var(--interactive-accent);
+}
+
+.weread-toggle-switch.is-enabled::after {
+	transform: translateX(20px);
+}
+
+.weread-toggle-switch:hover {
+	opacity: 0.8;
+}
+
+.weread-editor-preview .preview-content {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px;
+}
+
+.weread-editor-preview .preview-text {
+	color: var(--text-normal);
+	margin: 0;
+}
+
+.weread-editor-preview .preview-text.preview-source-mode pre {
+	font-family: var(--font-monospace);
+	font-size: 13px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	margin: 0;
+	padding: 0;
+}
+
+.weread-editor-preview .preview-text.markdown-preview-view {
+	font-family: var(--font-text);
+	font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+	padding: 0;
+}
+
+.weread-editor-preview .markdown-preview-view h1,
+.weread-editor-preview .markdown-preview-view h2,
+.weread-editor-preview .markdown-preview-view h3,
+.weread-editor-preview .markdown-preview-view h4,
+.weread-editor-preview .markdown-preview-view h5,
+.weread-editor-preview .markdown-preview-view h6 {
+	font-weight: var(--font-bold);
+	line-height: var(--line-height-tight);
+	margin-top: 1em;
+	margin-bottom: 0.5em;
+}
+
+.weread-editor-preview .markdown-preview-view p {
+	margin-bottom: 1em;
+}
+
+.weread-editor-preview .markdown-preview-view ul,
+.weread-editor-preview .markdown-preview-view ol {
+	padding-left: 2em;
+	margin-bottom: 1em;
+}
+
+.weread-editor-preview .markdown-preview-view code {
+	font-family: var(--font-monospace);
+	background-color: var(--code-background);
+	padding: 0.2em 0.4em;
+	border-radius: 3px;
+}
+
+.weread-editor-preview .markdown-preview-view pre {
+	background-color: var(--code-background);
+	padding: 1em;
+	border-radius: 5px;
+	overflow-x: auto;
+}
+
+.weread-editor-preview .markdown-preview-view blockquote {
+	border-left: 3px solid var(--background-modifier-border);
+	padding-left: 1em;
+	margin-left: 0;
+	color: var(--text-muted);
+}
+
+.weread-editor-preview .error-message {
+	color: #ffffff;
+	background-color: #c73e1d;
+	border: 1px solid #a02f18;
+	padding: 16px;
+	text-align: center;
+	border-radius: 6px;
+	margin: 8px 0;
+	display: none;
+	font-weight: 500;
+	font-size: 0.95em;
+	line-height: 1.5;
+}
+
+/* Template Preview Modal Styles */
+.weread-template-preview-modal {
+	width: 95vw;
+	height: 90vh;
+	max-width: none;
+	max-height: none;
+}
+
+/* 模态窗口需要绝对定位以支持拖动 */
+.modal.weread-template-preview-modal {
+	position: fixed !important;
+}
+
+.weread-template-preview-modal .modal-content {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.weread-modal-title {
+	padding: 12px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	user-select: none;
+	background-color: var(--background-secondary);
+}
+
+.weread-modal-title:active {
+	cursor: move;
+}
+
+.weread-modal-title-text {
+	margin: 0;
+	font-size: 1.3em;
+	font-weight: 600;
+	flex: 1;
+}
+
+.weread-modal-controls {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.weread-modal-control-btn {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background-color: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	transition: all 0.2s ease;
+}
+
+.weread-modal-control-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.weread-template-container {
+	display: flex;
+	flex: 1;
+	gap: 10px;
+	padding: 10px;
+	overflow: hidden;
+}
+
+.weread-editor-panel,
+.weread-preview-panel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
+	background-color: var(--background-primary);
+}
+
+.weread-panel-header {
+	padding: 12px 16px;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.weread-panel-header h3 {
+	margin: 0;
+	font-size: 1.1em;
+	font-weight: 500;
+	color: var(--text-normal);
+}
+
+.weread-panel-subtitle {
+	font-size: 0.85em;
+	color: var(--text-muted);
+	margin-left: 10px;
+}
+
+.weread-template-editor {
+	flex: 1;
+	width: 100%;
+	padding: 16px;
+	border: none;
+	resize: none;
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+	line-height: 1.6;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	outline: none;
+}
+
+.weread-template-editor:focus {
+	outline: none;
+}
+
+.weread-preview-content {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px;
+	background-color: var(--background-primary);
+}
+
+.weread-preview-text {
+	margin: 0;
+	padding: 0;
+	font-family: var(--font-monospace);
+	font-size: 0.85em;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	color: var(--text-normal);
+}
+
+.weread-preview-error {
+	padding: 20px;
+	text-align: center;
+	color: var(--text-error);
+}
+
+.weread-preview-error span {
+	font-size: 1.2em;
+	font-weight: 600;
+	display: block;
+	margin-bottom: 10px;
+}
+
+.weread-preview-error p {
+	margin: 5px 0;
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+.weread-modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	padding: 16px 20px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.weread-modal-footer button {
+	padding: 8px 20px;
+	border-radius: 5px;
+	font-size: 0.95em;
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	transition: all 0.2s ease;
+}
+
+.weread-modal-footer button:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.weread-modal-footer button.mod-cta {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.weread-modal-footer button.mod-cta:hover {
+	background-color: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+}
+
+/* Scrollbar styles */
+.weread-preview-content::-webkit-scrollbar,
+.weread-template-editor::-webkit-scrollbar {
+	width: 8px;
+}
+
+.weread-preview-content::-webkit-scrollbar-track,
+.weread-template-editor::-webkit-scrollbar-track {
+	background: var(--background-secondary);
+}
+
+.weread-preview-content::-webkit-scrollbar-thumb,
+.weread-template-editor::-webkit-scrollbar-thumb {
+	background: var(--background-modifier-border);
+	border-radius: 4px;
+}
+
+.weread-preview-content::-webkit-scrollbar-thumb:hover,
+.weread-template-editor::-webkit-scrollbar-thumb:hover {
+	background: var(--text-muted);
+}
+
+/* Resize handles */
+.weread-resize-handle {
+	position: absolute;
+	z-index: 10;
+}
+
+.weread-resize-n,
+.weread-resize-s {
+	left: 0;
+	right: 0;
+	height: 8px;
+}
+
+.weread-resize-n {
+	top: 0;
+	cursor: ns-resize;
+}
+
+.weread-resize-s {
+	bottom: 0;
+	cursor: ns-resize;
+}
+
+.weread-resize-e,
+.weread-resize-w {
+	top: 0;
+	bottom: 0;
+	width: 8px;
+}
+
+.weread-resize-e {
+	right: 0;
+	cursor: ew-resize;
+}
+
+.weread-resize-w {
+	left: 0;
+	cursor: ew-resize;
+}
+
+.weread-resize-ne,
+.weread-resize-nw,
+.weread-resize-se,
+.weread-resize-sw {
+	width: 16px;
+	height: 16px;
+}
+
+.weread-resize-ne {
+	top: 0;
+	right: 0;
+	cursor: nesw-resize;
+}
+
+.weread-resize-nw {
+	top: 0;
+	left: 0;
+	cursor: nwse-resize;
+}
+
+.weread-resize-se {
+	bottom: 0;
+	right: 0;
+	cursor: nwse-resize;
+}
+
+.weread-resize-sw {
+	bottom: 0;
+	left: 0;
+	cursor: nesw-resize;
+}
+
+/* 悬停时显示调整大小手柄 */
+.weread-resize-handle:hover {
+	background-color: var(--interactive-accent);
+	opacity: 0.3;
+}
+
+/* 防止窗口调整大小时选中文本 */
+.weread-template-preview-modal.is-resizing,
+.weread-template-preview-modal.is-dragging {
+	user-select: none;
+}

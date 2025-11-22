@@ -1,11 +1,11 @@
 import WereadPlugin from 'main';
-import templateInstructions from './assets/templateInstructions.html';
 import { PluginSettingTab, Setting, App, Platform } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
+import { TemplateEditorWindow } from './components/templateEditorWindow';
 
 import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
@@ -337,23 +337,23 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private template(): void {
-		const descFragment = document.createRange().createContextualFragment(templateInstructions);
-
 		new Setting(this.containerEl)
-			.setName('笔记模板')
-			.setDesc(descFragment)
-			.addTextArea((text) => {
-				text.inputEl.style.width = '100%';
-				text.inputEl.style.height = '540px';
-				text.inputEl.style.fontSize = '0.8em';
-				text.setValue(get(settingsStore).template).onChange(async (value) => {
-					const isValid = this.renderer.validate(value);
-					if (isValid) {
-						settingsStore.actions.setTemplate(value);
-					}
-					text.inputEl.style.border = isValid ? '' : '2px solid red';
-				});
-				return text;
+			.setName('笔记模板设置')
+			.setHeading()
+			.addButton((button) => {
+				return button
+					.setButtonText('编辑模板')
+					.setCta()
+					.onClick(() => {
+						const editorWindow = new TemplateEditorWindow(
+							this.app,
+							get(settingsStore).template,
+							(newTemplate: string) => {
+								settingsStore.actions.setTemplate(newTemplate);
+							}
+						);
+						editorWindow.open();
+					});
 			});
 	}
 
