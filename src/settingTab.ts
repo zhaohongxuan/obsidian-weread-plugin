@@ -1,5 +1,13 @@
 import WereadPlugin from 'main';
-import { PluginSettingTab, Setting, App, Platform } from 'obsidian';
+import {
+	App,
+	FuzzySuggestModal,
+	Platform,
+	PluginSettingTab,
+	Setting,
+	TFolder,
+	TextComponent
+} from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
@@ -7,7 +15,6 @@ import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { TemplateEditorWindow } from './components/templateEditorWindow';
 
-import pickBy from 'lodash.pickby';
 import { Renderer } from './renderer';
 import { getEncodeCookieString } from './utils/cookiesUtil';
 import { Notice } from 'obsidian';
@@ -83,24 +90,41 @@ export class WereadSettingsTab extends PluginSettingTab {
 		info.setText(`微信读书已登录，用户名：${get(settingsStore).user}`);
 	}
 
+	private getFolderPaths(): string[] {
+		const folders = this.app.vault
+			.getAllLoadedFiles()
+			.filter((file): file is TFolder => file instanceof TFolder);
+		const folderPaths = folders.map((folder) => (folder.path === '' ? '/' : folder.path));
+		if (!folderPaths.includes('/')) {
+			folderPaths.unshift('/');
+		}
+		return Array.from(new Set(folderPaths)).sort();
+	}
+
 	private notebookFolder(): void {
+		let inputRef: TextComponent | null = null;
 		new Setting(this.containerEl)
 			.setName('笔记保存位置')
-			.setDesc('请选择Obsidian Vault中微信读书笔记存放的位置')
-			.addDropdown((dropdown) => {
-				const files = (this.app.vault.adapter as any).files;
-				const folders = pickBy(files, (val: any) => {
-					return val.type === 'folder';
-				});
-
-				Object.keys(folders).forEach((val) => {
-					dropdown.addOption(val, val);
-				});
-				return dropdown
+			.setDesc('请选择Obsidian Vault中微信读书笔记存放的位置，例如：/ 或 Books/Weread')
+			.addText((text) => {
+				inputRef = text;
+				return text
+					.setPlaceholder('例如：/ 或 Books/Weread')
 					.setValue(get(settingsStore).noteLocation)
-					.onChange(async (value) => {
-						settingsStore.actions.setNoteLocationFolder(value);
+					.onChange((value: string) => {
+						const nextValue = value.trim() === '' ? '/' : value.trim();
+						settingsStore.actions.setNoteLocationFolder(nextValue);
 					});
+			})
+			.addButton((button) => {
+				return button.setButtonText('选择').onClick(() => {
+					const modal = this.createFolderSuggestModal((value: string) => {
+						const nextValue = value.trim() === '' ? '/' : value.trim();
+						settingsStore.actions.setNoteLocationFolder(nextValue);
+						inputRef?.setValue(nextValue);
+					});
+					modal.open();
+				});
 			});
 	}
 
@@ -179,23 +203,29 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private dailyNotesFolder() {
+		let inputRef: TextComponent | null = null;
 		new Setting(this.containerEl)
 			.setName('Daily Notes文件夹')
 			.setDesc('请选择Daily Notes文件夹')
-			.addDropdown((dropdown) => {
-				const files = (this.app.vault.adapter as any).files;
-				const folders = pickBy(files, (val: any) => {
-					return val.type === 'folder';
-				});
-
-				Object.keys(folders).forEach((val) => {
-					dropdown.addOption(val, val);
-				});
-				return dropdown
+			.addText((text) => {
+				inputRef = text;
+				return text
+					.setPlaceholder('例如：/ 或 Daily Notes')
 					.setValue(get(settingsStore).dailyNotesLocation)
-					.onChange(async (value) => {
-						settingsStore.actions.setDailyNotesFolder(value);
+					.onChange((value: string) => {
+						const nextValue = value.trim() === '' ? '/' : value.trim();
+						settingsStore.actions.setDailyNotesFolder(nextValue);
 					});
+			})
+			.addButton((button) => {
+				return button.setButtonText('选择').onClick(() => {
+					const modal = this.createFolderSuggestModal((value: string) => {
+						const nextValue = value.trim() === '' ? '/' : value.trim();
+						settingsStore.actions.setDailyNotesFolder(nextValue);
+						inputRef?.setValue(nextValue);
+					});
+					modal.open();
+				});
 			});
 	}
 
@@ -442,5 +472,34 @@ export class WereadSettingsTab extends PluginSettingTab {
 				this.display();
 			});
 		});
+	}
+
+	private createFolderSuggestModal(onSelect: (value: string) => void) {
+		const folders = this.getFolderPaths();
+		return new FolderSuggestModal(this.app, folders, onSelect);
+	}
+}
+
+class FolderSuggestModal extends FuzzySuggestModal<string> {
+	private folders: string[];
+	private onSelectFolder: (value: string) => void;
+
+	constructor(app: App, folders: string[], onSelect: (value: string) => void) {
+		super(app);
+		this.folders = folders;
+		this.onSelectFolder = onSelect;
+		this.setPlaceholder('选择或搜索文件夹路径');
+	}
+
+	getItems(): string[] {
+		return this.folders;
+	}
+
+	getItemText(item: string): string {
+		return item;
+	}
+
+	onChooseItem(item: string): void {
+		this.onSelectFolder(item);
 	}
 }
