@@ -18,6 +18,7 @@ import { TemplateEditorWindow } from './components/templateEditorWindow';
 import { Renderer } from './renderer';
 import { getEncodeCookieString } from './utils/cookiesUtil';
 import { Notice } from 'obsidian';
+import ApiManager from './api';
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
@@ -55,6 +56,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 			}
 		} else {
 			this.showCookieCloudInfo();
+		}
+
+		this.showCookieStatus();
+		this.cookieAutoRefresh();
+		if (get(settingsStore).cookieAutoRefreshToggle) {
+			this.cookieRefreshInterval();
 		}
 
 		this.notebookFolder();
@@ -472,6 +479,67 @@ export class WereadSettingsTab extends PluginSettingTab {
 				this.display();
 			});
 		});
+	}
+
+	private showCookieStatus(): void {
+		const settings = get(settingsStore);
+		const isCookieValid = settings.isCookieValid;
+		const lastCookieTime = settings.lastCookieTime;
+
+		let statusText = isCookieValid ? '✅ Cookie 有效' : '❌ Cookie 无效或未登录';
+		if (lastCookieTime > 0) {
+			const lastRefreshStr = new Date(lastCookieTime).toLocaleString();
+			statusText += `，上次刷新时间：${lastRefreshStr}`;
+		}
+
+		new Setting(this.containerEl)
+			.setName('Cookie 状态')
+			.setDesc(statusText)
+			.addButton((button) => {
+				return button
+					.setButtonText('立即刷新 Cookie')
+					.setCta()
+					.onClick(async () => {
+						button.setDisabled(true);
+						button.setButtonText('刷新中...');
+						const apiManager = new ApiManager();
+						await apiManager.refreshCookie();
+						this.display();
+					});
+			});
+	}
+
+	private cookieAutoRefresh(): void {
+		new Setting(this.containerEl)
+			.setName('自动刷新 Cookie')
+			.setDesc('启动 Obsidian 时自动刷新 Cookie，并按照设定的时间间隔定期刷新')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).cookieAutoRefreshToggle)
+					.onChange((value) => {
+						settingsStore.actions.setCookieAutoRefreshToggle(value);
+						this.plugin.setupCookieRefresh();
+						this.display();
+					});
+			});
+	}
+
+	private cookieRefreshInterval(): void {
+		new Setting(this.containerEl)
+			.setName('Cookie 刷新间隔（分钟）')
+			.setDesc('设置自动刷新 Cookie 的时间间隔，单位为分钟（最小 5 分钟）')
+			.addText((text) => {
+				return text
+					.setPlaceholder('60')
+					.setValue(String(get(settingsStore).cookieRefreshInterval))
+					.onChange((value) => {
+						const num = parseInt(value, 10);
+						if (!isNaN(num) && num >= 5) {
+							settingsStore.actions.setCookieRefreshInterval(num);
+							this.plugin.setupCookieRefresh();
+						}
+					});
+			});
 	}
 
 	private createFolderSuggestModal(onSelect: (value: string) => void) {

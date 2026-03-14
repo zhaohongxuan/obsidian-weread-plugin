@@ -3,16 +3,18 @@ import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
 import { settingsStore } from './src/settings';
+import { get } from 'svelte/store';
 import { WereadSettingsTab } from './src/settingTab';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
 import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private syncing = false;
+	private cookieRefreshTimer: number | null = null;
 
 	async onload() {
 		console.log('load weread plugin');
-		settingsStore.initialise(this);
+		await settingsStore.initialise(this);
 
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
 		const apiManager = new ApiManager();
@@ -132,6 +134,8 @@ export default class WereadPlugin extends Plugin {
 		);
 
 		this.addSettingTab(new WereadSettingsTab(this.app, this));
+
+		this.setupCookieRefresh();
 	}
 
 	async startSync(force = false) {
@@ -178,5 +182,31 @@ export default class WereadPlugin extends Plugin {
 	}
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
+		this.clearCookieRefreshTimer();
+	}
+
+	setupCookieRefresh() {
+		this.clearCookieRefreshTimer();
+		const { cookieAutoRefreshToggle, cookieRefreshInterval } = get(settingsStore);
+		if (!cookieAutoRefreshToggle) {
+			return;
+		}
+		const apiManager = new ApiManager();
+		apiManager
+			.refreshCookie()
+			.catch((e) => console.error('[weread plugin] 刷新 Cookie 失败', e));
+		const intervalMs = Math.max(5, cookieRefreshInterval) * 60 * 1000;
+		this.cookieRefreshTimer = window.setInterval(() => {
+			apiManager
+				.refreshCookie()
+				.catch((e) => console.error('[weread plugin] 定时刷新 Cookie 失败', e));
+		}, intervalMs);
+	}
+
+	private clearCookieRefreshTimer() {
+		if (this.cookieRefreshTimer !== null) {
+			window.clearInterval(this.cookieRefreshTimer);
+			this.cookieRefreshTimer = null;
+		}
 	}
 }
