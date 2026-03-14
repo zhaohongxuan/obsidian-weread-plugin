@@ -33,6 +33,8 @@ interface WereadPluginSettings {
 		uuid: string;
 		password: string;
 	};
+	cookieAutoRefreshToggle: boolean;
+	cookieRefreshInterval: number;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -64,7 +66,9 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 		serverUrl: '',
 		uuid: '',
 		password: ''
-	}
+	},
+	cookieAutoRefreshToggle: false,
+	cookieRefreshInterval: 60
 };
 
 const createSettingsStore = () => {
@@ -281,6 +285,20 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setCookieAutoRefreshToggle = (cookieAutoRefreshToggle: boolean) => {
+		store.update((state) => {
+			state.cookieAutoRefreshToggle = cookieAutoRefreshToggle;
+			return state;
+		});
+	};
+
+	const setCookieRefreshInterval = (cookieRefreshInterval: number) => {
+		store.update((state) => {
+			state.cookieRefreshInterval = cookieRefreshInterval;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -306,7 +324,9 @@ const createSettingsStore = () => {
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
 			setCookieCloudInfo,
-			setTrimBlocks
+			setTrimBlocks,
+			setCookieAutoRefreshToggle,
+			setCookieRefreshInterval
 		}
 	};
 };
