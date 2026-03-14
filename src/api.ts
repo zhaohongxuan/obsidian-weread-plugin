@@ -27,30 +27,89 @@ export default class ApiManager {
 		};
 	}
 
-	async refreshCookie() {
-		const req: RequestUrlParam = {
-			url: this.baseUrl,
-			method: 'HEAD',
-			headers: this.getHeaders()
-		};
-		const resp = await requestUrl(req);
-		const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
+	async refreshCookie(): Promise<boolean> {
+		try {
+			const req: RequestUrlParam = {
+				url: this.baseUrl,
+				method: 'HEAD',
+				headers: this.getHeaders()
+			};
+			const resp = await requestUrl(req);
+			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 
-		if (respCookie !== undefined && this.checkCookies(respCookie)) {
-			new Notice('cookie已过期，尝试刷新Cookie成功');
-			this.updateCookies(respCookie);
-		} else {
-			const loginMethod = get(settingsStore).loginMethod;
-			if (loginMethod === 'cookieCloud') {
-				const cookieCloudManager = new CookieCloudManager();
-				const isSuccess = await cookieCloudManager.getCookie();
-				if (!isSuccess) {
-					new Notice('尝试刷新Cookie失败');
-				}
-			} else {
-				new Notice('尝试刷新Cookie失败');
+			if (respCookie !== undefined && this.checkCookies(respCookie)) {
+				new Notice('Cookie 刷新成功');
+				this.updateCookies(respCookie);
+				settingsStore.actions.setIsCookieValid(true);
+				return true;
+			}
+		} catch (e) {
+			console.error('[weread plugin] Cookie 刷新 HEAD 请求失败', e);
+		}
+
+		const loginMethod = get(settingsStore).loginMethod;
+		if (loginMethod === 'cookieCloud') {
+			const cookieCloudManager = new CookieCloudManager();
+			const isSuccess = await cookieCloudManager.getCookie();
+			if (isSuccess) {
+				return true;
 			}
 		}
+
+		// HEAD did not yield new cookies — verify actual validity via authenticated API
+		const isValid = await this.verifyCookieValidity();
+		if (!isValid) {
+			new Notice('Cookie 已失效，请重新登录');
+			settingsStore.actions.clearCookies();
+		}
+		return isValid;
+	}
+
+	async verifyCookieValidity(): Promise<boolean> {
+		const cookies = get(settingsStore).cookies;
+		if (!cookies || cookies.length === 0) {
+			settingsStore.actions.setIsCookieValid(false);
+			return false;
+		}
+
+		try {
+			const req: RequestUrlParam = {
+				url: `${this.baseUrl}/api/user/notebook`,
+				method: 'GET',
+				headers: this.getHeaders()
+			};
+			const resp = await requestUrl(req);
+
+			// Absorb any session-cookie refresh the server sends back
+			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
+			if (respCookie) {
+				this.updateCookies(respCookie);
+			}
+
+			if (resp.json && resp.json.books !== undefined) {
+				settingsStore.actions.setIsCookieValid(true);
+				return true;
+			}
+
+			if (resp.json && resp.json.errcode === -2012) {
+				settingsStore.actions.setIsCookieValid(false);
+				return false;
+			}
+		} catch (e) {
+			if (e.status === 401) {
+				settingsStore.actions.setIsCookieValid(false);
+				return false;
+			}
+			console.error('[weread plugin] 验证 Cookie 有效性失败', e);
+		}
+
+		// Network error or ambiguous response — preserve current state and log a warning
+		const currentValidity = get(settingsStore).isCookieValid;
+		console.warn(
+			'[weread plugin] Cookie 有效性验证结果不明确，保持当前状态：',
+			currentValidity
+		);
+		return currentValidity;
 	}
 
 	async getNotebooksWithRetry() {

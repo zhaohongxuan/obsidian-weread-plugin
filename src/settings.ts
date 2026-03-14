@@ -121,6 +121,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setIsCookieValid = (valid: boolean) => {
+		store.update((state) => {
+			state.isCookieValid = valid;
+			return state;
+		});
+	};
+
 	const setCookies = (cookies: Cookie[]) => {
 		store.update((state) => {
 			state.cookies = cookies;
@@ -326,7 +333,8 @@ const createSettingsStore = () => {
 			setCookieCloudInfo,
 			setTrimBlocks,
 			setCookieAutoRefreshToggle,
-			setCookieRefreshInterval
+			setCookieRefreshInterval,
+			setIsCookieValid
 		}
 	};
 };

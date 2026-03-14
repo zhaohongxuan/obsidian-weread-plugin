@@ -484,9 +484,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private showCookieStatus(): void {
 		const settings = get(settingsStore);
 		const isCookieValid = settings.isCookieValid;
+		const hasCookies = settings.cookies && settings.cookies.length > 0;
 		const lastCookieTime = settings.lastCookieTime;
 
-		let statusText = isCookieValid ? '✅ Cookie 有效' : '❌ Cookie 无效或未登录';
+		let statusText: string;
+		if (isCookieValid) {
+			statusText = '✅ Cookie 有效';
+		} else if (hasCookies) {
+			statusText = '⚠️ Cookie 已失效，请点击刷新或重新登录';
+		} else {
+			statusText = '❌ 未登录';
+		}
 		if (lastCookieTime > 0) {
 			const lastRefreshStr = new Date(lastCookieTime).toLocaleString();
 			statusText += `，上次刷新时间：${lastRefreshStr}`;
