@@ -68,7 +68,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 		password: ''
 	},
 	cookieAutoRefreshToggle: false,
-	cookieRefreshInterval: 60
+	cookieRefreshInterval: 12
 };
 
 const createSettingsStore = () => {
