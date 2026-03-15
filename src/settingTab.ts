@@ -534,15 +534,15 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private cookieRefreshInterval(): void {
 		new Setting(this.containerEl)
-			.setName('Cookie 刷新间隔（分钟）')
-			.setDesc('设置自动刷新 Cookie 的时间间隔，单位为分钟（最小 5 分钟）')
+			.setName('Cookie 刷新间隔（小时）')
+			.setDesc('设置自动刷新 Cookie 的时间间隔，单位为小时（最小 1 小时）')
 			.addText((text) => {
 				return text
-					.setPlaceholder('60')
+					.setPlaceholder('12')
 					.setValue(String(get(settingsStore).cookieRefreshInterval))
 					.onChange((value) => {
 						const num = parseInt(value, 10);
-						if (!isNaN(num) && num >= 5) {
+						if (!isNaN(num) && num >= 1) {
 							settingsStore.actions.setCookieRefreshInterval(num);
 							this.plugin.setupCookieRefresh();
 						}

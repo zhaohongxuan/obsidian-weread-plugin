@@ -195,7 +195,7 @@ export default class WereadPlugin extends Plugin {
 		apiManager
 			.refreshCookie()
 			.catch((e) => console.error('[weread plugin] 刷新 Cookie 失败', e));
-		const intervalMs = Math.max(5, cookieRefreshInterval) * 60 * 1000;
+		const intervalMs = Math.max(1, cookieRefreshInterval) * 60 * 60 * 1000;
 		this.cookieRefreshTimer = window.setInterval(() => {
 			apiManager
 				.refreshCookie()
