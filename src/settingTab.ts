@@ -59,9 +59,11 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 
 		this.showCookieStatus();
-		this.cookieAutoRefresh();
-		if (get(settingsStore).cookieAutoRefreshToggle) {
-			this.cookieRefreshInterval();
+		if (Platform.isDesktopApp) {
+			this.cookieAutoRefresh();
+			if (get(settingsStore).cookieAutoRefreshToggle) {
+				this.cookieRefreshInterval();
+			}
 		}
 
 		this.notebookFolder();
@@ -491,19 +493,27 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (isCookieValid) {
 			statusText = '✅ Cookie 有效';
 		} else if (hasCookies) {
-			statusText = '⚠️ Cookie 已失效，请点击刷新或重新登录';
+			if (Platform.isDesktopApp) {
+				statusText = '⚠️ Cookie 已失效，请点击刷新或重新登录';
+			} else {
+				statusText = '⚠️ Cookie 已失效，请在电脑端登录';
+			}
 		} else {
-			statusText = '❌ 未登录';
+			if (Platform.isDesktopApp) {
+				statusText = '❌ 未登录';
+			} else {
+				statusText = '❌ 未登录，请在电脑端登录';
+			}
 		}
 		if (lastCookieTime > 0) {
 			const lastRefreshStr = new Date(lastCookieTime).toLocaleString();
 			statusText += `，上次刷新时间：${lastRefreshStr}`;
 		}
 
-		new Setting(this.containerEl)
-			.setName('Cookie 状态')
-			.setDesc(statusText)
-			.addButton((button) => {
+		const setting = new Setting(this.containerEl).setName('Cookie 状态').setDesc(statusText);
+
+		if (Platform.isDesktopApp) {
+			setting.addButton((button) => {
 				return button
 					.setButtonText('立即刷新 Cookie')
 					.setCta()
@@ -515,6 +525,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 						this.display();
 					});
 			});
+		}
 	}
 
 	private cookieAutoRefresh(): void {

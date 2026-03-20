@@ -17,17 +17,39 @@ export default class ApiManager {
 
 	private getHeaders() {
 		const cookieString = getCookieString(get(settingsStore).cookies);
+
+		// 根据平台选择合适的 User-Agent
+		// Mac 版 Obsidian 会截断长的 User-Agent，所以使用短版本
+		// iOS 版 Obsidian 会保留完整 User-Agent，所以也使用短版本保持一致
+		const userAgent =
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)';
+
 		const headers: Record<string, string> = {
-			'User-Agent':
-				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36',
+			'User-Agent': userAgent,
 			'Accept-Encoding': 'gzip, deflate',
 			'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
 			accept: 'application/json, text/plain, */*',
 			'Content-Type': 'application/json'
 		};
 
+		// iOS 端可能因为平台特性导致 401，尝试删除可能引起差异的头部
+		if (!Platform.isDesktopApp) {
+			console.log('[weread plugin] iOS 端 - 移除可能导致差异的头部');
+			delete headers['Accept-Encoding'];
+		}
+
 		if (cookieString) {
 			headers['Cookie'] = cookieString;
+			console.log('[weread plugin] 请求头 Cookie 长度:', cookieString.length, '字节');
+			console.log(
+				'[weread plugin] 平台信息: ' +
+					(Platform.isDesktopApp ? 'Mac/Desktop' : 'iOS/Mobile') +
+					', User-Agent: ' +
+					headers['User-Agent'].substring(0, 50) +
+					'...'
+			);
+		} else {
+			console.warn('[weread plugin] 警告: 未找到 Cookie，请求头为空');
 		}
 
 		return headers;
@@ -65,8 +87,15 @@ export default class ApiManager {
 		// HEAD did not yield new cookies — verify actual validity via authenticated API
 		const isValid = await this.verifyCookieValidity();
 		if (!isValid) {
-			new Notice('Cookie 已失效，请重新登录');
-			settingsStore.actions.clearCookies();
+			const errorMsg = Platform.isDesktopApp
+				? 'Cookie 已失效，请重新登录'
+				: 'Cookie 已失效，请在电脑端重新登录';
+			new Notice(errorMsg);
+			if (Platform.isDesktopApp) {
+				settingsStore.actions.clearCookies();
+			} else {
+				settingsStore.actions.markCookiesInvalid();
+			}
 		}
 		return isValid;
 	}
@@ -74,47 +103,151 @@ export default class ApiManager {
 	async verifyCookieValidity(): Promise<boolean> {
 		const cookies = get(settingsStore).cookies;
 		if (!cookies || cookies.length === 0) {
+			console.log('[weread plugin] Cookie 为空，标记无效');
 			settingsStore.actions.setIsCookieValid(false);
 			return false;
 		}
 
+		console.log('[weread plugin] 开始验证 Cookie 有效性，Cookie 数量:', cookies.length);
+
+		// 打印每个 Cookie 的详细信息（包括长度和哈希用于调试）
+		console.log('[weread plugin] Cookie 详细列表:');
+		cookies.forEach((cookie, index) => {
+			const displayValue = cookie.value
+				? cookie.value.substring(0, 50) + (cookie.value.length > 50 ? '...' : '')
+				: '(空)';
+			console.log(
+				`  ${index + 1}. ${cookie.name} [长度:${cookie.value?.length || 0}]=${displayValue}`
+			);
+		});
+
+		// 检查关键 Cookie
+		const wr_skey = cookies.find((c) => c.name === 'wr_skey');
+		const wr_vid = cookies.find((c) => c.name === 'wr_vid');
+		const wr_name = cookies.find((c) => c.name === 'wr_name');
+		console.log(
+			'[weread plugin] 关键 Cookie: wr_skey=' +
+				(wr_skey?.value || '❌ 缺失') +
+				', wr_vid=' +
+				(wr_vid?.value || '❌ 缺失') +
+				', wr_name=' +
+				(wr_name?.value || '❌ 缺失')
+		);
+
+		// 检查系统时间
+		const systemTime = new Date();
+		console.log('[weread plugin] 系统时间:', systemTime.toISOString());
+		const platform = Platform.isDesktopApp ? 'Mac/Desktop' : 'iOS/Mobile';
+		console.log('[weread plugin] 平台: ' + platform);
+
 		try {
+			const headers = this.getHeaders();
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/api/user/notebook`,
 				method: 'GET',
-				headers: this.getHeaders()
+				headers: headers
 			};
+			console.log('[weread plugin] 发送验证请求到:', req.url);
+
+			// 生成 cURL 命令用于调试 - 提前输出确保被看到
+			let curlCmd = `curl ${req.url}`;
+			Object.entries(headers).forEach(([key, value]) => {
+				const val = String(value);
+				if (key === 'Cookie') {
+					curlCmd += ` -H 'Cookie: ${val}'`;
+				} else if (key.toLowerCase() !== 'accept-encoding') {
+					const displayVal = val.substring(0, 80);
+					curlCmd += ` -H '${key}: ${displayVal}'`;
+				}
+			});
+			curlCmd += ' --compressed';
+			console.log('[weread plugin] === cURL 命令 ===');
+			console.log(curlCmd);
+			console.log('[weread plugin] === cURL 命令结束 ===');
+
+			console.log(
+				'[weread plugin] 请求头详情:',
+				JSON.stringify(
+					{
+						'User-Agent': headers['User-Agent'].substring(0, 60) + '...',
+						'Cookie 长度': headers['Cookie']?.length || 0,
+						Accept: headers['accept'],
+						'Content-Type': headers['Content-Type']
+					},
+					null,
+					2
+				)
+			);
+
 			const resp = await requestUrl(req);
+			console.log(
+				'[weread plugin] 验证响应 - 状态码:',
+				resp.status,
+				', 响应头:',
+				JSON.stringify(resp.headers, null, 2)
+			);
 
 			// Absorb any session-cookie refresh the server sends back
 			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 			if (respCookie) {
+				console.log('[weread plugin] 收到新的 set-cookie 响应头，更新 Cookie');
 				this.updateCookies(respCookie);
 			}
 
 			if (resp.json && resp.json.books !== undefined) {
+				console.log('[weread plugin] Cookie 有效，书籍数:', resp.json.books.length);
 				settingsStore.actions.setIsCookieValid(true);
 				return true;
 			}
 
 			if (resp.json && resp.json.errcode === -2012) {
+				console.log('[weread plugin] Cookie 超时错误 (-2012)');
 				settingsStore.actions.setIsCookieValid(false);
 				return false;
 			}
+
+			// 响应状态 2xx 但数据不符合预期
+			console.warn(
+				'[weread plugin] 响应状态 2xx 但数据不符合预期，响应内容:',
+				JSON.stringify(resp.json).substring(0, 200)
+			);
 		} catch (e: any) {
+			console.error('[weread plugin] 验证异常 - 错误信息:', e.message);
+			console.error('[weread plugin] 异常 - 状态码:', e.status);
+
 			if (e.status === 401) {
-				settingsStore.actions.setIsCookieValid(false);
+				console.error(
+					'[weread plugin] 收到 401 响应 - 完整错误信息:',
+					JSON.stringify(e, null, 2)
+				);
+				console.log(
+					'[weread plugin] 平台: ' +
+						(Platform.isDesktopApp ? 'Mac/Desktop' : 'iOS/Mobile')
+				);
+
+				if (Platform.isDesktopApp) {
+					console.log('[weread plugin] 桌面端 401，标记 Cookie 无效');
+					settingsStore.actions.setIsCookieValid(false);
+				} else {
+					console.log('[weread plugin] ⚠️ iOS 端 401 - 排查清单:');
+					console.log('  1. ✅ Cookie 内容已确认相同');
+					console.log('  2. ✅ User-Agent 已设置为桌面版本');
+					console.log('  3. ✅ Accept-Encoding 已移除');
+					console.log('  ❓ 可能的原因:');
+					console.log('    - 微信读书对 iOS 设备做了限制（设备绑定/IP 限制）');
+					console.log('    - 系统时间不同步导致时间戳验证失败');
+					console.log('    - Cookie 中某个字段在传输时被破坏');
+					console.log('  📌 建议: 检查 iOS 系统时间是否正确');
+					settingsStore.actions.markCookiesInvalid();
+				}
 				return false;
 			}
-			console.error('[weread plugin] 验证 Cookie 有效性失败', e);
+
+			console.error('[weread plugin] 非 401 异常:', e);
 		}
 
 		// Network error or ambiguous response — preserve current state and log a warning
 		const currentValidity = get(settingsStore).isCookieValid;
-		console.warn(
-			'[weread plugin] Cookie 有效性验证结果不明确，保持当前状态：',
-			currentValidity
-		);
 		return currentValidity;
 	}
 
@@ -125,8 +258,15 @@ export default class ApiManager {
 			noteBookResp = await this.getNotebooks();
 		}
 		if (noteBookResp === undefined) {
-			new Notice('长时间未登录，Cookie已失效，请重新扫码登录！');
-			settingsStore.actions.clearCookies();
+			const errorMsg = Platform.isDesktopApp
+				? '长时间未登录，Cookie已失效，请重新扫码登录！'
+				: '长时间未登录，Cookie已失效，请在电脑端登录！';
+			new Notice(errorMsg);
+			if (Platform.isDesktopApp) {
+				settingsStore.actions.clearCookies();
+			} else {
+				settingsStore.actions.markCookiesInvalid();
+			}
 			throw Error('get weread note book error after retry');
 		}
 		return noteBookResp;
@@ -157,7 +297,11 @@ export default class ApiManager {
 						'微信读书未登录或者用户异常，请重新登录, http status code:',
 						resp.json.errcode
 					);
-					settingsStore.actions.clearCookies();
+					if (Platform.isDesktopApp) {
+						settingsStore.actions.clearCookies();
+					} else {
+						settingsStore.actions.markCookiesInvalid();
+					}
 				}
 			} else {
 				if (resp.json.errcode == -2012) {

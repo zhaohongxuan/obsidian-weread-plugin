@@ -1,5 +1,6 @@
 import { Cookie } from 'set-cookie-parser';
 import { writable } from 'svelte/store';
+import { Platform } from 'obsidian';
 import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
 
@@ -80,6 +81,26 @@ const createSettingsStore = () => {
 		const data = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
 		const settings: WereadPluginSettings = { ...data };
 		console.log('--------init cookie------', settings.cookies);
+		console.log(
+			'[weread plugin] Cookie 详情: 数量=' +
+				settings.cookies.length +
+				', 用户=' +
+				settings.user +
+				', 登录状态=' +
+				settings.isCookieValid +
+				', 平台=' +
+				(typeof Platform !== 'undefined'
+					? Platform.isDesktopApp
+						? '桌面端'
+						: '移动端'
+					: '未知')
+		);
+		if (settings.cookies.length > 0) {
+			console.log(
+				'[weread plugin] Cookie 详细列表:',
+				settings.cookies.map((c) => c.name).join(', ')
+			);
+		}
 		if (settings.cookies.length > 1) {
 			setUser(settings.cookies);
 		}
@@ -87,10 +108,14 @@ const createSettingsStore = () => {
 		const wr_vid = settings.cookies.find((cookie) => cookie.name === 'wr_vid');
 		if (wr_vid === undefined || wr_vid.value === '') {
 			settings.userVid = '';
-			settings.isCookieValid = false;
+			// 仅在完全没有 Cookie 时才标记为无效
+			if (settings.cookies.length === 0) {
+				settings.isCookieValid = false;
+			}
+			// 否则保留已有状态，由后续验证过程更新
 		}
-		store.set(settings);
 		_plugin = plugin;
+		store.set(settings);
 	};
 
 	store.subscribe(async (settings) => {
@@ -116,6 +141,15 @@ const createSettingsStore = () => {
 			state.lastCookieTime = new Date().getTime();
 			state.user = '';
 			state.userVid = '';
+			state.isCookieValid = false;
+			return state;
+		});
+	};
+
+	// 仅标记 Cookie 无效，不删除（用于移动端）
+	const markCookiesInvalid = () => {
+		console.log('[weread plugin] cookie标记为无效，保留数据等待重新登录...');
+		store.update((state) => {
 			state.isCookieValid = false;
 			return state;
 		});
@@ -314,6 +348,7 @@ const createSettingsStore = () => {
 			setNoteLocationFolder,
 			setCookies,
 			clearCookies,
+			markCookiesInvalid,
 			setTemplate,
 			setNoteCountLimit,
 			setSubFolderType,
