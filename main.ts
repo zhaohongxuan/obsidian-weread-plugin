@@ -20,6 +20,15 @@ export default class WereadPlugin extends Plugin {
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 
+		// 初始化时验证 Cookie 有效性
+		const settings = get(settingsStore);
+		if (settings.cookies && settings.cookies.length > 0 && !settings.isCookieValid) {
+			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
+			apiManager.verifyCookieValidity().catch((e) => {
+				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
+			});
+		}
+
 		const ribbonEl = this.addRibbonIcon('book-open', '同步微信读书笔记', (event) => {
 			if (event.button === 0) {
 				this.startSync();
