@@ -16,15 +16,21 @@ export default class ApiManager {
 	readonly baseUrl: string = 'https://weread.qq.com';
 
 	private getHeaders() {
-		return {
+		const cookieString = getCookieString(get(settingsStore).cookies);
+		const headers: Record<string, string> = {
 			'User-Agent':
 				'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36',
 			'Accept-Encoding': 'gzip, deflate',
 			'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
 			accept: 'application/json, text/plain, */*',
-			'Content-Type': 'application/json',
-			Cookie: getCookieString(get(settingsStore).cookies)
+			'Content-Type': 'application/json'
 		};
+
+		if (cookieString) {
+			headers['Cookie'] = cookieString;
+		}
+
+		return headers;
 	}
 
 	async refreshCookie(): Promise<boolean> {
@@ -95,7 +101,7 @@ export default class ApiManager {
 				settingsStore.actions.setIsCookieValid(false);
 				return false;
 			}
-		} catch (e) {
+		} catch (e: any) {
 			if (e.status === 401) {
 				settingsStore.actions.setIsCookieValid(false);
 				return false;
@@ -114,11 +120,11 @@ export default class ApiManager {
 
 	async getNotebooksWithRetry() {
 		let noteBookResp: [] = await this.getNotebooks();
-		if (noteBookResp === undefined || noteBookResp.length === 0) {
+		if (noteBookResp === undefined) {
 			//retry get notebooks
 			noteBookResp = await this.getNotebooks();
 		}
-		if (noteBookResp === undefined || noteBookResp.length === 0) {
+		if (noteBookResp === undefined) {
 			new Notice('长时间未登录，Cookie已失效，请重新扫码登录！');
 			settingsStore.actions.clearCookies();
 			throw Error('get weread note book error after retry');
@@ -167,7 +173,7 @@ export default class ApiManager {
 			}
 
 			noteBooks = resp.json.books;
-		} catch (e) {
+		} catch (e: any) {
 			if (e.status == 401) {
 				console.log(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
 				await this.refreshCookie();
@@ -180,7 +186,7 @@ export default class ApiManager {
 	private parseToCurl(req: RequestUrlParam) {
 		const command = ['curl'];
 		command.push(req.url);
-		const requestHeaders = req.headers;
+		const requestHeaders = req.headers || {};
 		Object.keys(requestHeaders).forEach((name) => {
 			command.push('-H');
 			command.push(
@@ -192,14 +198,14 @@ export default class ApiManager {
 	}
 
 	private escapeStringPosix(str: string) {
-		function escapeCharacter(x) {
-			let code = x.charCodeAt(0);
+		function escapeCharacter(x: string) {
+			const code = x.charCodeAt(0);
 			if (code < 256) {
 				// Add leading zero when needed to not care about the next character.
 				return code < 16 ? '\\x0' + code.toString(16) : '\\x' + code.toString(16);
 			}
-			code = code.toString(16);
-			return '\\u' + ('0000' + code).substr(code.length, 4);
+			const codeHex = code.toString(16);
+			return '\\u' + ('0000' + codeHex).substr(codeHex.length, 4);
 		}
 
 		if (/[^\x20-\x7E]|'/.test(str)) {
@@ -220,7 +226,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getBook(bookId: string): Promise<BookDetailResponse> {
+	async getBook(bookId: string): Promise<BookDetailResponse | undefined> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/web/book/info?bookId=${bookId}`,
@@ -239,7 +245,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getNotebookHighlights(bookId: string): Promise<HighlightResponse> {
+	async getNotebookHighlights(bookId: string): Promise<HighlightResponse | undefined> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/web/book/bookmarklist?bookId=${bookId}`,
@@ -253,7 +259,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getNotebookReviews(bookId: string): Promise<BookReviewResponse> {
+	async getNotebookReviews(bookId: string): Promise<BookReviewResponse | undefined> {
 		try {
 			const url = `${this.baseUrl}/web/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
@@ -267,7 +273,7 @@ export default class ApiManager {
 		}
 	}
 
-	async getChapters(bookId: string): Promise<ChapterResponse> {
+	async getChapters(bookId: string): Promise<ChapterResponse | undefined> {
 		try {
 			const url = `${this.baseUrl}/web/book/chapterInfos`;
 			const reqBody = {
@@ -295,7 +301,7 @@ export default class ApiManager {
 	 * @param bookId 书籍ID
 	 * @returns 书籍阅读进度信息
 	 */
-	async getProgress(bookId: string): Promise<BookProgressResponse> {
+	async getProgress(bookId: string): Promise<BookProgressResponse | undefined> {
 		try {
 			const url = `${this.baseUrl}/web/book/getProgress?bookId=${bookId}`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
@@ -310,7 +316,7 @@ export default class ApiManager {
 	/**
 	 * @deprecated 该方法新 API 中已废弃，请使用 getProgress 方法代替
 	 */
-	async getBookReadInfo(bookId: string): Promise<BookReadInfoResponse> {
+	async getBookReadInfo(bookId: string): Promise<BookReadInfoResponse | undefined> {
 		try {
 			const url = `${this.baseUrl}/web/book/readinfo?bookId=${bookId}&readingDetail=1&readingBookIndex=1&finishedDate=1`;
 			const req: RequestUrlParam = { url: url, method: 'GET', headers: this.getHeaders() };
