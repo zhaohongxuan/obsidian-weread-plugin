@@ -12,7 +12,7 @@ export const parseCookies = (cookieInput: string): Cookie[] => {
 	const cookieArr: Cookie[] = splittedPairs.map((pair) => {
 		return {
 			name: decodeURIComponent(pair[0].trim()),
-			value: decodeURIComponent(pair[1].trim())
+			value: decodeURIComponent(pair.slice(1).join('=').trim())
 		};
 	});
 	return cookieArr;
