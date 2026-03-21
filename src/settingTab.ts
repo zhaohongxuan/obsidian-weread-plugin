@@ -16,8 +16,6 @@ import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { TemplateEditorWindow } from './components/templateEditorWindow';
 
 import { Renderer } from './renderer';
-import { getEncodeCookieString } from './utils/cookiesUtil';
-import { Notice } from 'obsidian';
 import ApiManager from './api';
 
 export class WereadSettingsTab extends PluginSettingTab {
