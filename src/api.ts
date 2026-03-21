@@ -16,7 +16,7 @@ export default class ApiManager {
 	readonly baseUrl: string = 'https://weread.qq.com';
 
 	private getHeaders() {
-		const cookieString = getCookieString(get(settingsStore).cookies);
+		let cookieString = getCookieString(get(settingsStore).cookies);
 
 		// 根据平台选择合适的 User-Agent
 		// Mac 版 Obsidian 会截断长的 User-Agent，所以使用短版本
@@ -32,24 +32,19 @@ export default class ApiManager {
 			'Content-Type': 'application/json'
 		};
 
-		// iOS 端可能因为平台特性导致 401，尝试删除可能引起差异的头部
-		if (!Platform.isDesktopApp) {
-			console.log('[weread plugin] iOS 端 - 移除可能导致差异的头部');
-			delete headers['Accept-Encoding'];
-		}
-
 		if (cookieString) {
+			// iOS 端对中文字符有严格限制，需要 URL 编码处理
+			if (!Platform.isDesktopApp) {
+				const cookies = get(settingsStore).cookies;
+				cookieString = cookies
+					.map((cookie) => {
+						return cookie.name + '=' + encodeURIComponent(cookie.value);
+					})
+					.join(';');
+				console.log('[weread plugin] iOS 端使用 URL 编码的 Cookie');
+			}
+
 			headers['Cookie'] = cookieString;
-			console.log('[weread plugin] 请求头 Cookie 长度:', cookieString.length, '字节');
-			console.log(
-				'[weread plugin] 平台信息: ' +
-					(Platform.isDesktopApp ? 'Mac/Desktop' : 'iOS/Mobile') +
-					', User-Agent: ' +
-					headers['User-Agent'].substring(0, 50) +
-					'...'
-			);
-		} else {
-			console.warn('[weread plugin] 警告: 未找到 Cookie，请求头为空');
 		}
 
 		return headers;
@@ -108,38 +103,6 @@ export default class ApiManager {
 			return false;
 		}
 
-		console.log('[weread plugin] 开始验证 Cookie 有效性，Cookie 数量:', cookies.length);
-
-		// 打印每个 Cookie 的详细信息（包括长度和哈希用于调试）
-		console.log('[weread plugin] Cookie 详细列表:');
-		cookies.forEach((cookie, index) => {
-			const displayValue = cookie.value
-				? cookie.value.substring(0, 50) + (cookie.value.length > 50 ? '...' : '')
-				: '(空)';
-			console.log(
-				`  ${index + 1}. ${cookie.name} [长度:${cookie.value?.length || 0}]=${displayValue}`
-			);
-		});
-
-		// 检查关键 Cookie
-		const wr_skey = cookies.find((c) => c.name === 'wr_skey');
-		const wr_vid = cookies.find((c) => c.name === 'wr_vid');
-		const wr_name = cookies.find((c) => c.name === 'wr_name');
-		console.log(
-			'[weread plugin] 关键 Cookie: wr_skey=' +
-				(wr_skey?.value || '❌ 缺失') +
-				', wr_vid=' +
-				(wr_vid?.value || '❌ 缺失') +
-				', wr_name=' +
-				(wr_name?.value || '❌ 缺失')
-		);
-
-		// 检查系统时间
-		const systemTime = new Date();
-		console.log('[weread plugin] 系统时间:', systemTime.toISOString());
-		const platform = Platform.isDesktopApp ? 'Mac/Desktop' : 'iOS/Mobile';
-		console.log('[weread plugin] 平台: ' + platform);
-
 		try {
 			const headers = this.getHeaders();
 			const req: RequestUrlParam = {
@@ -147,46 +110,8 @@ export default class ApiManager {
 				method: 'GET',
 				headers: headers
 			};
-			console.log('[weread plugin] 发送验证请求到:', req.url);
-
-			// 生成 cURL 命令用于调试 - 提前输出确保被看到
-			let curlCmd = `curl ${req.url}`;
-			Object.entries(headers).forEach(([key, value]) => {
-				const val = String(value);
-				if (key === 'Cookie') {
-					curlCmd += ` -H 'Cookie: ${val}'`;
-				} else if (key.toLowerCase() !== 'accept-encoding') {
-					const displayVal = val.substring(0, 80);
-					curlCmd += ` -H '${key}: ${displayVal}'`;
-				}
-			});
-			curlCmd += ' --compressed';
-			console.log('[weread plugin] === cURL 命令 ===');
-			console.log(curlCmd);
-			console.log('[weread plugin] === cURL 命令结束 ===');
-
-			console.log(
-				'[weread plugin] 请求头详情:',
-				JSON.stringify(
-					{
-						'User-Agent': headers['User-Agent'].substring(0, 60) + '...',
-						'Cookie 长度': headers['Cookie']?.length || 0,
-						Accept: headers['accept'],
-						'Content-Type': headers['Content-Type']
-					},
-					null,
-					2
-				)
-			);
 
 			const resp = await requestUrl(req);
-			console.log(
-				'[weread plugin] 验证响应 - 状态码:',
-				resp.status,
-				', 响应头:',
-				JSON.stringify(resp.headers, null, 2)
-			);
-
 			// Absorb any session-cookie refresh the server sends back
 			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 			if (respCookie) {
@@ -206,44 +131,17 @@ export default class ApiManager {
 				return false;
 			}
 
-			// 响应状态 2xx 但数据不符合预期
-			console.warn(
-				'[weread plugin] 响应状态 2xx 但数据不符合预期，响应内容:',
-				JSON.stringify(resp.json).substring(0, 200)
-			);
 		} catch (e: any) {
 			console.error('[weread plugin] 验证异常 - 错误信息:', e.message);
-			console.error('[weread plugin] 异常 - 状态码:', e.status);
-
 			if (e.status === 401) {
-				console.error(
-					'[weread plugin] 收到 401 响应 - 完整错误信息:',
-					JSON.stringify(e, null, 2)
-				);
-				console.log(
-					'[weread plugin] 平台: ' +
-						(Platform.isDesktopApp ? 'Mac/Desktop' : 'iOS/Mobile')
-				);
-
 				if (Platform.isDesktopApp) {
 					console.log('[weread plugin] 桌面端 401，标记 Cookie 无效');
 					settingsStore.actions.setIsCookieValid(false);
 				} else {
-					console.log('[weread plugin] ⚠️ iOS 端 401 - 排查清单:');
-					console.log('  1. ✅ Cookie 内容已确认相同');
-					console.log('  2. ✅ User-Agent 已设置为桌面版本');
-					console.log('  3. ✅ Accept-Encoding 已移除');
-					console.log('  ❓ 可能的原因:');
-					console.log('    - 微信读书对 iOS 设备做了限制（设备绑定/IP 限制）');
-					console.log('    - 系统时间不同步导致时间戳验证失败');
-					console.log('    - Cookie 中某个字段在传输时被破坏');
-					console.log('  📌 建议: 检查 iOS 系统时间是否正确');
 					settingsStore.actions.markCookiesInvalid();
 				}
 				return false;
 			}
-
-			console.error('[weread plugin] 非 401 异常:', e);
 		}
 
 		// Network error or ambiguous response — preserve current state and log a warning
