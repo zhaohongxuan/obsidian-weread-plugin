@@ -50,7 +50,7 @@ export default class ApiManager {
 		return headers;
 	}
 
-	async refreshCookie(): Promise<boolean> {
+	async refreshCookie(showNotice = false): Promise<boolean> {
 		try {
 			const req: RequestUrlParam = {
 				url: this.baseUrl,
@@ -61,8 +61,17 @@ export default class ApiManager {
 			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 
 			if (respCookie !== undefined && this.checkCookies(respCookie)) {
-				new Notice('Cookie 刷新成功');
+				if (showNotice) {
+					new Notice('Cookie 刷新成功');
+				}
 				this.updateCookies(respCookie);
+				settingsStore.actions.setIsCookieValid(true);
+				return true;
+			} else if (respCookie === undefined) {
+				// 没有 set-cookie，说明 Cookie 已是最新
+				if (showNotice) {
+					new Notice('Cookie 已是最新，无须刷新');
+				}
 				settingsStore.actions.setIsCookieValid(true);
 				return true;
 			}
@@ -75,17 +84,26 @@ export default class ApiManager {
 			const cookieCloudManager = new CookieCloudManager();
 			const isSuccess = await cookieCloudManager.getCookie();
 			if (isSuccess) {
+				// CookieCloud 获取成功后，更新刷新时间
+				settingsStore.actions.updateCookieRefreshTime();
 				return true;
 			}
 		}
 
 		// HEAD did not yield new cookies — verify actual validity via authenticated API
 		const isValid = await this.verifyCookieValidity();
-		if (!isValid) {
+		if (isValid) {
+			// API 验证成功，提示用户 Cookie 已是最新
+			if (showNotice) {
+				new Notice('Cookie 已是最新，无须刷新');
+			}
+		} else {
 			const errorMsg = Platform.isDesktopApp
 				? 'Cookie 已失效，请重新登录'
 				: 'Cookie 已失效，请在电脑端重新登录';
-			new Notice(errorMsg);
+			if (showNotice) {
+				new Notice(errorMsg);
+			}
 			if (Platform.isDesktopApp) {
 				settingsStore.actions.clearCookies();
 			} else {
@@ -130,7 +148,6 @@ export default class ApiManager {
 				settingsStore.actions.setIsCookieValid(false);
 				return false;
 			}
-
 		} catch (e: any) {
 			console.error('[weread plugin] 验证异常 - 错误信息:', e.message);
 			if (e.status === 401) {
