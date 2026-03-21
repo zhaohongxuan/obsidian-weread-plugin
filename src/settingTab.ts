@@ -110,6 +110,24 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const container = this.containerEl.createDiv();
 		const userAvatar = get(settingsStore).userAvatar;
 		const userName = get(settingsStore).user;
+		const settings = get(settingsStore);
+		const isCookieValid = settings.isCookieValid;
+		const hasCookies = settings.cookies && settings.cookies.length > 0;
+		const lastCookieTime = settings.lastCookieTime;
+
+		// Cookie 状态文本
+		let statusText: string;
+		if (isCookieValid) {
+			statusText = '✅ Cookie 有效';
+		} else if (hasCookies) {
+			statusText = '⚠️ Cookie 已失效';
+		} else {
+			statusText = '❌ 未登录';
+		}
+		if (lastCookieTime > 0) {
+			const lastRefreshStr = new Date(lastCookieTime).toLocaleString();
+			statusText += `，上次刷新时间：${lastRefreshStr}`;
+		}
 
 		// 创建用户信息容器
 		const userInfo = container.createDiv({ cls: 'weread-user-info' });
@@ -127,6 +145,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 		userInfo.createEl('div', {
 			cls: 'weread-user-name',
 			text: `微信读书已登录，用户名：${userName}`
+		});
+
+		// Cookie 状态
+		userInfo.createEl('div', {
+			cls: 'weread-cookie-status',
+			text: statusText
 		});
 	}
 
@@ -183,10 +207,25 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const container = this.containerEl.createDiv({
 			cls: 'weread-login-action'
 		});
+
+		// 左边：说明文案
+		const textInfo = container.createDiv({
+			cls: 'weread-login-text-info'
+		});
+		textInfo.createEl('div', {
+			cls: 'weread-login-title',
+			text: '微信读书未登录'
+		});
 		const desc = document
 			.createRange()
 			.createContextualFragment(`点击【登录】按钮，在弹出页面【扫码登录】`);
+		textInfo
+			.createEl('div', {
+				cls: 'weread-login-desc-inline'
+			})
+			.appendChild(desc);
 
+		// 右边：登录按钮
 		const loginBtn = container.createEl('button', {
 			cls: 'weread-action-button weread-login-btn',
 			text: '登录'
@@ -197,11 +236,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			await loginModel.doLogin();
 			this.display();
 		});
-
-		const descContainer = this.containerEl.createDiv({
-			cls: 'weread-login-desc'
-		});
-		descContainer.appendChild(desc);
 	}
 
 	private saveArticleToggle(): void {
@@ -399,12 +433,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			statusText += `，上次刷新时间：${lastRefreshStr}`;
 		}
 
-		const desc = document
-			.createRange()
-			.createContextualFragment(
-				`点击【注销】按钮，在弹出书架页面右上角点击头像，下拉菜单选择【退出登录】`
-			);
-
 		// 创建自定义容器而不是使用 Setting 的默认名称
 		const userContainer = this.containerEl.createDiv({
 			cls: 'weread-user-logout-container'
@@ -441,12 +469,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cls: 'weread-cookie-status',
 			text: statusText
 		});
-		// 注销说明
-		userTextInfo
-			.createEl('div', {
-				cls: 'weread-logout-desc-inline'
-			})
-			.appendChild(desc);
 
 		// 右边：按钮
 		const buttonGroup = userContainer.createDiv({
@@ -599,8 +621,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const lastCookieTime = settings.lastCookieTime;
 		const loginMethod = settings.loginMethod;
 
-		// 扫码登录且已登录时，Cookie 状态已显示在头像卡片中，不再单独显示
-		if (loginMethod === 'scan' && isCookieValid) {
+		// 扫码登录时，Cookie 状态由登录/登出面板显示，不再单独显示
+		if (loginMethod === 'scan') {
 			return;
 		}
 

@@ -32,7 +32,7 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 ## 设置
 1. 打开Obsidian点击`设置`进入设置界面，找到`Obsidian Weread Plugin`进入到插件设置页面
 2. 点击右侧`登录`按钮，在弹出的登录页面扫码登录，登录完成后，会显示个人昵称
-3. 注销登录可以清除Obsidian插件的Cookie信息，注销方法，和网页版微信读书一样，右上角点击头像，点击退出登录
+3. 点击`注销`按钮即可注销登录，系统会自动清除Obsidian插件的Cookie信息
 4. 设置笔记保存位置，笔记最小划线数量，笔记文件夹分类 <img width="1175" alt="image" src="https://github.com/zhaohongxuan/obsidian-weread-plugin/assets/8613196/9eb6b00e-425c-430a-a305-c9ae681e022b">
 
 
