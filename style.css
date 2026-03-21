@@ -599,3 +599,218 @@
 .weread-template-preview-modal.is-dragging {
 	user-select: none;
 }
+
+/* 用户信息和头像样式 */
+.weread-user-info {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+	padding: 20px;
+	margin: 15px 0;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.weread-user-avatar {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.weread-user-avatar-large {
+	width: 80px;
+	height: 80px;
+	border-radius: 50%;
+	object-fit: cover;
+	margin-top: 10px;
+}
+
+.weread-avatar-container {
+	display: flex;
+	justify-content: center;
+	margin-top: 10px;
+	padding: 10px 0;
+}
+
+.weread-user-name {
+	font-size: 14px;
+	color: var(--text-normal);
+	text-align: center;
+	font-weight: 500;
+}
+
+/* 桌面端登出面板样式 */
+.weread-user-logout-container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 20px;
+	margin: 15px 0;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.weread-user-info-left {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	flex: 1;
+}
+
+.weread-user-avatar-desktop {
+	width: 80px;
+	height: 80px;
+	border-radius: 50%;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
+.weread-user-text-info {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-user-name-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.weread-user-name-value {
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+.weread-cookie-status {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-top: 3px;
+	line-height: 1.4;
+}
+
+.weread-logout-desc-inline {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-top: 6px;
+	line-height: 1.4;
+	word-break: break-word;
+}
+
+.weread-button-group {
+	display: flex;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.weread-action-button {
+	padding: 8px 16px;
+	font-size: 13px;
+	font-weight: 500;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+.weread-logout-btn {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.weread-logout-btn:hover:not(:disabled) {
+	background-color: var(--interactive-accent-hover);
+}
+
+.weread-copy-btn {
+	background-color: var(--background-modifier-form-field);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.weread-copy-btn:hover:not(:disabled) {
+	background-color: var(--background-modifier-border);
+}
+
+.weread-refresh-btn {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.weread-refresh-btn:hover:not(:disabled) {
+	background-color: var(--interactive-accent-hover);
+}
+
+.weread-action-button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.weread-logout-desc {
+	font-size: 13px;
+	color: var(--text-muted);
+	padding: 0 20px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+/* 登录相关样式 */
+.weread-login-action {
+	display: flex;
+	gap: 10px;
+	margin: 15px 0;
+	padding: 15px 0;
+}
+
+.weread-login-btn {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	min-width: 80px;
+}
+
+.weread-login-btn:hover:not(:disabled) {
+	background-color: var(--interactive-accent-hover);
+}
+
+.weread-login-desc {
+	font-size: 13px;
+	color: var(--text-muted);
+	padding: 0 20px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-word;
+	margin-top: 10px;
+}
+
+/* 移动端登录/登出样式 */
+.weread-mobile-login-container {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 15px;
+	margin: 15px 0;
+	text-align: center;
+}
+
+.weread-mobile-login-text {
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--text-normal);
+	margin-bottom: 8px;
+}
+
+.weread-mobile-login-desc {
+	font-size: 13px;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+

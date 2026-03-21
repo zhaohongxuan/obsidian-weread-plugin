@@ -16,6 +16,7 @@ interface WereadPluginSettings {
 	isCookieValid: boolean;
 	user: string;
 	userVid: string;
+	userAvatar: string;
 	template: string;
 	noteCountLimit: number;
 	subFolderType: string;
@@ -50,6 +51,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	isCookieValid: false,
 	user: '',
 	userVid: '',
+	userAvatar: '',
 	template: notebookTemolate,
 	noteCountLimit: -1,
 	subFolderType: '-1',
@@ -141,6 +143,7 @@ const createSettingsStore = () => {
 			state.lastCookieTime = new Date().getTime();
 			state.user = '';
 			state.userVid = '';
+			state.userAvatar = '';
 			state.isCookieValid = false;
 			return state;
 		});
@@ -158,6 +161,13 @@ const createSettingsStore = () => {
 	const setIsCookieValid = (valid: boolean) => {
 		store.update((state) => {
 			state.isCookieValid = valid;
+			return state;
+		});
+	};
+
+	const updateCookieRefreshTime = () => {
+		store.update((state) => {
+			state.lastCookieTime = new Date().getTime();
 			return state;
 		});
 	};
@@ -188,6 +198,17 @@ const createSettingsStore = () => {
 					console.log('[weread plugin] setting user vid=>', cookie.value);
 					store.update((state) => {
 						state.userVid = cookie.value;
+						return state;
+					});
+				}
+			}
+			if (cookie.name == 'wr_avatar') {
+				if (cookie.value !== '') {
+					// Cookie 中的值已经是 URL 编码的，需要解码
+					const avatarUrl = decodeURIComponent(cookie.value);
+					console.log('[weread plugin] setting user avatar=>', avatarUrl);
+					store.update((state) => {
+						state.userAvatar = avatarUrl;
 						return state;
 					});
 				}
@@ -349,6 +370,7 @@ const createSettingsStore = () => {
 			setCookies,
 			clearCookies,
 			markCookiesInvalid,
+			updateCookieRefreshTime,
 			setTemplate,
 			setNoteCountLimit,
 			setSubFolderType,
