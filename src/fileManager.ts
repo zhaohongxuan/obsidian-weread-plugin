@@ -235,7 +235,7 @@ export default class FileManager {
 	private getSubFolderPath(metaData: Metadata): string {
 		const folderType = get(settingsStore).subFolderType;
 		if (folderType == 'title') {
-			return metaData.title;
+			return sanitizeTitle(metaData.title);
 		} else if (folderType == 'category') {
 			if (metaData.category) {
 				return metaData.category.split('-')[0];
