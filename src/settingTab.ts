@@ -70,6 +70,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.notebookFolder();
 		this.notebookBlacklist();
 		this.noteCountLimit();
+		this.progressLimit();
 		this.fileNameType();
 		this.removeParens();
 		this.subFolderType();
@@ -540,6 +541,28 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						console.log('[weread plugin] new note count limit', value);
 						settingsStore.actions.setNoteCountLimit(+value);
+					});
+			});
+	}
+
+	private progressLimit() {
+		new Setting(this.containerEl)
+			.setName('阅读进度过滤')
+			.setDesc('只同步阅读进度大于该值的书籍（如设置50，则只同步阅读进度50%以上的书籍）')
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOptions({
+						'0': '无限制',
+						'10': '10%',
+						'30': '30%',
+						'50': '50%',
+						'70': '70%',
+						'90': '90%'
+					})
+					.setValue(get(settingsStore).progressLimit.toString())
+					.onChange(async (value) => {
+						console.log('[weread plugin] new progress limit', value);
+						settingsStore.actions.setProgressLimit(+value);
 					});
 			});
 	}

@@ -135,6 +135,14 @@ export default class SyncNotebooks {
 				);
 				continue;
 			}
+			// Filter by reading progress
+			const progressLimit = get(settingsStore).progressLimit;
+			if (progressLimit > 0 && metaData.readingProgress < progressLimit) {
+				console.debug(
+					`[weread plugin] skip book ${metaData.title} reading progress: ${metaData.readingProgress}% < ${progressLimit}%`
+				);
+				continue;
+			}
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
 			if (localNotebookFile && !localNotebookFile.new) {
 				continue;

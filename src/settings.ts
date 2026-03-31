@@ -29,6 +29,7 @@ interface WereadPluginSettings {
 	convertTags: boolean;
 	saveArticleToggle: boolean;
 	saveReadingInfoToggle: boolean;
+	progressLimit: number;
 	trimBlocks: boolean;
 	cookieCloudInfo: {
 		serverUrl: string;
@@ -64,6 +65,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	convertTags: false,
 	saveArticleToggle: true,
 	saveReadingInfoToggle: true,
+	progressLimit: 0,
 	trimBlocks: false,
 	cookieCloudInfo: {
 		serverUrl: '',
@@ -333,6 +335,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setProgressLimit = (progressLimit: number) => {
+		store.update((state) => {
+			state.progressLimit = progressLimit;
+			return state;
+		});
+	};
+
 	const setCookieCloudInfo = (info: { serverUrl: string; uuid: string; password: string }) => {
 		store.update((state) => {
 			state.cookieCloudInfo = info;
@@ -387,6 +396,7 @@ const createSettingsStore = () => {
 			setConvertTags,
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
+			setProgressLimit,
 			setCookieCloudInfo,
 			setTrimBlocks,
 			setCookieAutoRefreshToggle,
