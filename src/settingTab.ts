@@ -21,6 +21,7 @@ import { TemplateEditorWindow } from './components/templateEditorWindow';
 
 import { Renderer } from './renderer';
 import ApiManager from './api';
+import { parseBookIdList } from './utils/bookIdUtils';
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
@@ -223,11 +224,11 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private manualSyncBookSelection(): void {
-		const selectedBookIds = this.parseBookIdList(get(settingsStore).notesWhitelist);
+		const selectedBookIds = parseBookIdList(get(settingsStore).notesWhitelist);
 		const description =
 			selectedBookIds.size > 0
 				? `当前已选择 ${selectedBookIds.size} 本书，后续同步仅处理这些书籍`
-				: '当前未选择任何书籍，开启手动同步模式后将不会同步任何书籍';
+				: '当前未选择任何书籍，同步时不会处理任何书籍';
 
 		new Setting(this.containerEl)
 			.setName('手动同步书籍')
@@ -246,7 +247,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 								books,
 								selectedBookIds,
 								(nextSelectedBookIds) => {
-									settingsStore.actions.setNoteWhitelist(
+									settingsStore.actions.setNotesWhitelist(
 										nextSelectedBookIds.join(',')
 									);
 									this.display();
@@ -267,7 +268,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			})
 			.addButton((button) => {
 				return button.setButtonText('清空').onClick(() => {
-					settingsStore.actions.setNoteWhitelist('');
+					settingsStore.actions.setNotesWhitelist('');
 					this.display();
 				});
 			});
@@ -787,15 +788,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		return this.selectableBooksCache;
 	}
 
-	private parseBookIdList(value: string): Set<string> {
-		return new Set(
-			value
-				.split(/[,\n，]/)
-				.map((item) => item.trim())
-				.filter(Boolean)
-		);
-	}
-
 	private renderManualSyncPreview(selectedBookIds: Set<string>): void {
 		const previewContainer = this.containerEl.createDiv({ cls: 'weread-manual-sync-preview' });
 		const selectedBooks = this.selectableBooksCache.filter((book) =>
@@ -805,7 +797,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (selectedBooks.length === 0) {
 			previewContainer.createEl('div', {
 				cls: 'setting-item-description',
-				text: `已选书籍 bookId：${Array.from(selectedBookIds).join('、')}`
+				text: `已选书籍 bookId：${Array.from(selectedBookIds).join(
+					'，'
+				)}（部分书籍信息尚未加载）`
 			});
 			return;
 		}

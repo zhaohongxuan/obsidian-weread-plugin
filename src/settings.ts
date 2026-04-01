@@ -316,7 +316,7 @@ const createSettingsStore = () => {
 		});
 	};
 
-	const setNoteWhitelist = (notesWhitelist: string) => {
+	const setNotesWhitelist = (notesWhitelist: string) => {
 		store.update((state) => {
 			state.notesWhitelist = notesWhitelist;
 			return state;
@@ -402,7 +402,7 @@ const createSettingsStore = () => {
 			setInsertBefore,
 			setNoteBlacklist,
 			setManualSyncMode,
-			setNoteWhitelist,
+			setNotesWhitelist,
 			setEmptyChapterTitleToggle,
 			setConvertTags,
 			setSaveArticleToggle,

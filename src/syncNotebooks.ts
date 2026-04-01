@@ -12,6 +12,7 @@ import {
 	parseArticleHighlightReview
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
+import { parseBookIdList } from './utils/bookIdUtils';
 import { get } from 'svelte/store';
 import { Notice } from 'obsidian';
 export default class SyncNotebooks {
@@ -123,8 +124,8 @@ export default class SyncNotebooks {
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
 		const settings = get(settingsStore);
-		const blacklistedBookIds = this.parseBookIdList(settings.notesBlacklist);
-		const whitelistedBookIds = this.parseBookIdList(settings.notesWhitelist);
+		const blacklistedBookIds = parseBookIdList(settings.notesBlacklist);
+		const whitelistedBookIds = parseBookIdList(settings.notesWhitelist);
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
 			// skip 公众号
@@ -162,15 +163,6 @@ export default class SyncNotebooks {
 			filterMetaArr.push(metaData);
 		}
 		return filterMetaArr;
-	}
-
-	private parseBookIdList(value: string): Set<string> {
-		return new Set(
-			value
-				.split(/[,\n，]/)
-				.map((item) => item.trim())
-				.filter(Boolean)
-		);
 	}
 
 	private async getALlMetadata() {
