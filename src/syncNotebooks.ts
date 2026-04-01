@@ -122,28 +122,37 @@ export default class SyncNotebooks {
 	private async filterNoteMetas(force = false, metaDataArr: Metadata[]): Promise<Metadata[]> {
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
+		const settings = get(settingsStore);
+		const blacklistedBookIds = this.parseBookIdList(settings.notesBlacklist);
+		const whitelistedBookIds = this.parseBookIdList(settings.notesWhitelist);
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
 			// skip 公众号
-			const saveArticle = get(settingsStore).saveArticleToggle;
+			const saveArticle = settings.saveArticleToggle;
 			if (!saveArticle && metaData.bookType === 3) {
 				continue;
 			}
-			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
+			if (metaData.noteCount < +settings.noteCountLimit) {
 				console.debug(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
 				continue;
 			}
-			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
-			if (localNotebookFile && !localNotebookFile.new) {
-				continue;
-			}
-			const isNoteBlacklisted = get(settingsStore).notesBlacklist.includes(metaData.bookId);
+			const isNoteBlacklisted = blacklistedBookIds.has(metaData.bookId);
 			if (isNoteBlacklisted) {
 				console.debug(
 					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for blacklist`
 				);
+				continue;
+			}
+			if (settings.manualSyncMode && !whitelistedBookIds.has(metaData.bookId)) {
+				console.debug(
+					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for manual sync whitelist`
+				);
+				continue;
+			}
+			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
+			if (localNotebookFile && !localNotebookFile.new) {
 				continue;
 			}
 			metaData.file = localNotebookFile;
@@ -153,6 +162,15 @@ export default class SyncNotebooks {
 			filterMetaArr.push(metaData);
 		}
 		return filterMetaArr;
+	}
+
+	private parseBookIdList(value: string): Set<string> {
+		return new Set(
+			value
+				.split(/[,\n，]/)
+				.map((item) => item.trim())
+				.filter(Boolean)
+		);
 	}
 
 	private async getALlMetadata() {

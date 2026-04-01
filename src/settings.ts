@@ -25,6 +25,8 @@ interface WereadPluginSettings {
 	removeParensWhitelist: string;
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
+	manualSyncMode: boolean;
+	notesWhitelist: string;
 	showEmptyChapterTitleToggle: boolean;
 	convertTags: boolean;
 	saveArticleToggle: boolean;
@@ -60,6 +62,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	removeParensWhitelist: '',
 	dailyNotesToggle: false,
 	notesBlacklist: '',
+	manualSyncMode: false,
+	notesWhitelist: '',
 	showEmptyChapterTitleToggle: false,
 	convertTags: false,
 	saveArticleToggle: true,
@@ -305,6 +309,20 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setManualSyncMode = (manualSyncMode: boolean) => {
+		store.update((state) => {
+			state.manualSyncMode = manualSyncMode;
+			return state;
+		});
+	};
+
+	const setNoteWhitelist = (notesWhitelist: string) => {
+		store.update((state) => {
+			state.notesWhitelist = notesWhitelist;
+			return state;
+		});
+	};
+
 	const setEmptyChapterTitleToggle = (emtpyChapterTitleToggle: boolean) => {
 		store.update((state) => {
 			state.showEmptyChapterTitleToggle = emtpyChapterTitleToggle;
@@ -383,6 +401,8 @@ const createSettingsStore = () => {
 			setInsertAfter,
 			setInsertBefore,
 			setNoteBlacklist,
+			setManualSyncMode,
+			setNoteWhitelist,
 			setEmptyChapterTitleToggle,
 			setConvertTags,
 			setSaveArticleToggle,

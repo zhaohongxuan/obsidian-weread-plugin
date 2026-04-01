@@ -2,12 +2,16 @@ import WereadPlugin from 'main';
 import {
 	App,
 	FuzzySuggestModal,
+	Modal,
+	Notice,
 	Platform,
 	PluginSettingTab,
 	Setting,
 	TFolder,
 	TextComponent
 } from 'obsidian';
+import type { Metadata } from './models';
+import { parseMetadata } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
@@ -21,6 +25,7 @@ import ApiManager from './api';
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
 	private renderer: Renderer;
+	private selectableBooksCache: Metadata[] = [];
 
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
@@ -69,6 +74,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		this.notebookFolder();
 		this.notebookBlacklist();
+		this.manualSyncMode();
+		if (get(settingsStore).manualSyncMode) {
+			this.manualSyncBookSelection();
+		}
 		this.noteCountLimit();
 		this.fileNameType();
 		this.removeParens();
@@ -199,6 +208,73 @@ export class WereadSettingsTab extends PluginSettingTab {
 					settingsStore.actions.setNoteBlacklist(value);
 				});
 			});
+	}
+
+	private manualSyncMode(): void {
+		new Setting(this.containerEl)
+			.setName('手动同步模式')
+			.setDesc('开启后，仅同步你手动勾选的书籍；未勾选的书籍不会同步到本地')
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).manualSyncMode).onChange((value) => {
+					settingsStore.actions.setManualSyncMode(value);
+					this.display();
+				});
+			});
+	}
+
+	private manualSyncBookSelection(): void {
+		const selectedBookIds = this.parseBookIdList(get(settingsStore).notesWhitelist);
+		const description =
+			selectedBookIds.size > 0
+				? `当前已选择 ${selectedBookIds.size} 本书，后续同步仅处理这些书籍`
+				: '当前未选择任何书籍，开启手动同步模式后将不会同步任何书籍';
+
+		new Setting(this.containerEl)
+			.setName('手动同步书籍')
+			.setDesc(description)
+			.addButton((button) => {
+				return button
+					.setButtonText('选择书籍')
+					.setCta()
+					.onClick(async () => {
+						button.setDisabled(true);
+						button.setButtonText('加载中...');
+						try {
+							const books = await this.fetchSelectableBooks();
+							const modal = new ManualSyncBookSelectorModal(
+								this.app,
+								books,
+								selectedBookIds,
+								(nextSelectedBookIds) => {
+									settingsStore.actions.setNoteWhitelist(
+										nextSelectedBookIds.join(',')
+									);
+									this.display();
+								}
+							);
+							modal.open();
+						} catch (error: unknown) {
+							const message =
+								error instanceof Error
+									? error.message
+									: '获取书籍列表失败，请稍后重试';
+							new Notice(message);
+						} finally {
+							button.setDisabled(false);
+							button.setButtonText('选择书籍');
+						}
+					});
+			})
+			.addButton((button) => {
+				return button.setButtonText('清空').onClick(() => {
+					settingsStore.actions.setNoteWhitelist('');
+					this.display();
+				});
+			});
+
+		if (selectedBookIds.size > 0) {
+			this.renderManualSyncPreview(selectedBookIds);
+		}
 	}
 
 	private showLogin(): void {
@@ -700,6 +776,55 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const folders = this.getFolderPaths();
 		return new FolderSuggestModal(this.app, folders, onSelect);
 	}
+
+	private async fetchSelectableBooks(): Promise<Metadata[]> {
+		if (this.selectableBooksCache.length > 0) {
+			return this.selectableBooksCache;
+		}
+		const apiManager = new ApiManager();
+		const noteBookResp: [] = await apiManager.getNotebooksWithRetry();
+		this.selectableBooksCache = noteBookResp.map((noteBook) => parseMetadata(noteBook));
+		return this.selectableBooksCache;
+	}
+
+	private parseBookIdList(value: string): Set<string> {
+		return new Set(
+			value
+				.split(/[,\n，]/)
+				.map((item) => item.trim())
+				.filter(Boolean)
+		);
+	}
+
+	private renderManualSyncPreview(selectedBookIds: Set<string>): void {
+		const previewContainer = this.containerEl.createDiv({ cls: 'weread-manual-sync-preview' });
+		const selectedBooks = this.selectableBooksCache.filter((book) =>
+			selectedBookIds.has(book.bookId)
+		);
+
+		if (selectedBooks.length === 0) {
+			previewContainer.createEl('div', {
+				cls: 'setting-item-description',
+				text: `已选书籍 bookId：${Array.from(selectedBookIds).join('、')}`
+			});
+			return;
+		}
+
+		for (const book of selectedBooks) {
+			const card = previewContainer.createDiv({ cls: 'weread-selected-book-card' });
+			const cover = card.createEl('img', { cls: 'weread-selected-book-cover' });
+			cover.src = book.cover;
+			cover.alt = book.title;
+
+			const details = card.createDiv({ cls: 'weread-selected-book-details' });
+			details.createEl('div', { cls: 'weread-selected-book-title', text: book.title });
+			details.createEl('div', { cls: 'weread-selected-book-author', text: book.author });
+			details.createEl('div', {
+				cls: 'weread-selected-book-id',
+				text: `bookId: ${book.bookId}`
+			});
+		}
+	}
 }
 
 class FolderSuggestModal extends FuzzySuggestModal<string> {
@@ -723,5 +848,156 @@ class FolderSuggestModal extends FuzzySuggestModal<string> {
 
 	onChooseItem(item: string): void {
 		this.onSelectFolder(item);
+	}
+}
+
+class ManualSyncBookSelectorModal extends Modal {
+	private searchKeyword = '';
+	private selectedBookIds: Set<string>;
+	private selectedCountEl: HTMLElement;
+	private listEl: HTMLElement;
+
+	constructor(
+		app: App,
+		private books: Metadata[],
+		selectedBookIds: Set<string>,
+		private onSaveSelection: (bookIds: string[]) => void
+	) {
+		super(app);
+		this.selectedBookIds = new Set(selectedBookIds);
+	}
+
+	onOpen() {
+		const { contentEl, modalEl } = this;
+		contentEl.empty();
+		modalEl.addClass('weread-book-selector-modal');
+		modalEl.style.width = '90vw';
+		modalEl.style.maxWidth = '960px';
+		modalEl.style.height = '80vh';
+		modalEl.style.maxHeight = '80vh';
+
+		const header = contentEl.createDiv({ cls: 'weread-book-selector-header' });
+		header.createEl('h2', { text: '选择要同步的书籍' });
+		this.selectedCountEl = header.createDiv({ cls: 'weread-book-selector-count' });
+
+		contentEl.createEl('div', {
+			cls: 'setting-item-description',
+			text: '支持搜索书名、作者或 bookId。保存后，同步时仅处理勾选的书籍。'
+		});
+
+		const toolbar = contentEl.createDiv({ cls: 'weread-book-selector-toolbar' });
+		const searchInput = toolbar.createEl('input', {
+			type: 'search',
+			cls: 'weread-book-selector-search'
+		});
+		searchInput.placeholder = '搜索书名、作者或 bookId';
+		searchInput.addEventListener('input', () => {
+			this.searchKeyword = searchInput.value.trim().toLowerCase();
+			this.renderBooks();
+		});
+
+		const toolbarActions = toolbar.createDiv({ cls: 'weread-book-selector-actions' });
+		const selectFilteredButton = toolbarActions.createEl('button', { text: '勾选当前结果' });
+		selectFilteredButton.onclick = () => {
+			for (const book of this.getFilteredBooks()) {
+				this.selectedBookIds.add(book.bookId);
+			}
+			this.renderBooks();
+		};
+
+		const clearSelectionButton = toolbarActions.createEl('button', { text: '清空选择' });
+		clearSelectionButton.onclick = () => {
+			this.selectedBookIds.clear();
+			this.renderBooks();
+		};
+
+		this.listEl = contentEl.createDiv({ cls: 'weread-book-selector-grid' });
+		this.renderBooks();
+
+		const footer = contentEl.createDiv({ cls: 'weread-book-selector-footer' });
+		const cancelButton = footer.createEl('button', { text: '取消', cls: 'mod-cancel' });
+		cancelButton.onclick = () => this.close();
+
+		const saveButton = footer.createEl('button', { text: '保存选择', cls: 'mod-cta' });
+		saveButton.onclick = () => {
+			const orderedBookIds = this.books
+				.filter((book) => this.selectedBookIds.has(book.bookId))
+				.map((book) => book.bookId);
+			this.onSaveSelection(orderedBookIds);
+			this.close();
+		};
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+
+	private renderBooks(): void {
+		this.listEl.empty();
+		const filteredBooks = this.getFilteredBooks();
+		this.selectedCountEl.setText(
+			`已选择 ${this.selectedBookIds.size} 本 / 共 ${this.books.length} 本`
+		);
+
+		if (filteredBooks.length === 0) {
+			this.listEl.createDiv({
+				cls: 'weread-book-selector-empty',
+				text: '没有找到匹配的书籍'
+			});
+			return;
+		}
+
+		for (const book of filteredBooks) {
+			const isSelected = this.selectedBookIds.has(book.bookId);
+			const card = this.listEl.createDiv({ cls: 'weread-book-selector-card' });
+			if (isSelected) {
+				card.addClass('is-selected');
+			}
+			card.onclick = () => {
+				if (this.selectedBookIds.has(book.bookId)) {
+					this.selectedBookIds.delete(book.bookId);
+				} else {
+					this.selectedBookIds.add(book.bookId);
+				}
+				this.renderBooks();
+			};
+
+			const checkbox = card.createEl('input', {
+				type: 'checkbox',
+				cls: 'weread-book-selector-checkbox'
+			});
+			checkbox.checked = isSelected;
+			checkbox.onclick = (event) => event.stopPropagation();
+			checkbox.onchange = () => {
+				if (checkbox.checked) {
+					this.selectedBookIds.add(book.bookId);
+				} else {
+					this.selectedBookIds.delete(book.bookId);
+				}
+				this.renderBooks();
+			};
+
+			const cover = card.createEl('img', { cls: 'weread-book-selector-cover' });
+			cover.src = book.cover;
+			cover.alt = book.title;
+
+			const details = card.createDiv({ cls: 'weread-book-selector-card-details' });
+			details.createEl('div', { cls: 'weread-book-selector-title', text: book.title });
+			details.createEl('div', { cls: 'weread-book-selector-author', text: book.author });
+			details.createEl('div', {
+				cls: 'weread-book-selector-id',
+				text: `bookId: ${book.bookId}`
+			});
+		}
+	}
+
+	private getFilteredBooks(): Metadata[] {
+		if (!this.searchKeyword) {
+			return this.books;
+		}
+		return this.books.filter((book) => {
+			const searchTarget = `${book.title} ${book.author} ${book.bookId}`.toLowerCase();
+			return searchTarget.includes(this.searchKeyword);
+		});
 	}
 }
