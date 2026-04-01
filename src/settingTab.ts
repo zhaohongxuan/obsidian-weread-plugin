@@ -853,6 +853,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (this.selectableBooksCache.length > 0) {
 			return this.selectableBooksCache;
 		}
+		const settings = get(settingsStore);
+		if (!settings.isCookieValid || settings.cookies.length === 0) {
+			throw new Error('请先登录微信读书后再加载书籍列表');
+		}
 		const apiManager = new ApiManager();
 		const noteBookResp = await apiManager.getNotebooksWithRetry();
 		this.selectableBooksCache = noteBookResp.map((noteBook) => parseMetadata(noteBook));
