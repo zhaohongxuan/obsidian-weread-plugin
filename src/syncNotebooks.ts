@@ -139,16 +139,15 @@ export default class SyncNotebooks {
 				);
 				continue;
 			}
-			const isNoteBlacklisted = blacklistedBookIds.has(metaData.bookId);
-			if (isNoteBlacklisted) {
+			if (settings.syncMode === 'blacklist' && blacklistedBookIds.has(metaData.bookId)) {
 				console.debug(
 					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for blacklist`
 				);
 				continue;
 			}
-			if (settings.manualSyncMode && !whitelistedBookIds.has(metaData.bookId)) {
+			if (settings.syncMode === 'whitelist' && !whitelistedBookIds.has(metaData.bookId)) {
 				console.debug(
-					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for manual sync whitelist`
+					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for whitelist`
 				);
 				continue;
 			}

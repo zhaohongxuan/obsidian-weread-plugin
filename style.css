@@ -830,7 +830,8 @@
 }
 
 .weread-selected-book-card,
-.weread-book-selector-card {
+.weread-book-selector-card,
+.weread-book-selector-selected-card {
 	position: relative;
 	display: flex;
 	gap: 12px;
@@ -852,9 +853,18 @@
 .weread-selected-book-details,
 .weread-book-selector-card-details {
 	min-width: 0;
+	flex: 1;
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+}
+
+.weread-selected-book-header,
+.weread-book-selector-card-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
 }
 
 .weread-selected-book-title,
@@ -868,10 +878,52 @@
 .weread-selected-book-id,
 .weread-book-selector-author,
 .weread-book-selector-id,
+.weread-book-selector-meta,
 .weread-book-selector-count,
 .weread-book-selector-empty {
 	font-size: 0.85em;
 	color: var(--text-muted);
+}
+
+.weread-book-status-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 0.75em;
+	white-space: nowrap;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.weread-book-status-badge.is-reading {
+	background: rgba(59, 130, 246, 0.14);
+	color: var(--color-blue);
+}
+
+.weread-book-status-badge.is-finished {
+	background: rgba(34, 197, 94, 0.14);
+	color: var(--color-green);
+}
+
+.weread-book-status-badge.is-notStarted {
+	background: rgba(245, 158, 11, 0.14);
+	color: var(--color-orange);
+}
+
+.weread-book-progress {
+	width: 100%;
+	height: 6px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: var(--background-modifier-border);
+}
+
+.weread-book-progress-bar {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--interactive-accent);
 }
 
 .weread-book-selector-modal .modal-content {
@@ -903,13 +955,38 @@
 	gap: 8px;
 }
 
+.weread-book-selector-panels {
+	flex: 1;
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+	gap: 16px;
+	min-height: 0;
+	margin-top: 16px;
+}
+
+.weread-book-selector-list-panel,
+.weread-book-selector-selected-panel {
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
 .weread-book-selector-grid {
 	flex: 1;
 	overflow-y: auto;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
 	gap: 12px;
-	margin-top: 16px;
+	padding-right: 4px;
+}
+
+.weread-book-selector-selected-list {
+	flex: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 	padding-right: 4px;
 }
 
@@ -927,4 +1004,18 @@
 	position: absolute;
 	top: 12px;
 	right: 12px;
+}
+
+.weread-book-selector-selected-card {
+	align-items: flex-start;
+}
+
+.weread-book-selector-remove {
+	align-self: center;
+}
+
+@media (max-width: 900px) {
+	.weread-book-selector-panels {
+		grid-template-columns: 1fr;
+	}
 }
