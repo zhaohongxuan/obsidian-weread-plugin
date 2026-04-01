@@ -86,10 +86,9 @@ const createSettingsStore = () => {
 	let _plugin!: WereadPlugin;
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
-		const rawData =
-			((await plugin.loadData()) as Partial<WereadPluginSettings> & {
-				manualSyncMode?: boolean;
-			}) ?? {};
+		const loadedData = await plugin.loadData();
+		const rawData: Partial<WereadPluginSettings> & { manualSyncMode?: boolean } =
+			loadedData && typeof loadedData === 'object' ? loadedData : {};
 		const data = Object.assign({}, DEFAULT_SETTINGS, rawData);
 		const { manualSyncMode, ...restData } = data;
 		const settings: WereadPluginSettings = {

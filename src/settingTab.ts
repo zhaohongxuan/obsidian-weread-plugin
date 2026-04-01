@@ -316,6 +316,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 					});
 			})
 			.addButton((button) => {
+				return button.setButtonText('刷新书籍').onClick(() => {
+					this.selectableBooksCache = [];
+					new Notice('已清空书籍缓存，请重新打开选择器获取最新列表');
+				});
+			})
+			.addButton((button) => {
 				return button.setButtonText('清空').onClick(() => {
 					this.setSelectedBookIds(syncMode, []);
 					this.display();
@@ -848,7 +854,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			return this.selectableBooksCache;
 		}
 		const apiManager = new ApiManager();
-		const noteBookResp: [] = await apiManager.getNotebooksWithRetry();
+		const noteBookResp = await apiManager.getNotebooksWithRetry();
 		this.selectableBooksCache = noteBookResp.map((noteBook) => parseMetadata(noteBook));
 		return this.selectableBooksCache;
 	}
