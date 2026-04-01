@@ -98,8 +98,8 @@ const createSettingsStore = () => {
 				data.syncMode === 'blacklist' || data.syncMode === 'whitelist'
 					? data.syncMode
 					: manualSyncMode
-						? 'whitelist'
-						: 'blacklist'
+					? 'whitelist'
+					: 'blacklist'
 		};
 		console.log('--------init cookie------', settings.cookies);
 		console.log(
