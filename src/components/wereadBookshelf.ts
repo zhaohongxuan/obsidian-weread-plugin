@@ -174,19 +174,17 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private renderBookCard(book: BookshelfBook): void {
-		const card = this.gridEl.createDiv({ cls: 'weread-bookshelf-card' });
+		const card = this.gridEl.createDiv({ cls: 'weread-bookshelf-card is-clickable' });
+		card.setAttr('title', `查看《${book.title}》详情`);
+		card.onclick = () => {
+			this.openBookDetail(book);
+		};
 		const cardTopActions = card.createDiv({ cls: 'weread-bookshelf-card-top-actions' });
 		this.renderActionIcons(book, cardTopActions);
 
 		const coverWrap = card.createDiv({
 			cls: 'weread-bookshelf-card-cover-wrap is-clickable'
 		});
-		coverWrap.setAttr('title', `查看《${book.title}》详情`);
-		coverWrap.onclick = () => {
-			new WereadBookDetailModal(this.app, book, async () => {
-				await this.openLocalFile(book);
-			}).open();
-		};
 		if (book.cover) {
 			const cover = coverWrap.createEl('img', {
 				cls: 'weread-bookshelf-card-cover'
@@ -206,12 +204,6 @@ export class WereadBookshelfView extends ItemView {
 			text: book.title,
 			attr: { title: book.title }
 		});
-		if (book.hasLocalFile && book.localFile?.file) {
-			title.addClass('is-clickable');
-			title.onclick = async () => {
-				await this.openLocalFile(book);
-			};
-		}
 		details.createDiv({
 			cls: 'weread-bookshelf-card-author',
 			text: book.author
@@ -268,12 +260,12 @@ export class WereadBookshelfView extends ItemView {
 
 	private renderBadges(book: BookshelfBook, container: HTMLElement): void {
 		const labels: string[] = [];
-		if (book.isLocalOnly) {
+		if (this.isDisplayLocalOnly(book)) {
 			labels.push('仅本地');
+		} else if (this.isDisplaySynced(book)) {
+			labels.push('已同步');
 		} else if (!book.hasLocalFile) {
 			labels.push('仅远程');
-		} else {
-			labels.push('已同步');
 		}
 		labels.push(book.isArticle ? '公众号' : '图书');
 		if (book.syncFilter && !book.syncFilter.includedByCurrentSettings) {
@@ -308,17 +300,17 @@ export class WereadBookshelfView extends ItemView {
 
 				if (
 					this.syncStatusFilter === 'remoteOnly' &&
-					(book.hasLocalFile || !book.remoteExists)
+					this.isDisplayLocalOnly(book)
 				) {
 					return false;
 				}
-				if (
-					this.syncStatusFilter === 'synced' &&
-					!(book.remoteExists && book.hasLocalFile)
-				) {
+				if (this.syncStatusFilter === 'remoteOnly' && book.hasLocalFile) {
 					return false;
 				}
-				if (this.syncStatusFilter === 'localOnly' && !book.isLocalOnly) {
+				if (this.syncStatusFilter === 'synced' && !this.isDisplaySynced(book)) {
+					return false;
+				}
+				if (this.syncStatusFilter === 'localOnly' && !this.isDisplayLocalOnly(book)) {
 					return false;
 				}
 
@@ -339,6 +331,27 @@ export class WereadBookshelfView extends ItemView {
 			return moment(book.lastReadDate, 'YYYY-MM-DD').unix();
 		}
 		return 0;
+	}
+
+	private isDisplaySynced(book: BookshelfBook): boolean {
+		return book.hasLocalFile && this.isRemoteIncludedInCurrentSettings(book);
+	}
+
+	private isDisplayLocalOnly(book: BookshelfBook): boolean {
+		return book.hasLocalFile && !this.isRemoteIncludedInCurrentSettings(book);
+	}
+
+	private isRemoteIncludedInCurrentSettings(book: BookshelfBook): boolean {
+		if (!book.remoteExists) {
+			return false;
+		}
+		return book.syncFilter?.includedByCurrentSettings ?? true;
+	}
+
+	private openBookDetail(book: BookshelfBook): void {
+		new WereadBookDetailModal(this.app, book, async () => {
+			await this.openLocalFile(book);
+		}).open();
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {

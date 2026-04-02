@@ -66,7 +66,15 @@ export class WereadBookDetailModal extends Modal {
 		}
 
 		const info = header.createDiv({ cls: 'weread-book-detail-info' });
-		info.createEl('h2', { text: this.book.title });
+		const title = info.createEl('h2', { text: this.book.title });
+		title.setAttr('title', this.book.hasLocalFile ? '打开本地文件' : this.book.title);
+		if (this.book.hasLocalFile && this.onOpenLocalFile) {
+			title.addClass('is-clickable');
+			title.onclick = async () => {
+				await this.onOpenLocalFile?.();
+				this.close();
+			};
+		}
 		info.createDiv({
 			cls: 'weread-book-detail-author',
 			text: this.book.author
@@ -112,14 +120,6 @@ export class WereadBookDetailModal extends Modal {
 				text: progress.book.summary
 			});
 		}
-
-		const actions = contentEl.createDiv({ cls: 'weread-bookshelf-modal-actions' });
-		if (this.book.hasLocalFile && this.onOpenLocalFile) {
-			actions.createEl('button', { text: '打开本地文件' }).onclick = async () => {
-				await this.onOpenLocalFile?.();
-			};
-		}
-		actions.createEl('button', { text: '关闭', cls: 'mod-cta' }).onclick = () => this.close();
 	}
 
 	private createBadge(container: HTMLElement, text: string): void {
@@ -142,13 +142,28 @@ export class WereadBookDetailModal extends Modal {
 	}
 
 	private getSyncStatusText(): string {
-		if (this.book.isLocalOnly) {
+		if (this.isDisplayLocalOnly()) {
 			return '仅本地';
 		}
-		if (!this.book.hasLocalFile) {
-			return '仅远程';
+		if (this.isDisplaySynced()) {
+			return '已同步';
 		}
-		return '已同步';
+		return '仅远程';
+	}
+
+	private isDisplaySynced(): boolean {
+		return this.book.hasLocalFile && this.isRemoteIncludedInCurrentSettings();
+	}
+
+	private isDisplayLocalOnly(): boolean {
+		return this.book.hasLocalFile && !this.isRemoteIncludedInCurrentSettings();
+	}
+
+	private isRemoteIncludedInCurrentSettings(): boolean {
+		if (!this.book.remoteExists) {
+			return false;
+		}
+		return this.book.syncFilter?.includedByCurrentSettings ?? true;
 	}
 
 	private getFinishedStatusText(progress?: BookProgressResponse): string {

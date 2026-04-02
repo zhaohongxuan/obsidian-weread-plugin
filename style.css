@@ -1035,6 +1035,14 @@
 	position: relative;
 }
 
+.weread-bookshelf-card.is-clickable {
+	cursor: pointer;
+}
+
+.weread-bookshelf-card.is-clickable:hover {
+	background: var(--background-modifier-hover);
+}
+
 .weread-bookshelf-card-cover-wrap {
 	width: 88px;
 	flex: 0 0 88px;
@@ -1163,6 +1171,11 @@
 .weread-book-detail-info {
 	flex: 1;
 	min-width: 0;
+}
+
+.weread-book-detail-info h2.is-clickable {
+	cursor: pointer;
+	color: var(--text-accent);
 }
 
 .weread-book-detail-author,
