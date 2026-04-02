@@ -337,7 +337,10 @@ export class WereadBookshelfView extends ItemView {
 
 	private getRecentValue(book: BookshelfBook): number {
 		if (book.lastReadDate) {
-			return moment(book.lastReadDate, 'YYYY-MM-DD').unix();
+			const parsedDate = moment(book.lastReadDate, 'YYYY-MM-DD', true);
+			if (parsedDate.isValid()) {
+				return parsedDate.unix();
+			}
 		}
 		return 0;
 	}
