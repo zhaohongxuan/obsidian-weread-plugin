@@ -199,7 +199,7 @@ export class WereadBookshelfView extends ItemView {
 		}
 
 		const details = card.createDiv({ cls: 'weread-bookshelf-card-details' });
-		const title = details.createDiv({
+		details.createDiv({
 			cls: 'weread-bookshelf-card-title',
 			text: book.title,
 			attr: { title: book.title }
@@ -300,11 +300,8 @@ export class WereadBookshelfView extends ItemView {
 
 				if (
 					this.syncStatusFilter === 'remoteOnly' &&
-					this.isDisplayLocalOnly(book)
+					(this.isDisplayLocalOnly(book) || book.hasLocalFile)
 				) {
-					return false;
-				}
-				if (this.syncStatusFilter === 'remoteOnly' && book.hasLocalFile) {
 					return false;
 				}
 				if (this.syncStatusFilter === 'synced' && !this.isDisplaySynced(book)) {
