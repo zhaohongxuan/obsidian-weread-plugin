@@ -880,7 +880,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 				text:
 					this.selectableBooksLoadingPromise !== null
 						? '正在异步加载书籍信息，请稍候...'
-						: `${getSyncModeText(syncMode)}已选书籍共 ${selectedBookIds.size} 本（部分书籍信息尚未加载）`
+						: `${getSyncModeText(syncMode)}已选书籍共 ${
+								selectedBookIds.size
+						  } 本（部分书籍信息尚未加载）`
 			});
 			return;
 		}
