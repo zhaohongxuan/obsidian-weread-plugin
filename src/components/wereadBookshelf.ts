@@ -9,7 +9,7 @@ export const WEREAD_BOOKSHELF_VIEW_ID = 'weread-bookshelf-view';
 type CategoryFilter = 'all' | 'book' | 'article';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 type BookshelfSort = 'recent' | 'title';
-const defaultSyncStatusFilter: SyncStatusFilter = 'synced';
+const initialSyncStatusFilter: SyncStatusFilter = 'synced';
 
 class ConfirmDeleteModal extends Modal {
 	constructor(app: App, private titleText: string, private onConfirm: () => Promise<void>) {
@@ -38,7 +38,7 @@ export class WereadBookshelfView extends ItemView {
 	private shelfBooks: BookshelfBook[] = [];
 	private searchKeyword = '';
 	private categoryFilter: CategoryFilter = 'all';
-	private syncStatusFilter: SyncStatusFilter = defaultSyncStatusFilter;
+	private syncStatusFilter: SyncStatusFilter = initialSyncStatusFilter;
 	private sortMode: BookshelfSort = 'recent';
 	private loading = false;
 	private emptyStateEl: HTMLElement;
@@ -132,9 +132,12 @@ export class WereadBookshelfView extends ItemView {
 			['synced', '已同步'],
 			['localOnly', '仅本地']
 		].forEach(([value, label]) => {
-			syncStatusSelect.createEl('option', { value, text: label });
+			syncStatusSelect.createEl('option', {
+				value,
+				text: label,
+				attr: value === this.syncStatusFilter ? { selected: 'selected' } : undefined
+			});
 		});
-		syncStatusSelect.value = this.syncStatusFilter;
 		syncStatusSelect.onchange = () => {
 			this.syncStatusFilter = syncStatusSelect.value as SyncStatusFilter;
 			this.renderBooks();

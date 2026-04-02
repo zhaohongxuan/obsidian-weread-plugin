@@ -4,6 +4,11 @@ import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '..
 import { getPcUrl } from '../parser/parseResponse';
 import { formatTimeDuration, formatTimestampToDate } from '../utils/dateUtil';
 
+const modalDesktopWidth = '800px';
+const modalDesktopMaxWidth = '92vw';
+const modalMobileMaxWidth = '96vw';
+const modalMaxHeight = '85vh';
+
 export class WereadBookDetailModal extends Modal {
 	private apiManager = new ApiManager();
 
@@ -19,9 +24,9 @@ export class WereadBookDetailModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 		modalEl.addClass('weread-book-detail-modal');
-		modalEl.style.width = Platform.isDesktopApp ? '800px' : '96vw';
-		modalEl.style.maxWidth = Platform.isDesktopApp ? '92vw' : '96vw';
-		modalEl.style.maxHeight = '85vh';
+		modalEl.style.width = Platform.isDesktopApp ? modalDesktopWidth : modalMobileMaxWidth;
+		modalEl.style.maxWidth = Platform.isDesktopApp ? modalDesktopMaxWidth : modalMobileMaxWidth;
+		modalEl.style.maxHeight = modalMaxHeight;
 
 		contentEl.createEl('h2', { text: this.book.title });
 		contentEl.createDiv({
