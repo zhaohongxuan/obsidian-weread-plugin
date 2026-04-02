@@ -179,7 +179,11 @@ export default class WereadBookshelfService {
 		if (!progress) {
 			return undefined;
 		}
-		const parsed = Number.parseFloat(progress.replace('%', ''));
+		const matched = progress.trim().match(/^(\d+(?:\.\d+)?)%?$/);
+		if (!matched) {
+			return undefined;
+		}
+		const parsed = Number.parseFloat(matched[1]);
 		return Number.isNaN(parsed) ? undefined : parsed;
 	}
 }

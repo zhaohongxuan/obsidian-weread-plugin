@@ -46,7 +46,7 @@ export const evaluateMetadataSyncFilter = (
 		reasonLabels.push('公众号内容已过滤');
 	}
 	if (excludedByNoteCount) {
-		reasonLabels.push(`划线少于 ${context.noteCountLimit} 条`);
+		reasonLabels.push(`划线少于 ${Math.floor(context.noteCountLimit)} 条`);
 	}
 	if (excludedByBlacklist) {
 		reasonLabels.push('命中黑名单');
