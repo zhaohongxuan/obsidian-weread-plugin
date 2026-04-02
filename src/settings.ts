@@ -4,6 +4,12 @@ import { Platform } from 'obsidian';
 import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
 
+export type SyncMode = 'blacklist' | 'whitelist';
+
+type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
+	manualSyncMode?: boolean;
+};
+
 interface WereadPluginSettings {
 	loginMethod: string;
 	cookies: Cookie[];
@@ -25,6 +31,8 @@ interface WereadPluginSettings {
 	removeParensWhitelist: string;
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
+	notesWhitelist: string;
+	syncMode: SyncMode;
 	showEmptyChapterTitleToggle: boolean;
 	convertTags: boolean;
 	saveArticleToggle: boolean;
@@ -60,6 +68,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	removeParensWhitelist: '',
 	dailyNotesToggle: false,
 	notesBlacklist: '',
+	notesWhitelist: '',
+	syncMode: 'blacklist',
 	showEmptyChapterTitleToggle: false,
 	convertTags: false,
 	saveArticleToggle: true,
@@ -80,8 +90,22 @@ const createSettingsStore = () => {
 	let _plugin!: WereadPlugin;
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
-		const data = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
-		const settings: WereadPluginSettings = { ...data };
+		const loadedData = await plugin.loadData();
+		const rawData: LegacyWereadPluginSettings =
+			loadedData && typeof loadedData === 'object' && !Array.isArray(loadedData)
+				? loadedData
+				: {};
+		const data = Object.assign({}, DEFAULT_SETTINGS, rawData);
+		const { manualSyncMode, ...restData } = data;
+		const settings: WereadPluginSettings = {
+			...restData,
+			syncMode:
+				data.syncMode === 'blacklist' || data.syncMode === 'whitelist'
+					? data.syncMode
+					: manualSyncMode
+					? 'whitelist'
+					: 'blacklist'
+		};
 		console.log('--------init cookie------', settings.cookies);
 		console.log(
 			'[weread plugin] Cookie 详情: 数量=' +
@@ -305,6 +329,20 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setSyncMode = (syncMode: SyncMode) => {
+		store.update((state) => {
+			state.syncMode = syncMode;
+			return state;
+		});
+	};
+
+	const setNotesWhitelist = (notesWhitelist: string) => {
+		store.update((state) => {
+			state.notesWhitelist = notesWhitelist;
+			return state;
+		});
+	};
+
 	const setEmptyChapterTitleToggle = (emtpyChapterTitleToggle: boolean) => {
 		store.update((state) => {
 			state.showEmptyChapterTitleToggle = emtpyChapterTitleToggle;
@@ -383,6 +421,8 @@ const createSettingsStore = () => {
 			setInsertAfter,
 			setInsertBefore,
 			setNoteBlacklist,
+			setSyncMode,
+			setNotesWhitelist,
 			setEmptyChapterTitleToggle,
 			setConvertTags,
 			setSaveArticleToggle,

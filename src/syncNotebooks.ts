@@ -12,6 +12,7 @@ import {
 	parseArticleHighlightReview
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
+import { parseBookIdList } from './utils/bookIdUtils';
 import { get } from 'svelte/store';
 import { Notice } from 'obsidian';
 export default class SyncNotebooks {
@@ -122,28 +123,36 @@ export default class SyncNotebooks {
 	private async filterNoteMetas(force = false, metaDataArr: Metadata[]): Promise<Metadata[]> {
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
+		const settings = get(settingsStore);
+		const blacklistedBookIds = parseBookIdList(settings.notesBlacklist);
+		const whitelistedBookIds = parseBookIdList(settings.notesWhitelist);
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
 			// skip 公众号
-			const saveArticle = get(settingsStore).saveArticleToggle;
+			const saveArticle = settings.saveArticleToggle;
 			if (!saveArticle && metaData.bookType === 3) {
 				continue;
 			}
-			if (metaData.noteCount < +get(settingsStore).noteCountLimit) {
+			if (metaData.noteCount < +settings.noteCountLimit) {
 				console.debug(
 					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
 				);
 				continue;
 			}
-			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
-			if (localNotebookFile && !localNotebookFile.new) {
-				continue;
-			}
-			const isNoteBlacklisted = get(settingsStore).notesBlacklist.includes(metaData.bookId);
-			if (isNoteBlacklisted) {
+			if (settings.syncMode === 'blacklist' && blacklistedBookIds.has(metaData.bookId)) {
 				console.debug(
 					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for blacklist`
 				);
+				continue;
+			}
+			if (settings.syncMode === 'whitelist' && !whitelistedBookIds.has(metaData.bookId)) {
+				console.debug(
+					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for whitelist`
+				);
+				continue;
+			}
+			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
+			if (localNotebookFile && !localNotebookFile.new) {
 				continue;
 			}
 			metaData.file = localNotebookFile;
@@ -156,8 +165,8 @@ export default class SyncNotebooks {
 	}
 
 	private async getALlMetadata() {
-		const noteBookResp: [] = await this.apiManager.getNotebooksWithRetry();
-		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
+		const notebookResp = await this.apiManager.getNotebooksWithRetry();
+		const metaDataArr = notebookResp.map((noteBook) => parseMetadata(noteBook));
 		return metaDataArr;
 	}
 
