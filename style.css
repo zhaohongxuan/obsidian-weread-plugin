@@ -1182,7 +1182,8 @@
 .weread-book-detail-loading,
 .weread-book-detail-intro,
 .weread-book-detail-stat-label,
-.weread-book-detail-stat-value {
+.weread-book-detail-stat-value,
+.weread-book-detail-link {
 	font-size: 14px;
 	line-height: 1.6;
 }
@@ -1225,6 +1226,15 @@
 
 .weread-book-detail-intro {
 	white-space: pre-wrap;
+}
+
+.weread-book-detail-link {
+	color: var(--text-accent);
+	text-decoration: none;
+}
+
+.weread-book-detail-link:hover {
+	text-decoration: underline;
 }
 
 @media (max-width: 900px) {

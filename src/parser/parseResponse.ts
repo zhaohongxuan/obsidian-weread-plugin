@@ -367,7 +367,7 @@ const getFa = (id: string): [string, string[]] => {
 	return ['4', [d]];
 };
 
-const getPcUrl = (bookId: string): string => {
+export const getPcUrl = (bookId: string): string => {
 	const str = CryptoJS.MD5(bookId).toString(CryptoJS.enc.Hex);
 	const fa = getFa(bookId);
 	let strSub = str.substr(0, 3);

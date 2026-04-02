@@ -1,6 +1,7 @@
 import { App, Modal, Notice } from 'obsidian';
 import ApiManager from '../api';
 import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '../models';
+import { getPcUrl } from '../parser/parseResponse';
 import { formatTimeDuration, formatTimestampToDate } from '../utils/dateUtil';
 
 export class WereadBookDetailModal extends Modal {
@@ -55,6 +56,7 @@ export class WereadBookDetailModal extends Modal {
 	private renderDetail(detail?: BookDetailResponse, progress?: BookProgressResponse): void {
 		const { contentEl } = this;
 		contentEl.empty();
+		const pcUrl = getPcUrl(this.book.bookId);
 
 		const header = contentEl.createDiv({ cls: 'weread-book-detail-header' });
 		if (this.book.cover) {
@@ -92,6 +94,7 @@ export class WereadBookDetailModal extends Modal {
 		this.createStatRow(stats, '完成时间', this.getFinishedDateText(progress));
 		this.createStatRow(stats, '最近阅读', this.getLastReadDateText(progress));
 		this.createStatRow(stats, '阅读时长', this.getReadingTimeText(progress));
+		this.createLinkStatRow(stats, '微信读书', '打开网页版详情', pcUrl);
 		if (detail?.publisher) {
 			this.createStatRow(stats, '出版社', detail.publisher);
 		}
@@ -139,6 +142,26 @@ export class WereadBookDetailModal extends Modal {
 			cls: 'weread-book-detail-stat-value',
 			text: value
 		});
+	}
+
+	private createLinkStatRow(
+		container: HTMLElement,
+		label: string,
+		linkText: string,
+		href: string
+	): void {
+		const row = container.createDiv({ cls: 'weread-book-detail-stat-row' });
+		row.createDiv({
+			cls: 'weread-book-detail-stat-label',
+			text: label
+		});
+		const link = row.createEl('a', {
+			cls: 'weread-book-detail-stat-value weread-book-detail-link',
+			text: linkText,
+			href
+		});
+		link.target = '_blank';
+		link.rel = 'noopener noreferrer';
 	}
 
 	private getSyncStatusText(): string {

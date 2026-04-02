@@ -199,11 +199,19 @@ export class WereadBookshelfView extends ItemView {
 		}
 
 		const details = card.createDiv({ cls: 'weread-bookshelf-card-details' });
-		details.createDiv({
+		const title = details.createDiv({
 			cls: 'weread-bookshelf-card-title',
 			text: book.title,
 			attr: { title: book.title }
 		});
+		if (book.hasLocalFile) {
+			title.addClass('is-clickable');
+			title.setAttr('title', `打开《${book.title}》本地文件`);
+			title.onclick = async (event) => {
+				event.stopPropagation();
+				await this.openLocalFile(book);
+			};
+		}
 		details.createDiv({
 			cls: 'weread-bookshelf-card-author',
 			text: book.author
@@ -215,6 +223,10 @@ export class WereadBookshelfView extends ItemView {
 		details.createDiv({
 			cls: 'weread-bookshelf-card-meta',
 			text: `划线 ${book.noteCount} · 想法 ${book.reviewCount}`
+		});
+		details.createDiv({
+			cls: 'weread-bookshelf-card-meta',
+			text: `最近阅读 ${this.getLastReadDateText(book)}`
 		});
 	}
 
@@ -328,6 +340,10 @@ export class WereadBookshelfView extends ItemView {
 			return moment(book.lastReadDate, 'YYYY-MM-DD').unix();
 		}
 		return 0;
+	}
+
+	private getLastReadDateText(book: BookshelfBook): string {
+		return book.lastReadDate ?? book.progress.readingDateText ?? book.progress.finishedDateText ?? '暂无';
 	}
 
 	private isDisplaySynced(book: BookshelfBook): boolean {
