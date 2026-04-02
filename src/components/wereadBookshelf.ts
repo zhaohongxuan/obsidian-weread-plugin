@@ -1,16 +1,14 @@
 import { App, ItemView, Modal, Notice, WorkspaceLeaf, moment, setIcon } from 'obsidian';
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
-import type { BookshelfBook, BookshelfProgress } from '../models';
+import type { BookshelfBook } from '../models';
+import { WereadBookDetailModal } from './wereadBookDetailModal';
 
 export const WEREAD_BOOKSHELF_VIEW_ID = 'weread-bookshelf-view';
 
-const PAGE_SIZE = 24;
-
 type CategoryFilter = 'all' | 'book' | 'article';
-type ReadingStatusFilter = 'all' | 'finished' | 'reading';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
-type BookshelfSort = 'recent' | 'progress' | 'title';
+type BookshelfSort = 'recent' | 'title';
 
 class ConfirmDeleteModal extends Modal {
 	constructor(app: App, private titleText: string, private onConfirm: () => Promise<void>) {
@@ -39,15 +37,12 @@ export class WereadBookshelfView extends ItemView {
 	private shelfBooks: BookshelfBook[] = [];
 	private searchKeyword = '';
 	private categoryFilter: CategoryFilter = 'all';
-	private readingStatusFilter: ReadingStatusFilter = 'all';
 	private syncStatusFilter: SyncStatusFilter = 'all';
 	private sortMode: BookshelfSort = 'recent';
-	private visibleCount = PAGE_SIZE;
 	private loading = false;
 	private emptyStateEl: HTMLElement;
 	private summaryEl: HTMLElement;
 	private gridEl: HTMLElement;
-	private loadMoreEl: HTMLElement;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -93,7 +88,6 @@ export class WereadBookshelfView extends ItemView {
 		searchInput.placeholder = '搜索书名或作者';
 		searchInput.addEventListener('input', () => {
 			this.searchKeyword = searchInput.value.trim().toLowerCase();
-			this.visibleCount = PAGE_SIZE;
 			this.renderBooks();
 		});
 
@@ -107,21 +101,6 @@ export class WereadBookshelfView extends ItemView {
 		});
 		categorySelect.onchange = () => {
 			this.categoryFilter = categorySelect.value as CategoryFilter;
-			this.visibleCount = PAGE_SIZE;
-			this.renderBooks();
-		};
-
-		const readingStatusSelect = toolbar.createEl('select', { cls: 'dropdown' });
-		[
-			['all', '全部状态'],
-			['finished', '已读完'],
-			['reading', '在读']
-		].forEach(([value, label]) => {
-			readingStatusSelect.createEl('option', { value, text: label });
-		});
-		readingStatusSelect.onchange = () => {
-			this.readingStatusFilter = readingStatusSelect.value as ReadingStatusFilter;
-			this.visibleCount = PAGE_SIZE;
 			this.renderBooks();
 		};
 
@@ -136,14 +115,12 @@ export class WereadBookshelfView extends ItemView {
 		});
 		syncStatusSelect.onchange = () => {
 			this.syncStatusFilter = syncStatusSelect.value as SyncStatusFilter;
-			this.visibleCount = PAGE_SIZE;
 			this.renderBooks();
 		};
 
 		const sortSelect = toolbar.createEl('select', { cls: 'dropdown' });
 		[
 			['recent', '按最近阅读排序'],
-			['progress', '按进度排序'],
 			['title', '按标题排序']
 		].forEach(([value, label]) => {
 			sortSelect.createEl('option', { value, text: label });
@@ -156,7 +133,6 @@ export class WereadBookshelfView extends ItemView {
 		this.summaryEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-summary' });
 		this.emptyStateEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-empty' });
 		this.gridEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-grid' });
-		this.loadMoreEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-load-more' });
 
 		await this.loadBookshelf();
 	}
@@ -170,10 +146,8 @@ export class WereadBookshelfView extends ItemView {
 		this.summaryEl.setText('加载书架中...');
 		this.emptyStateEl.empty();
 		this.gridEl.empty();
-		this.loadMoreEl.empty();
 		try {
 			this.shelfBooks = await this.bookshelfService.getBookshelfBooks();
-			this.visibleCount = PAGE_SIZE;
 			this.renderBooks();
 		} catch (error: unknown) {
 			this.summaryEl.setText('加载书架失败');
@@ -185,29 +159,17 @@ export class WereadBookshelfView extends ItemView {
 
 	private renderBooks(): void {
 		const filteredBooks = this.getFilteredBooks();
-		const visibleBooks = filteredBooks.slice(0, this.visibleCount);
 		this.gridEl.empty();
 		this.emptyStateEl.empty();
-		this.loadMoreEl.empty();
-		this.summaryEl.setText(`展示 ${visibleBooks.length} / ${filteredBooks.length} 本书`);
+		this.summaryEl.setText(`展示 ${filteredBooks.length} 本书`);
 
 		if (filteredBooks.length === 0) {
 			this.emptyStateEl.setText(this.loading ? '加载中...' : '没有找到匹配的书籍');
 			return;
 		}
 
-		for (const book of visibleBooks) {
+		for (const book of filteredBooks) {
 			this.renderBookCard(book);
-		}
-
-		this.loadProgressForVisibleBooks(visibleBooks);
-
-		if (visibleBooks.length < filteredBooks.length) {
-			const button = this.loadMoreEl.createEl('button', { text: '加载更多' });
-			button.onclick = () => {
-				this.visibleCount += PAGE_SIZE;
-				this.renderBooks();
-			};
 		}
 	}
 
@@ -216,7 +178,15 @@ export class WereadBookshelfView extends ItemView {
 		const cardTopActions = card.createDiv({ cls: 'weread-bookshelf-card-top-actions' });
 		this.renderActionIcons(book, cardTopActions);
 
-		const coverWrap = card.createDiv({ cls: 'weread-bookshelf-card-cover-wrap' });
+		const coverWrap = card.createDiv({
+			cls: 'weread-bookshelf-card-cover-wrap is-clickable'
+		});
+		coverWrap.setAttr('title', `查看《${book.title}》详情`);
+		coverWrap.onclick = () => {
+			new WereadBookDetailModal(this.app, book, async () => {
+				await this.openLocalFile(book);
+			}).open();
+		};
 		if (book.cover) {
 			const cover = coverWrap.createEl('img', {
 				cls: 'weread-bookshelf-card-cover'
@@ -233,7 +203,8 @@ export class WereadBookshelfView extends ItemView {
 		const details = card.createDiv({ cls: 'weread-bookshelf-card-details' });
 		const title = details.createDiv({
 			cls: 'weread-bookshelf-card-title',
-			text: book.title
+			text: book.title,
+			attr: { title: book.title }
 		});
 		if (book.hasLocalFile && book.localFile?.file) {
 			title.addClass('is-clickable');
@@ -252,14 +223,6 @@ export class WereadBookshelfView extends ItemView {
 		details.createDiv({
 			cls: 'weread-bookshelf-card-meta',
 			text: `划线 ${book.noteCount} · 想法 ${book.reviewCount}`
-		});
-		details.createDiv({
-			cls: 'weread-bookshelf-card-meta',
-			text: this.getProgressText(book.progress)
-		});
-		details.createDiv({
-			cls: 'weread-bookshelf-card-meta',
-			text: this.getDateText(book)
 		});
 	}
 
@@ -302,18 +265,6 @@ export class WereadBookshelfView extends ItemView {
 			};
 		}
 
-		if (book.progress.state === 'error' && book.remoteExists) {
-			const retryButton = container.createEl('button', {
-				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '重试进度', title: '重试进度' }
-			});
-			setIcon(retryButton, 'rotate-ccw');
-			retryButton.onclick = async (event) => {
-				event.stopPropagation();
-				this.bookshelfService.clearProgressCache(book.bookId);
-				await this.loadProgressForVisibleBooks([book]);
-			};
-		}
 	}
 
 	private renderBadges(book: BookshelfBook, container: HTMLElement): void {
@@ -326,11 +277,6 @@ export class WereadBookshelfView extends ItemView {
 			labels.push('已同步');
 		}
 		labels.push(book.isArticle ? '公众号' : '图书');
-		if (this.isFinished(book)) {
-			labels.push('已读完');
-		} else {
-			labels.push('在读');
-		}
 		if (book.syncFilter && !book.syncFilter.includedByCurrentSettings) {
 			labels.push(...book.syncFilter.reasonLabels);
 		}
@@ -361,13 +307,6 @@ export class WereadBookshelfView extends ItemView {
 					return false;
 				}
 
-				if (this.readingStatusFilter === 'finished' && !this.isFinished(book)) {
-					return false;
-				}
-				if (this.readingStatusFilter === 'reading' && this.isFinished(book)) {
-					return false;
-				}
-
 				if (
 					this.syncStatusFilter === 'remoteOnly' &&
 					(book.hasLocalFile || !book.remoteExists)
@@ -393,72 +332,14 @@ export class WereadBookshelfView extends ItemView {
 		if (this.sortMode === 'title') {
 			return left.title.localeCompare(right.title);
 		}
-		if (this.sortMode === 'progress') {
-			return this.getProgressValue(right) - this.getProgressValue(left);
-		}
 		return this.getRecentValue(right) - this.getRecentValue(left);
 	}
 
-	private getProgressValue(book: BookshelfBook): number {
-		return book.progress.readingProgress ?? -1;
-	}
-
 	private getRecentValue(book: BookshelfBook): number {
-		if (book.progress.finishedDate) {
-			return book.progress.finishedDate;
-		}
-		if (book.progress.readingDate) {
-			return book.progress.readingDate;
-		}
 		if (book.lastReadDate) {
 			return Number(moment(book.lastReadDate, 'YYYY-MM-DD').format('X'));
 		}
 		return 0;
-	}
-
-	private getProgressText(progress: BookshelfProgress): string {
-		if (progress.state === 'loading') {
-			return '进度：加载中...';
-		}
-		if (progress.state === 'error') {
-			return '进度：加载失败';
-		}
-		if (progress.readingProgressText) {
-			return `进度：${progress.readingProgressText}`;
-		}
-		return '进度：未加载';
-	}
-
-	private getDateText(book: BookshelfBook): string {
-		if (book.progress.finishedDateText) {
-			return `完成时间：${book.progress.finishedDateText}`;
-		}
-		if (book.progress.readingDateText) {
-			return `最近阅读：${book.progress.readingDateText}`;
-		}
-		if (book.lastReadDate) {
-			return `最近阅读：${book.lastReadDate}`;
-		}
-		return book.isLocalOnly ? '仅存在本地文件' : '最近阅读：暂无';
-	}
-
-	private isFinished(book: BookshelfBook): boolean {
-		return Boolean(book.progress.finishedDateText || book.progress.finishedDate);
-	}
-
-	private async loadProgressForVisibleBooks(books: BookshelfBook[]): Promise<void> {
-		const remoteBookIds = books.filter((book) => book.remoteExists).map((book) => book.bookId);
-		if (remoteBookIds.length === 0) {
-			return;
-		}
-		await this.bookshelfService.loadProgressForBooks(remoteBookIds, (bookId, progress) => {
-			const target = this.shelfBooks.find((book) => book.bookId === bookId);
-			if (!target) {
-				return;
-			}
-			target.progress = progress;
-			this.renderBooks();
-		});
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {

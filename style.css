@@ -1040,6 +1040,10 @@
 	flex: 0 0 88px;
 }
 
+.weread-bookshelf-card-cover-wrap.is-clickable {
+	cursor: pointer;
+}
+
 .weread-bookshelf-card-cover,
 .weread-bookshelf-card-cover-placeholder {
 	width: 88px;
@@ -1069,6 +1073,9 @@
 	font-weight: 600;
 	font-size: 15px;
 	line-height: 1.4;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .weread-bookshelf-card-title.is-clickable {
@@ -1132,6 +1139,79 @@
 	justify-content: flex-end;
 	gap: 8px;
 	margin-top: 16px;
+}
+
+.weread-book-detail-modal .modal-content {
+	padding: 20px;
+}
+
+.weread-book-detail-header {
+	display: flex;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+
+.weread-book-detail-cover {
+	width: 120px;
+	height: 168px;
+	object-fit: cover;
+	border-radius: 10px;
+	background: var(--background-modifier-border);
+	flex: 0 0 120px;
+}
+
+.weread-book-detail-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-book-detail-author,
+.weread-book-detail-loading,
+.weread-book-detail-intro,
+.weread-book-detail-stat-label,
+.weread-book-detail-stat-value {
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.weread-book-detail-author,
+.weread-book-detail-loading,
+.weread-book-detail-stat-label {
+	color: var(--text-muted);
+}
+
+.weread-book-detail-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 8px 0 12px;
+}
+
+.weread-book-detail-badge {
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--background-modifier-hover);
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.weread-book-detail-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 8px 16px;
+}
+
+.weread-book-detail-stat-row {
+	display: flex;
+	flex-direction: column;
+}
+
+.weread-book-detail-section + .weread-book-detail-section {
+	margin-top: 16px;
+}
+
+.weread-book-detail-intro {
+	white-space: pre-wrap;
 }
 
 @media (max-width: 900px) {
