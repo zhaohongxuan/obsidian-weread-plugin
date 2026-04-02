@@ -264,7 +264,6 @@ export class WereadBookshelfView extends ItemView {
 				}).open();
 			};
 		}
-
 	}
 
 	private renderBadges(book: BookshelfBook, container: HTMLElement): void {
@@ -337,7 +336,7 @@ export class WereadBookshelfView extends ItemView {
 
 	private getRecentValue(book: BookshelfBook): number {
 		if (book.lastReadDate) {
-			return Number(moment(book.lastReadDate, 'YYYY-MM-DD').format('X'));
+			return moment(book.lastReadDate, 'YYYY-MM-DD').unix();
 		}
 		return 0;
 	}

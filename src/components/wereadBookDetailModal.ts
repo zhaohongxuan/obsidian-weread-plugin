@@ -1,4 +1,4 @@
-import { App, Modal } from 'obsidian';
+import { App, Modal, Notice } from 'obsidian';
 import ApiManager from '../api';
 import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '../models';
 import { formatTimeDuration, formatTimestampToDate } from '../utils/dateUtil';
@@ -27,7 +27,8 @@ export class WereadBookDetailModal extends Modal {
 			cls: 'weread-book-detail-loading',
 			text: '正在加载详情...'
 		});
-		this.loadDetail().catch(() => {
+		this.loadDetail().catch((error: unknown) => {
+			new Notice(error instanceof Error ? error.message : '加载图书详情失败');
 			this.renderDetail();
 		});
 	}
@@ -38,11 +39,16 @@ export class WereadBookDetailModal extends Modal {
 
 	private async loadDetail(): Promise<void> {
 		const [detail, progress] = await Promise.all([
-			this.book.remoteExists ? this.apiManager.getBook(this.book.bookId) : Promise.resolve(undefined),
+			this.book.remoteExists
+				? this.apiManager.getBook(this.book.bookId)
+				: Promise.resolve(undefined),
 			this.book.remoteExists
 				? this.apiManager.getProgress(this.book.bookId)
 				: Promise.resolve(undefined)
 		]);
+		if (this.book.remoteExists && !detail && !progress) {
+			throw new Error('加载图书详情失败');
+		}
 		this.renderDetail(detail, progress);
 	}
 
