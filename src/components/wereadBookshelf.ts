@@ -126,7 +126,7 @@ export class WereadBookshelfView extends ItemView {
 		].forEach(([value, label]) => {
 			sortSelect.createEl('option', { value, text: label });
 		});
-		const groupToggleWrapper = toolbarFilters.createLabel({
+		const groupToggleWrapper = toolbarFilters.createEl('label', {
 			cls: 'weread-bookshelf-group-toggle'
 		});
 		const groupToggle = groupToggleWrapper.createEl('input', {
