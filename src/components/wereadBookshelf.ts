@@ -343,7 +343,12 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private getLastReadDateText(book: BookshelfBook): string {
-		return book.lastReadDate ?? book.progress.readingDateText ?? book.progress.finishedDateText ?? '暂无';
+		return (
+			book.lastReadDate ??
+			book.progress.readingDateText ??
+			book.progress.finishedDateText ??
+			'暂无'
+		);
 	}
 
 	private isDisplaySynced(book: BookshelfBook): boolean {
