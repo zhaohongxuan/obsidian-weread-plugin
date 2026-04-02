@@ -6,6 +6,10 @@ import WereadPlugin from '../main';
 
 export type SyncMode = 'blacklist' | 'whitelist';
 
+type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
+	manualSyncMode?: boolean;
+};
+
 interface WereadPluginSettings {
 	loginMethod: string;
 	cookies: Cookie[];
@@ -87,7 +91,7 @@ const createSettingsStore = () => {
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
 		const loadedData = await plugin.loadData();
-		const rawData: Partial<WereadPluginSettings> & { manualSyncMode?: boolean } =
+		const rawData: LegacyWereadPluginSettings =
 			loadedData && typeof loadedData === 'object' ? loadedData : {};
 		const data = Object.assign({}, DEFAULT_SETTINGS, rawData);
 		const { manualSyncMode, ...restData } = data;

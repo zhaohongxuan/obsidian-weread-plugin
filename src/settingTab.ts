@@ -25,6 +25,8 @@ import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
 import type { SyncMode } from './settings';
 
+const NO_NOTE_COUNT_LIMIT = -1;
+
 const getSyncModeText = (syncMode: SyncMode) =>
 	syncMode === 'blacklist' ? '黑名单模式' : '白名单模式';
 
@@ -273,7 +275,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 									noteCountLimit:
 										syncMode === 'blacklist'
 											? get(settingsStore).noteCountLimit
-											: -1
+											: NO_NOTE_COUNT_LIMIT
 								},
 								selectedBookIds,
 								(nextSelectedBookIds) => {
