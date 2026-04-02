@@ -25,7 +25,7 @@ import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
 import type { SyncMode } from './settings';
 
-const NO_NOTE_COUNT_LIMIT = -1;
+const UNLIMITED_NOTE_COUNT = -1;
 
 const getSyncModeText = (syncMode: SyncMode) =>
 	syncMode === 'blacklist' ? '黑名单模式' : '白名单模式';
@@ -275,7 +275,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 									noteCountLimit:
 										syncMode === 'blacklist'
 											? get(settingsStore).noteCountLimit
-											: NO_NOTE_COUNT_LIMIT
+											: UNLIMITED_NOTE_COUNT
 								},
 								selectedBookIds,
 								(nextSelectedBookIds) => {
@@ -1141,7 +1141,7 @@ class ManualSyncBookSelectorModal extends Modal {
 
 		if (this.syncMode === 'blacklist' && noteCountExcludedBooks.length > 0) {
 			const thresholdText =
-				this.selectorOptions.noteCountLimit >= 0
+				this.selectorOptions.noteCountLimit !== UNLIMITED_NOTE_COUNT
 					? `划线少于 ${this.selectorOptions.noteCountLimit} 条，已自动排除`
 					: '已自动排除';
 			this.renderAutoExcludedSection(
@@ -1194,7 +1194,7 @@ class ManualSyncBookSelectorModal extends Modal {
 				return this.selectorOptions.hideArticles && book.bookType === 3;
 			}
 			return (
-				this.selectorOptions.noteCountLimit >= 0 &&
+				this.selectorOptions.noteCountLimit !== UNLIMITED_NOTE_COUNT &&
 				book.bookType !== 3 &&
 				book.noteCount < this.selectorOptions.noteCountLimit
 			);
@@ -1207,7 +1207,7 @@ class ManualSyncBookSelectorModal extends Modal {
 		}
 		return (
 			this.syncMode === 'blacklist' &&
-			this.selectorOptions.noteCountLimit >= 0 &&
+			this.selectorOptions.noteCountLimit !== UNLIMITED_NOTE_COUNT &&
 			book.noteCount < this.selectorOptions.noteCountLimit
 		);
 	}
