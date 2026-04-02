@@ -206,7 +206,9 @@ export class WereadBookshelfView extends ItemView {
 		this.emptyStateEl.empty();
 		if (this.shouldGroupByYear()) {
 			const groupedBooks = this.groupBooksByYear(filteredBooks);
-			this.summaryEl.setText(`展示 ${filteredBooks.length} 本书 · ${groupedBooks.length} 个年份分组`);
+			this.summaryEl.setText(
+				`展示 ${filteredBooks.length} 本书 · ${groupedBooks.length} 个年份分组`
+			);
 		} else {
 			this.summaryEl.setText(`展示 ${filteredBooks.length} 本书`);
 		}
@@ -410,9 +412,7 @@ export class WereadBookshelfView extends ItemView {
 		return this.groupByYear && this.sortMode === 'recent';
 	}
 
-	private groupBooksByYear(
-		books: BookshelfBook[]
-	): Array<{
+	private groupBooksByYear(books: BookshelfBook[]): Array<{
 		year: string;
 		books: BookshelfBook[];
 	}> {
@@ -446,7 +446,11 @@ export class WereadBookshelfView extends ItemView {
 		if (!book.lastReadDate) {
 			return UNKNOWN_YEAR_LABEL;
 		}
-		const parsedDate = moment(book.lastReadDate, ['YYYY-MM-DD', 'YYYY/M/D', 'YYYY/MM/DD'], true);
+		const parsedDate = moment(
+			book.lastReadDate,
+			['YYYY-MM-DD', 'YYYY/M/D', 'YYYY/MM/DD'],
+			true
+		);
 		return parsedDate.isValid() ? parsedDate.format('YYYY') : UNKNOWN_YEAR_LABEL;
 	}
 
