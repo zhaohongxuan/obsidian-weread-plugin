@@ -64,7 +64,6 @@ export class WereadBookDetailModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		const isDesktop = Platform.isDesktopApp;
-		const pcUrl = isDesktop ? getPcUrl(this.book.bookId) : undefined;
 
 		const header = contentEl.createDiv({ cls: 'weread-book-detail-header' });
 		if (this.book.cover) {
@@ -102,8 +101,8 @@ export class WereadBookDetailModal extends Modal {
 		this.createStatRow(stats, '完成时间', this.getFinishedDateText(progress));
 		this.createStatRow(stats, '最近阅读', this.getLastReadDateText(progress));
 		this.createStatRow(stats, '阅读时长', this.getReadingTimeText(progress));
-		if (pcUrl) {
-			this.createLinkStatRow(stats, '微信读书', '打开网页版详情', pcUrl);
+		if (isDesktop) {
+			this.createLinkStatRow(stats, '微信读书', '打开网页版详情', getPcUrl(this.book.bookId));
 		}
 		if (detail?.publisher) {
 			this.createStatRow(stats, '出版社', detail.publisher);
