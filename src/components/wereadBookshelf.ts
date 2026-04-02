@@ -13,11 +13,7 @@ type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 type BookshelfSort = 'recent' | 'progress' | 'title';
 
 class ConfirmDeleteModal extends Modal {
-	constructor(
-		app: App,
-		private titleText: string,
-		private onConfirm: () => Promise<void>
-	) {
+	constructor(app: App, private titleText: string, private onConfirm: () => Promise<void>) {
 		super(app);
 	}
 
