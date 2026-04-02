@@ -37,7 +37,7 @@ export class WereadBookshelfView extends ItemView {
 	private shelfBooks: BookshelfBook[] = [];
 	private searchKeyword = '';
 	private categoryFilter: CategoryFilter = 'all';
-	private syncStatusFilter: SyncStatusFilter = 'all';
+	private syncStatusFilter: SyncStatusFilter = 'synced';
 	private sortMode: BookshelfSort = 'recent';
 	private loading = false;
 	private emptyStateEl: HTMLElement;
@@ -69,7 +69,12 @@ export class WereadBookshelfView extends ItemView {
 		this.contentEl.addClass('weread-bookshelf-view');
 
 		const header = this.contentEl.createDiv({ cls: 'weread-bookshelf-header' });
-		header.createEl('h2', { text: '微信读书书架' });
+		const headerTitle = header.createDiv({ cls: 'weread-bookshelf-header-title' });
+		headerTitle.createEl('h2', { text: '📚 微信读书书架' });
+		headerTitle.createEl('p', {
+			cls: 'weread-bookshelf-header-subtitle',
+			text: '读万卷书，行万里路'
+		});
 		const headerActions = header.createDiv({ cls: 'weread-bookshelf-header-actions' });
 		const refreshButton = headerActions.createEl('button', {
 			text: '刷新书架',
@@ -78,6 +83,21 @@ export class WereadBookshelfView extends ItemView {
 		refreshButton.onclick = async () => {
 			this.bookshelfService.clearProgressCache();
 			await this.loadBookshelf();
+		};
+		const syncButton = headerActions.createEl('button', {
+			text: '同步笔记'
+		});
+		syncButton.onclick = async () => {
+			refreshButton.disabled = true;
+			syncButton.disabled = true;
+			try {
+				await this.plugin.startSync();
+				this.bookshelfService.clearProgressCache();
+				await this.loadBookshelf();
+			} finally {
+				refreshButton.disabled = false;
+				syncButton.disabled = false;
+			}
 		};
 
 		const toolbar = this.contentEl.createDiv({ cls: 'weread-bookshelf-toolbar' });
@@ -113,6 +133,7 @@ export class WereadBookshelfView extends ItemView {
 		].forEach(([value, label]) => {
 			syncStatusSelect.createEl('option', { value, text: label });
 		});
+		syncStatusSelect.value = this.syncStatusFilter;
 		syncStatusSelect.onchange = () => {
 			this.syncStatusFilter = syncStatusSelect.value as SyncStatusFilter;
 			this.renderBooks();
@@ -183,8 +204,15 @@ export class WereadBookshelfView extends ItemView {
 		this.renderActionIcons(book, cardTopActions);
 
 		const coverWrap = card.createDiv({
-			cls: 'weread-bookshelf-card-cover-wrap is-clickable'
+			cls: `weread-bookshelf-card-cover-wrap${book.hasLocalFile ? ' is-clickable' : ''}`
 		});
+		if (book.hasLocalFile) {
+			coverWrap.setAttr('title', `打开《${book.title}》本地文件`);
+			coverWrap.onclick = async (event) => {
+				event.stopPropagation();
+				await this.openLocalFile(book);
+			};
+		}
 		if (book.cover) {
 			const cover = coverWrap.createEl('img', {
 				cls: 'weread-bookshelf-card-cover'

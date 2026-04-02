@@ -1,4 +1,4 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, Platform } from 'obsidian';
 import ApiManager from '../api';
 import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '../models';
 import { getPcUrl } from '../parser/parseResponse';
@@ -19,8 +19,8 @@ export class WereadBookDetailModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 		modalEl.addClass('weread-book-detail-modal');
-		modalEl.style.width = '720px';
-		modalEl.style.maxWidth = '90vw';
+		modalEl.style.width = Platform.isDesktopApp ? '800px' : '96vw';
+		modalEl.style.maxWidth = Platform.isDesktopApp ? '92vw' : '96vw';
 		modalEl.style.maxHeight = '85vh';
 
 		contentEl.createEl('h2', { text: this.book.title });
@@ -56,7 +56,8 @@ export class WereadBookDetailModal extends Modal {
 	private renderDetail(detail?: BookDetailResponse, progress?: BookProgressResponse): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		const pcUrl = getPcUrl(this.book.bookId);
+		const showPcUrl = Platform.isDesktopApp;
+		const pcUrl = showPcUrl ? getPcUrl(this.book.bookId) : undefined;
 
 		const header = contentEl.createDiv({ cls: 'weread-book-detail-header' });
 		if (this.book.cover) {
@@ -87,14 +88,16 @@ export class WereadBookDetailModal extends Modal {
 		this.createBadge(badges, this.getSyncStatusText());
 		this.createBadge(badges, this.getFinishedStatusText(progress));
 
-		const stats = info.createDiv({ cls: 'weread-book-detail-stats' });
+		const stats = contentEl.createDiv({ cls: 'weread-book-detail-stats' });
 		this.createStatRow(stats, '划线', String(this.book.noteCount));
 		this.createStatRow(stats, '想法', String(this.book.reviewCount));
 		this.createStatRow(stats, '阅读进度', this.getReadingProgressText(progress));
 		this.createStatRow(stats, '完成时间', this.getFinishedDateText(progress));
 		this.createStatRow(stats, '最近阅读', this.getLastReadDateText(progress));
 		this.createStatRow(stats, '阅读时长', this.getReadingTimeText(progress));
-		this.createLinkStatRow(stats, '微信读书', '打开网页版详情', pcUrl);
+		if (pcUrl) {
+			this.createLinkStatRow(stats, '微信读书', '打开网页版详情', pcUrl);
+		}
 		if (detail?.publisher) {
 			this.createStatRow(stats, '出版社', detail.publisher);
 		}
