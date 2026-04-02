@@ -93,7 +93,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		this.notebookFolder();
 		this.syncModeSettings();
-		this.noteCountLimit();
 		this.fileNameType();
 		this.removeParens();
 		this.subFolderType();
@@ -272,7 +271,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 								{
 									hideArticles: !get(settingsStore).saveArticleToggle,
 									noteCountLimit:
-										syncMode === 'blacklist' ? get(settingsStore).noteCountLimit : -1
+										syncMode === 'blacklist'
+											? get(settingsStore).noteCountLimit
+											: -1
 								},
 								selectedBookIds,
 								(nextSelectedBookIds) => {
@@ -850,7 +851,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (selectedBooks.length === 0) {
 			previewContainer.createEl('div', {
 				cls: 'setting-item-description',
-				text: `${getSyncModeText(syncMode)}已选书籍共 ${selectedBookIds.size} 本（部分书籍信息尚未加载）`
+				text: `${getSyncModeText(syncMode)}已选书籍共 ${
+					selectedBookIds.size
+				} 本（部分书籍信息尚未加载）`
 			});
 			return;
 		}
@@ -1139,7 +1142,11 @@ class ManualSyncBookSelectorModal extends Modal {
 				this.selectorOptions.noteCountLimit >= 0
 					? `划线少于 ${this.selectorOptions.noteCountLimit} 条，已自动排除`
 					: '已自动排除';
-			this.renderAutoExcludedSection('已自动排除的低划线书籍', noteCountExcludedBooks, thresholdText);
+			this.renderAutoExcludedSection(
+				'已自动排除的低划线书籍',
+				noteCountExcludedBooks,
+				thresholdText
+			);
 		}
 	}
 
@@ -1169,7 +1176,9 @@ class ManualSyncBookSelectorModal extends Modal {
 			text: description
 		});
 		for (const book of books) {
-			const card = section.createDiv({ cls: 'weread-book-selector-selected-card is-disabled' });
+			const card = section.createDiv({
+				cls: 'weread-book-selector-selected-card is-disabled'
+			});
 			this.renderBookCardDetails(card, book);
 		}
 	}
