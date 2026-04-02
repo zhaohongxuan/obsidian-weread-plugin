@@ -151,6 +151,12 @@ export default class FileManager {
 			return {
 				file,
 				bookId: frontmatter['bookId'],
+				title: frontmatter['title'] ?? file.basename,
+				author: frontmatter['author'],
+				cover: frontmatter['cover'],
+				progress: frontmatter['progress'],
+				readingDate: frontmatter['readingDate'],
+				finishedDate: frontmatter['finishedDate'],
 				reviewCount: frontmatter['reviewCount'],
 				noteCount: frontmatter['noteCount'],
 				new: false
@@ -172,11 +178,26 @@ export default class FileManager {
 				({ file, frontmatter }): AnnotationFile => ({
 					file,
 					bookId: frontmatter['bookId'],
+					title: frontmatter['title'] ?? file.basename,
+					author: frontmatter['author'],
+					cover: frontmatter['cover'],
+					progress: frontmatter['progress'],
+					readingDate: frontmatter['readingDate'],
+					finishedDate: frontmatter['finishedDate'],
 					reviewCount: frontmatter['reviewCount'],
 					noteCount: frontmatter['noteCount'],
 					new: true
 				})
 			);
+	}
+
+	public async getNotebookFilesByBookId(): Promise<Map<string, AnnotationFile>> {
+		const files = await this.getNotebookFiles();
+		return new Map(
+			files
+				.filter((file): file is AnnotationFile & { bookId: string } => Boolean(file.bookId))
+				.map((file) => [file.bookId, file])
+		);
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {

@@ -12,9 +12,9 @@ import {
 	parseArticleHighlightReview
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
-import { parseBookIdList } from './utils/bookIdUtils';
 import { get } from 'svelte/store';
 import { Notice } from 'obsidian';
+import { createSyncFilterContext, evaluateMetadataSyncFilter } from './syncFilter';
 export default class SyncNotebooks {
 	private fileManager: FileManager;
 	private apiManager: ApiManager;
@@ -36,6 +36,27 @@ export default class SyncNotebooks {
 		} else {
 			new Notice(`当前笔记元数据缺少，同步失败!`);
 		}
+	}
+
+	async syncBookById(bookId: string) {
+		const metaDataArr: Metadata[] = await this.getALlMetadata();
+		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
+		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
+		const currentBookMeta = metaDataArr.find((metaData) => metaData.bookId === bookId);
+
+		if (!currentBookMeta) {
+			new Notice('未在远程书架中找到该书籍');
+			return;
+		}
+
+		currentBookMeta.file = await this.getLocalNotebookFile(currentBookMeta, localFiles, true);
+		if (duplicateBookSet.has(currentBookMeta.title)) {
+			currentBookMeta.duplicate = true;
+		}
+
+		const notebook = await this.convertToNotebook(currentBookMeta);
+		await this.saveNotebook(notebook);
+		new Notice(`《${currentBookMeta.title}》已同步到本地`);
 	}
 	async syncNotebooks(force = false, journalDate: string) {
 		new Notice('微信读书笔记同步开始!');
@@ -124,30 +145,15 @@ export default class SyncNotebooks {
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
 		const settings = get(settingsStore);
-		const blacklistedBookIds = parseBookIdList(settings.notesBlacklist);
-		const whitelistedBookIds = parseBookIdList(settings.notesWhitelist);
+		const filterContext = createSyncFilterContext(settings);
 		const filterMetaArr: Metadata[] = [];
 		for (const metaData of metaDataArr) {
-			// skip 公众号
-			const saveArticle = settings.saveArticleToggle;
-			if (!saveArticle && metaData.bookType === 3) {
-				continue;
-			}
-			if (metaData.noteCount < +settings.noteCountLimit) {
+			const syncFilter = evaluateMetadataSyncFilter(metaData, filterContext);
+			if (!syncFilter.includedByCurrentSettings) {
 				console.debug(
-					`[weread plugin] skip book ${metaData.title} note count: ${metaData.noteCount}`
-				);
-				continue;
-			}
-			if (settings.syncMode === 'blacklist' && blacklistedBookIds.has(metaData.bookId)) {
-				console.debug(
-					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for blacklist`
-				);
-				continue;
-			}
-			if (settings.syncMode === 'whitelist' && !whitelistedBookIds.has(metaData.bookId)) {
-				console.debug(
-					`[weread plugin] skip book ${metaData.title},id:${metaData.bookId} for whitelist`
+					`[weread plugin] skip book ${metaData.title}, reasons: ${syncFilter.reasonLabels.join(
+						', '
+					)}`
 				);
 				continue;
 			}

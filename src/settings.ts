@@ -10,7 +10,7 @@ type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
 };
 
-interface WereadPluginSettings {
+export interface WereadPluginSettings {
 	loginMethod: string;
 	cookies: Cookie[];
 	noteLocation: string;

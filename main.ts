@@ -2,13 +2,19 @@ import { Menu, Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
+import WereadBookshelfService from './src/bookshelf';
 import { settingsStore } from './src/settings';
 import { get } from 'svelte/store';
 import { WereadSettingsTab } from './src/settingTab';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
+import {
+	WEREAD_BOOKSHELF_VIEW_ID,
+	WereadBookshelfView
+} from './src/components/wereadBookshelf';
 import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
+	private bookshelfService: WereadBookshelfService;
 	private syncing = false;
 	private cookieRefreshTimer: number | null = null;
 
@@ -19,6 +25,7 @@ export default class WereadPlugin extends Plugin {
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
+		this.bookshelfService = new WereadBookshelfService(fileManager, apiManager);
 
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
@@ -83,6 +90,15 @@ export default class WereadPlugin extends Plugin {
 					})
 			);
 
+			menu.addItem((item) =>
+				item
+					.setTitle('打开微信读书书架')
+					.setIcon('library')
+					.onClick(() => {
+						this.activateBookshelfView();
+					})
+			);
+
 			menu.showAtMouseEvent(event);
 			menu.onHide(() => {
 				window.removeEventListener('mousedown', preventDefaultMouseDown);
@@ -106,6 +122,10 @@ export default class WereadPlugin extends Plugin {
 		});
 
 		this.registerView(WEREAD_BROWSER_VIEW_ID, (leaf) => new WereadReadingView(leaf));
+		this.registerView(
+			WEREAD_BOOKSHELF_VIEW_ID,
+			(leaf) => new WereadBookshelfView(leaf, this, this.bookshelfService)
+		);
 
 		this.addCommand({
 			id: 'open-weread-reading-view-tab',
@@ -120,6 +140,14 @@ export default class WereadPlugin extends Plugin {
 			name: '在新窗口打开微信读书',
 			callback: () => {
 				this.activateReadingView('WINDOW');
+			}
+		});
+
+		this.addCommand({
+			id: 'open-weread-bookshelf-view',
+			name: '打开微信读书书架',
+			callback: () => {
+				this.activateBookshelfView();
 			}
 		});
 
@@ -168,6 +196,22 @@ export default class WereadPlugin extends Plugin {
 		}
 	}
 
+	async syncBookById(bookId: string) {
+		if (this.syncing) {
+			new Notice('正在同步微信读书笔记，请稍后再试');
+			return;
+		}
+		this.syncing = true;
+		try {
+			await this.syncNotebooks.syncBookById(bookId);
+		} catch (e) {
+			new Notice('同步当前书籍异常,请打开控制台查看详情');
+			console.error('同步当前书籍异常', e);
+		} finally {
+			this.syncing = false;
+		}
+	}
+
 	async activateReadingView(type: string) {
 		const { workspace } = this.app;
 
@@ -187,6 +231,21 @@ export default class WereadPlugin extends Plugin {
 		}
 
 		// "Reveal" the leaf in case it is in a collapsed sidebar
+		workspace.revealLeaf(leaf);
+	}
+
+	async activateBookshelfView() {
+		const { workspace } = this.app;
+		let leaf: WorkspaceLeaf | null = null;
+		const leaves = workspace.getLeavesOfType(WEREAD_BOOKSHELF_VIEW_ID);
+
+		if (leaves.length > 0) {
+			leaf = leaves[0];
+		} else {
+			leaf = workspace.getLeaf('tab');
+			await leaf.setViewState({ type: WEREAD_BOOKSHELF_VIEW_ID, active: true });
+		}
+
 		workspace.revealLeaf(leaf);
 	}
 	onunload() {

@@ -987,6 +987,125 @@
 	align-self: center;
 }
 
+.weread-bookshelf-view {
+	padding: 16px;
+	height: 100%;
+	overflow: auto;
+}
+
+.weread-bookshelf-header,
+.weread-bookshelf-toolbar,
+.weread-bookshelf-card-actions {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+}
+
+.weread-bookshelf-toolbar {
+	margin: 12px 0 8px;
+}
+
+.weread-bookshelf-search {
+	flex: 1;
+	min-width: 220px;
+}
+
+.weread-bookshelf-summary,
+.weread-bookshelf-empty,
+.weread-bookshelf-load-more {
+	margin: 8px 0 12px;
+	color: var(--text-muted);
+}
+
+.weread-bookshelf-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 16px;
+}
+
+.weread-bookshelf-card {
+	display: flex;
+	gap: 12px;
+	padding: 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	background: var(--background-secondary);
+}
+
+.weread-bookshelf-card-cover-wrap {
+	width: 88px;
+	flex: 0 0 88px;
+}
+
+.weread-bookshelf-card-cover,
+.weread-bookshelf-card-cover-placeholder {
+	width: 88px;
+	height: 120px;
+	border-radius: 8px;
+	object-fit: cover;
+	background: var(--background-modifier-border);
+}
+
+.weread-bookshelf-card-cover-placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.weread-bookshelf-card-details {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.weread-bookshelf-card-title {
+	font-weight: 600;
+	font-size: 15px;
+	line-height: 1.4;
+}
+
+.weread-bookshelf-card-title.is-clickable {
+	cursor: pointer;
+	color: var(--text-accent);
+}
+
+.weread-bookshelf-card-author,
+.weread-bookshelf-card-meta,
+.weread-bookshelf-card-path {
+	font-size: 12px;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.weread-bookshelf-card-path {
+	word-break: break-all;
+}
+
+.weread-bookshelf-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.weread-bookshelf-badge {
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--background-modifier-hover);
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.weread-bookshelf-card-actions {
+	margin-top: auto;
+	justify-content: flex-start;
+}
+
 @media (max-width: 900px) {
 	.weread-book-selector-panels {
 		grid-template-columns: 1fr;

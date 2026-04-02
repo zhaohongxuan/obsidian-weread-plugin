@@ -96,6 +96,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 
 		this.notebookFolder();
+		this.bookshelfEntry();
 		this.syncModeSettings();
 		this.fileNameType();
 		this.removeParens();
@@ -213,6 +214,20 @@ export class WereadSettingsTab extends PluginSettingTab {
 					});
 					modal.open();
 				});
+			});
+	}
+
+	private bookshelfEntry(): void {
+		new Setting(this.containerEl)
+			.setName('书架 / Gallery')
+			.setDesc('打开微信读书书架，查看远程书籍、本地文件以及当前同步过滤状态')
+			.addButton((button) => {
+				return button
+					.setButtonText('打开书架')
+					.setCta()
+					.onClick(async () => {
+						await this.plugin.activateBookshelfView();
+					});
 			});
 	}
 

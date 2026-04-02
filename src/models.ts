@@ -360,6 +360,15 @@ export type Metadata = {
 	};
 };
 
+export type SyncFilterResult = {
+	excludedByArticleType: boolean;
+	excludedByNoteCount: boolean;
+	excludedByBlacklist: boolean;
+	excludedByWhitelist: boolean;
+	includedByCurrentSettings: boolean;
+	reasonLabels: string[];
+};
+
 export type Highlight = {
 	bookmarkId: string;
 	created: number;
@@ -435,10 +444,47 @@ export type RefBlockDetail = {
 
 export type AnnotationFile = {
 	bookId?: string;
+	title?: string;
+	author?: string;
+	cover?: string;
+	progress?: string;
+	readingDate?: string;
+	finishedDate?: string;
 	noteCount: number;
 	reviewCount: number;
 	new: boolean;
 	file: TFile;
+};
+
+export type BookshelfProgressState = 'idle' | 'loading' | 'loaded' | 'error';
+
+export type BookshelfProgress = {
+	state: BookshelfProgressState;
+	readingProgress?: number;
+	readingProgressText?: string;
+	readingDate?: number;
+	readingDateText?: string;
+	finishedDate?: number;
+	finishedDateText?: string;
+	readingTime?: number;
+	error?: string;
+};
+
+export type BookshelfBook = {
+	bookId: string;
+	title: string;
+	author: string;
+	cover?: string;
+	noteCount: number;
+	reviewCount: number;
+	lastReadDate?: string;
+	isArticle: boolean;
+	hasLocalFile: boolean;
+	localFile?: AnnotationFile;
+	remoteExists: boolean;
+	isLocalOnly: boolean;
+	syncFilter?: SyncFilterResult;
+	progress: BookshelfProgress;
 };
 
 export type RecentBook = {
