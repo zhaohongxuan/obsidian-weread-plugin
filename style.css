@@ -993,12 +993,12 @@
 	overflow: auto;
 }
 
-.weread-bookshelf-toolbar,
+.weread-bookshelf-toolbar-filters,
+.weread-bookshelf-toolbar-actions,
 .weread-bookshelf-card-actions {
 	display: flex;
 	gap: 12px;
 	align-items: center;
-	justify-content: space-between;
 	flex-wrap: wrap;
 }
 
@@ -1006,8 +1006,9 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 	text-align: center;
+	margin-bottom: 12px;
 }
 
 .weread-bookshelf-header-title h2 {
@@ -1020,20 +1021,59 @@
 	font-size: 13px;
 }
 
-.weread-bookshelf-header-actions {
+.weread-bookshelf-toolbar {
 	display: flex;
-	gap: 8px;
+	gap: 12px;
+	align-items: center;
+	justify-content: space-between;
 	flex-wrap: wrap;
-	justify-content: center;
+	margin: 0 0 8px;
 }
 
-.weread-bookshelf-toolbar {
-	margin: 12px 0 8px;
+.weread-bookshelf-toolbar-filters {
+	flex: 1 1 auto;
+	justify-content: flex-start;
+}
+
+.weread-bookshelf-toolbar-actions {
+	margin-left: auto;
+	justify-content: flex-end;
 }
 
 .weread-bookshelf-search {
-	flex: 1;
-	min-width: 220px;
+	flex: 0 1 180px;
+	min-width: 180px;
+}
+
+.weread-bookshelf-group-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+	color: var(--text-normal);
+	white-space: nowrap;
+}
+
+.weread-bookshelf-group-toggle.is-disabled {
+	opacity: 0.6;
+}
+
+.weread-bookshelf-group {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.weread-bookshelf-group-title {
+	margin: 4px 0 0;
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.weread-bookshelf-group-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 16px;
 }
 
 .weread-bookshelf-summary,
@@ -1044,8 +1084,8 @@
 }
 
 .weread-bookshelf-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	display: flex;
+	flex-direction: column;
 	gap: 16px;
 }
 
@@ -1266,6 +1306,15 @@
 @media (max-width: 900px) {
 	.weread-book-selector-panels {
 		grid-template-columns: 1fr;
+	}
+
+	.weread-bookshelf-toolbar {
+		align-items: stretch;
+	}
+
+	.weread-bookshelf-toolbar-actions {
+		margin-left: 0;
+		justify-content: flex-start;
 	}
 
 	.weread-book-detail-header {

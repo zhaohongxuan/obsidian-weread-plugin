@@ -10,6 +10,7 @@ type CategoryFilter = 'all' | 'book' | 'article';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 type BookshelfSort = 'recent' | 'title';
 const DEFAULT_SYNC_STATUS_FILTER: SyncStatusFilter = 'synced';
+const UNKNOWN_YEAR_LABEL = '未知年份';
 
 class ConfirmDeleteModal extends Modal {
 	constructor(app: App, private titleText: string, private onConfirm: () => Promise<void>) {
@@ -40,6 +41,7 @@ export class WereadBookshelfView extends ItemView {
 	private categoryFilter: CategoryFilter = 'all';
 	private syncStatusFilter: SyncStatusFilter = DEFAULT_SYNC_STATUS_FILTER;
 	private sortMode: BookshelfSort = 'recent';
+	private groupByYear = false;
 	private loading = false;
 	private emptyStateEl: HTMLElement;
 	private summaryEl: HTMLElement;
@@ -76,33 +78,10 @@ export class WereadBookshelfView extends ItemView {
 			cls: 'weread-bookshelf-header-subtitle',
 			text: '读万卷书，行万里路'
 		});
-		const headerActions = header.createDiv({ cls: 'weread-bookshelf-header-actions' });
-		const refreshButton = headerActions.createEl('button', {
-			text: '刷新书架',
-			cls: 'mod-cta'
-		});
-		refreshButton.onclick = async () => {
-			this.bookshelfService.clearProgressCache();
-			await this.loadBookshelf();
-		};
-		const syncButton = headerActions.createEl('button', {
-			text: '同步笔记'
-		});
-		syncButton.onclick = async () => {
-			refreshButton.disabled = true;
-			syncButton.disabled = true;
-			try {
-				await this.plugin.startSync();
-				this.bookshelfService.clearProgressCache();
-				await this.loadBookshelf();
-			} finally {
-				refreshButton.disabled = false;
-				syncButton.disabled = false;
-			}
-		};
 
 		const toolbar = this.contentEl.createDiv({ cls: 'weread-bookshelf-toolbar' });
-		const searchInput = toolbar.createEl('input', {
+		const toolbarFilters = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-filters' });
+		const searchInput = toolbarFilters.createEl('input', {
 			type: 'search',
 			cls: 'weread-bookshelf-search'
 		});
@@ -112,7 +91,7 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		});
 
-		const categorySelect = toolbar.createEl('select', { cls: 'dropdown' });
+		const categorySelect = toolbarFilters.createEl('select', { cls: 'dropdown' });
 		[
 			['all', '全部类型'],
 			['book', '图书'],
@@ -125,7 +104,7 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		};
 
-		const syncStatusSelect = toolbar.createEl('select', { cls: 'dropdown' });
+		const syncStatusSelect = toolbarFilters.createEl('select', { cls: 'dropdown' });
 		[
 			['all', '全部同步状态'],
 			['remoteOnly', '仅远程'],
@@ -140,16 +119,58 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		};
 
-		const sortSelect = toolbar.createEl('select', { cls: 'dropdown' });
+		const sortSelect = toolbarFilters.createEl('select', { cls: 'dropdown' });
 		[
 			['recent', '按最近阅读排序'],
 			['title', '按标题排序']
 		].forEach(([value, label]) => {
 			sortSelect.createEl('option', { value, text: label });
 		});
+		const groupToggleWrapper = toolbarFilters.createLabel({
+			cls: 'weread-bookshelf-group-toggle'
+		});
+		const groupToggle = groupToggleWrapper.createEl('input', {
+			type: 'checkbox'
+		});
+		groupToggleWrapper.createSpan({ text: '按年份分组' });
+		groupToggle.onchange = () => {
+			this.groupByYear = groupToggle.checked;
+			this.renderBooks();
+		};
 		sortSelect.onchange = () => {
 			this.sortMode = sortSelect.value as BookshelfSort;
+			groupToggle.disabled = this.sortMode !== 'recent';
+			groupToggleWrapper.toggleClass('is-disabled', groupToggle.disabled);
 			this.renderBooks();
+		};
+		groupToggle.disabled = this.sortMode !== 'recent';
+		groupToggleWrapper.toggleClass('is-disabled', groupToggle.disabled);
+
+		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
+		const refreshButton = toolbarActions.createEl('button', {
+			text: '刷新书架'
+		});
+		refreshButton.onclick = async () => {
+			this.bookshelfService.clearProgressCache();
+			await this.loadBookshelf();
+		};
+		const syncButton = toolbarActions.createEl('button', {
+			text: '同步笔记',
+			cls: 'mod-cta'
+		});
+		syncButton.onclick = async () => {
+			refreshButton.disabled = true;
+			syncButton.disabled = true;
+			try {
+				const updatedCount = await this.plugin.startSync();
+				if ((updatedCount ?? 0) > 0) {
+					this.bookshelfService.clearProgressCache();
+					await this.loadBookshelf();
+				}
+			} finally {
+				refreshButton.disabled = false;
+				syncButton.disabled = false;
+			}
 		};
 
 		this.summaryEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-summary' });
@@ -183,20 +204,41 @@ export class WereadBookshelfView extends ItemView {
 		const filteredBooks = this.getFilteredBooks();
 		this.gridEl.empty();
 		this.emptyStateEl.empty();
-		this.summaryEl.setText(`展示 ${filteredBooks.length} 本书`);
+		if (this.shouldGroupByYear()) {
+			const groupedBooks = this.groupBooksByYear(filteredBooks);
+			this.summaryEl.setText(`展示 ${filteredBooks.length} 本书 · ${groupedBooks.length} 个年份分组`);
+		} else {
+			this.summaryEl.setText(`展示 ${filteredBooks.length} 本书`);
+		}
 
 		if (filteredBooks.length === 0) {
 			this.emptyStateEl.setText(this.loading ? '加载中...' : '没有找到匹配的书籍');
 			return;
 		}
 
+		if (this.shouldGroupByYear()) {
+			for (const group of this.groupBooksByYear(filteredBooks)) {
+				const section = this.gridEl.createDiv({ cls: 'weread-bookshelf-group' });
+				section.createEl('h3', {
+					cls: 'weread-bookshelf-group-title',
+					text: group.year === UNKNOWN_YEAR_LABEL ? group.year : `${group.year} 年`
+				});
+				const groupGrid = section.createDiv({ cls: 'weread-bookshelf-group-grid' });
+				for (const book of group.books) {
+					this.renderBookCard(book, groupGrid);
+				}
+			}
+			return;
+		}
+
+		const defaultGrid = this.gridEl.createDiv({ cls: 'weread-bookshelf-group-grid' });
 		for (const book of filteredBooks) {
-			this.renderBookCard(book);
+			this.renderBookCard(book, defaultGrid);
 		}
 	}
 
-	private renderBookCard(book: BookshelfBook): void {
-		const card = this.gridEl.createDiv({ cls: 'weread-bookshelf-card is-clickable' });
+	private renderBookCard(book: BookshelfBook, container: HTMLElement = this.gridEl): void {
+		const card = container.createDiv({ cls: 'weread-bookshelf-card is-clickable' });
 		card.setAttr('title', `查看《${book.title}》详情`);
 		card.onclick = () => {
 			this.openBookDetail(book);
@@ -278,7 +320,7 @@ export class WereadBookshelfView extends ItemView {
 			};
 		}
 
-		if (book.isLocalOnly && book.localFile?.file?.path) {
+		if (this.isDisplayLocalOnly(book) && book.localFile?.file?.path) {
 			const deleteButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
 				attr: { 'aria-label': '删除本地文件', title: '删除本地文件' }
@@ -364,6 +406,32 @@ export class WereadBookshelfView extends ItemView {
 		return this.getRecentValue(right) - this.getRecentValue(left);
 	}
 
+	private shouldGroupByYear(): boolean {
+		return this.groupByYear && this.sortMode === 'recent';
+	}
+
+	private groupBooksByYear(
+		books: BookshelfBook[]
+	): Array<{
+		year: string;
+		books: BookshelfBook[];
+	}> {
+		const groupedBooks = new Map<string, BookshelfBook[]>();
+		for (const book of books) {
+			const year = this.getReadYear(book);
+			const yearBooks = groupedBooks.get(year);
+			if (yearBooks) {
+				yearBooks.push(book);
+				continue;
+			}
+			groupedBooks.set(year, [book]);
+		}
+		return Array.from(groupedBooks.entries()).map(([year, yearBooks]) => ({
+			year,
+			books: yearBooks
+		}));
+	}
+
 	private getRecentValue(book: BookshelfBook): number {
 		if (book.lastReadDate) {
 			const parsedDate = moment(book.lastReadDate, 'YYYY-MM-DD', true);
@@ -372,6 +440,14 @@ export class WereadBookshelfView extends ItemView {
 			}
 		}
 		return 0;
+	}
+
+	private getReadYear(book: BookshelfBook): string {
+		if (!book.lastReadDate) {
+			return UNKNOWN_YEAR_LABEL;
+		}
+		const parsedDate = moment(book.lastReadDate, ['YYYY-MM-DD', 'YYYY/M/D', 'YYYY/MM/DD'], true);
+		return parsedDate.isValid() ? parsedDate.format('YYYY') : UNKNOWN_YEAR_LABEL;
 	}
 
 	private getLastReadDateText(book: BookshelfBook): string {

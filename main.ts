@@ -174,15 +174,19 @@ export default class WereadPlugin extends Plugin {
 		this.setupCookieRefresh();
 	}
 
-	async startSync(force = false) {
+	async startSync(force = false): Promise<number | undefined> {
 		if (this.syncing) {
 			new Notice('正在同步微信读书笔记，请勿重复点击');
 			return;
 		}
 		this.syncing = true;
 		try {
-			await this.syncNotebooks.syncNotebooks(force, window.moment().format('YYYY-MM-DD'));
+			const syncedCount = await this.syncNotebooks.syncNotebooks(
+				force,
+				window.moment().format('YYYY-MM-DD')
+			);
 			console.log('syncing Weread note finish');
+			return syncedCount;
 		} catch (e) {
 			if (Platform.isDesktopApp) {
 				new Notice('同步微信读书笔记异常,请打开控制台查看详情');

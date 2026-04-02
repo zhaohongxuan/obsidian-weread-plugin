@@ -58,7 +58,7 @@ export default class SyncNotebooks {
 		await this.saveNotebook(notebook);
 		new Notice(`《${currentBookMeta.title}》已同步到本地`);
 	}
-	async syncNotebooks(force = false, journalDate: string) {
+	async syncNotebooks(force = false, journalDate: string): Promise<number> {
 		new Notice('微信读书笔记同步开始!');
 		const syncStartTime = new Date().getTime();
 		const metaDataArr = await this.getALlMetadata();
@@ -91,6 +91,7 @@ export default class SyncNotebooks {
 		new Notice(
 			`微信读书笔记同步完成!, 总共 ${metaDataArr.length} 本书 ， 本次更新 ${filterMetaArr.length} 本书, 耗时${syncTimeInSeconds} 秒`
 		);
+		return syncedNotebooks;
 	}
 
 	public async syncNotesToJounal(journalDate: string) {
