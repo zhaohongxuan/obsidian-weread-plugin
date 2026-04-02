@@ -179,11 +179,11 @@ export default class WereadBookshelfService {
 		if (!progress) {
 			return undefined;
 		}
-		const matched = progress.trim().match(/^(\d+(?:\.\d+)?)%?$/);
-		if (!matched) {
+		const progressMatch = progress.trim().match(/^(\d+(?:\.\d+)?)%?$/);
+		if (!progressMatch) {
 			return undefined;
 		}
-		const parsed = Number.parseFloat(matched[1]);
-		return Number.isNaN(parsed) ? undefined : parsed;
+		const progressValue = Number.parseFloat(progressMatch[1]);
+		return Number.isNaN(progressValue) ? undefined : progressValue;
 	}
 }
