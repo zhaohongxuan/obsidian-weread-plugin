@@ -56,8 +56,8 @@ export class WereadBookDetailModal extends Modal {
 	private renderDetail(detail?: BookDetailResponse, progress?: BookProgressResponse): void {
 		const { contentEl } = this;
 		contentEl.empty();
-		const showPcUrl = Platform.isDesktopApp;
-		const pcUrl = showPcUrl ? getPcUrl(this.book.bookId) : undefined;
+		const shouldShowPcUrl = Platform.isDesktopApp;
+		const pcUrl = shouldShowPcUrl ? getPcUrl(this.book.bookId) : undefined;
 
 		const header = contentEl.createDiv({ cls: 'weread-book-detail-header' });
 		if (this.book.cover) {
