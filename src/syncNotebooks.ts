@@ -165,8 +165,8 @@ export default class SyncNotebooks {
 	}
 
 	private async getALlMetadata() {
-		const noteBookResp = await this.apiManager.getNotebooksWithRetry();
-		const metaDataArr = noteBookResp.map((noteBook) => parseMetadata(noteBook));
+		const notebookResp = await this.apiManager.getNotebooksWithRetry();
+		const metaDataArr = notebookResp.map((noteBook) => parseMetadata(noteBook));
 		return metaDataArr;
 	}
 

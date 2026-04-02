@@ -368,7 +368,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private saveArticleToggle(): void {
 		new Setting(this.containerEl)
 			.setName('同步公众号内容')
-			.setDesc('关闭后将过滤公众号内容，并在黑名单选择器中直接展示这些自动排除项')
+			.setDesc('关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
 					settingsStore.actions.setSaveArticleToggle(value);
@@ -839,8 +839,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 			throw new Error('请先登录微信读书后再加载书籍列表');
 		}
 		const apiManager = new ApiManager();
-		const noteBookResp = await apiManager.getNotebooksWithRetry();
-		this.selectableBooksCache = noteBookResp.map((noteBook) => parseMetadata(noteBook));
+		const notebookResp = await apiManager.getNotebooksWithRetry();
+		this.selectableBooksCache = notebookResp.map((noteBook) => parseMetadata(noteBook));
 		return this.selectableBooksCache;
 	}
 

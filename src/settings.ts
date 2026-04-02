@@ -92,7 +92,10 @@ const createSettingsStore = () => {
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
 		const loadedData = await plugin.loadData();
 		const rawData: LegacyWereadPluginSettings =
-			loadedData && typeof loadedData === 'object' && !Array.isArray(loadedData)
+			loadedData !== null &&
+			loadedData &&
+			typeof loadedData === 'object' &&
+			!Array.isArray(loadedData)
 				? loadedData
 				: {};
 		const data = Object.assign({}, DEFAULT_SETTINGS, rawData);
