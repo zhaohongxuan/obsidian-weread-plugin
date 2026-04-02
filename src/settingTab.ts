@@ -22,38 +22,11 @@ import { TemplateEditorWindow } from './components/templateEditorWindow';
 import { Renderer } from './renderer';
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
-import { formatTimeDuration, formatTimestampToDate } from './utils/dateUtil';
+import { formatTimestampToDate } from './utils/dateUtil';
 import type { SyncMode } from './settings';
-
-type BookSelectorStatusFilter = 'all' | 'reading' | 'finished' | 'notStarted';
 
 const getSyncModeText = (syncMode: SyncMode) =>
 	syncMode === 'blacklist' ? '黑名单模式' : '白名单模式';
-
-const getBookStatus = (book: Metadata): BookSelectorStatusFilter => {
-	const readInfo = book.readInfo;
-	if (readInfo?.finishedDate) {
-		return 'finished';
-	}
-	if ((readInfo?.readingProgress ?? 0) > 0 || !!readInfo?.readingBookDate) {
-		return 'reading';
-	}
-	return 'notStarted';
-};
-
-const getBookStatusLabel = (book: Metadata) => {
-	switch (getBookStatus(book)) {
-		case 'finished':
-			return '已读完';
-		case 'reading':
-			return '在读';
-		default:
-			return '未开始';
-	}
-};
-
-const getBookProgress = (book: Metadata) =>
-	Math.min(Math.max(book.readInfo?.readingProgress ?? 0, 0), 100);
 
 const getBookLastReadText = (book: Metadata) => {
 	if (book.readInfo?.finishedDate) {
@@ -67,9 +40,6 @@ const getBookLastReadText = (book: Metadata) => {
 	}
 	return '最近阅读：暂无';
 };
-
-const getBookReadingTimeText = (book: Metadata) =>
-	`阅读时长：${formatTimeDuration(book.readInfo?.readingTime ?? 0)}`;
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
@@ -128,7 +98,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.removeParens();
 		this.subFolderType();
 		this.convertTagToggle();
-		this.saveArticleToggle();
 		this.saveReadingInfoToggle();
 		this.showEmptyChapterTitleToggle();
 		this.dailyNotes();
@@ -245,7 +214,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private syncModeSettings(): void {
-		this.containerEl.createEl('h3', { text: '同步模式' });
+		this.containerEl.createEl('h3', { text: '同步设置' });
 		this.containerEl.createEl('div', {
 			cls: 'setting-item-description',
 			text: '黑名单模式适合只排除少量书籍；白名单模式适合只同步少量书籍。两种模式都会使用同一个书籍选择器。'
@@ -266,6 +235,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		const syncMode = get(settingsStore).syncMode;
+		if (syncMode === 'blacklist') {
+			this.saveArticleToggle();
+			this.noteCountLimit();
+		}
 		this.renderSyncModeBookSelection(syncMode);
 	}
 
@@ -296,6 +269,11 @@ export class WereadSettingsTab extends PluginSettingTab {
 								this.app,
 								books,
 								syncMode,
+								{
+									hideArticles: !get(settingsStore).saveArticleToggle,
+									noteCountLimit:
+										syncMode === 'blacklist' ? get(settingsStore).noteCountLimit : -1
+								},
 								selectedBookIds,
 								(nextSelectedBookIds) => {
 									this.setSelectedBookIds(syncMode, nextSelectedBookIds);
@@ -386,8 +364,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private saveArticleToggle(): void {
 		new Setting(this.containerEl)
-			.setName('同步公众号文章?')
-			.setDesc('开启此选项会将同步公众号文章到单独的笔记中')
+			.setName('同步公众号内容')
+			.setDesc('关闭后将过滤公众号内容，并在黑名单选择器中直接展示这些自动排除项')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
 					settingsStore.actions.setSaveArticleToggle(value);
@@ -673,7 +651,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private noteCountLimit() {
 		new Setting(this.containerEl)
 			.setName('笔记划线数量最小值')
-			.setDesc('划线数量小于该值的笔记将不会被同步')
+			.setDesc('划线数量小于该值的书籍将被自动排除，并在黑名单选择器中单独展示')
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOptions({
@@ -872,9 +850,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (selectedBooks.length === 0) {
 			previewContainer.createEl('div', {
 				cls: 'setting-item-description',
-				text: `${getSyncModeText(syncMode)}已选书籍 bookId：${Array.from(
-					selectedBookIds
-				).join('，')}（部分书籍信息尚未加载）`
+				text: `${getSyncModeText(syncMode)}已选书籍共 ${selectedBookIds.size} 本（部分书籍信息尚未加载）`
 			});
 			return;
 		}
@@ -886,33 +862,15 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cover.alt = book.title;
 
 			const details = card.createDiv({ cls: 'weread-selected-book-details' });
-			const header = details.createDiv({ cls: 'weread-selected-book-header' });
-			header.createEl('div', { cls: 'weread-selected-book-title', text: book.title });
-			header.createEl('span', {
-				cls: `weread-book-status-badge is-${getBookStatus(book)}`,
-				text: getBookStatusLabel(book)
-			});
+			details.createEl('div', { cls: 'weread-selected-book-title', text: book.title });
 			details.createEl('div', { cls: 'weread-selected-book-author', text: book.author });
 			details.createEl('div', {
 				cls: 'weread-book-selector-meta',
-				text: `进度：${getBookProgress(book)}%`
-			});
-			const progress = details.createDiv({ cls: 'weread-book-progress' });
-			progress.createDiv({
-				cls: 'weread-book-progress-bar',
-				attr: { style: `width: ${getBookProgress(book)}%;` }
+				text: `划线：${book.noteCount} 条`
 			});
 			details.createEl('div', {
 				cls: 'weread-book-selector-meta',
 				text: getBookLastReadText(book)
-			});
-			details.createEl('div', {
-				cls: 'weread-book-selector-meta',
-				text: getBookReadingTimeText(book)
-			});
-			details.createEl('div', {
-				cls: 'weread-selected-book-id',
-				text: `bookId: ${book.bookId}`
 			});
 		}
 	}
@@ -944,7 +902,6 @@ class FolderSuggestModal extends FuzzySuggestModal<string> {
 
 class ManualSyncBookSelectorModal extends Modal {
 	private searchKeyword = '';
-	private statusFilter: BookSelectorStatusFilter = 'all';
 	private selectionFilter: 'all' | 'selected' | 'unselected' = 'all';
 	private selectedBookIds: Set<string>;
 	private selectedCountEl: HTMLElement;
@@ -955,6 +912,10 @@ class ManualSyncBookSelectorModal extends Modal {
 		app: App,
 		private books: Metadata[],
 		private syncMode: SyncMode,
+		private selectorOptions: {
+			hideArticles: boolean;
+			noteCountLimit: number;
+		},
 		selectedBookIds: Set<string>,
 		private onSaveSelection: (bookIds: string[]) => void
 	) {
@@ -971,6 +932,13 @@ class ManualSyncBookSelectorModal extends Modal {
 		modalEl.style.height = '80vh';
 		modalEl.style.maxHeight = '80vh';
 		const isBlacklistMode = this.syncMode === 'blacklist';
+		if (isBlacklistMode) {
+			for (const book of this.books) {
+				if (this.isAutoExcluded(book)) {
+					this.selectedBookIds.delete(book.bookId);
+				}
+			}
+		}
 
 		const header = contentEl.createDiv({ cls: 'weread-book-selector-header' });
 		header.createEl('h2', { text: isBlacklistMode ? '选择要排除的书籍' : '选择要同步的书籍' });
@@ -979,8 +947,8 @@ class ManualSyncBookSelectorModal extends Modal {
 		contentEl.createEl('div', {
 			cls: 'setting-item-description',
 			text: isBlacklistMode
-				? '支持搜索书名、作者或 bookId，并按阅读状态筛选。保存后，同步时将跳过勾选的书籍。'
-				: '支持搜索书名、作者或 bookId，并按阅读状态筛选。保存后，同步时仅处理勾选的书籍。'
+				? '支持搜索书名或作者，并按已排除/未排除筛选。保存后，同步时将跳过勾选的书籍。'
+				: '支持搜索书名或作者，并按已选/未选筛选。保存后，同步时仅处理勾选的书籍。'
 		});
 
 		const toolbar = contentEl.createDiv({ cls: 'weread-book-selector-toolbar' });
@@ -988,22 +956,9 @@ class ManualSyncBookSelectorModal extends Modal {
 			type: 'search',
 			cls: 'weread-book-selector-search'
 		});
-		searchInput.placeholder = '搜索书名、作者或 bookId';
+		searchInput.placeholder = '搜索书名或作者';
 		searchInput.addEventListener('input', () => {
 			this.searchKeyword = searchInput.value.trim().toLowerCase();
-			this.renderBooks();
-		});
-		const statusSelect = toolbar.createEl('select', { cls: 'dropdown' });
-		[
-			['all', '全部状态'],
-			['reading', '在读'],
-			['finished', '已读完'],
-			['notStarted', '未开始']
-		].forEach(([value, label]) => {
-			statusSelect.createEl('option', { value, text: label });
-		});
-		statusSelect.addEventListener('change', () => {
-			this.statusFilter = statusSelect.value as BookSelectorStatusFilter;
 			this.renderBooks();
 		});
 
@@ -1121,21 +1076,28 @@ class ManualSyncBookSelectorModal extends Modal {
 
 	private getFilteredBooks(): Metadata[] {
 		return this.books.filter((book) => {
-			const searchTarget = `${book.title} ${book.author} ${book.bookId}`.toLowerCase();
-			const statusMatched =
-				this.statusFilter === 'all' || getBookStatus(book) === this.statusFilter;
+			if (this.isAutoExcluded(book)) {
+				return false;
+			}
+			const searchTarget = `${book.title} ${book.author}`.toLowerCase();
 			const selectionMatched =
 				this.selectionFilter === 'all' ||
 				(this.selectionFilter === 'selected' && this.selectedBookIds.has(book.bookId)) ||
 				(this.selectionFilter === 'unselected' && !this.selectedBookIds.has(book.bookId));
 			const searchMatched = !this.searchKeyword || searchTarget.includes(this.searchKeyword);
-			return statusMatched && selectionMatched && searchMatched;
+			return selectionMatched && searchMatched;
 		});
 	}
 
 	private renderSelectedBooks(): void {
 		const selectedBooks = this.books.filter((book) => this.selectedBookIds.has(book.bookId));
-		if (selectedBooks.length === 0) {
+		const articleExcludedBooks = this.getAutoExcludedBooks('article');
+		const noteCountExcludedBooks = this.getAutoExcludedBooks('noteCount');
+		if (
+			selectedBooks.length === 0 &&
+			articleExcludedBooks.length === 0 &&
+			noteCountExcludedBooks.length === 0
+		) {
 			this.selectedListEl.createDiv({
 				cls: 'weread-book-selector-empty',
 				text: this.syncMode === 'blacklist' ? '暂无已排除的书籍' : '暂无已选择的书籍'
@@ -1143,19 +1105,41 @@ class ManualSyncBookSelectorModal extends Modal {
 			return;
 		}
 
-		for (const book of selectedBooks) {
-			const card = this.selectedListEl.createDiv({
-				cls: 'weread-book-selector-selected-card'
+		if (selectedBooks.length > 0) {
+			const section = this.selectedListEl.createDiv({ cls: 'weread-book-selector-section' });
+			section.createEl('h4', {
+				text: this.syncMode === 'blacklist' ? '手动排除' : '已选择'
 			});
-			this.renderBookCardDetails(card, book);
-			const removeButton = card.createEl('button', {
-				cls: 'weread-book-selector-remove',
-				text: '移除'
-			});
-			removeButton.onclick = () => {
-				this.selectedBookIds.delete(book.bookId);
-				this.renderBooks();
-			};
+			for (const book of selectedBooks) {
+				const card = section.createDiv({
+					cls: 'weread-book-selector-selected-card'
+				});
+				this.renderBookCardDetails(card, book);
+				const removeButton = card.createEl('button', {
+					cls: 'weread-book-selector-remove',
+					text: '移除'
+				});
+				removeButton.onclick = () => {
+					this.selectedBookIds.delete(book.bookId);
+					this.renderBooks();
+				};
+			}
+		}
+
+		if (this.syncMode === 'blacklist' && articleExcludedBooks.length > 0) {
+			this.renderAutoExcludedSection(
+				'已自动排除的公众号',
+				articleExcludedBooks,
+				'由“同步公众号内容”设置自动排除'
+			);
+		}
+
+		if (this.syncMode === 'blacklist' && noteCountExcludedBooks.length > 0) {
+			const thresholdText =
+				this.selectorOptions.noteCountLimit >= 0
+					? `划线少于 ${this.selectorOptions.noteCountLimit} 条，已自动排除`
+					: '已自动排除';
+			this.renderAutoExcludedSection('已自动排除的低划线书籍', noteCountExcludedBooks, thresholdText);
 		}
 	}
 
@@ -1165,33 +1149,55 @@ class ManualSyncBookSelectorModal extends Modal {
 		cover.alt = book.title;
 
 		const details = card.createDiv({ cls: 'weread-book-selector-card-details' });
-		const header = details.createDiv({ cls: 'weread-book-selector-card-header' });
-		header.createEl('div', { cls: 'weread-book-selector-title', text: book.title });
-		header.createEl('span', {
-			cls: `weread-book-status-badge is-${getBookStatus(book)}`,
-			text: getBookStatusLabel(book)
-		});
+		details.createEl('div', { cls: 'weread-book-selector-title', text: book.title });
 		details.createEl('div', { cls: 'weread-book-selector-author', text: book.author });
 		details.createEl('div', {
 			cls: 'weread-book-selector-meta',
-			text: `进度：${getBookProgress(book)}%`
-		});
-		const progress = details.createDiv({ cls: 'weread-book-progress' });
-		progress.createDiv({
-			cls: 'weread-book-progress-bar',
-			attr: { style: `width: ${getBookProgress(book)}%;` }
+			text: `划线：${book.noteCount} 条`
 		});
 		details.createEl('div', {
 			cls: 'weread-book-selector-meta',
 			text: getBookLastReadText(book)
 		});
-		details.createEl('div', {
-			cls: 'weread-book-selector-meta',
-			text: getBookReadingTimeText(book)
+	}
+
+	private renderAutoExcludedSection(title: string, books: Metadata[], description: string): void {
+		const section = this.selectedListEl.createDiv({ cls: 'weread-book-selector-section' });
+		section.createEl('h4', { text: title });
+		section.createEl('div', {
+			cls: 'weread-book-selector-section-description',
+			text: description
 		});
-		details.createEl('div', {
-			cls: 'weread-book-selector-id',
-			text: `bookId: ${book.bookId}`
+		for (const book of books) {
+			const card = section.createDiv({ cls: 'weread-book-selector-selected-card is-disabled' });
+			this.renderBookCardDetails(card, book);
+		}
+	}
+
+	private getAutoExcludedBooks(reason: 'article' | 'noteCount'): Metadata[] {
+		if (this.syncMode !== 'blacklist') {
+			return [];
+		}
+		return this.books.filter((book) => {
+			if (reason === 'article') {
+				return this.selectorOptions.hideArticles && book.bookType === 3;
+			}
+			return (
+				this.selectorOptions.noteCountLimit >= 0 &&
+				book.bookType !== 3 &&
+				book.noteCount < this.selectorOptions.noteCountLimit
+			);
 		});
+	}
+
+	private isAutoExcluded(book: Metadata): boolean {
+		if (this.selectorOptions.hideArticles && book.bookType === 3) {
+			return true;
+		}
+		return (
+			this.syncMode === 'blacklist' &&
+			this.selectorOptions.noteCountLimit >= 0 &&
+			book.noteCount < this.selectorOptions.noteCountLimit
+		);
 	}
 }
