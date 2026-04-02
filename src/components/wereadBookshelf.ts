@@ -83,7 +83,8 @@ export class WereadBookshelfView extends ItemView {
 		const toolbarFilters = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-filters' });
 		const searchInput = toolbarFilters.createEl('input', {
 			type: 'search',
-			cls: 'weread-bookshelf-search'
+			cls: 'weread-bookshelf-search',
+			attr: { 'aria-label': '搜索书名或作者' }
 		});
 		searchInput.placeholder = '搜索书名或作者';
 		searchInput.addEventListener('input', () => {
@@ -91,7 +92,10 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		});
 
-		const categorySelect = toolbarFilters.createEl('select', { cls: 'dropdown' });
+		const categorySelect = toolbarFilters.createEl('select', {
+			cls: 'dropdown',
+			attr: { 'aria-label': '筛选书籍类型' }
+		});
 		[
 			['all', '全部类型'],
 			['book', '图书'],
@@ -104,7 +108,10 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		};
 
-		const syncStatusSelect = toolbarFilters.createEl('select', { cls: 'dropdown' });
+		const syncStatusSelect = toolbarFilters.createEl('select', {
+			cls: 'dropdown',
+			attr: { 'aria-label': '筛选同步状态' }
+		});
 		[
 			['all', '全部同步状态'],
 			['remoteOnly', '仅远程'],
@@ -119,7 +126,10 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		};
 
-		const sortSelect = toolbarFilters.createEl('select', { cls: 'dropdown' });
+		const sortSelect = toolbarFilters.createEl('select', {
+			cls: 'dropdown',
+			attr: { 'aria-label': '选择书架排序方式' }
+		});
 		[
 			['recent', '按最近阅读排序'],
 			['title', '按标题排序']
@@ -130,7 +140,8 @@ export class WereadBookshelfView extends ItemView {
 			cls: 'weread-bookshelf-group-toggle'
 		});
 		const groupToggle = groupToggleWrapper.createEl('input', {
-			type: 'checkbox'
+			type: 'checkbox',
+			attr: { 'aria-label': '按阅读年份分组' }
 		});
 		groupToggleWrapper.createSpan({ text: '按年份分组' });
 		groupToggle.onchange = () => {
