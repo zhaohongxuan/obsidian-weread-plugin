@@ -16,10 +16,7 @@ const IDLE_PROGRESS: BookshelfProgress = {
 export default class WereadBookshelfService {
 	private progressCache = new Map<string, BookshelfProgress>();
 
-	constructor(
-		private fileManager: FileManager,
-		private apiManager: ApiManager
-	) {}
+	constructor(private fileManager: FileManager, private apiManager: ApiManager) {}
 
 	async getBookshelfBooks(): Promise<BookshelfBook[]> {
 		const [notebookResp, localFilesByBookId] = await Promise.all([
@@ -33,7 +30,10 @@ export default class WereadBookshelfService {
 			this.buildRemoteBook(metaData, localFilesByBookId.get(metaData.bookId), filterContext)
 		);
 		const localEntries = Array.from(localFilesByBookId.values())
-			.filter((file) => file.bookId && !remoteBookIds.has(file.bookId))
+			.filter(
+				(file): file is AnnotationFile & { bookId: string } =>
+					file.bookId !== undefined && !remoteBookIds.has(file.bookId)
+			)
 			.map((file) => this.buildLocalOnlyBook(file));
 
 		return [...remoteEntries, ...localEntries];
@@ -45,7 +45,9 @@ export default class WereadBookshelfService {
 	): Promise<void> {
 		const idsToLoad = Array.from(new Set(bookIds)).filter((bookId) => {
 			const progress = this.progressCache.get(bookId);
-			return progress === undefined || progress.state === 'idle' || progress.state === 'error';
+			return (
+				progress === undefined || progress.state === 'idle' || progress.state === 'error'
+			);
 		});
 
 		for (let index = 0; index < idsToLoad.length; index += PROGRESS_CONCURRENCY) {
@@ -132,7 +134,7 @@ export default class WereadBookshelfService {
 		};
 	}
 
-	private buildLocalOnlyBook(localFile: AnnotationFile): BookshelfBook {
+	private buildLocalOnlyBook(localFile: AnnotationFile & { bookId: string }): BookshelfBook {
 		return {
 			bookId: localFile.bookId,
 			title: localFile.title ?? localFile.file.basename,

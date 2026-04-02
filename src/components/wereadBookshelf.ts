@@ -1,4 +1,4 @@
-import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, WorkspaceLeaf, moment } from 'obsidian';
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook, BookshelfProgress } from '../models';
@@ -301,7 +301,9 @@ export class WereadBookshelfView extends ItemView {
 							!book.syncFilter.includedByCurrentSettings
 						);
 					case 'finished':
-						return Boolean(book.progress.finishedDateText || book.progress.finishedDate);
+						return Boolean(
+							book.progress.finishedDateText || book.progress.finishedDate
+						);
 					case 'unfinished':
 						return !book.progress.finishedDateText && !book.progress.finishedDate;
 					case 'article':
@@ -335,7 +337,7 @@ export class WereadBookshelfView extends ItemView {
 			return book.progress.readingDate;
 		}
 		if (book.lastReadDate) {
-			return Number(window.moment(book.lastReadDate, 'YYYY-MM-DD').format('X'));
+			return Number(moment(book.lastReadDate, 'YYYY-MM-DD').format('X'));
 		}
 		return 0;
 	}

@@ -151,9 +151,9 @@ export default class SyncNotebooks {
 			const syncFilter = evaluateMetadataSyncFilter(metaData, filterContext);
 			if (!syncFilter.includedByCurrentSettings) {
 				console.debug(
-					`[weread plugin] skip book ${metaData.title}, reasons: ${syncFilter.reasonLabels.join(
-						', '
-					)}`
+					`[weread plugin] skip book ${
+						metaData.title
+					}, reasons: ${syncFilter.reasonLabels.join(', ')}`
 				);
 				continue;
 			}

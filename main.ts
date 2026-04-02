@@ -7,10 +7,7 @@ import { settingsStore } from './src/settings';
 import { get } from 'svelte/store';
 import { WereadSettingsTab } from './src/settingTab';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
-import {
-	WEREAD_BOOKSHELF_VIEW_ID,
-	WereadBookshelfView
-} from './src/components/wereadBookshelf';
+import { WEREAD_BOOKSHELF_VIEW_ID, WereadBookshelfView } from './src/components/wereadBookshelf';
 import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;

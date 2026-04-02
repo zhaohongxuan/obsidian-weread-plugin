@@ -193,11 +193,12 @@ export default class FileManager {
 
 	public async getNotebookFilesByBookId(): Promise<Map<string, AnnotationFile>> {
 		const files = await this.getNotebookFiles();
-		return new Map(
-			files
-				.filter((file): file is AnnotationFile & { bookId: string } => Boolean(file.bookId))
-				.map((file) => [file.bookId, file])
-		);
+		return files.reduce((map, file) => {
+			if (file.bookId) {
+				map.set(file.bookId, file);
+			}
+			return map;
+		}, new Map<string, AnnotationFile>());
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
