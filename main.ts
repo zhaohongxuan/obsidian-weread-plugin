@@ -1,4 +1,4 @@
-import { Menu, Notice, Platform, Plugin, WorkspaceLeaf } from 'obsidian';
+import { Menu, Notice, Platform, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
@@ -12,6 +12,7 @@ import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private bookshelfService: WereadBookshelfService;
+	private fileManager: FileManager;
 	private syncing = false;
 	private cookieRefreshTimer: number | null = null;
 
@@ -20,6 +21,7 @@ export default class WereadPlugin extends Plugin {
 		await settingsStore.initialise(this);
 
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
+		this.fileManager = fileManager;
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 		this.bookshelfService = new WereadBookshelfService(fileManager, apiManager);
@@ -207,6 +209,16 @@ export default class WereadPlugin extends Plugin {
 		} finally {
 			this.syncing = false;
 		}
+	}
+
+	async deleteLocalBookByPath(filePath: string) {
+		const targetFile = this.app.vault.getAbstractFileByPath(filePath);
+		if (!(targetFile instanceof TFile)) {
+			new Notice('未找到本地文件');
+			return;
+		}
+		await this.fileManager.deleteNotebookFile(targetFile);
+		new Notice('本地文件已删除');
 	}
 
 	async activateReadingView(type: string) {

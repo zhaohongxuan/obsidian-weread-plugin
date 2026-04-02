@@ -201,6 +201,10 @@ export default class FileManager {
 		}, new Map<string, AnnotationFile>());
 	}
 
+	public async deleteNotebookFile(file: TFile): Promise<void> {
+		await this.vault.delete(file);
+	}
+
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
 		const folderPath = `${get(settingsStore).noteLocation}/${this.getSubFolderPath(
 			notebook.metaData

@@ -1032,6 +1032,7 @@
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-secondary);
+	position: relative;
 }
 
 .weread-bookshelf-card-cover-wrap {
@@ -1076,15 +1077,10 @@
 }
 
 .weread-bookshelf-card-author,
-.weread-bookshelf-card-meta,
-.weread-bookshelf-card-path {
+.weread-bookshelf-card-meta {
 	font-size: 12px;
 	color: var(--text-muted);
 	line-height: 1.5;
-}
-
-.weread-bookshelf-card-path {
-	word-break: break-all;
 }
 
 .weread-bookshelf-badges {
@@ -1101,9 +1097,34 @@
 	color: var(--text-muted);
 }
 
-.weread-bookshelf-card-actions {
-	margin-top: auto;
-	justify-content: flex-start;
+.weread-bookshelf-card-top-actions {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	display: flex;
+	gap: 4px;
+}
+
+.weread-bookshelf-icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border-radius: 50%;
+	background: var(--background-primary-alt);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.weread-bookshelf-icon-button:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.weread-bookshelf-icon-button:disabled {
+	opacity: 0.5;
 }
 
 @media (max-width: 900px) {
