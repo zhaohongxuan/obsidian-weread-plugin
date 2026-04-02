@@ -827,6 +827,10 @@
 	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 	gap: 12px;
 	margin: 8px 0 18px;
+	max-height: 420px;
+	overflow-y: auto;
+	padding-right: 4px;
+	align-content: start;
 }
 
 .weread-selected-book-card,

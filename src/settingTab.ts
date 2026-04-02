@@ -47,6 +47,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
 	private renderer: Renderer;
 	private selectableBooksCache: Metadata[] = [];
+	private selectableBooksLoadingPromise: Promise<void> | null = null;
 
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
@@ -58,6 +59,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.createEl('h2', { text: '设置微信读书插件' });
+		this.preloadSelectableBooks();
 
 		// 登录设置仅在桌面端显示
 		if (Platform.isDesktopApp) {
@@ -216,10 +218,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private syncModeSettings(): void {
 		this.containerEl.createEl('h3', { text: '同步设置' });
-		this.containerEl.createEl('div', {
-			cls: 'setting-item-description',
-			text: '黑名单模式适合只排除少量书籍；白名单模式适合只同步少量书籍。两种模式都会使用同一个书籍选择器。'
-		});
 
 		new Setting(this.containerEl)
 			.setName('同步模式')
@@ -300,6 +298,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 				return button.setButtonText('刷新书籍').onClick(() => {
 					this.selectableBooksCache = [];
 					new Notice('已清空书籍缓存，请重新打开选择器获取最新列表');
+					this.preloadSelectableBooks();
+					this.display();
 				});
 			})
 			.addButton((button) => {
@@ -328,6 +328,30 @@ export class WereadSettingsTab extends PluginSettingTab {
 			return;
 		}
 		settingsStore.actions.setNotesWhitelist(value);
+	}
+
+	private preloadSelectableBooks(): void {
+		const settings = get(settingsStore);
+		if (
+			this.selectableBooksCache.length > 0 ||
+			this.selectableBooksLoadingPromise ||
+			!settings.isCookieValid ||
+			settings.cookies.length === 0
+		) {
+			return;
+		}
+		this.selectableBooksLoadingPromise = this.fetchSelectableBooks()
+			.then(() => {
+				if (this.containerEl.isConnected) {
+					this.display();
+				}
+			})
+			.catch((error: unknown) => {
+				console.debug('[weread plugin] preload selectable books failed', error);
+			})
+			.finally(() => {
+				this.selectableBooksLoadingPromise = null;
+			});
 	}
 
 	private showLogin(): void {
@@ -853,9 +877,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (selectedBooks.length === 0) {
 			previewContainer.createEl('div', {
 				cls: 'setting-item-description',
-				text: `${getSyncModeText(syncMode)}已选书籍共 ${
-					selectedBookIds.size
-				} 本（部分书籍信息尚未加载）`
+				text:
+					this.selectableBooksLoadingPromise !== null
+						? '正在异步加载书籍信息，请稍候...'
+						: `${getSyncModeText(syncMode)}已选书籍共 ${selectedBookIds.size} 本（部分书籍信息尚未加载）`
 			});
 			return;
 		}
@@ -948,13 +973,6 @@ class ManualSyncBookSelectorModal extends Modal {
 		const header = contentEl.createDiv({ cls: 'weread-book-selector-header' });
 		header.createEl('h2', { text: isBlacklistMode ? '选择要排除的书籍' : '选择要同步的书籍' });
 		this.selectedCountEl = header.createDiv({ cls: 'weread-book-selector-count' });
-
-		contentEl.createEl('div', {
-			cls: 'setting-item-description',
-			text: isBlacklistMode
-				? '支持搜索书名或作者，并按已排除/未排除筛选。保存后，同步时将跳过勾选的书籍。'
-				: '支持搜索书名或作者，并按已选/未选筛选。保存后，同步时仅处理勾选的书籍。'
-		});
 
 		const toolbar = contentEl.createDiv({ cls: 'weread-book-selector-toolbar' });
 		const searchInput = toolbar.createEl('input', {
