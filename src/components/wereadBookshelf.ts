@@ -1,4 +1,4 @@
-import { ItemView, Notice, WorkspaceLeaf, moment, setIcon } from 'obsidian';
+import { App, ItemView, Modal, Notice, WorkspaceLeaf, moment, setIcon } from 'obsidian';
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook, BookshelfProgress } from '../models';
@@ -11,6 +11,33 @@ type CategoryFilter = 'all' | 'book' | 'article';
 type ReadingStatusFilter = 'all' | 'finished' | 'reading';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 type BookshelfSort = 'recent' | 'progress' | 'title';
+
+class ConfirmDeleteModal extends Modal {
+	constructor(
+		app: App,
+		private titleText: string,
+		private onConfirm: () => Promise<void>
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.createEl('h3', { text: '删除本地文件' });
+		contentEl.createEl('p', { text: `确认删除《${this.titleText}》的本地文件吗？` });
+		const actionRow = contentEl.createDiv({ cls: 'weread-bookshelf-modal-actions' });
+		actionRow.createEl('button', { text: '取消' }).onclick = () => this.close();
+		actionRow.createEl('button', { text: '删除', cls: 'mod-warning' }).onclick = async () => {
+			await this.onConfirm();
+			this.close();
+		};
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
 
 export class WereadBookshelfView extends ItemView {
 	private shelfBooks: BookshelfBook[] = [];
@@ -267,17 +294,15 @@ export class WereadBookshelfView extends ItemView {
 			setIcon(deleteButton, 'trash');
 			deleteButton.onclick = async (event) => {
 				event.stopPropagation();
-				const confirmed = window.confirm(`确认删除《${book.title}》的本地文件吗？`);
-				if (!confirmed) {
-					return;
-				}
-				deleteButton.disabled = true;
-				try {
-					await this.plugin.deleteLocalBookByPath(book.localFile.file.path);
-					await this.loadBookshelf();
-				} finally {
-					deleteButton.disabled = false;
-				}
+				new ConfirmDeleteModal(this.app, book.title, async () => {
+					deleteButton.disabled = true;
+					try {
+						await this.plugin.deleteLocalBookByPath(book.localFile.file.path);
+						await this.loadBookshelf();
+					} finally {
+						deleteButton.disabled = false;
+					}
+				}).open();
 			};
 		}
 
@@ -347,7 +372,10 @@ export class WereadBookshelfView extends ItemView {
 					return false;
 				}
 
-				if (this.syncStatusFilter === 'remoteOnly' && (book.hasLocalFile || !book.remoteExists)) {
+				if (
+					this.syncStatusFilter === 'remoteOnly' &&
+					(book.hasLocalFile || !book.remoteExists)
+				) {
 					return false;
 				}
 				if (
@@ -367,7 +395,7 @@ export class WereadBookshelfView extends ItemView {
 
 	private sortBooks(left: BookshelfBook, right: BookshelfBook): number {
 		if (this.sortMode === 'title') {
-			return left.title.localeCompare(right.title, 'zh-Hans-CN');
+			return left.title.localeCompare(right.title);
 		}
 		if (this.sortMode === 'progress') {
 			return this.getProgressValue(right) - this.getProgressValue(left);

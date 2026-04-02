@@ -1127,6 +1127,13 @@
 	opacity: 0.5;
 }
 
+.weread-bookshelf-modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 16px;
+}
+
 @media (max-width: 900px) {
 	.weread-book-selector-panels {
 		grid-template-columns: 1fr;

@@ -8,6 +8,7 @@ import { createSyncFilterContext, evaluateMetadataSyncFilter } from './syncFilte
 import { formatTimestampToDate } from './utils/dateUtil';
 
 const PROGRESS_CONCURRENCY = 4;
+const PROGRESS_TEXT_PATTERN = /^(\d+(?:\.\d+)?)%?$/;
 
 const IDLE_PROGRESS: BookshelfProgress = {
 	state: 'idle'
@@ -179,7 +180,7 @@ export default class WereadBookshelfService {
 		if (!progress) {
 			return undefined;
 		}
-		const progressMatch = progress.trim().match(/^(\d+(?:\.\d+)?)%?$/);
+		const progressMatch = progress.trim().match(PROGRESS_TEXT_PATTERN);
 		if (!progressMatch) {
 			return undefined;
 		}
