@@ -7,6 +7,7 @@ import { get } from 'svelte/store';
 type FrontMatterContent = {
 	doc_type: string;
 	bookId: string;
+	title?: string;
 	noteCount: number;
 	reviewCount: number;
 	author?: string;
@@ -36,6 +37,7 @@ export const buildFrontMatter = (
 	const frontMatter: FrontMatterContent = {
 		doc_type: frontMatterDocType,
 		bookId: noteBook.metaData.bookId,
+		title: noteBook.metaData.title,
 		reviewCount: noteBook.metaData.reviewCount,
 		noteCount: noteBook.metaData.noteCount
 	};
