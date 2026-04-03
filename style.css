@@ -1041,8 +1041,8 @@
 }
 
 .weread-bookshelf-search {
-	flex: 0 1 280px;
-	min-width: 280px;
+	flex: 0 1 200px;
+	min-width: 200px;
 }
 
 .weread-bookshelf-toggle {

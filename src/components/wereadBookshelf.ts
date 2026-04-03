@@ -8,6 +8,7 @@ export const WEREAD_BOOKSHELF_VIEW_ID = 'weread-bookshelf-view';
 
 type CategoryFilter = 'all' | 'book' | 'article';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
+type ReadingStatusFilter = 'all' | 'reading' | 'finished';
 type BookshelfSort = 'recent' | 'title';
 const DEFAULT_SYNC_STATUS_FILTER: SyncStatusFilter = 'synced';
 const UNKNOWN_YEAR_LABEL = '未知年份';
@@ -40,6 +41,7 @@ export class WereadBookshelfView extends ItemView {
 	private searchKeyword = '';
 	private categoryFilter: CategoryFilter = 'all';
 	private syncStatusFilter: SyncStatusFilter = DEFAULT_SYNC_STATUS_FILTER;
+	private readingStatusFilter: ReadingStatusFilter = 'all';
 	private sortMode: BookshelfSort = 'recent';
 	private groupByYear = false;
 	private loading = false;
@@ -113,7 +115,7 @@ export class WereadBookshelfView extends ItemView {
 			attr: { 'aria-label': '筛选同步状态' }
 		});
 		[
-			['all', '全部同步状态'],
+			['all', '全部状态'],
 			['remoteOnly', '仅远程'],
 			['synced', '已同步'],
 			['localOnly', '仅本地']
@@ -126,12 +128,29 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		};
 
+		const readingStatusSelect = toolbarFilters.createEl('select', {
+			cls: 'dropdown',
+			attr: { 'aria-label': '筛选阅读状态' }
+		});
+		[
+			['all', '在读+已读'],
+			['reading', '在读'],
+			['finished', '已读']
+		].forEach(([value, label]) => {
+			const option = readingStatusSelect.createEl('option', { value, text: label });
+			option.selected = value === this.readingStatusFilter;
+		});
+		readingStatusSelect.onchange = () => {
+			this.readingStatusFilter = readingStatusSelect.value as ReadingStatusFilter;
+			this.renderBooks();
+		};
+
 		const sortSelect = toolbarFilters.createEl('select', {
 			cls: 'dropdown',
 			attr: { 'aria-label': '选择书架排序方式' }
 		});
 		[
-			['recent', '按最近阅读排序'],
+			['recent', '时间排序'],
 			['title', '按标题排序']
 		].forEach(([value, label]) => {
 			sortSelect.createEl('option', { value, text: label });
@@ -392,6 +411,14 @@ export class WereadBookshelfView extends ItemView {
 			labels.push('仅远程');
 		}
 		labels.push(book.isArticle ? '公众号' : '图书');
+		
+		// 添加阅读状态标签
+		if (book.hasLocalFile && book.localFile?.finishedDate) {
+			labels.push('已读');
+		} else if (book.hasLocalFile) {
+			labels.push('在读');
+		}
+		
 		if (book.syncFilter && !book.syncFilter.includedByCurrentSettings) {
 			labels.push(...book.syncFilter.reasonLabels);
 		}
@@ -433,6 +460,16 @@ export class WereadBookshelfView extends ItemView {
 				}
 				if (this.syncStatusFilter === 'localOnly' && !this.isDisplayLocalOnly(book)) {
 					return false;
+				}
+
+				if (this.readingStatusFilter !== 'all') {
+					const isFinished = this.isBookFinished(book);
+					if (this.readingStatusFilter === 'finished' && !isFinished) {
+						return false;
+					}
+					if (this.readingStatusFilter === 'reading' && isFinished) {
+						return false;
+					}
 				}
 
 				return true;
@@ -508,6 +545,11 @@ export class WereadBookshelfView extends ItemView {
 
 	private isDisplayLocalOnly(book: BookshelfBook): boolean {
 		return book.hasLocalFile && !this.isRemoteIncludedInCurrentSettings(book);
+	}
+
+	private isBookFinished(book: BookshelfBook): boolean {
+		// 检查本地文件的 finishedDate 来判断是否已读
+		return book.hasLocalFile && book.localFile?.finishedDate !== undefined;
 	}
 
 	private isRemoteIncludedInCurrentSettings(book: BookshelfBook): boolean {
