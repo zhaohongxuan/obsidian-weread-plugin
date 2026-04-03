@@ -5,6 +5,7 @@ import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
 
 export type SyncMode = 'blacklist' | 'whitelist';
+export type ReadingOpenMode = 'TAB' | 'WINDOW';
 
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
@@ -37,6 +38,7 @@ export interface WereadPluginSettings {
 	convertTags: boolean;
 	saveArticleToggle: boolean;
 	saveReadingInfoToggle: boolean;
+	readingOpenMode: ReadingOpenMode;
 	trimBlocks: boolean;
 	cookieCloudInfo: {
 		serverUrl: string;
@@ -74,6 +76,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	convertTags: false,
 	saveArticleToggle: true,
 	saveReadingInfoToggle: true,
+	readingOpenMode: 'TAB',
 	trimBlocks: false,
 	cookieCloudInfo: {
 		serverUrl: '',
@@ -371,6 +374,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setReadingOpenMode = (readingOpenMode: ReadingOpenMode) => {
+		store.update((state) => {
+			state.readingOpenMode = readingOpenMode;
+			return state;
+		});
+	};
+
 	const setCookieCloudInfo = (info: { serverUrl: string; uuid: string; password: string }) => {
 		store.update((state) => {
 			state.cookieCloudInfo = info;
@@ -427,6 +437,7 @@ const createSettingsStore = () => {
 			setConvertTags,
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
+			setReadingOpenMode,
 			setCookieCloudInfo,
 			setTrimBlocks,
 			setCookieAutoRefreshToggle,

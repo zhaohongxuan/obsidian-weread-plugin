@@ -23,7 +23,7 @@ import { Renderer } from './renderer';
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
-import type { SyncMode } from './settings';
+import type { ReadingOpenMode, SyncMode } from './settings';
 
 const UNLIMITED_NOTE_COUNT = -1;
 
@@ -48,6 +48,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private renderer: Renderer;
 	private selectableBooksCache: Metadata[] = [];
 	private selectableBooksLoadingPromise: Promise<void> | null = null;
+	private syncSettingsHeadingEl: HTMLElement | null = null;
 
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
@@ -58,6 +59,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	display() {
 		const { containerEl } = this;
 		containerEl.empty();
+		this.syncSettingsHeadingEl = null;
 		containerEl.createEl('h2', { text: '设置微信读书插件' });
 		this.preloadSelectableBooks();
 
@@ -96,7 +98,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 
 		this.notebookFolder();
-		this.bookshelfEntry();
+		this.readingOpenModeSetting();
 		this.syncModeSettings();
 		this.fileNameType();
 		this.removeParens();
@@ -217,22 +219,25 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 	}
 
-	private bookshelfEntry(): void {
+	private readingOpenModeSetting(): void {
 		new Setting(this.containerEl)
-			.setName('书架 / Gallery')
-			.setDesc('打开微信读书书架，查看远程书籍、本地文件以及当前同步过滤状态')
-			.addButton((button) => {
-				return button
-					.setButtonText('打开书架')
-					.setCta()
-					.onClick(async () => {
-						await this.plugin.activateBookshelfView();
+			.setName('网页版打开方式')
+			.setDesc(
+				'控制书架中的“进入网页版”和详情页中的“打开网页版详情”默认在新标签页还是新窗口打开'
+			)
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('TAB', '新标签页')
+					.addOption('WINDOW', '新窗口')
+					.setValue(get(settingsStore).readingOpenMode)
+					.onChange((value: string) => {
+						settingsStore.actions.setReadingOpenMode(value as ReadingOpenMode);
 					});
 			});
 	}
 
 	private syncModeSettings(): void {
-		this.containerEl.createEl('h3', { text: '同步设置' });
+		this.syncSettingsHeadingEl = this.containerEl.createEl('h3', { text: '同步设置' });
 
 		new Setting(this.containerEl)
 			.setName('同步模式')
@@ -254,6 +259,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.noteCountLimit();
 		}
 		this.renderSyncModeBookSelection(syncMode);
+	}
+
+	scrollToSection(section: 'sync'): void {
+		if (section === 'sync') {
+			this.syncSettingsHeadingEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
 	}
 
 	private renderSyncModeBookSelection(syncMode: SyncMode): void {
@@ -640,21 +651,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const buttonGroup = userContainer.createDiv({
 			cls: 'weread-button-group'
 		});
-
-		// 刷新 Cookie 按钮（仅桌面端）
-		if (Platform.isDesktopApp) {
-			const refreshBtn = buttonGroup.createEl('button', {
-				cls: 'weread-action-button weread-refresh-btn',
-				text: '刷新 Cookie'
-			});
-			refreshBtn.addEventListener('click', async () => {
-				refreshBtn.disabled = true;
-				refreshBtn.textContent = '刷新中...';
-				const apiManager = new ApiManager();
-				await apiManager.refreshCookie(true);
-				this.display();
-			});
-		}
 
 		// 注销按钮
 		const logoutBtn = buttonGroup.createEl('button', {

@@ -59,12 +59,11 @@ export default class SyncNotebooks {
 		new Notice(`《${currentBookMeta.title}》已同步到本地`);
 	}
 	async syncNotebooks(force = false, journalDate: string): Promise<number> {
-		new Notice('微信读书笔记同步开始!');
 		const syncStartTime = new Date().getTime();
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
 		let syncedNotebooks = 0;
-		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 300000);
+		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 0);
 
 		try {
 			for (const meta of filterMetaArr) {

@@ -15,7 +15,8 @@ export class WereadBookDetailModal extends Modal {
 	constructor(
 		app: App,
 		private book: BookshelfBook,
-		private onOpenLocalFile?: () => Promise<void>
+		private onOpenLocalFile?: () => Promise<void>,
+		private onOpenRemoteDetail?: (url: string) => Promise<void> | void
 	) {
 		super(app);
 	}
@@ -93,6 +94,13 @@ export class WereadBookDetailModal extends Modal {
 		this.createBadge(badges, this.book.isArticle ? '公众号' : '图书');
 		this.createBadge(badges, this.getSyncStatusText());
 		this.createBadge(badges, this.getFinishedStatusText(progress));
+		for (const label of this.getSyncFilterReasonLabels()) {
+			this.createBadge(badges, label);
+		}
+		if (isDesktop) {
+			const linkRow = info.createDiv({ cls: 'weread-book-detail-entry-row' });
+			this.createInlineLink(linkRow, '打开网页版详情', getPcUrl(this.book.bookId));
+		}
 
 		const stats = contentEl.createDiv({ cls: 'weread-book-detail-stats' });
 		this.createStatRow(stats, '划线', String(this.book.noteCount));
@@ -101,9 +109,6 @@ export class WereadBookDetailModal extends Modal {
 		this.createStatRow(stats, '完成时间', this.getFinishedDateText(progress));
 		this.createStatRow(stats, '最近阅读', this.getLastReadDateText(progress));
 		this.createStatRow(stats, '阅读时长', this.getReadingTimeText(progress));
-		if (isDesktop) {
-			this.createLinkStatRow(stats, '微信读书', '打开网页版详情', getPcUrl(this.book.bookId));
-		}
 		if (detail?.publisher) {
 			this.createStatRow(stats, '出版社', detail.publisher);
 		}
@@ -123,15 +128,6 @@ export class WereadBookDetailModal extends Modal {
 			cls: 'weread-book-detail-intro',
 			text: detail?.intro?.trim() || '暂无简介'
 		});
-
-		if (progress?.book?.summary) {
-			const summarySection = contentEl.createDiv({ cls: 'weread-book-detail-section' });
-			summarySection.createEl('h3', { text: '摘要' });
-			summarySection.createDiv({
-				cls: 'weread-book-detail-intro',
-				text: progress.book.summary
-			});
-		}
 	}
 
 	private createBadge(container: HTMLElement, text: string): void {
@@ -153,6 +149,18 @@ export class WereadBookDetailModal extends Modal {
 		});
 	}
 
+	private createInlineLink(container: HTMLElement, linkText: string, href: string): void {
+		const link = container.createEl('a', {
+			cls: 'weread-book-detail-link',
+			text: linkText,
+			href
+		});
+		link.onclick = async (event) => {
+			event.preventDefault();
+			await this.onOpenRemoteDetail?.(href);
+		};
+	}
+
 	private createLinkStatRow(
 		container: HTMLElement,
 		label: string,
@@ -164,13 +172,7 @@ export class WereadBookDetailModal extends Modal {
 			cls: 'weread-book-detail-stat-label',
 			text: label
 		});
-		const link = row.createEl('a', {
-			cls: 'weread-book-detail-stat-value weread-book-detail-link',
-			text: linkText,
-			href
-		});
-		link.target = '_blank';
-		link.rel = 'noopener noreferrer';
+		this.createInlineLink(row, linkText, href);
 	}
 
 	private getSyncStatusText(): string {
@@ -196,6 +198,14 @@ export class WereadBookDetailModal extends Modal {
 			return false;
 		}
 		return this.book.syncFilter?.includedByCurrentSettings ?? true;
+	}
+
+	private getSyncFilterReasonLabels(): string[] {
+		if (!this.book.syncFilter || this.book.syncFilter.includedByCurrentSettings) {
+			return [];
+		}
+
+		return this.book.syncFilter.reasonLabels;
 	}
 
 	private getFinishedStatusText(progress?: BookProgressResponse): string {

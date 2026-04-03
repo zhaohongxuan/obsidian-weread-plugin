@@ -1,4 +1,4 @@
-import { App, ItemView, Modal, Notice, WorkspaceLeaf, moment, setIcon } from 'obsidian';
+import { App, ItemView, Modal, Notice, Platform, WorkspaceLeaf, moment, setIcon } from 'obsidian';
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook } from '../models';
@@ -71,13 +71,13 @@ export class WereadBookshelfView extends ItemView {
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-bookshelf-view');
 
-		const header = this.contentEl.createDiv({ cls: 'weread-bookshelf-header' });
-		const headerTitle = header.createDiv({ cls: 'weread-bookshelf-header-title' });
-		headerTitle.createEl('h2', { text: '📚 微信读书书架' });
-		headerTitle.createEl('p', {
-			cls: 'weread-bookshelf-header-subtitle',
-			text: '读万卷书，行万里路'
-		});
+		// const header = this.contentEl.createDiv({ cls: 'weread-bookshelf-header' });
+		// const headerTitle = header.createDiv({ cls: 'weread-bookshelf-header-title' });
+		// headerTitle.createEl('h2', { text: '📚 微信读书书架' });
+		// headerTitle.createEl('p', {
+		// 	cls: 'weread-bookshelf-header-subtitle',
+		// 	text: '读万卷书，行万里路'
+		// });
 
 		const toolbar = this.contentEl.createDiv({ cls: 'weread-bookshelf-toolbar' });
 		const toolbarFilters = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-filters' });
@@ -137,13 +137,16 @@ export class WereadBookshelfView extends ItemView {
 			sortSelect.createEl('option', { value, text: label });
 		});
 		const groupToggleWrapper = toolbarFilters.createEl('label', {
-			cls: 'weread-bookshelf-group-toggle'
+			cls: 'weread-bookshelf-toggle'
 		});
 		const groupToggle = groupToggleWrapper.createEl('input', {
 			type: 'checkbox',
 			attr: { 'aria-label': '按阅读年份分组' }
 		});
-		groupToggleWrapper.createSpan({ text: '按年份分组' });
+		groupToggle.checked = true;
+		this.groupByYear = true;
+		groupToggleWrapper.createSpan({ cls: 'toggle-slider' });
+		groupToggleWrapper.createSpan({ text: '按年份分组', cls: 'toggle-text' });
 		groupToggle.onchange = () => {
 			this.groupByYear = groupToggle.checked;
 			this.renderBooks();
@@ -158,20 +161,25 @@ export class WereadBookshelfView extends ItemView {
 		groupToggleWrapper.toggleClass('is-disabled', groupToggle.disabled);
 
 		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
-		const refreshButton = toolbarActions.createEl('button', {
-			text: '刷新书架'
-		});
-		refreshButton.onclick = async () => {
-			this.bookshelfService.clearProgressCache();
-			await this.loadBookshelf();
-		};
 		const syncButton = toolbarActions.createEl('button', {
 			text: '同步笔记',
 			cls: 'mod-cta'
 		});
+		const syncOptionsButton = toolbarActions.createEl('button', {
+			text: '同步选项'
+		});
+		const openWebButton = Platform.isDesktopApp
+			? toolbarActions.createEl('button', {
+					text: '进入网页版',
+					cls: 'weread-bookshelf-web-button'
+			  })
+			: null;
 		syncButton.onclick = async () => {
-			refreshButton.disabled = true;
 			syncButton.disabled = true;
+			syncOptionsButton.disabled = true;
+			if (openWebButton) {
+				openWebButton.disabled = true;
+			}
 			try {
 				const updatedCount = await this.plugin.startSync();
 				if ((updatedCount ?? 0) > 0) {
@@ -179,10 +187,21 @@ export class WereadBookshelfView extends ItemView {
 					await this.loadBookshelf();
 				}
 			} finally {
-				refreshButton.disabled = false;
 				syncButton.disabled = false;
+				syncOptionsButton.disabled = false;
+				if (openWebButton) {
+					openWebButton.disabled = false;
+				}
 			}
 		};
+		syncOptionsButton.onclick = () => {
+			this.plugin.openWereadSettingsTab();
+		};
+		if (openWebButton) {
+			openWebButton.onclick = async () => {
+				await this.plugin.openPreferredReadingView();
+			};
+		}
 
 		this.summaryEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-summary' });
 		this.emptyStateEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-empty' });
@@ -490,9 +509,16 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private openBookDetail(book: BookshelfBook): void {
-		new WereadBookDetailModal(this.app, book, async () => {
-			await this.openLocalFile(book);
-		}).open();
+		new WereadBookDetailModal(
+			this.app,
+			book,
+			async () => {
+				await this.openLocalFile(book);
+			},
+			async (url: string) => {
+				await this.plugin.openPreferredReadingView(url);
+			}
+		).open();
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {

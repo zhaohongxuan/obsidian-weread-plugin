@@ -4,8 +4,10 @@ import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
 import WereadBookshelfService from './src/bookshelf';
 import { settingsStore } from './src/settings';
+import type { ReadingOpenMode } from './src/settings';
 import { get } from 'svelte/store';
 import { WereadSettingsTab } from './src/settingTab';
+import WereadBrowserWindow from './src/components/wereadBrowserWindow';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
 import { WEREAD_BOOKSHELF_VIEW_ID, WereadBookshelfView } from './src/components/wereadBookshelf';
 import './style.css';
@@ -13,6 +15,7 @@ export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private bookshelfService: WereadBookshelfService;
 	private fileManager: FileManager;
+	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
 	private cookieRefreshTimer: number | null = null;
 
@@ -35,9 +38,9 @@ export default class WereadPlugin extends Plugin {
 			});
 		}
 
-		const ribbonEl = this.addRibbonIcon('book-open', '同步微信读书笔记', (event) => {
+		const ribbonEl = this.addRibbonIcon('book-open', '打开微信读书书架', (event) => {
 			if (event.button === 0) {
-				this.startSync();
+				this.activateBookshelfView();
 			}
 		});
 
@@ -169,9 +172,37 @@ export default class WereadPlugin extends Plugin {
 			})
 		);
 
-		this.addSettingTab(new WereadSettingsTab(this.app, this));
+		this.wereadSettingsTab = new WereadSettingsTab(this.app, this);
+		this.addSettingTab(this.wereadSettingsTab);
 
 		this.setupCookieRefresh();
+	}
+
+	openWereadSettingsTab(section?: 'sync') {
+		const settingManager = (this.app as any).setting as
+			| {
+					open: () => void;
+					openTabById?: (id: string) => void;
+			  }
+			| undefined;
+
+		settingManager?.open();
+		settingManager?.openTabById?.(this.manifest.id);
+		this.wereadSettingsTab.display();
+
+		if (section) {
+			window.setTimeout(() => {
+				this.wereadSettingsTab.scrollToSection(section);
+			}, 50);
+		}
+	}
+
+	private getPreferredReadingOpenMode(): ReadingOpenMode {
+		return get(settingsStore).readingOpenMode ?? 'TAB';
+	}
+
+	async openPreferredReadingView(url?: string) {
+		await this.activateReadingView(this.getPreferredReadingOpenMode(), url);
 	}
 
 	async startSync(force = false): Promise<number | undefined> {
@@ -225,25 +256,32 @@ export default class WereadPlugin extends Plugin {
 		new Notice('本地文件已删除');
 	}
 
-	async activateReadingView(type: string) {
+	async activateReadingView(type: string, url?: string) {
 		const { workspace } = this.app;
+		const targetUrl = url ?? 'https://weread.qq.com/web/shelf';
+
+		if (type === 'WINDOW') {
+			const browserWindow = new WereadBrowserWindow();
+			await browserWindow.open(targetUrl);
+			return;
+		}
 
 		let leaf: WorkspaceLeaf | null = null;
 		const leaves = workspace.getLeavesOfType(WEREAD_BROWSER_VIEW_ID);
+		leaf = leaves[0] ?? workspace.getLeaf('split', 'vertical');
 
-		if (leaves.length > 0) {
-			// A leaf with our view already exists, use that
-			leaf = leaves[0];
-		} else {
-			if (type === 'TAB') {
-				leaf = workspace.getLeaf('split', 'vertical');
-			} else if (type === 'WINDOW') {
-				leaf = workspace.openPopoutLeaf();
-			}
-			await leaf.setViewState({ type: WEREAD_BROWSER_VIEW_ID, active: true });
+		if (!leaf) {
+			return;
 		}
 
-		// "Reveal" the leaf in case it is in a collapsed sidebar
+		await leaf.setViewState({
+			type: WEREAD_BROWSER_VIEW_ID,
+			active: true,
+			state: {
+				url: targetUrl
+			}
+		});
+
 		workspace.revealLeaf(leaf);
 	}
 
