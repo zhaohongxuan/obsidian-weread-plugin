@@ -1323,8 +1323,31 @@
 	margin: -4px 0 12px;
 }
 
-.weread-bookshelf-web-button {
+.weread-toolbar-button {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	font-size: 13px;
+	border-radius: 4px;
 	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.weread-toolbar-button .svg-icon {
+	width: 18px;
+	height: 18px;
+}
+
+.weread-bookshelf-web-button {
+	background-color: rgba(var(--interactive-accent), 0.1);
+	border: 1px solid rgba(var(--interactive-accent), 0.3);
+	color: var(--interactive-accent);
+}
+
+.weread-bookshelf-web-button:hover {
+	background-color: rgba(var(--interactive-accent), 0.15);
+	border-color: var(--interactive-accent);
 }
 
 .weread-book-detail-badge {

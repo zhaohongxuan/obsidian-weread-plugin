@@ -162,17 +162,26 @@ export class WereadBookshelfView extends ItemView {
 
 		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
 		const syncButton = toolbarActions.createEl('button', {
-			text: '同步笔记',
-			cls: 'mod-cta'
+			cls: 'mod-cta weread-toolbar-button'
 		});
+		setIcon(syncButton, 'sync');
+		syncButton.createSpan({ text: '同步' });
+
 		const syncOptionsButton = toolbarActions.createEl('button', {
-			text: '同步选项'
+			cls: 'weread-toolbar-button'
 		});
+		setIcon(syncOptionsButton, 'settings');
+		syncOptionsButton.createSpan({ text: '选项' });
+
 		const openWebButton = Platform.isDesktopApp
-			? toolbarActions.createEl('button', {
-					text: '进入网页版',
-					cls: 'weread-bookshelf-web-button'
-			  })
+			? (() => {
+					const btn = toolbarActions.createEl('button', {
+						cls: 'weread-toolbar-button weread-bookshelf-web-button'
+					});
+					setIcon(btn, 'globe');
+					btn.createSpan({ text: '网页版' });
+					return btn;
+			  })()
 			: null;
 		syncButton.onclick = async () => {
 			syncButton.disabled = true;

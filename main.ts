@@ -76,24 +76,6 @@ export default class WereadPlugin extends Plugin {
 
 			menu.addItem((item) =>
 				item
-					.setTitle('在新标签页打开微信读书')
-					.setIcon('book-open-text')
-					.onClick(() => {
-						this.activateReadingView('TAB');
-					})
-			);
-
-			menu.addItem((item) =>
-				item
-					.setTitle('在窗口打开微信读书')
-					.setIcon('app-window')
-					.onClick(() => {
-						this.activateReadingView('WINDOW');
-					})
-			);
-
-			menu.addItem((item) =>
-				item
 					.setTitle('打开微信读书书架')
 					.setIcon('library')
 					.onClick(() => {
