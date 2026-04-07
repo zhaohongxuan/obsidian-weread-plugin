@@ -50,7 +50,13 @@ export const buildFrontMatter = (
 
 		const readInfo = noteBook.metaData.readInfo;
 		if (readInfo) {
-			frontMatter.readingStatus = ReadingStatus[readInfo.markedStatus];
+			// Use finishedDate to determine reading status since markedStatus is no longer available in new API
+			// If finishedDate exists and is valid (> 0), status is "读完", otherwise "在读"
+			if (readInfo.finishedDate && readInfo.finishedDate > 0) {
+				frontMatter.readingStatus = ReadingStatus['读完'];
+			} else {
+				frontMatter.readingStatus = ReadingStatus['在读'];
+			}
 			frontMatter.progress =
 				readInfo.readingProgress === undefined ? '-1' : readInfo.readingProgress + '%';
 			frontMatter.totalReadDay = readInfo.totalReadDay;
