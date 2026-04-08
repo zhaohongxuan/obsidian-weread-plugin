@@ -18,6 +18,7 @@ export default class WereadPlugin extends Plugin {
 	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
 	private cookieRefreshTimer: number | null = null;
+	private scheduledSyncTimer: number | null = null;
 
 	async onload() {
 		console.log('load weread plugin');
@@ -158,6 +159,7 @@ export default class WereadPlugin extends Plugin {
 		this.addSettingTab(this.wereadSettingsTab);
 
 		this.setupCookieRefresh();
+		this.setupScheduledSync();
 	}
 
 	openWereadSettingsTab(section?: 'sync') {
@@ -198,6 +200,10 @@ export default class WereadPlugin extends Plugin {
 				force,
 				window.moment().format('YYYY-MM-DD')
 			);
+			// 更新最近同步信息
+			const settings = get(settingsStore);
+			const bookTitles = settings.lastSyncBookTitles || [];
+			settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
 			console.log('syncing Weread note finish');
 			return syncedCount;
 		} catch (e) {
@@ -284,6 +290,7 @@ export default class WereadPlugin extends Plugin {
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
 		this.clearCookieRefreshTimer();
+		this.clearScheduledSyncTimer();
 	}
 
 	setupCookieRefresh() {
@@ -308,6 +315,40 @@ export default class WereadPlugin extends Plugin {
 		if (this.cookieRefreshTimer !== null) {
 			window.clearInterval(this.cookieRefreshTimer);
 			this.cookieRefreshTimer = null;
+		}
+	}
+
+	setupScheduledSync() {
+		this.clearScheduledSyncTimer();
+		const { scheduledSyncToggle, scheduledSyncInterval } = get(settingsStore);
+		if (!scheduledSyncToggle) {
+			return;
+		}
+		const intervalMs = Math.max(1, scheduledSyncInterval) * 60 * 1000;
+		console.log(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
+		this.scheduledSyncTimer = window.setInterval(async () => {
+			console.log('[weread plugin] 执行定时同步');
+			try {
+				const syncedCount = await this.syncNotebooks.syncNotebooks(
+					false,
+					window.moment().format('YYYY-MM-DD')
+				);
+				// 获取同步的书籍信息并更新设置
+				const settings = get(settingsStore);
+				const bookTitles = settings.lastSyncBookTitles || [];
+				settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
+				new Notice(`定时同步完成，共同步 ${syncedCount || 0} 本书`);
+			} catch (e) {
+				console.error('[weread plugin] 定时同步失败', e);
+				new Notice('定时同步失败，请查看控制台');
+			}
+		}, intervalMs);
+	}
+
+	private clearScheduledSyncTimer() {
+		if (this.scheduledSyncTimer !== null) {
+			window.clearInterval(this.scheduledSyncTimer);
+			this.scheduledSyncTimer = null;
 		}
 	}
 }

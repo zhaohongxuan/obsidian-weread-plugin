@@ -3,6 +3,8 @@ import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook } from '../models';
 import { WereadBookDetailModal } from './wereadBookDetailModal';
+import { settingsStore } from '../settings';
+import { get } from 'svelte/store';
 
 export const WEREAD_BOOKSHELF_VIEW_ID = 'weread-bookshelf-view';
 
@@ -231,6 +233,9 @@ export class WereadBookshelfView extends ItemView {
 			};
 		}
 
+		// 显示定时同步状态
+		this.renderScheduledSyncStatus();
+
 		this.summaryEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-summary' });
 		this.emptyStateEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-empty' });
 		this.gridEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-grid' });
@@ -240,6 +245,38 @@ export class WereadBookshelfView extends ItemView {
 
 	async onClose() {
 		this.contentEl.empty();
+	}
+
+	private renderScheduledSyncStatus(): void {
+		const settings = get(settingsStore);
+		const {
+			scheduledSyncToggle,
+			scheduledSyncInterval,
+			lastSyncTime,
+			lastSyncBookCount,
+			lastSyncBookTitles
+		} = settings;
+
+		if (!scheduledSyncToggle) {
+			return;
+		}
+
+		const statusBar = this.contentEl.createDiv({ cls: 'weread-scheduled-sync-status' });
+		const statusIcon = statusBar.createEl('span', { cls: 'weread-scheduled-sync-icon' });
+		setIcon(statusIcon, 'clock');
+
+		const statusText = statusBar.createEl('span', { cls: 'weread-scheduled-sync-text' });
+		let text = `⏰ 定时同步已开启（每 ${scheduledSyncInterval} 分钟）`;
+		if (lastSyncTime > 0) {
+			const lastSyncStr = new Date(lastSyncTime).toLocaleString();
+			text += ` | 上次同步：${lastSyncStr}，${lastSyncBookCount} 本书`;
+			if (lastSyncBookTitles.length > 0) {
+				text += `\n最近同步：${lastSyncBookTitles.join('、')}`;
+			}
+		} else {
+			text += ' | 尚未执行过同步';
+		}
+		statusText.setText(text);
 	}
 
 	private async loadBookshelf(): Promise<void> {
@@ -411,14 +448,14 @@ export class WereadBookshelfView extends ItemView {
 			labels.push('仅远程');
 		}
 		labels.push(book.isArticle ? '公众号' : '图书');
-		
+
 		// 添加阅读状态标签
 		if (book.hasLocalFile && book.localFile?.finishedDate) {
 			labels.push('已读');
 		} else if (book.hasLocalFile) {
 			labels.push('在读');
 		}
-		
+
 		if (book.syncFilter && !book.syncFilter.includedByCurrentSettings) {
 			labels.push(...book.syncFilter.reasonLabels);
 		}
