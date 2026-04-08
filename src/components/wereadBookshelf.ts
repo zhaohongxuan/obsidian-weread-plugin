@@ -411,14 +411,14 @@ export class WereadBookshelfView extends ItemView {
 			labels.push('仅远程');
 		}
 		labels.push(book.isArticle ? '公众号' : '图书');
-		
+
 		// 添加阅读状态标签
 		if (book.hasLocalFile && book.localFile?.finishedDate) {
 			labels.push('已读');
 		} else if (book.hasLocalFile) {
 			labels.push('在读');
 		}
-		
+
 		if (book.syncFilter && !book.syncFilter.includedByCurrentSettings) {
 			labels.push(...book.syncFilter.reasonLabels);
 		}
