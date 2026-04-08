@@ -97,11 +97,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 			}
 		}
 
-		this.scheduledSync();
-
 		this.notebookFolder();
 		this.readingOpenModeSetting();
 		this.syncModeSettings();
+		this.scheduledSync();
 		this.fileNameType();
 		this.removeParens();
 		this.subFolderType();

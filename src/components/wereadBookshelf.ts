@@ -233,9 +233,6 @@ export class WereadBookshelfView extends ItemView {
 			};
 		}
 
-		// 显示定时同步状态
-		this.renderScheduledSyncStatus();
-
 		this.summaryEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-summary' });
 		this.emptyStateEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-empty' });
 		this.gridEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-grid' });
@@ -245,38 +242,6 @@ export class WereadBookshelfView extends ItemView {
 
 	async onClose() {
 		this.contentEl.empty();
-	}
-
-	private renderScheduledSyncStatus(): void {
-		const settings = get(settingsStore);
-		const {
-			scheduledSyncToggle,
-			scheduledSyncInterval,
-			lastSyncTime,
-			lastSyncBookCount,
-			lastSyncBookTitles
-		} = settings;
-
-		if (!scheduledSyncToggle) {
-			return;
-		}
-
-		const statusBar = this.contentEl.createDiv({ cls: 'weread-scheduled-sync-status' });
-		const statusIcon = statusBar.createEl('span', { cls: 'weread-scheduled-sync-icon' });
-		setIcon(statusIcon, 'clock');
-
-		const statusText = statusBar.createEl('span', { cls: 'weread-scheduled-sync-text' });
-		let text = `⏰ 定时同步已开启（每 ${scheduledSyncInterval} 分钟）`;
-		if (lastSyncTime > 0) {
-			const lastSyncStr = new Date(lastSyncTime).toLocaleString();
-			text += ` | 上次同步：${lastSyncStr}，${lastSyncBookCount} 本书`;
-			if (lastSyncBookTitles.length > 0) {
-				text += `\n最近同步：${lastSyncBookTitles.join('、')}`;
-			}
-		} else {
-			text += ' | 尚未执行过同步';
-		}
-		statusText.setText(text);
 	}
 
 	private async loadBookshelf(): Promise<void> {
@@ -299,14 +264,25 @@ export class WereadBookshelfView extends ItemView {
 		const filteredBooks = this.getFilteredBooks();
 		this.gridEl.empty();
 		this.emptyStateEl.empty();
+
+		const settings = get(settingsStore);
+		let summaryText: string;
 		if (this.shouldGroupByYear()) {
 			const groupedBooks = this.groupBooksByYear(filteredBooks);
-			this.summaryEl.setText(
-				`展示 ${filteredBooks.length} 本书 · ${groupedBooks.length} 个年份分组`
-			);
+			summaryText = `展示 ${filteredBooks.length} 本书 · ${groupedBooks.length} 个年份分组`;
 		} else {
-			this.summaryEl.setText(`展示 ${filteredBooks.length} 本书`);
+			summaryText = `展示 ${filteredBooks.length} 本书`;
 		}
+
+		// 添加上次同步状态
+		if (settings.lastSyncTime > 0) {
+			const lastSyncStr = new Date(settings.lastSyncTime).toLocaleString();
+			summaryText += ` | 上次同步：${lastSyncStr}，更新 ${settings.lastSyncBookCount} 本书`;
+		} else {
+			summaryText += ' | 尚未执行过同步';
+		}
+
+		this.summaryEl.setText(summaryText);
 
 		if (filteredBooks.length === 0) {
 			this.emptyStateEl.setText(this.loading ? '加载中...' : '没有找到匹配的书籍');
