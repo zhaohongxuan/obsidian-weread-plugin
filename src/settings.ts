@@ -119,7 +119,6 @@ const createSettingsStore = () => {
 					? 'whitelist'
 					: 'blacklist'
 		};
-		console.log('--------init cookie------', settings.cookies);
 		console.log(
 			'[weread plugin] Cookie 详情: 数量=' +
 				settings.cookies.length +

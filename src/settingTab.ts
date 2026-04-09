@@ -101,12 +101,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.readingOpenModeSetting();
 		this.syncModeSettings();
 		this.scheduledSync();
+
+		new Setting(this.containerEl).setName('文件设置').setHeading();
 		this.fileNameType();
 		this.removeParens();
 		this.subFolderType();
-		this.convertTagToggle();
-		this.saveReadingInfoToggle();
-		this.showEmptyChapterTitleToggle();
+
+		new Setting(this.containerEl).setName('日记设置').setHeading();
 		this.dailyNotes();
 		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
 		if (dailyNotesToggle) {
@@ -453,16 +454,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private dailyNotes(): void {
-		new Setting(this.containerEl)
-			.setName('是否保存笔记到 DailyNotes？')
-			.setHeading()
-			.addToggle((toggle) => {
-				return toggle.setValue(get(settingsStore).dailyNotesToggle).onChange((value) => {
-					console.debug('set daily notes toggle to', value);
-					settingsStore.actions.setDailyNotesToggle(value);
-					this.display();
-				});
+		new Setting(this.containerEl).setName('是否保存笔记到 DailyNotes？').addToggle((toggle) => {
+			return toggle.setValue(get(settingsStore).dailyNotesToggle).onChange((value) => {
+				console.debug('set daily notes toggle to', value);
+				settingsStore.actions.setDailyNotesToggle(value);
+				this.display();
 			});
+		});
 	}
 
 	private dailyNotesFolder() {
@@ -667,9 +665,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private template(): void {
+		new Setting(this.containerEl).setName('模板设置').setHeading();
+		this.convertTagToggle();
+		this.saveReadingInfoToggle();
+		this.showEmptyChapterTitleToggle();
+
 		new Setting(this.containerEl)
-			.setName('笔记模板设置')
-			.setHeading()
+			.setName('自定义笔记渲染模板')
+			.setDesc('控制划线、笔记、书评等内容的输出格式')
 			.addButton((button) => {
 				return button
 					.setButtonText('编辑模板')
@@ -730,7 +733,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName('展示空白章节标题？')
 			.setDesc('如果启用，则章节内没有划线也将展示章节标题')
-			.setHeading()
 			.addToggle((toggle) => {
 				return toggle
 					.setValue(get(settingsStore).showEmptyChapterTitleToggle)
