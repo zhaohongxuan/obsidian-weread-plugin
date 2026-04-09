@@ -39,6 +39,9 @@ export default class WereadPlugin extends Plugin {
 			});
 		}
 
+		// 启动时同步 Cookie 到 partition，供 webview 使用（非阻塞）
+		this.syncCookiesToPartition();
+
 		const ribbonEl = this.addRibbonIcon('book-open', '打开微信读书书架', (event) => {
 			if (event.button === 0) {
 				this.activateBookshelfView();
@@ -287,6 +290,55 @@ export default class WereadPlugin extends Plugin {
 
 		workspace.revealLeaf(leaf);
 	}
+
+	private async syncCookiesToPartition(): Promise<void> {
+		if (!Platform.isDesktopApp) {
+			return;
+		}
+		const cookies = get(settingsStore).cookies ?? [];
+		if (cookies.length === 0) {
+			return;
+		}
+
+		try {
+			const { remote } = window.require('electron');
+			const { BrowserWindow: RemoteBrowserWindow } = remote;
+			const WEREAD_PARTITION = 'persist:weread-plugin-browser';
+
+			// Create a hidden window with the same partition as webview
+			const hiddenWindow = new RemoteBrowserWindow({
+				width: 1,
+				height: 1,
+				show: false,
+				webPreferences: {
+					partition: WEREAD_PARTITION
+				}
+			});
+
+			const session = hiddenWindow.webContents.session;
+			for (const cookie of cookies) {
+				try {
+					await session.cookies.set({
+						url: 'https://weread.qq.com',
+						name: cookie.name,
+						value: cookie.value,
+						domain: '.weread.qq.com',
+						path: '/',
+						secure: true,
+						httpOnly: false
+					});
+				} catch (e) {
+					console.debug('[weread plugin] cookie set failed:', cookie.name, e);
+				}
+			}
+
+			hiddenWindow.close();
+			console.log('[weread plugin] startup cookie sync complete');
+		} catch (e) {
+			console.error('[weread plugin] startup cookie sync failed', e);
+		}
+	}
+
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
 		this.clearCookieRefreshTimer();

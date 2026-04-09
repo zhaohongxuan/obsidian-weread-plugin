@@ -224,7 +224,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName('网页版打开方式')
 			.setDesc(
-				'控制书架中的“进入网页版”和详情页中的“打开网页版详情”默认在新标签页还是新窗口打开'
+				'控制书架中的”进入网页版”和详情页中的”打开网页版详情”默认在新标签页还是新窗口打开'
 			)
 			.addDropdown((dropdown) => {
 				return dropdown
