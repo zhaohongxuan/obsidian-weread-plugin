@@ -50,5 +50,8 @@ export default class WereadBrowserWindow {
 				console.debug('[weread plugin] sync window cookie failed', cookie.name, error);
 			}
 		}
+
+		// Force persist cookies to disk before loading URL
+		await session.cookies.flush();
 	}
 }

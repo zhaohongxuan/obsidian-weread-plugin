@@ -100,12 +100,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.notebookFolder();
 		this.readingOpenModeSetting();
 		this.syncModeSettings();
+		this.scheduledSync();
+
+		new Setting(this.containerEl).setName('文件设置').setHeading();
 		this.fileNameType();
 		this.removeParens();
 		this.subFolderType();
-		this.convertTagToggle();
-		this.saveReadingInfoToggle();
-		this.showEmptyChapterTitleToggle();
+
+		new Setting(this.containerEl).setName('日记设置').setHeading();
 		this.dailyNotes();
 		const dailyNotesToggle = get(settingsStore).dailyNotesToggle;
 		if (dailyNotesToggle) {
@@ -223,7 +225,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName('网页版打开方式')
 			.setDesc(
-				'控制书架中的“进入网页版”和详情页中的“打开网页版详情”默认在新标签页还是新窗口打开'
+				'控制书架中的”进入网页版”和详情页中的”打开网页版详情”默认在新标签页还是新窗口打开'
 			)
 			.addDropdown((dropdown) => {
 				return dropdown
@@ -452,16 +454,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private dailyNotes(): void {
-		new Setting(this.containerEl)
-			.setName('是否保存笔记到 DailyNotes？')
-			.setHeading()
-			.addToggle((toggle) => {
-				return toggle.setValue(get(settingsStore).dailyNotesToggle).onChange((value) => {
-					console.debug('set daily notes toggle to', value);
-					settingsStore.actions.setDailyNotesToggle(value);
-					this.display();
-				});
+		new Setting(this.containerEl).setName('是否保存笔记到 DailyNotes？').addToggle((toggle) => {
+			return toggle.setValue(get(settingsStore).dailyNotesToggle).onChange((value) => {
+				console.debug('set daily notes toggle to', value);
+				settingsStore.actions.setDailyNotesToggle(value);
+				this.display();
 			});
+		});
 	}
 
 	private dailyNotesFolder() {
@@ -666,9 +665,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private template(): void {
+		new Setting(this.containerEl).setName('模板设置').setHeading();
+		this.convertTagToggle();
+		this.saveReadingInfoToggle();
+		this.showEmptyChapterTitleToggle();
+
 		new Setting(this.containerEl)
-			.setName('笔记模板设置')
-			.setHeading()
+			.setName('自定义笔记渲染模板')
+			.setDesc('控制划线、笔记、书评等内容的输出格式')
 			.addButton((button) => {
 				return button
 					.setButtonText('编辑模板')
@@ -729,7 +733,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName('展示空白章节标题？')
 			.setDesc('如果启用，则章节内没有划线也将展示章节标题')
-			.setHeading()
 			.addToggle((toggle) => {
 				return toggle
 					.setValue(get(settingsStore).showEmptyChapterTitleToggle)
@@ -858,6 +861,59 @@ export class WereadSettingsTab extends PluginSettingTab {
 						}
 					});
 			});
+	}
+
+	private scheduledSync(): void {
+		new Setting(this.containerEl)
+			.setName('定时同步')
+			.setDesc('开启后，插件将按照设定的时间间隔自动同步微信读书笔记')
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).scheduledSyncToggle).onChange((value) => {
+					settingsStore.actions.setScheduledSyncToggle(value);
+					this.plugin.setupScheduledSync();
+					this.display();
+				});
+			});
+
+		const settings = get(settingsStore);
+		if (settings.scheduledSyncToggle) {
+			this.scheduledSyncInterval();
+			this.showLastSyncInfo();
+		}
+	}
+
+	private scheduledSyncInterval(): void {
+		new Setting(this.containerEl)
+			.setName('定时同步间隔（分钟）')
+			.setDesc('设置自动同步的时间间隔，单位为分钟（最小 1 分钟）')
+			.addText((text) => {
+				return text
+					.setPlaceholder('5')
+					.setValue(String(get(settingsStore).scheduledSyncInterval))
+					.onChange((value) => {
+						const num = parseInt(value, 10);
+						if (!isNaN(num) && num >= 1) {
+							settingsStore.actions.setScheduledSyncInterval(num);
+							this.plugin.setupScheduledSync();
+						}
+					});
+			});
+	}
+
+	private showLastSyncInfo(): void {
+		const settings = get(settingsStore);
+		const { lastSyncTime, lastSyncBookCount, lastSyncBookTitles } = settings;
+
+		let statusText = '尚未执行过同步';
+		if (lastSyncTime > 0) {
+			const lastSyncStr = new Date(lastSyncTime).toLocaleString();
+			statusText = `上次同步：${lastSyncStr}，共 ${lastSyncBookCount} 本书`;
+			if (lastSyncBookTitles.length > 0) {
+				statusText += `\n最近同步：${lastSyncBookTitles.join('、')}`;
+			}
+		}
+
+		new Setting(this.containerEl).setName('同步状态').setDesc(statusText);
 	}
 
 	private createFolderSuggestModal(onSelect: (value: string) => void) {
