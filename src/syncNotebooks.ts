@@ -1,6 +1,13 @@
 import ApiManager from './api';
 import FileManager from './fileManager';
-import { Metadata, Notebook, AnnotationFile, BookProgressResponse } from './models';
+import {
+	Metadata,
+	Notebook,
+	AnnotationFile,
+	BookProgressResponse,
+	SyncedNote,
+	SyncLogEntry
+} from './models';
 import {
 	parseHighlights,
 	parseMetadata,
@@ -64,12 +71,29 @@ export default class SyncNotebooks {
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
 		let syncedNotebooks = 0;
 		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 0);
+		const syncedNotes: SyncedNote[] = [];
+		let lastError: string | undefined;
 
 		try {
 			for (const meta of filterMetaArr) {
-				const notebook = await this.convertToNotebook(meta);
-				await this.saveNotebook(notebook);
-				syncedNotebooks++;
+				try {
+					const notebook = await this.convertToNotebook(meta);
+					await this.saveNotebook(notebook);
+					syncedNotebooks++;
+
+					// Track synced note for the log
+					if (meta.file && meta.file.file) {
+						syncedNotes.push({
+							bookId: meta.bookId,
+							title: meta.title,
+							filePath: meta.file.file.path
+						});
+					}
+				} catch (e) {
+					lastError = e instanceof Error ? e.message : String(e);
+					console.error(`[weread plugin] 同步书籍 ${meta.title} 失败`, e);
+				}
+
 				if (syncedNotebooks % 10 === 0 || syncedNotebooks === filterMetaArr.length) {
 					const progress = (syncedNotebooks / filterMetaArr.length) * 100;
 					progressNotice.setMessage(
@@ -82,13 +106,30 @@ export default class SyncNotebooks {
 		} finally {
 			progressNotice.hide();
 		}
+
 		this.saveToJounal(journalDate, metaDataArr);
 		const syncEndTime = new Date().getTime();
 		const syncTimeInMilliseconds = syncEndTime - syncStartTime;
-		const syncTimeInSeconds = (syncTimeInMilliseconds / 1000).toFixed(2);
+		const syncTimeInSeconds = syncTimeInMilliseconds / 1000;
+
+		// Record sync log
+		const syncLog: SyncLogEntry = {
+			id: `sync-${syncStartTime}`,
+			timestamp: syncStartTime,
+			totalBooks: metaDataArr.length,
+			syncedBooks: syncedNotebooks,
+			skippedBooks: filterMetaArr.length - syncedNotebooks,
+			duration: syncTimeInSeconds,
+			notes: syncedNotes,
+			success: !lastError,
+			errorMessage: lastError
+		};
+		settingsStore.actions.addSyncLog(syncLog);
 
 		new Notice(
-			`微信读书笔记同步完成!, 总共 ${metaDataArr.length} 本书 ， 本次更新 ${filterMetaArr.length} 本书, 耗时${syncTimeInSeconds} 秒`
+			`微信读书笔记同步完成!, 总共 ${metaDataArr.length} 本书 ， 本次更新 ${
+				filterMetaArr.length
+			} 本书, 耗时${syncTimeInSeconds.toFixed(2)} 秒`
 		);
 		return syncedNotebooks;
 	}

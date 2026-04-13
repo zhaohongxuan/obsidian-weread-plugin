@@ -1418,3 +1418,143 @@
 		gap: 8px 12px;
 	}
 }
+
+/* Sync Log Modal Styles */
+.sync-log-header {
+	padding: 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sync-log-header h2 {
+	margin: 0 0 4px 0;
+	font-size: 1.3em;
+}
+
+.sync-log-subtitle {
+	color: var(--text-muted);
+	font-size: 0.9em;
+}
+
+.sync-log-container {
+	padding: 16px 20px;
+	overflow-y: auto;
+	max-height: calc(80vh - 80px);
+}
+
+.sync-log-empty {
+	text-align: center;
+	color: var(--text-muted);
+	padding: 40px 20px;
+}
+
+.sync-log-item {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	margin-bottom: 12px;
+	overflow: hidden;
+}
+
+.sync-log-item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 16px;
+	background-color: var(--background-secondary);
+}
+
+.sync-log-timestamp {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.sync-log-date {
+	font-weight: 500;
+}
+
+.sync-log-time {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.sync-log-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.9em;
+}
+
+.sync-log-status.sync-log-success {
+	color: var(--text-accent);
+}
+
+.sync-log-status.sync-log-error {
+	color: var(--text-error);
+}
+
+.sync-log-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	padding: 10px 16px;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.sync-log-stats span:not(:last-child)::after {
+	content: '|';
+	margin-left: 12px;
+	color: var(--background-modifier-border);
+}
+
+.sync-log-error {
+	padding: 8px 16px;
+	color: var(--text-error);
+	font-size: 0.85em;
+}
+
+.sync-log-notes-header {
+	padding: 8px 16px;
+	font-size: 0.9em;
+	font-weight: 500;
+	border-top: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary-alt);
+}
+
+.sync-log-notes-list {
+	padding: 8px 16px 16px;
+}
+
+.sync-log-note-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 6px 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.sync-log-note-item:last-child {
+	border-bottom: none;
+}
+
+.sync-log-note-title {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.9em;
+}
+
+.sync-log-note-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 4px 8px;
+	color: var(--text-accent);
+	display: flex;
+	align-items: center;
+}
+
+.sync-log-note-btn:hover {
+	color: var(--text-accent-hover);
+}

@@ -3,6 +3,7 @@ import { writable } from 'svelte/store';
 import { Platform } from 'obsidian';
 import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
+import type { SyncLogEntry } from './models';
 
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
@@ -47,6 +48,7 @@ export interface WereadPluginSettings {
 	};
 	cookieAutoRefreshToggle: boolean;
 	cookieRefreshInterval: number;
+	syncLogs: SyncLogEntry[];
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -84,7 +86,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 		password: ''
 	},
 	cookieAutoRefreshToggle: false,
-	cookieRefreshInterval: 12
+	cookieRefreshInterval: 12,
+	syncLogs: []
 };
 
 const createSettingsStore = () => {
@@ -409,6 +412,19 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const addSyncLog = (log: SyncLogEntry) => {
+		store.update((state) => {
+			// Keep only the last 10 logs
+			const logs = [log, ...state.syncLogs].slice(0, 10);
+			state.syncLogs = logs;
+			return state;
+		});
+	};
+
+	const getSyncLogs = (): SyncLogEntry[] => {
+		return get(store);
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -442,7 +458,9 @@ const createSettingsStore = () => {
 			setTrimBlocks,
 			setCookieAutoRefreshToggle,
 			setCookieRefreshInterval,
-			setIsCookieValid
+			setIsCookieValid,
+			addSyncLog,
+			getSyncLogs
 		}
 	};
 };

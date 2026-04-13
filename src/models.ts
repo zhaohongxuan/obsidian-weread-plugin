@@ -487,6 +487,24 @@ export type BookshelfBook = {
 	progress: BookshelfProgress;
 };
 
+export type SyncedNote = {
+	bookId: string;
+	title: string;
+	filePath: string;
+};
+
+export type SyncLogEntry = {
+	id: string;
+	timestamp: number;
+	totalBooks: number;
+	syncedBooks: number;
+	skippedBooks: number;
+	duration: number; // in seconds
+	notes: SyncedNote[];
+	success: boolean;
+	errorMessage?: string;
+};
+
 export type RecentBook = {
 	bookId: string;
 	title: string;

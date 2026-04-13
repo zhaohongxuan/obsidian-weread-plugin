@@ -18,6 +18,7 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { TemplateEditorWindow } from './components/templateEditorWindow';
+import { SyncLogModal } from './components/syncLogModal';
 
 import { Renderer } from './renderer';
 import ApiManager from './api';
@@ -259,6 +260,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.noteCountLimit();
 		}
 		this.renderSyncModeBookSelection(syncMode);
+
+		// Sync log button
+		new Setting(this.containerEl)
+			.setName('查看同步日志')
+			.setDesc('查看最近 10 次同步的详细记录，包括同步的笔记')
+			.addButton((button) => {
+				button.setButtonText('查看日志').onClick(() => {
+					new SyncLogModal(this.app).open();
+				});
+			});
 	}
 
 	scrollToSection(section: 'sync'): void {
