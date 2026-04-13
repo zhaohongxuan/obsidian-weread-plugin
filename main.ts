@@ -18,6 +18,7 @@ export default class WereadPlugin extends Plugin {
 	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
 	private cookieRefreshTimer: number | null = null;
+	private scheduledSyncTimer: number | null = null;
 
 	async onload() {
 		console.log('load weread plugin');
@@ -37,6 +38,9 @@ export default class WereadPlugin extends Plugin {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
 			});
 		}
+
+		// 启动时同步 Cookie 到 partition，供 webview 使用（非阻塞）
+		this.syncCookiesToPartition();
 
 		const ribbonEl = this.addRibbonIcon('book-open', '打开微信读书书架', (event) => {
 			if (event.button === 0) {
@@ -158,6 +162,7 @@ export default class WereadPlugin extends Plugin {
 		this.addSettingTab(this.wereadSettingsTab);
 
 		this.setupCookieRefresh();
+		this.setupScheduledSync();
 	}
 
 	openWereadSettingsTab(section?: 'sync') {
@@ -198,6 +203,10 @@ export default class WereadPlugin extends Plugin {
 				force,
 				window.moment().format('YYYY-MM-DD')
 			);
+			// 更新最近同步信息
+			const settings = get(settingsStore);
+			const bookTitles = settings.lastSyncBookTitles || [];
+			settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
 			console.log('syncing Weread note finish');
 			return syncedCount;
 		} catch (e) {
@@ -281,9 +290,59 @@ export default class WereadPlugin extends Plugin {
 
 		workspace.revealLeaf(leaf);
 	}
+
+	private async syncCookiesToPartition(): Promise<void> {
+		if (!Platform.isDesktopApp) {
+			return;
+		}
+		const cookies = get(settingsStore).cookies ?? [];
+		if (cookies.length === 0) {
+			return;
+		}
+
+		try {
+			const { remote } = window.require('electron');
+			const { BrowserWindow: RemoteBrowserWindow } = remote;
+			const WEREAD_PARTITION = 'persist:weread-plugin-browser';
+
+			// Create a hidden window with the same partition as webview
+			const hiddenWindow = new RemoteBrowserWindow({
+				width: 1,
+				height: 1,
+				show: false,
+				webPreferences: {
+					partition: WEREAD_PARTITION
+				}
+			});
+
+			const session = hiddenWindow.webContents.session;
+			for (const cookie of cookies) {
+				try {
+					await session.cookies.set({
+						url: 'https://weread.qq.com',
+						name: cookie.name,
+						value: cookie.value,
+						domain: '.weread.qq.com',
+						path: '/',
+						secure: true,
+						httpOnly: false
+					});
+				} catch (e) {
+					console.debug('[weread plugin] cookie set failed:', cookie.name, e);
+				}
+			}
+
+			hiddenWindow.close();
+			console.log('[weread plugin] startup cookie sync complete');
+		} catch (e) {
+			console.error('[weread plugin] startup cookie sync failed', e);
+		}
+	}
+
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
 		this.clearCookieRefreshTimer();
+		this.clearScheduledSyncTimer();
 	}
 
 	setupCookieRefresh() {
@@ -308,6 +367,40 @@ export default class WereadPlugin extends Plugin {
 		if (this.cookieRefreshTimer !== null) {
 			window.clearInterval(this.cookieRefreshTimer);
 			this.cookieRefreshTimer = null;
+		}
+	}
+
+	setupScheduledSync() {
+		this.clearScheduledSyncTimer();
+		const { scheduledSyncToggle, scheduledSyncInterval } = get(settingsStore);
+		if (!scheduledSyncToggle) {
+			return;
+		}
+		const intervalMs = Math.max(1, scheduledSyncInterval) * 60 * 1000;
+		console.log(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
+		this.scheduledSyncTimer = window.setInterval(async () => {
+			console.log('[weread plugin] 执行定时同步');
+			try {
+				const syncedCount = await this.syncNotebooks.syncNotebooks(
+					false,
+					window.moment().format('YYYY-MM-DD')
+				);
+				// 获取同步的书籍信息并更新设置
+				const settings = get(settingsStore);
+				const bookTitles = settings.lastSyncBookTitles || [];
+				settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
+				new Notice(`定时同步完成，共同步 ${syncedCount || 0} 本书`);
+			} catch (e) {
+				console.error('[weread plugin] 定时同步失败', e);
+				new Notice('定时同步失败，请查看控制台');
+			}
+		}, intervalMs);
+	}
+
+	private clearScheduledSyncTimer() {
+		if (this.scheduledSyncTimer !== null) {
+			window.clearInterval(this.scheduledSyncTimer);
+			this.scheduledSyncTimer = null;
 		}
 	}
 }

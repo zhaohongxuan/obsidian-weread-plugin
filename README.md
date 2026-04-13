@@ -25,7 +25,10 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - 公众号划线和笔记归类同步
 - 支持移动端同步，可以在手机和平板上使用本插件
 - 支持Daily Notes,将当日读书笔记同步至Daily Notes中，已经在[0.4.0](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases/tag/0.4.0)中支持
-- 同步热门划线到笔记中（TBD）
+- 微信读书书架功能，展示本地同步的书籍汇总数据
+
+<img width="1512" height="893" alt="image" src="https://github.com/user-attachments/assets/fe967324-789b-447a-95a2-3cd477720756" />
+
 
 ## 安装方法
 插件市场直接搜索`weread`，找到`Weread Plugin`点击`install`安装，安装完成后点击`Enable`使插件启用，也可以直接在[release](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)页面手动下载。
@@ -34,7 +37,7 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 2. 点击右侧`登录`按钮，在弹出的登录页面扫码登录，登录完成后，会显示个人昵称
 3. 点击`注销`按钮即可注销登录，系统会自动清除Obsidian插件的Cookie信息
 4. 设置笔记保存位置，笔记最小划线数量，笔记文件夹分类
-<img width="1030" height="794" alt="image" src="https://github.com/user-attachments/assets/42714865-2178-409c-9ced-cecaf909e812" />
+<img width="2068" height="1554" alt="image" src="https://github.com/user-attachments/assets/dfcbdce1-b63d-4156-b18e-4aeef9e57c4f" />
 
 
 

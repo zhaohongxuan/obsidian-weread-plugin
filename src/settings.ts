@@ -48,6 +48,11 @@ export interface WereadPluginSettings {
 	};
 	cookieAutoRefreshToggle: boolean;
 	cookieRefreshInterval: number;
+	scheduledSyncToggle: boolean;
+	scheduledSyncInterval: number;
+	lastSyncTime: number;
+	lastSyncBookCount: number;
+	lastSyncBookTitles: string[];
 	syncLogs: SyncLogEntry[];
 }
 
@@ -87,6 +92,11 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	},
 	cookieAutoRefreshToggle: false,
 	cookieRefreshInterval: 12,
+	scheduledSyncToggle: false,
+	scheduledSyncInterval: 5,
+	lastSyncTime: 0,
+	lastSyncBookCount: 0,
+	lastSyncBookTitles: [],
 	syncLogs: []
 };
 
@@ -112,7 +122,6 @@ const createSettingsStore = () => {
 					? 'whitelist'
 					: 'blacklist'
 		};
-		console.log('--------init cookie------', settings.cookies);
 		console.log(
 			'[weread plugin] Cookie 详情: 数量=' +
 				settings.cookies.length +
@@ -412,6 +421,29 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setScheduledSyncToggle = (scheduledSyncToggle: boolean) => {
+		store.update((state) => {
+			state.scheduledSyncToggle = scheduledSyncToggle;
+			return state;
+		});
+	};
+
+	const setScheduledSyncInterval = (scheduledSyncInterval: number) => {
+		store.update((state) => {
+			state.scheduledSyncInterval = Math.max(1, scheduledSyncInterval);
+			return state;
+		});
+	};
+
+	const updateLastSyncInfo = (bookCount: number, bookTitles: string[]) => {
+		store.update((state) => {
+			state.lastSyncTime = new Date().getTime();
+			state.lastSyncBookCount = bookCount;
+			state.lastSyncBookTitles = bookTitles.slice(0, 5); // Keep only first 5 book titles
+			return state;
+		});
+	};
+
 	const addSyncLog = (log: SyncLogEntry) => {
 		store.update((state) => {
 			// Keep only the last 10 logs
@@ -459,6 +491,9 @@ const createSettingsStore = () => {
 			setCookieAutoRefreshToggle,
 			setCookieRefreshInterval,
 			setIsCookieValid,
+			setScheduledSyncToggle,
+			setScheduledSyncInterval,
+			updateLastSyncInfo,
 			addSyncLog,
 			getSyncLogs
 		}

@@ -3,6 +3,7 @@ import WereadPlugin from '../../main';
 
 export const WEREAD_BROWSER_VIEW_ID = 'weread-reading-view';
 const WEREAD_HOME_URL = 'https://weread.qq.com/web/shelf';
+const WEREAD_PARTITION = 'persist:weread-plugin-browser';
 
 type WereadViewState = {
 	url?: string;
@@ -36,6 +37,7 @@ export class WereadReadingView extends ItemView {
 
 	async onOpen() {
 		this.webviewEl = this.contentEl.doc.createElement('webview');
+		this.webviewEl.setAttribute('partition', WEREAD_PARTITION);
 		this.webviewEl.setAttribute('allowpopups', '');
 		this.webviewEl.addClass('weread-frame');
 		this.webviewEl.addEventListener('did-finish-load', () => {
