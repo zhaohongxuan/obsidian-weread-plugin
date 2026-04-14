@@ -4,6 +4,19 @@
 <p><strong>✂️ 自动去空白：</strong>开启后会自动移除模板标签（{% %}）前后的换行和空格，让你可以用缩进写出更易读的模板代码。</p>
 <p><strong>📝 Markdown渲染：</strong>开启后右侧预览会渲染为格式化的 Markdown，关闭则显示原始文本。</p>
 
+<h3>Filter 过滤器</h3>
+<p>时间戳字段（readInfo 中的 readingBookDate、finishedDate 等）为秒级时间戳，可使用以下过滤器转换为可读格式：</p>
+<ul>
+  <li><span class="u-pop">timestamp | formatDate</span> → <code>2020-01-29</code><br/>格式：YYYY-MM-DD，可传入自定义格式</li>
+  <li><span class="u-pop">timestamp | formatDateTime</span> → <code>2020-01-29 08:00:00</code><br/>格式：YYYY-MM-DD HH:mm:ss，可传入自定义格式</li>
+  <li><span class="u-pop">timestamp | formatTime</span> → <code>08:00:00</code><br/>格式：HH:mm:ss，可传入自定义格式</li>
+</ul>
+<p><strong>示例：</strong></p>
+<pre>{{ finishedDate | formatDate }}
+{{ finishedDate | formatDateTime }}
+{{ finishedDate | formatDate("YYYY年MM月DD日") }}
+{{ readingBookDate | formatDateTime("YYYY/MM/DD HH:mm") }}</pre>
+
 <h2>可用变量</h2>
 元数据变量(metaData)
 <ul>
@@ -20,6 +33,16 @@
   <li><span class="u-pop">{{publisher}}</span> - 出版社</li>
   <li><span class="u-pop">{{readInfo}}</span> - 阅读信息, 点击查看详情</li>
 </ul>
+readInfo 阅读信息
+<ul>
+  <li><span class="u-pop">{{readingTime}}</span> - 阅读时长（秒）</li>
+  <li><span class="u-pop">{{totalReadDay}}</span> - 总阅读天数</li>
+  <li><span class="u-pop">{{continueReadDays}}</span> - 连续阅读天数</li>
+  <li><span class="u-pop">{{readingBookCount}}</span> - 阅读书籍数</li>
+  <li><span class="u-pop">{{readingBookDate}}</span> - 开始阅读时间（时间戳）</li>
+  <li><span class="u-pop">{{finishedDate}}</span> - 完成阅读时间（时间戳）</li>
+  <li><span class="u-pop">{{readingProgress}}</span> - 阅读进度</li>
+</ul>
 划线变量(chapterHighlights)
 <ul>
   <li><span class="u-pop">{{chapterUid}}</span> - 章节ID</li>
@@ -28,7 +51,7 @@
   <li><span class="u-pop">{{range}}</span> - 划线范围</li>
   <li><span class="u-pop">{{markText}}</span> - 划线文本</li>
 </ul>
-笔记笔记(bookReview)
+笔记(bookReview)
 <ul>
   <li><span class="u-pop">{{reviewId}}</span> - reviewId</li>
   <li><span class="u-pop">{{chapterUid}}</span> - 章节ID</li>
