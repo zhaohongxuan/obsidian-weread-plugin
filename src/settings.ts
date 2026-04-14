@@ -454,7 +454,7 @@ const createSettingsStore = () => {
 	};
 
 	const getSyncLogs = (): SyncLogEntry[] => {
-		return get(store);
+		return get(store).syncLogs;
 	};
 
 	return {

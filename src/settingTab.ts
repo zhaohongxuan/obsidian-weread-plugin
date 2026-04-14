@@ -262,16 +262,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.noteCountLimit();
 		}
 		this.renderSyncModeBookSelection(syncMode);
-
-		// Sync log button
-		new Setting(this.containerEl)
-			.setName('查看同步日志')
-			.setDesc('查看最近 10 次同步的详细记录，包括同步的笔记')
-			.addButton((button) => {
-				button.setButtonText('查看日志').onClick(() => {
-					new SyncLogModal(this.app).open();
-				});
-			});
 	}
 
 	scrollToSection(section: 'sync'): void {
@@ -925,6 +915,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 
 		new Setting(this.containerEl).setName('同步状态').setDesc(statusText);
+
+		// Sync log button at the end of scheduled sync section
+		new Setting(this.containerEl)
+			.setName('查看同步日志')
+			.setDesc('查看最近 10 次同步的详细记录，包括同步的笔记')
+			.addButton((button) => {
+				button.setButtonText('查看日志').onClick(() => {
+					new SyncLogModal(this.app).open();
+				});
+			});
 	}
 
 	private createFolderSuggestModal(onSelect: (value: string) => void) {
