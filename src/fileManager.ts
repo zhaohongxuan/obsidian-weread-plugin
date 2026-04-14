@@ -121,7 +121,7 @@ export default class FileManager {
 		return `${pre}\n${text}\n${post}`;
 	}
 
-	public async saveNotebook(notebook: Notebook): Promise<void> {
+	public async saveNotebook(notebook: Notebook): Promise<string | null> {
 		const localFile = notebook.metaData.file;
 		if (localFile) {
 			if (localFile.new) {
@@ -130,14 +130,17 @@ export default class FileManager {
 				const freshContent = this.renderer.render(notebook);
 				const fileContent = buildFrontMatter(freshContent, notebook, existingFile);
 				await this.vault.modify(existingFile, fileContent);
+				return existingFile.path;
 			}
 		} else {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
 			const markdownContent = this.renderer.render(notebook);
 			const fileContent = buildFrontMatter(markdownContent, notebook);
-			await this.vault.create(newFilePath, fileContent);
+			const newFile = await this.vault.create(newFilePath, fileContent);
+			return newFile.path;
 		}
+		return null;
 	}
 
 	public getWereadNoteAnnotationFile = (file: TFile): AnnotationFile | null => {

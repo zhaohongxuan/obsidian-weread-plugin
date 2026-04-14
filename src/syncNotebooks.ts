@@ -78,15 +78,15 @@ export default class SyncNotebooks {
 			for (const meta of filterMetaArr) {
 				try {
 					const notebook = await this.convertToNotebook(meta);
-					await this.saveNotebook(notebook);
+					const savedFilePath = await this.saveNotebook(notebook);
 					syncedNotebooks++;
 
 					// Track synced note for the log
-					if (meta.file && meta.file.file) {
+					if (savedFilePath) {
 						syncedNotes.push({
 							bookId: meta.bookId,
 							title: meta.title,
-							filePath: meta.file.file.path
+							filePath: savedFilePath
 						});
 					}
 				} catch (e) {
