@@ -45,7 +45,7 @@ export class WereadBookshelfView extends ItemView {
 	private syncStatusFilter: SyncStatusFilter = DEFAULT_SYNC_STATUS_FILTER;
 	private readingStatusFilter: ReadingStatusFilter = 'all';
 	private sortMode: BookshelfSort = 'recent';
-	private groupByYear = false;
+	private groupByYear = true;
 	private loading = false;
 	private emptyStateEl: HTMLElement;
 	private summaryEl: HTMLElement;
@@ -147,40 +147,6 @@ export class WereadBookshelfView extends ItemView {
 			this.renderBooks();
 		};
 
-		const sortSelect = toolbarFilters.createEl('select', {
-			cls: 'dropdown',
-			attr: { 'aria-label': '选择书架排序方式' }
-		});
-		[
-			['recent', '时间排序'],
-			['title', '按标题排序']
-		].forEach(([value, label]) => {
-			sortSelect.createEl('option', { value, text: label });
-		});
-		const groupToggleWrapper = toolbarFilters.createEl('label', {
-			cls: 'weread-bookshelf-toggle'
-		});
-		const groupToggle = groupToggleWrapper.createEl('input', {
-			type: 'checkbox',
-			attr: { 'aria-label': '按阅读年份分组' }
-		});
-		groupToggle.checked = true;
-		this.groupByYear = true;
-		groupToggleWrapper.createSpan({ cls: 'toggle-slider' });
-		groupToggleWrapper.createSpan({ text: '按年份分组', cls: 'toggle-text' });
-		groupToggle.onchange = () => {
-			this.groupByYear = groupToggle.checked;
-			this.renderBooks();
-		};
-		sortSelect.onchange = () => {
-			this.sortMode = sortSelect.value as BookshelfSort;
-			groupToggle.disabled = this.sortMode !== 'recent';
-			groupToggleWrapper.toggleClass('is-disabled', groupToggle.disabled);
-			this.renderBooks();
-		};
-		groupToggle.disabled = this.sortMode !== 'recent';
-		groupToggleWrapper.toggleClass('is-disabled', groupToggle.disabled);
-
 		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
 		const syncButton = toolbarActions.createEl('button', {
 			cls: 'mod-cta weread-toolbar-button'
@@ -251,6 +217,9 @@ export class WereadBookshelfView extends ItemView {
 		this.gridEl.empty();
 		try {
 			this.shelfBooks = await this.bookshelfService.getBookshelfBooks();
+			const settings = get(settingsStore);
+			this.sortMode = settings.bookshelfSortMode;
+			this.groupByYear = settings.bookshelfGroupByYear;
 			this.renderBooks();
 		} catch (error: unknown) {
 			this.summaryEl.setText('加载书架失败');

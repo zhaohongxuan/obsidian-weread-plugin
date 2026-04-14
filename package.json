@@ -1,12 +1,12 @@
 {
 	"name": "obsidian-weread-plugin",
-		"version": "1.2.0",
+		"version": "1.3.0",
 	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {
 		"clean": "rimraf dist main.js",
 		"build": "svelte-check && npm run lint && webpack",
-		"dev": "NODE_ENV=development webpack && ./sync.sh",
+		"deploy": "NODE_ENV=development webpack && ./sync.sh",
 		"lint": "eslint . --ext .ts --fix"
 	},
 	"keywords": [],

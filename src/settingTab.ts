@@ -24,7 +24,7 @@ import { Renderer } from './renderer';
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
-import type { ReadingOpenMode, SyncMode } from './settings';
+import type { ReadingOpenMode, SyncMode, BookshelfSortMode } from './settings';
 
 const UNLIMITED_NOTE_COUNT = -1;
 
@@ -100,6 +100,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		this.notebookFolder();
 		this.readingOpenModeSetting();
+		this.bookshelfSettings();
 		this.syncModeSettings();
 		this.scheduledSync();
 
@@ -235,6 +236,34 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.setValue(get(settingsStore).readingOpenMode)
 					.onChange((value: string) => {
 						settingsStore.actions.setReadingOpenMode(value as ReadingOpenMode);
+					});
+			});
+	}
+
+	private bookshelfSettings(): void {
+		new Setting(this.containerEl).setName('书架设置').setHeading();
+
+		new Setting(this.containerEl)
+			.setName('书架排序方式')
+			.setDesc('控制书架中书籍的默认排序方式')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('recent', '时间排序')
+					.addOption('title', '按标题排序')
+					.setValue(get(settingsStore).bookshelfSortMode)
+					.onChange((value: string) => {
+						settingsStore.actions.setBookshelfSortMode(value as BookshelfSortMode);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('按年份分组')
+			.setDesc('在时间排序时，按照阅读年份对书架进行分组展示')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).bookshelfGroupByYear)
+					.onChange((value) => {
+						settingsStore.actions.setBookshelfGroupByYear(value);
 					});
 			});
 	}
