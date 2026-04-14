@@ -66,7 +66,7 @@ export class SyncLogModal extends Modal {
 		const status = header.createDiv({
 			cls: log.success ? 'sync-log-status sync-log-success' : 'sync-log-status sync-log-error'
 		});
-		status.setIcon(log.success ? 'check-circle' : 'x-circle');
+		setIcon(status, log.success ? 'check-circle' : 'x-circle');
 		status.createSpan({ text: log.success ? '成功' : '失败' });
 
 		// Stats row

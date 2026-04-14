@@ -1,5 +1,5 @@
 import { Cookie } from 'set-cookie-parser';
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { Platform } from 'obsidian';
 import notebookTemolate from './assets/notebookTemplate.njk';
 import WereadPlugin from '../main';
@@ -7,6 +7,7 @@ import type { SyncLogEntry } from './models';
 
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
+export type BookshelfSortMode = 'recent' | 'title';
 
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
@@ -54,6 +55,8 @@ export interface WereadPluginSettings {
 	lastSyncBookCount: number;
 	lastSyncBookTitles: string[];
 	syncLogs: SyncLogEntry[];
+	bookshelfSortMode: BookshelfSortMode;
+	bookshelfGroupByYear: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -97,7 +100,9 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	lastSyncTime: 0,
 	lastSyncBookCount: 0,
 	lastSyncBookTitles: [],
-	syncLogs: []
+	syncLogs: [],
+	bookshelfSortMode: 'recent',
+	bookshelfGroupByYear: true
 };
 
 const createSettingsStore = () => {
@@ -457,6 +462,20 @@ const createSettingsStore = () => {
 		return get(store).syncLogs;
 	};
 
+	const setBookshelfSortMode = (sortMode: BookshelfSortMode) => {
+		store.update((state) => {
+			state.bookshelfSortMode = sortMode;
+			return state;
+		});
+	};
+
+	const setBookshelfGroupByYear = (groupByYear: boolean) => {
+		store.update((state) => {
+			state.bookshelfGroupByYear = groupByYear;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -495,7 +514,9 @@ const createSettingsStore = () => {
 			setScheduledSyncInterval,
 			updateLastSyncInfo,
 			addSyncLog,
-			getSyncLogs
+			getSyncLogs,
+			setBookshelfSortMode,
+			setBookshelfGroupByYear
 		}
 	};
 };

@@ -273,11 +273,12 @@ export default class SyncNotebooks {
 		return null;
 	}
 
-	private async saveNotebook(notebook: Notebook): Promise<void> {
+	private async saveNotebook(notebook: Notebook): Promise<string | null> {
 		try {
-			await this.fileManager.saveNotebook(notebook);
+			return await this.fileManager.saveNotebook(notebook);
 		} catch (e) {
 			console.log('[weread plugin] sync note book error', notebook.metaData.title, e);
+			return null;
 		}
 	}
 }

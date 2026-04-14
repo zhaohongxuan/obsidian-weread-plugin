@@ -44,7 +44,7 @@ All commands are from `package.json`.
 - Clean build artifacts: `npm run clean`
 - Lint (auto-fix): `npm run lint`
 - Build (type check + lint + webpack): `npm run build`
-- Dev build + sync helper: `npm run dev`
+- Dev build + sync helper: `npm run deploy`
 
 Tests:
 - No test runner is configured in this repo.
