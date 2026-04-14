@@ -24,7 +24,7 @@ export class SyncLogModal extends Modal {
 
 		const logsContainer = contentEl.createDiv({ cls: 'sync-log-container' });
 
-		const logs = settingsStore.actions.getSyncLogs().syncLogs;
+		const logs = settingsStore.actions.getSyncLogs();
 
 		if (logs.length === 0) {
 			logsContainer.createDiv({
