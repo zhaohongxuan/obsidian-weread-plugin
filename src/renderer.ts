@@ -2,33 +2,49 @@ import * as nunjucks from 'nunjucks';
 import type { Notebook, RenderTemplate } from './models';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
+
+const addDateFilters = (env: nunjucks.Environment) => {
+	env.addFilter('formatDate', function (timestamp: number, format?: string): string {
+		if (!timestamp) return '';
+		const dateStr = window.moment(timestamp * 1000).format(format ?? 'YYYY-MM-DD');
+		return dateStr;
+	});
+	env.addFilter('formatDateTime', function (timestamp: number, format?: string): string {
+		if (!timestamp) return '';
+		return window.moment(timestamp * 1000).format(format ?? 'YYYY-MM-DD HH:mm:ss');
+	});
+	env.addFilter('formatTime', function (timestamp: number, format?: string): string {
+		if (!timestamp) return '';
+		return window.moment(timestamp * 1000).format(format ?? 'HH:mm:ss');
+	});
+	env.addFilter('replace', function (str, pattern, replacement) {
+		if (!str) return '';
+
+		if (typeof pattern === 'string') {
+			try {
+				// 如果 pattern 以 /.../ 开头和结尾，解析为正则表达式
+				if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
+					const regexBody = pattern.slice(1, pattern.lastIndexOf('/'));
+					const flags = pattern.slice(pattern.lastIndexOf('/') + 1);
+					pattern = new RegExp(regexBody, flags);
+				} else {
+					return str.replaceAll(pattern, replacement);
+				}
+			} catch (e) {
+				// 如果正则表达式无效，回退到字符串替换
+				return String(str).replaceAll(pattern, replacement);
+			}
+		} else if (pattern instanceof RegExp) {
+			return String(str).replace(pattern, replacement);
+		}
+		return String(str).replaceAll(pattern, replacement);
+	});
+};
+
 export class Renderer {
 	constructor() {
-		nunjucks
-			.configure({ autoescape: false })
-			// 自定义函数 https://mozilla.github.io/nunjucks/api.html#addfilter
-			.addFilter('replace', function (str, pattern, replacement) {
-				if (!str) return '';
-
-				if (typeof pattern === 'string') {
-					try {
-						// 如果 pattern 以 /.../ 开头和结尾，解析为正则表达式
-						if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
-							const regexBody = pattern.slice(1, pattern.lastIndexOf('/'));
-							const flags = pattern.slice(pattern.lastIndexOf('/') + 1);
-							pattern = new RegExp(regexBody, flags);
-						} else {
-							return str.replaceAll(pattern, replacement);
-						}
-					} catch (e) {
-						// 如果正则表达式无效，回退到字符串替换
-						return String(str).replaceAll(pattern, replacement);
-					}
-				} else if (pattern instanceof RegExp) {
-					return String(str).replace(pattern, replacement);
-				}
-				return String(str).replaceAll(pattern, replacement);
-			});
+		const env = nunjucks.configure({ autoescape: false });
+		addDateFilters(env);
 	}
 
 	validate(template: string): boolean {
@@ -60,28 +76,7 @@ export class Renderer {
 				trimBlocks: true,
 				lstripBlocks: true
 			});
-
-			// 添加自定义过滤器
-			env.addFilter('replace', function (str, pattern, replacement) {
-				if (!str) return '';
-
-				if (typeof pattern === 'string') {
-					try {
-						if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
-							const regexBody = pattern.slice(1, pattern.lastIndexOf('/'));
-							const flags = pattern.slice(pattern.lastIndexOf('/') + 1);
-							pattern = new RegExp(regexBody, flags);
-						} else {
-							return str.replaceAll(pattern, replacement);
-						}
-					} catch (e) {
-						return String(str).replaceAll(pattern, replacement);
-					}
-				} else if (pattern instanceof RegExp) {
-					return String(str).replace(pattern, replacement);
-				}
-				return String(str).replaceAll(pattern, replacement);
-			});
+			addDateFilters(env);
 
 			const content = env.renderString(template, context);
 			return content;
@@ -114,30 +109,7 @@ export class Renderer {
 			trimBlocks: trimBlocks,
 			lstripBlocks: trimBlocks
 		});
-
-		// 添加自定义过滤器
-		env.addFilter('replace', function (str, pattern, replacement) {
-			if (!str) return '';
-
-			if (typeof pattern === 'string') {
-				try {
-					// 如果 pattern 以 /.../ 开头和结尾，解析为正则表达式
-					if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
-						const regexBody = pattern.slice(1, pattern.lastIndexOf('/'));
-						const flags = pattern.slice(pattern.lastIndexOf('/') + 1);
-						pattern = new RegExp(regexBody, flags);
-					} else {
-						return str.replaceAll(pattern, replacement);
-					}
-				} catch (e) {
-					// 如果正则表达式无效，回退到字符串替换
-					return String(str).replaceAll(pattern, replacement);
-				}
-			} else if (pattern instanceof RegExp) {
-				return String(str).replace(pattern, replacement);
-			}
-			return String(str).replaceAll(pattern, replacement);
-		});
+		addDateFilters(env);
 
 		const content = env.renderString(templateStr, context);
 		return content;
