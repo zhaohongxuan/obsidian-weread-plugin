@@ -1,9 +1,11 @@
 import { Cookie } from 'set-cookie-parser';
 import { writable, get } from 'svelte/store';
 import { Platform } from 'obsidian';
-import notebookTemolate from './assets/notebookTemplate.njk';
+import notebookTemolate from './themes/notebookTemplate.njk';
+import wereadOfficialTemplate from './themes/wereadOfficialTemplate.njk';
+import separatedTemplate from './themes/separatedTemplate.njk';
 import WereadPlugin from '../main';
-import type { SyncLogEntry } from './models';
+import type { SyncLogEntry, Theme } from './models';
 
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
@@ -12,6 +14,36 @@ export type BookshelfSortMode = 'recent' | 'title';
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
 };
+
+export const BUILT_IN_THEMES: Theme[] = [
+	{
+		id: 'builtin_merged',
+		name: '合并式模板',
+		description: '划线和想法 inline 展示，适合快速回顾',
+		template: notebookTemolate,
+		trimBlocks: false,
+		isBuiltIn: true,
+		isReadOnly: true
+	},
+	{
+		id: 'builtin_separated',
+		name: '分离式模板',
+		description: '先展示纯划线，笔记统一在底部，适合整理归纳',
+		template: separatedTemplate,
+		trimBlocks: false,
+		isBuiltIn: true,
+		isReadOnly: true
+	},
+	{
+		id: 'builtin_official',
+		name: '微信官方笔记主题',
+		description: '详细的元数据信息，适合生成书籍笔记',
+		template: wereadOfficialTemplate,
+		trimBlocks: false,
+		isBuiltIn: true,
+		isReadOnly: true
+	}
+];
 
 export interface WereadPluginSettings {
 	loginMethod: string;
@@ -57,6 +89,8 @@ export interface WereadPluginSettings {
 	syncLogs: SyncLogEntry[];
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfGroupByYear: boolean;
+	themes: Theme[];
+	activeThemeId: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -102,7 +136,9 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	lastSyncBookTitles: [],
 	syncLogs: [],
 	bookshelfSortMode: 'recent',
-	bookshelfGroupByYear: true
+	bookshelfGroupByYear: true,
+	themes: BUILT_IN_THEMES,
+	activeThemeId: 'builtin_merged'
 };
 
 const createSettingsStore = () => {
@@ -160,6 +196,36 @@ const createSettingsStore = () => {
 			}
 			// 否则保留已有状态，由后续验证过程更新
 		}
+
+		// Migration: Initialize themes system for existing users
+		if (!settings.themes || settings.themes.length === 0) {
+			settings.themes = [...BUILT_IN_THEMES];
+			// Migrate user's legacy template to a custom theme
+			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
+			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+
+			const userTheme: Theme = {
+				id: `user_${Date.now()}`,
+				name: '我的自定义模板',
+				description: '从旧版本迁移的自定义模板',
+				template: legacyTemplate ?? notebookTemolate,
+				trimBlocks: legacyTrimBlocks,
+				isBuiltIn: false,
+				isReadOnly: false
+			};
+			settings.themes.push(userTheme);
+			settings.activeThemeId = userTheme.id;
+		} else {
+			// Force reload built-in themes from code (njk files) to ensure they reflect latest changes
+			const userThemes = settings.themes.filter((t) => !t.isBuiltIn);
+			settings.themes = [...BUILT_IN_THEMES, ...userThemes];
+			// Ensure activeThemeId is valid
+			const activeTheme = settings.themes.find((t) => t.id === settings.activeThemeId);
+			if (!activeTheme) {
+				settings.activeThemeId = settings.themes[0]?.id ?? 'builtin_merged';
+			}
+		}
+
 		_plugin = plugin;
 		store.set(settings);
 	};
@@ -476,6 +542,81 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setActiveTheme = (themeId: string) => {
+		store.update((state) => {
+			state.activeThemeId = themeId;
+			return state;
+		});
+	};
+
+	const saveTheme = (theme: Theme) => {
+		store.update((state) => {
+			const idx = state.themes.findIndex((t) => t.id === theme.id);
+			if (idx >= 0) {
+				state.themes[idx] = theme;
+			} else {
+				state.themes.push(theme);
+			}
+			return state;
+		});
+	};
+
+	const deleteTheme = (themeId: string) => {
+		store.update((state) => {
+			const theme = state.themes.find((t) => t.id === themeId);
+			if (theme && !theme.isBuiltIn) {
+				state.themes = state.themes.filter((t) => t.id !== themeId);
+				if (state.activeThemeId === themeId) {
+					state.activeThemeId = 'builtin_merged';
+				}
+			}
+			return state;
+		});
+	};
+
+	const getActiveTheme = (): Theme => {
+		const state = get(store);
+		return state.themes.find((t) => t.id === state.activeThemeId) ?? BUILT_IN_THEMES[0];
+	};
+
+	const duplicateTheme = (themeId: string, newName: string): Theme | null => {
+		const state = get(store);
+		const sourceTheme = state.themes.find((t) => t.id === themeId);
+		if (!sourceTheme) return null;
+
+		const newTheme: Theme = {
+			...sourceTheme,
+			id: `user_${Date.now()}`,
+			name: newName,
+			isBuiltIn: false,
+			isReadOnly: false
+		};
+		store.update((s) => {
+			s.themes.push(newTheme);
+			s.activeThemeId = newTheme.id;
+			return s;
+		});
+		return newTheme;
+	};
+
+	const importTheme = (theme: Theme): boolean => {
+		// Check if theme with same id already exists
+		const state = get(store);
+		if (state.themes.some((t) => t.id === theme.id)) {
+			return false;
+		}
+		store.update((s) => {
+			s.themes.push(theme);
+			return s;
+		});
+		return true;
+	};
+
+	const exportTheme = (themeId: string): Theme | null => {
+		const state = get(store);
+		return state.themes.find((t) => t.id === themeId) ?? null;
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -516,7 +657,14 @@ const createSettingsStore = () => {
 			addSyncLog,
 			getSyncLogs,
 			setBookshelfSortMode,
-			setBookshelfGroupByYear
+			setBookshelfGroupByYear,
+			setActiveTheme,
+			saveTheme,
+			deleteTheme,
+			getActiveTheme,
+			duplicateTheme,
+			importTheme,
+			exportTheme
 		}
 	};
 };

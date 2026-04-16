@@ -24,6 +24,7 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - 支持移动端同步，可以在手机和平板上使用本插件
 - 支持Daily Notes,将当日读书笔记同步至Daily Notes中，已经在[0.4.0](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases/tag/0.4.0)中支持
 - 微信读书书架功能，展示本地同步的书籍汇总数据
+- 主题管理：内置三种主题模板，支持导入导出，自定义主题
 
 <img width="1512" height="893" alt="image" src="https://github.com/user-attachments/assets/fe967324-789b-447a-95a2-3cd477720756" />
 
@@ -62,6 +63,18 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 3. 设置在Daily Notes的特定的区间插入，可以修改默认值为你想要的markdown格式的内容，比如在`某两个标题`之间插入，注意📢，区间内的内容是会被覆盖的，不要在区间内修改文本。	
 ![](https://user-images.githubusercontent.com/8613196/179385400-d556527f-8d73-4ca7-b348-62810df96fe2.png)
 </details>
+
+## 主题管理
+
+插件内置三种主题模板，可以在设置中切换：
+
+| 主题 | 说明 |
+|------|------|
+| 合并式模板 | 划线和想法 inline 展示，适合快速回顾 |
+| 分离式模板 | 先展示纯划线，笔记统一在底部，适合整理归纳 |
+| 微信官方笔记主题 | 详细的元数据信息，适合生成书籍笔记 |
+
+支持导入导出主题，方便分享和备份。详见[主题贡献指南](./docs/community-themes.md)。
 
 ## 已知问题
 - 长期不使用本插件Cookie可能会失效，需要重新登录。

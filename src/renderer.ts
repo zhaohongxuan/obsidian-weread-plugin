@@ -66,8 +66,11 @@ export class Renderer {
 			bookReview
 		};
 		const settings = get(settingsStore);
-		const template = settings.template;
-		const trimBlocks = settings.trimBlocks;
+
+		// Use active theme's template and trimBlocks, fallback to legacy settings
+		const activeTheme = settings.themes?.find((t) => t.id === settings.activeThemeId);
+		const template = activeTheme?.template ?? settings.template;
+		const trimBlocks = activeTheme?.trimBlocks ?? settings.trimBlocks;
 
 		// 如果启用了 trimBlocks，使用配置的环境
 		if (trimBlocks) {

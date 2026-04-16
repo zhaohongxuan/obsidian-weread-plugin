@@ -17,10 +17,9 @@ import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
-import { TemplateEditorWindow } from './components/templateEditorWindow';
+import { ThemeManagerModal } from './components/themeManagerModal';
 import { SyncLogModal } from './components/syncLogModal';
 
-import { Renderer } from './renderer';
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
@@ -46,7 +45,6 @@ const getBookLastReadText = (book: Metadata) => {
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
-	private renderer: Renderer;
 	private selectableBooksCache: Metadata[] = [];
 	private selectableBooksLoadingPromise: Promise<void> | null = null;
 	private syncSettingsHeadingEl: HTMLElement | null = null;
@@ -54,7 +52,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
-		this.renderer = new Renderer();
 	}
 
 	display() {
@@ -700,24 +697,29 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.saveReadingInfoToggle();
 		this.showEmptyChapterTitleToggle();
 
+		// Theme management button - opens theme manager modal
 		new Setting(this.containerEl)
-			.setName('自定义笔记渲染模板')
-			.setDesc('控制划线、笔记、书评等内容的输出格式')
+			.setName('主题管理')
+			.setDesc('管理模板主题，包括内置主题、自定义主题和社区主题')
 			.addButton((button) => {
 				return button
-					.setButtonText('编辑模板')
+					.setButtonText('打开主题管理')
 					.setCta()
 					.onClick(() => {
-						const editorWindow = new TemplateEditorWindow(
-							this.app,
-							get(settingsStore).template,
-							(newTemplate: string) => {
-								settingsStore.actions.setTemplate(newTemplate);
-							}
-						);
-						editorWindow.open();
+						new ThemeManagerModal(this.app).open();
 					});
 			});
+
+		// Show current theme info
+		const activeTheme = settingsStore.actions.getActiveTheme();
+		const themeType = activeTheme.isBuiltIn
+			? '内置'
+			: activeTheme.isReadOnly
+			? '社区'
+			: '自定义';
+		new Setting(this.containerEl)
+			.setName('当前使用')
+			.setDesc(`${activeTheme.name} (${themeType})`);
 	}
 
 	private noteCountLimit() {
