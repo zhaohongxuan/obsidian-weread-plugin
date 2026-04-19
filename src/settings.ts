@@ -10,6 +10,7 @@ import type { SyncLogEntry, Theme } from './models';
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
 export type BookshelfSortMode = 'recent' | 'title';
+export type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
@@ -23,7 +24,8 @@ export const BUILT_IN_THEMES: Theme[] = [
 		template: notebookTemolate,
 		trimBlocks: false,
 		isBuiltIn: true,
-		isReadOnly: true
+		isReadOnly: true,
+		source: 'builtin'
 	},
 	{
 		id: 'builtin_separated',
@@ -32,7 +34,8 @@ export const BUILT_IN_THEMES: Theme[] = [
 		template: separatedTemplate,
 		trimBlocks: false,
 		isBuiltIn: true,
-		isReadOnly: true
+		isReadOnly: true,
+		source: 'builtin'
 	},
 	{
 		id: 'builtin_official',
@@ -41,7 +44,8 @@ export const BUILT_IN_THEMES: Theme[] = [
 		template: wereadOfficialTemplate,
 		trimBlocks: false,
 		isBuiltIn: true,
-		isReadOnly: true
+		isReadOnly: true,
+		source: 'builtin'
 	}
 ];
 
@@ -89,6 +93,7 @@ export interface WereadPluginSettings {
 	syncLogs: SyncLogEntry[];
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfGroupByYear: boolean;
+	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
 	themes: Theme[];
 	activeThemeId: string;
 }
@@ -106,7 +111,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	user: '',
 	userVid: '',
 	userAvatar: '',
-	template: notebookTemolate,
+	template: '',
 	noteCountLimit: -1,
 	subFolderType: '-1',
 	fileNameType: 'BOOK_NAME',
@@ -137,6 +142,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	syncLogs: [],
 	bookshelfSortMode: 'recent',
 	bookshelfGroupByYear: true,
+	bookshelfDefaultSyncStatusFilter: 'all',
 	themes: BUILT_IN_THEMES,
 	activeThemeId: 'builtin_merged'
 };
@@ -204,25 +210,61 @@ const createSettingsStore = () => {
 			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
 			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
 
-			const userTheme: Theme = {
-				id: `user_${Date.now()}`,
-				name: '我的自定义模板',
-				description: '从旧版本迁移的自定义模板',
-				template: legacyTemplate ?? notebookTemolate,
-				trimBlocks: legacyTrimBlocks,
-				isBuiltIn: false,
-				isReadOnly: false
-			};
-			settings.themes.push(userTheme);
-			settings.activeThemeId = userTheme.id;
+			if (legacyTemplate) {
+				const userTheme: Theme = {
+					id: `user_${Date.now()}`,
+					name: '旧模板',
+					description: '从旧版本迁移的模板，可复制后自定义',
+					template: legacyTemplate,
+					trimBlocks: legacyTrimBlocks,
+					isBuiltIn: false,
+					isReadOnly: true,
+					source: 'legacy'
+				};
+				settings.themes.push(userTheme);
+				settings.activeThemeId = userTheme.id;
+			} else if (BUILT_IN_THEMES.length > 0) {
+				settings.activeThemeId = BUILT_IN_THEMES[0].id;
+			}
 		} else {
-			// Force reload built-in themes from code (njk files) to ensure they reflect latest changes
+			// Check if there's a legacy template from top-level template field
+			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
+			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			if (legacyTemplate) {
+				// Check if this template already exists in themes (avoid duplicate)
+				const templateExists = settings.themes.some((t) => t.template === legacyTemplate);
+				if (!templateExists) {
+					const legacyTheme: Theme = {
+						id: `legacy_${Date.now()}`,
+						name: '旧模板',
+						description: '从旧版本迁移的模板，可复制后自定义',
+						template: legacyTemplate,
+						trimBlocks: legacyTrimBlocks,
+						isBuiltIn: false,
+						isReadOnly: true,
+						source: 'legacy'
+					};
+					settings.themes.push(legacyTheme);
+				}
+			}
+
+			// Force reload built-in themes from theme.json to ensure they reflect latest changes
 			const userThemes = settings.themes.filter((t) => !t.isBuiltIn);
+			// Ensure legacy themes have source field and isReadOnly
+			userThemes.forEach((t) => {
+				if (!t.source) {
+					t.source = 'legacy';
+				}
+				if (t.source === 'legacy') {
+					t.isReadOnly = true;
+				}
+			});
+
 			settings.themes = [...BUILT_IN_THEMES, ...userThemes];
 			// Ensure activeThemeId is valid
 			const activeTheme = settings.themes.find((t) => t.id === settings.activeThemeId);
-			if (!activeTheme) {
-				settings.activeThemeId = settings.themes[0]?.id ?? 'builtin_merged';
+			if (!activeTheme && settings.themes.length > 0) {
+				settings.activeThemeId = settings.themes[0].id;
 			}
 		}
 
@@ -542,6 +584,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setBookshelfDefaultSyncStatusFilter = (filter: SyncStatusFilter) => {
+		store.update((state) => {
+			state.bookshelfDefaultSyncStatusFilter = filter;
+			return state;
+		});
+	};
+
 	const setActiveTheme = (themeId: string) => {
 		store.update((state) => {
 			state.activeThemeId = themeId;
@@ -576,7 +625,7 @@ const createSettingsStore = () => {
 
 	const getActiveTheme = (): Theme => {
 		const state = get(store);
-		return state.themes.find((t) => t.id === state.activeThemeId) ?? BUILT_IN_THEMES[0];
+		return state.themes.find((t) => t.id === state.activeThemeId) ?? state.themes[0];
 	};
 
 	const duplicateTheme = (themeId: string, newName: string): Theme | null => {
@@ -589,7 +638,8 @@ const createSettingsStore = () => {
 			id: `user_${Date.now()}`,
 			name: newName,
 			isBuiltIn: false,
-			isReadOnly: false
+			isReadOnly: false,
+			source: 'custom'
 		};
 		store.update((s) => {
 			s.themes.push(newTheme);
@@ -658,6 +708,7 @@ const createSettingsStore = () => {
 			getSyncLogs,
 			setBookshelfSortMode,
 			setBookshelfGroupByYear,
+			setBookshelfDefaultSyncStatusFilter,
 			setActiveTheme,
 			saveTheme,
 			deleteTheme,

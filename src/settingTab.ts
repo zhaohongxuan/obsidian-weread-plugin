@@ -263,6 +263,23 @@ export class WereadSettingsTab extends PluginSettingTab {
 						settingsStore.actions.setBookshelfGroupByYear(value);
 					});
 			});
+
+		new Setting(this.containerEl)
+			.setName('默认书架状态')
+			.setDesc('初次打开书架时的默认筛选状态')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('all', '全部状态')
+					.addOption('synced', '已同步')
+					.addOption('remoteOnly', '仅远程')
+					.addOption('localOnly', '仅本地')
+					.setValue(get(settingsStore).bookshelfDefaultSyncStatusFilter)
+					.onChange((value: string) => {
+						settingsStore.actions.setBookshelfDefaultSyncStatusFilter(
+							value as 'all' | 'remoteOnly' | 'synced' | 'localOnly'
+						);
+					});
+			});
 	}
 
 	private syncModeSettings(): void {
@@ -676,6 +693,24 @@ export class WereadSettingsTab extends PluginSettingTab {
 		// 右边：按钮
 		const buttonGroup = userContainer.createDiv({
 			cls: 'weread-button-group'
+		});
+
+		// Copy Cookie 按钮
+		const copyCookieBtn = buttonGroup.createEl('button', {
+			cls: 'weread-action-button weread-copy-cookie-btn',
+			text: 'Copy Cookie'
+		});
+		copyCookieBtn.addEventListener('click', async () => {
+			const settings = get(settingsStore);
+			if (settings.cookies.length === 0) {
+				new Notice('无可复制的 Cookie');
+				return;
+			}
+			const cookieStr = settings.cookies
+				.map((c) => `${c.name}=${encodeURIComponent(c.value)}`)
+				.join('; ');
+			await navigator.clipboard.writeText(cookieStr);
+			new Notice('Cookie 已复制到剪贴板');
 		});
 
 		// 注销按钮

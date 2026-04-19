@@ -5,18 +5,24 @@ lastReadDate: {{metaData.lastReadDate}}
 《{{metaData.title}}》
 {{metaData.author}}
 {{metaData.noteCount}}个笔记
-{% if bookReview.bookReviews %}{% for bookReview in bookReview.bookReviews %}
-◆ 点评
-{{bookReview.createTime}}
-{{bookReview.mdContent}}{% endfor%}{% endif %}
+
+# 高亮划线
 {% for chapter in chapterHighlights %}
-{% if chapter.level == 1 %}## ◆ {{chapter.chapterTitle}}{% elif chapter.level == 2 %}### ◆ {{chapter.chapterTitle}}{% elif chapter.level == 3 %}#### ◆ {{chapter.chapterTitle}}{% endif %}
-{% for highlight in chapter.highlights %}{% if highlight.reviewContent %}
+{% if chapter.level == 1 %}## {{chapter.chapterTitle}}{% elif chapter.level == 2 %}### {{chapter.chapterTitle}}{% elif chapter.level == 3 %}#### {{chapter.chapterTitle}}{% endif %}
+{% for highlight in chapter.highlights %}
+> 📌 {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
+{% endfor %}{% endfor %}
 
-{{highlight.createTime}} 发表想法
+# 笔记汇总
+{% for chapter in chapterHighlights %}{% for highlight in chapter.highlights %}{% if highlight.reviewContent %}
+## {{chapter.chapterTitle}} 的想法
 {{highlight.reviewContent}}
+> 📌 {{ highlight.markText |trim }}
 
-> {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}
- {% else %}
+{% endif %}{% endfor %}{% endfor %}
+{% if bookReview.bookReviews %}{% for bookReview in bookReview.bookReviews %}
 
-> {{ highlight.markText |trim }} ^{{highlight.bookmarkId}}{% endif %}{% endfor %}{% endfor %}
+# 书评
+{{bookReview.createTime}}
+{{bookReview.mdContent}}
+{% endfor %}{% endif %}

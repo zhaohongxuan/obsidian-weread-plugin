@@ -1634,6 +1634,11 @@
 	color: var(--text-muted);
 }
 
+.theme-badge.badge-legacy {
+	background-color: rgba(234, 179, 8, 0.15);
+	color: #ca8a04;
+}
+
 .theme-badge.badge-community {
 	background-color: rgba(99, 102, 241, 0.15);
 	color: #6366f1;

@@ -50,7 +50,10 @@ export class ThemeManagerModal extends Modal {
 
 			titleGroup.createEl('h3', { text: theme.name });
 			const badge = titleGroup.createSpan('theme-badge');
-			if (theme.isBuiltIn) {
+			if (theme.source === 'legacy') {
+				badge.textContent = '旧模板';
+				badge.addClass('badge-legacy');
+			} else if (theme.isBuiltIn) {
 				badge.textContent = '内置';
 				badge.addClass('badge-builtin');
 			} else if (theme.isReadOnly) {
@@ -154,7 +157,7 @@ export class ThemeManagerModal extends Modal {
 			}
 
 			// Duplicate button for all themes (except already custom themes)
-			if (theme.isBuiltIn || theme.isReadOnly) {
+			if (theme.isBuiltIn || theme.isReadOnly || theme.source === 'legacy') {
 				const duplicateBtn = actions.createEl('button', {
 					text: '复制并自定义',
 					cls: 'theme-btn'
@@ -167,8 +170,8 @@ export class ThemeManagerModal extends Modal {
 				};
 			}
 
-			// Delete button (only for user themes)
-			if (!theme.isBuiltIn) {
+			// Delete button (only for user themes, not legacy, not active)
+			if (!theme.isBuiltIn && theme.source !== 'legacy' && !isActive) {
 				const deleteBtn = actions.createEl('button', {
 					text: '删除',
 					cls: 'theme-btn mod-danger'
@@ -247,6 +250,7 @@ export class ThemeManagerModal extends Modal {
 						trimBlocks: data.theme.trimBlocks ?? false,
 						isBuiltIn: false,
 						isReadOnly: false,
+						source: 'custom',
 						author: data.manifest.author,
 						version: data.manifest.version
 					};
@@ -386,6 +390,7 @@ class ImportUrlModal extends Modal {
 					trimBlocks: data.theme.trimBlocks ?? false,
 					isBuiltIn: false,
 					isReadOnly: false,
+					source: 'custom',
 					author: data.manifest.author,
 					version: data.manifest.version
 				};
@@ -393,9 +398,7 @@ class ImportUrlModal extends Modal {
 				this.onImport(importedTheme);
 				this.close();
 			} catch (error) {
-				new Notice(
-					'导入失败: ' + (error instanceof Error ? error.message : String(error))
-				);
+				new Notice('导入失败: ' + (error instanceof Error ? error.message : String(error)));
 			}
 		};
 	}

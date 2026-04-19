@@ -519,6 +519,7 @@ export interface Theme {
 	trimBlocks: boolean;
 	isBuiltIn: boolean;
 	isReadOnly: boolean;
+	source: 'builtin' | 'custom' | 'legacy';
 	author?: string;
 	version?: string;
 }
