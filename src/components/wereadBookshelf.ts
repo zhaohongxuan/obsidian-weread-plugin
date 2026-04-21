@@ -216,9 +216,18 @@ export class WereadBookshelfView extends ItemView {
 		this.summaryEl.setText('加载书架中...');
 		this.emptyStateEl.empty();
 		this.gridEl.empty();
+
+		// Check if user is logged in
+		const settings = get(settingsStore);
+		if (!settings.isCookieValid || settings.cookies.length === 0) {
+			this.loading = false;
+			this.summaryEl.setText('请先登录');
+			this.emptyStateEl.setText('请在设置中登录后开始使用');
+			return;
+		}
+
 		try {
 			this.shelfBooks = await this.bookshelfService.getBookshelfBooks();
-			const settings = get(settingsStore);
 			this.sortMode = settings.bookshelfSortMode;
 			this.groupByYear = settings.bookshelfGroupByYear;
 			this.renderBooks();

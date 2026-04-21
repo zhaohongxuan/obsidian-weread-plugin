@@ -227,29 +227,9 @@ const createSettingsStore = () => {
 				settings.activeThemeId = BUILT_IN_THEMES[0].id;
 			}
 		} else {
-			// Check if there's a legacy template from top-level template field
-			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
-			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
-			if (legacyTemplate) {
-				// Check if this template already exists in themes (avoid duplicate)
-				const templateExists = settings.themes.some((t) => t.template === legacyTemplate);
-				if (!templateExists) {
-					const legacyTheme: Theme = {
-						id: `legacy_${Date.now()}`,
-						name: '旧模板',
-						description: '从旧版本迁移的模板，可复制后自定义',
-						template: legacyTemplate,
-						trimBlocks: legacyTrimBlocks,
-						isBuiltIn: false,
-						isReadOnly: true,
-						source: 'legacy'
-					};
-					settings.themes.push(legacyTheme);
-				}
-			}
-
 			// Force reload built-in themes from theme.json to ensure they reflect latest changes
-			const userThemes = settings.themes.filter((t) => !t.isBuiltIn);
+			// Filter out legacy_xxx themes (created by old migration logic)
+			const userThemes = settings.themes.filter((t) => !t.isBuiltIn && !t.id.startsWith('legacy_'));
 			// Ensure legacy themes have source field and isReadOnly
 			userThemes.forEach((t) => {
 				if (!t.source) {
@@ -260,11 +240,39 @@ const createSettingsStore = () => {
 				}
 			});
 
+			// Add a virtual "旧模板" theme if settings.template is non-empty
+			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
+			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			if (legacyTemplate) {
+				// Check if there's already a legacy theme
+				const hasLegacyTheme = userThemes.some((t) => t.source === 'legacy');
+				if (!hasLegacyTheme) {
+					// Create a virtual legacy theme that uses settings.template
+					const legacyTheme: Theme = {
+						id: 'legacy_template',
+						name: '旧模板',
+						description: '从旧版本迁移的模板，可复制后自定义',
+						template: '',  // Will use settings.template at render time
+						trimBlocks: legacyTrimBlocks,
+						isBuiltIn: false,
+						isReadOnly: true,
+						source: 'legacy'
+					};
+					userThemes.unshift(legacyTheme);
+				}
+			}
+
 			settings.themes = [...BUILT_IN_THEMES, ...userThemes];
-			// Ensure activeThemeId is valid
-			const activeTheme = settings.themes.find((t) => t.id === settings.activeThemeId);
-			if (!activeTheme && settings.themes.length > 0) {
-				settings.activeThemeId = settings.themes[0].id;
+
+			// If activeThemeId is built-in or invalid, try to use legacy theme first
+			const currentActive = settings.themes.find((t) => t.id === settings.activeThemeId);
+			if (!currentActive || currentActive.isBuiltIn) {
+				const legacyTheme = settings.themes.find((t) => t.source === 'legacy');
+				if (legacyTheme) {
+					settings.activeThemeId = legacyTheme.id;
+				} else if (settings.themes.length > 0) {
+					settings.activeThemeId = settings.themes[0].id;
+				}
 			}
 		}
 
@@ -623,6 +631,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const clearLegacyTemplate = () => {
+		store.update((state) => {
+			state.template = '';
+			return state;
+		});
+	};
+
 	const getActiveTheme = (): Theme => {
 		const state = get(store);
 		return state.themes.find((t) => t.id === state.activeThemeId) ?? state.themes[0];
@@ -633,10 +648,16 @@ const createSettingsStore = () => {
 		const sourceTheme = state.themes.find((t) => t.id === themeId);
 		if (!sourceTheme) return null;
 
+		// For legacy themes, use settings.template instead of sourceTheme.template (which is empty)
+		const templateToUse = (sourceTheme.source === 'legacy' || sourceTheme.id === 'legacy_template')
+			? state.template
+			: sourceTheme.template;
+
 		const newTheme: Theme = {
 			...sourceTheme,
 			id: `user_${Date.now()}`,
 			name: newName,
+			template: templateToUse,
 			isBuiltIn: false,
 			isReadOnly: false,
 			source: 'custom'
@@ -712,6 +733,7 @@ const createSettingsStore = () => {
 			setActiveTheme,
 			saveTheme,
 			deleteTheme,
+			clearLegacyTemplate,
 			getActiveTheme,
 			duplicateTheme,
 			importTheme,

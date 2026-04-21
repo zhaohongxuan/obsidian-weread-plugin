@@ -99,9 +99,13 @@ export class ThemeManagerModal extends Modal {
 			// Preview button
 			const previewBtn = actions.createEl('button', { text: '预览', cls: 'theme-btn' });
 			previewBtn.onclick = () => {
+				// For legacy themes, use settings.template for preview
+				const templateForPreview = (theme.source === 'legacy' || theme.id === 'legacy_template')
+					? get(settingsStore).template
+					: theme.template;
 				const editorWindow = new TemplateEditorWindow(
 					this.app,
-					theme.template,
+					templateForPreview,
 					() => {},
 					theme.trimBlocks,
 					undefined,
@@ -170,14 +174,18 @@ export class ThemeManagerModal extends Modal {
 				};
 			}
 
-			// Delete button (only for user themes, not legacy, not active)
-			if (!theme.isBuiltIn && theme.source !== 'legacy' && !isActive) {
+			// Delete button (only for user themes, not active)
+			if (!theme.isBuiltIn && !isActive) {
 				const deleteBtn = actions.createEl('button', {
 					text: '删除',
 					cls: 'theme-btn mod-danger'
 				});
 				deleteBtn.onclick = () => {
 					if (confirm(`确定要删除 "${theme.name}" 吗？`)) {
+						// For legacy themes, also clear the settings.template
+						if (theme.source === 'legacy' || theme.id === 'legacy_template') {
+							settingsStore.actions.clearLegacyTemplate();
+						}
 						settingsStore.actions.deleteTheme(theme.id);
 						new Notice('主题已删除');
 						this.onOpen(); // Refresh

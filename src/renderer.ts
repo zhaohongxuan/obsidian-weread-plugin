@@ -69,7 +69,9 @@ export class Renderer {
 
 		// Use active theme's template and trimBlocks, fallback to legacy settings
 		const activeTheme = settings.themes?.find((t) => t.id === settings.activeThemeId);
-		const template = activeTheme?.template ?? settings.template;
+		// For legacy themes (source === 'legacy' or id === 'legacy_template'), always use the top-level settings.template
+		const isLegacyTheme = activeTheme?.source === 'legacy' || activeTheme?.id === 'legacy_template';
+		const template = isLegacyTheme ? settings.template : (activeTheme?.template ?? settings.template);
 		const trimBlocks = activeTheme?.trimBlocks ?? settings.trimBlocks;
 
 		// 如果启用了 trimBlocks，使用配置的环境
