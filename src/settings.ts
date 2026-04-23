@@ -229,7 +229,9 @@ const createSettingsStore = () => {
 		} else {
 			// Force reload built-in themes from theme.json to ensure they reflect latest changes
 			// Filter out legacy_xxx themes (created by old migration logic)
-			const userThemes = settings.themes.filter((t) => !t.isBuiltIn && !t.id.startsWith('legacy_'));
+			const userThemes = settings.themes.filter(
+				(t) => !t.isBuiltIn && !t.id.startsWith('legacy_')
+			);
 			// Ensure legacy themes have source field and isReadOnly
 			userThemes.forEach((t) => {
 				if (!t.source) {
@@ -252,7 +254,7 @@ const createSettingsStore = () => {
 						id: 'legacy_template',
 						name: '旧模板',
 						description: '从旧版本迁移的模板，可复制后自定义',
-						template: '',  // Will use settings.template at render time
+						template: '', // Will use settings.template at render time
 						trimBlocks: legacyTrimBlocks,
 						isBuiltIn: false,
 						isReadOnly: true,
@@ -649,9 +651,10 @@ const createSettingsStore = () => {
 		if (!sourceTheme) return null;
 
 		// For legacy themes, use settings.template instead of sourceTheme.template (which is empty)
-		const templateToUse = (sourceTheme.source === 'legacy' || sourceTheme.id === 'legacy_template')
-			? state.template
-			: sourceTheme.template;
+		const templateToUse =
+			sourceTheme.source === 'legacy' || sourceTheme.id === 'legacy_template'
+				? state.template
+				: sourceTheme.template;
 
 		const newTheme: Theme = {
 			...sourceTheme,
