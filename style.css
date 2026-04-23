@@ -1571,11 +1571,23 @@
 	padding: 20px;
 	border-bottom: 1px solid var(--background-modifier-border);
 	background-color: var(--background-secondary);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
 }
 
 .theme-manager-header h2 {
 	margin: 0;
 	font-size: 1.4em;
+}
+
+.theme-manager-title {
+	flex: 1;
+}
+
+.theme-manager-header .theme-btn {
+	white-space: nowrap;
 }
 
 .theme-manager-list {
@@ -1787,4 +1799,47 @@
 	display: flex;
 	justify-content: flex-end;
 	gap: 8px;
+}
+
+.theme-create-header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.theme-create-header h3 {
+	margin: 0;
+	font-size: 1.1em;
+}
+
+.theme-create-form {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.theme-create-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.theme-create-label {
+	width: 80px;
+	flex-shrink: 0;
+	font-weight: 500;
+	color: var(--text-secondary);
+}
+
+.theme-create-row input {
+	flex: 1;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.theme-create-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 0 20px 16px;
 }

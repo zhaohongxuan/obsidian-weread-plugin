@@ -21,7 +21,18 @@ export class ThemeManagerModal extends Modal {
 
 		// Header
 		const header = contentEl.createDiv('theme-manager-header');
-		header.createEl('h2', { text: '主题管理' });
+		const headerTitle = header.createDiv('theme-manager-title');
+		headerTitle.createEl('h2', { text: '主题管理' });
+
+		const addBtn = header.createEl('button', {
+			text: '+ 新增主题',
+			cls: 'theme-btn mod-cta'
+		});
+		addBtn.onclick = () => {
+			new CreateThemeModal(this.app, () => {
+				this.onOpen(); // Refresh
+			}).open();
+		};
 
 		// Theme list container
 		const themeList = contentEl.createDiv('theme-manager-list');
@@ -100,9 +111,10 @@ export class ThemeManagerModal extends Modal {
 			const previewBtn = actions.createEl('button', { text: '预览', cls: 'theme-btn' });
 			previewBtn.onclick = () => {
 				// For legacy themes, use settings.template for preview
-				const templateForPreview = (theme.source === 'legacy' || theme.id === 'legacy_template')
-					? get(settingsStore).template
-					: theme.template;
+				const templateForPreview =
+					theme.source === 'legacy' || theme.id === 'legacy_template'
+						? get(settingsStore).template
+						: theme.template;
 				const editorWindow = new TemplateEditorWindow(
 					this.app,
 					templateForPreview,
@@ -408,6 +420,105 @@ class ImportUrlModal extends Modal {
 			} catch (error) {
 				new Notice('导入失败: ' + (error instanceof Error ? error.message : String(error)));
 			}
+		};
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
+class CreateThemeModal extends Modal {
+	private onCreated: () => void;
+
+	constructor(app: App, onCreated: () => void) {
+		super(app);
+		this.onCreated = onCreated;
+	}
+
+	onOpen() {
+		const { contentEl, modalEl } = this;
+		contentEl.empty();
+
+		modalEl.style.width = '600px';
+
+		const header = contentEl.createDiv('theme-create-header');
+		header.createEl('h3', { text: '新增主题' });
+
+		const form = contentEl.createDiv('theme-create-form');
+
+		// Theme name
+		const nameRow = form.createDiv('theme-create-row');
+		nameRow.createEl('label', { text: '主题名称', cls: 'theme-create-label' });
+		const nameInput = new TextComponent(nameRow);
+		nameInput.setValue('');
+		nameInput.inputEl.style.flex = '1';
+		nameInput.inputEl.style.width = '100%';
+		nameInput.inputEl.style.boxSizing = 'border-box';
+		nameInput.setPlaceholder('请输入主题名称');
+
+		// Description
+		const descRow = form.createDiv('theme-create-row');
+		descRow.createEl('label', { text: '主题描述', cls: 'theme-create-label' });
+		const descInput = new TextComponent(descRow);
+		descInput.setValue('');
+		descInput.inputEl.style.flex = '1';
+		descInput.inputEl.style.width = '100%';
+		descInput.inputEl.style.boxSizing = 'border-box';
+		descInput.setPlaceholder('请输入主题描述（可选）');
+
+		const actions = form.createDiv('theme-create-actions');
+		const cancelBtn = actions.createEl('button', { text: '取消', cls: 'mod-cancel' });
+		cancelBtn.onclick = () => this.close();
+
+		const createBtn = actions.createEl('button', { text: '下一步', cls: 'mod-cta' });
+		createBtn.onclick = () => {
+			const name = nameInput.getValue().trim();
+			if (!name) {
+				new Notice('请输入主题名称');
+				return;
+			}
+
+			// Create new theme with empty template, then open editor
+			const newTheme: Theme = {
+				id: `user_${Date.now()}`,
+				name: name,
+				description: descInput.getValue().trim(),
+				template: '',
+				trimBlocks: false,
+				isBuiltIn: false,
+				isReadOnly: false,
+				source: 'custom'
+			};
+
+			settingsStore.actions.saveTheme(newTheme);
+			settingsStore.actions.setActiveTheme(newTheme.id);
+			this.close();
+
+			// Open template editor
+			const editorWindow = new TemplateEditorWindow(
+				this.app,
+				newTheme.template,
+				(updatedTemplate: string) => {
+					settingsStore.actions.saveTheme({
+						...newTheme,
+						template: updatedTemplate
+					});
+					new Notice('主题已创建');
+					this.onCreated();
+				},
+				newTheme.trimBlocks,
+				(trimBlocks: boolean) => {
+					settingsStore.actions.saveTheme({
+						...newTheme,
+						trimBlocks
+					});
+				},
+				false,
+				newTheme.name
+			);
+			editorWindow.open();
 		};
 	}
 
