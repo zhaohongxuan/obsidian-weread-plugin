@@ -106,11 +106,11 @@ export class TemplateEditorWindow extends Modal {
 		const previewHeader = previewPanel.createDiv('panel-header');
 		previewHeader.createSpan({ text: '实时预览' });
 
-		// 仅在非只读模式下创建开关容器
-		if (!this.readOnly) {
-			const toggleContainer = previewHeader.createDiv('weread-toggle-container');
+		// 预览面板的开关容器
+		const toggleContainer = previewHeader.createDiv('weread-toggle-container');
 
-			// 添加 trimBlocks 切换开关
+		// 仅在非只读模式下添加 trimBlocks 切换开关
+		if (!this.readOnly) {
 			const trimToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
 			trimToggleWrapper.createSpan({ text: '✂️ 自动去空白', cls: 'weread-toggle-label' });
 			const trimToggleSwitch = trimToggleWrapper.createDiv('weread-toggle-switch');
@@ -132,24 +132,24 @@ export class TemplateEditorWindow extends Modal {
 				}
 				this.updatePreview();
 			});
+		}
 
-			// 添加渲染模式切换开关
-			const renderToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
-			renderToggleWrapper.createSpan({ text: '📝 Markdown渲染', cls: 'weread-toggle-label' });
-			const renderToggleSwitch = renderToggleWrapper.createDiv('weread-toggle-switch');
+		// 添加渲染模式切换开关（编辑和预览模式都显示）
+		const renderToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
+		renderToggleWrapper.createSpan({ text: '📝 Markdown渲染', cls: 'weread-toggle-label' });
+		const renderToggleSwitch = renderToggleWrapper.createDiv('weread-toggle-switch');
+		if (this.isMarkdownRendered) {
+			renderToggleSwitch.addClass('is-enabled');
+		}
+		renderToggleSwitch.addEventListener('click', () => {
+			this.isMarkdownRendered = !this.isMarkdownRendered;
 			if (this.isMarkdownRendered) {
 				renderToggleSwitch.addClass('is-enabled');
+			} else {
+				renderToggleSwitch.removeClass('is-enabled');
 			}
-			renderToggleSwitch.addEventListener('click', () => {
-				this.isMarkdownRendered = !this.isMarkdownRendered;
-				if (this.isMarkdownRendered) {
-					renderToggleSwitch.addClass('is-enabled');
-				} else {
-					renderToggleSwitch.removeClass('is-enabled');
-				}
-				this.updatePreview();
-			});
-		}
+			this.updatePreview();
+		});
 
 		const previewContent = previewPanel.createDiv('preview-content');
 		this.previewEl = previewContent.createEl('div', { cls: 'preview-text' });
