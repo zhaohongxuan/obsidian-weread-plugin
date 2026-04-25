@@ -510,3 +510,16 @@ export type RecentBook = {
 	title: string;
 	recentTime: number;
 };
+
+export interface Theme {
+	id: string;
+	name: string;
+	description?: string;
+	template: string;
+	trimBlocks: boolean;
+	isBuiltIn: boolean;
+	isReadOnly: boolean;
+	source: 'builtin' | 'custom' | 'legacy';
+	author?: string;
+	version?: string;
+}

@@ -13,8 +13,10 @@ npm install          # Install dependencies
 npm run clean        # Remove dist/ and main.js
 npm run lint         # ESLint with auto-fix
 npm run build        # svelte-check + lint + webpack
-npm run deploy       # Dev build + sync helper script
+npm run deploy       # Dev build + sync to Obsidian plugins folder (使用此命令部署)
 ```
+
+**Important**: After making code changes, always use `npm run deploy` to sync the build to your Obsidian plugins folder for testing.
 
 ## Architecture
 

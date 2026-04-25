@@ -1,17 +1,53 @@
 import { Cookie } from 'set-cookie-parser';
 import { writable, get } from 'svelte/store';
 import { Platform } from 'obsidian';
-import notebookTemolate from './assets/notebookTemplate.njk';
+import notebookTemolate from './themes/notebookTemplate.njk';
+import wereadOfficialTemplate from './themes/wereadOfficialTemplate.njk';
+import separatedTemplate from './themes/separatedTemplate.njk';
 import WereadPlugin from '../main';
-import type { SyncLogEntry } from './models';
+import type { SyncLogEntry, Theme } from './models';
 
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
 export type BookshelfSortMode = 'recent' | 'title';
+export type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
 };
+
+export const BUILT_IN_THEMES: Theme[] = [
+	{
+		id: 'builtin_merged',
+		name: '合并式模板',
+		description: '划线和想法 inline 展示，适合快速回顾',
+		template: notebookTemolate,
+		trimBlocks: false,
+		isBuiltIn: true,
+		isReadOnly: true,
+		source: 'builtin'
+	},
+	{
+		id: 'builtin_separated',
+		name: '分离式模板',
+		description: '先展示纯划线，笔记统一在底部，适合整理归纳',
+		template: separatedTemplate,
+		trimBlocks: false,
+		isBuiltIn: true,
+		isReadOnly: true,
+		source: 'builtin'
+	},
+	{
+		id: 'builtin_official',
+		name: '微信官方笔记主题',
+		description: '详细的元数据信息，适合生成书籍笔记',
+		template: wereadOfficialTemplate,
+		trimBlocks: false,
+		isBuiltIn: true,
+		isReadOnly: true,
+		source: 'builtin'
+	}
+];
 
 export interface WereadPluginSettings {
 	loginMethod: string;
@@ -57,6 +93,9 @@ export interface WereadPluginSettings {
 	syncLogs: SyncLogEntry[];
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfGroupByYear: boolean;
+	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
+	themes: Theme[];
+	activeThemeId: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -72,7 +111,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	user: '',
 	userVid: '',
 	userAvatar: '',
-	template: notebookTemolate,
+	template: '',
 	noteCountLimit: -1,
 	subFolderType: '-1',
 	fileNameType: 'BOOK_NAME',
@@ -102,7 +141,10 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	lastSyncBookTitles: [],
 	syncLogs: [],
 	bookshelfSortMode: 'recent',
-	bookshelfGroupByYear: true
+	bookshelfGroupByYear: true,
+	bookshelfDefaultSyncStatusFilter: 'all',
+	themes: BUILT_IN_THEMES,
+	activeThemeId: 'builtin_merged'
 };
 
 const createSettingsStore = () => {
@@ -160,6 +202,82 @@ const createSettingsStore = () => {
 			}
 			// 否则保留已有状态，由后续验证过程更新
 		}
+
+		// Migration: Initialize themes system for existing users
+		if (!settings.themes || settings.themes.length === 0) {
+			settings.themes = [...BUILT_IN_THEMES];
+			// Migrate user's legacy template to a custom theme
+			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
+			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+
+			if (legacyTemplate) {
+				const userTheme: Theme = {
+					id: `user_${Date.now()}`,
+					name: '旧模板',
+					description: '从旧版本迁移的模板，可复制后自定义',
+					template: legacyTemplate,
+					trimBlocks: legacyTrimBlocks,
+					isBuiltIn: false,
+					isReadOnly: true,
+					source: 'legacy'
+				};
+				settings.themes.push(userTheme);
+				settings.activeThemeId = userTheme.id;
+			} else if (BUILT_IN_THEMES.length > 0) {
+				settings.activeThemeId = BUILT_IN_THEMES[0].id;
+			}
+		} else {
+			// Force reload built-in themes from theme.json to ensure they reflect latest changes
+			// Filter out legacy_xxx themes (created by old migration logic)
+			const userThemes = settings.themes.filter(
+				(t) => !t.isBuiltIn && !t.id.startsWith('legacy_')
+			);
+			// Ensure legacy themes have source field and isReadOnly
+			userThemes.forEach((t) => {
+				if (!t.source) {
+					t.source = 'legacy';
+				}
+				if (t.source === 'legacy') {
+					t.isReadOnly = true;
+				}
+			});
+
+			// Add a virtual "旧模板" theme if settings.template is non-empty
+			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
+			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			if (legacyTemplate) {
+				// Check if there's already a legacy theme
+				const hasLegacyTheme = userThemes.some((t) => t.source === 'legacy');
+				if (!hasLegacyTheme) {
+					// Create a virtual legacy theme that uses settings.template
+					const legacyTheme: Theme = {
+						id: 'legacy_template',
+						name: '旧模板',
+						description: '从旧版本迁移的模板，可复制后自定义',
+						template: '', // Will use settings.template at render time
+						trimBlocks: legacyTrimBlocks,
+						isBuiltIn: false,
+						isReadOnly: true,
+						source: 'legacy'
+					};
+					userThemes.unshift(legacyTheme);
+				}
+			}
+
+			settings.themes = [...BUILT_IN_THEMES, ...userThemes];
+
+			// If activeThemeId is built-in or invalid, try to use legacy theme first
+			const currentActive = settings.themes.find((t) => t.id === settings.activeThemeId);
+			if (!currentActive || currentActive.isBuiltIn) {
+				const legacyTheme = settings.themes.find((t) => t.source === 'legacy');
+				if (legacyTheme) {
+					settings.activeThemeId = legacyTheme.id;
+				} else if (settings.themes.length > 0) {
+					settings.activeThemeId = settings.themes[0].id;
+				}
+			}
+		}
+
 		_plugin = plugin;
 		store.set(settings);
 	};
@@ -476,6 +594,103 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setBookshelfDefaultSyncStatusFilter = (filter: SyncStatusFilter) => {
+		store.update((state) => {
+			state.bookshelfDefaultSyncStatusFilter = filter;
+			return state;
+		});
+	};
+
+	const setActiveTheme = (themeId: string) => {
+		store.update((state) => {
+			state.activeThemeId = themeId;
+			return state;
+		});
+	};
+
+	const saveTheme = (theme: Theme) => {
+		store.update((state) => {
+			const idx = state.themes.findIndex((t) => t.id === theme.id);
+			if (idx >= 0) {
+				state.themes[idx] = theme;
+			} else {
+				state.themes.push(theme);
+			}
+			return state;
+		});
+	};
+
+	const deleteTheme = (themeId: string) => {
+		store.update((state) => {
+			const theme = state.themes.find((t) => t.id === themeId);
+			if (theme && !theme.isBuiltIn) {
+				state.themes = state.themes.filter((t) => t.id !== themeId);
+				if (state.activeThemeId === themeId) {
+					state.activeThemeId = 'builtin_merged';
+				}
+			}
+			return state;
+		});
+	};
+
+	const clearLegacyTemplate = () => {
+		store.update((state) => {
+			state.template = '';
+			return state;
+		});
+	};
+
+	const getActiveTheme = (): Theme => {
+		const state = get(store);
+		return state.themes.find((t) => t.id === state.activeThemeId) ?? state.themes[0];
+	};
+
+	const duplicateTheme = (themeId: string, newName: string): Theme | null => {
+		const state = get(store);
+		const sourceTheme = state.themes.find((t) => t.id === themeId);
+		if (!sourceTheme) return null;
+
+		// For legacy themes, use settings.template instead of sourceTheme.template (which is empty)
+		const templateToUse =
+			sourceTheme.source === 'legacy' || sourceTheme.id === 'legacy_template'
+				? state.template
+				: sourceTheme.template;
+
+		const newTheme: Theme = {
+			...sourceTheme,
+			id: `user_${Date.now()}`,
+			name: newName,
+			template: templateToUse,
+			isBuiltIn: false,
+			isReadOnly: false,
+			source: 'custom'
+		};
+		store.update((s) => {
+			s.themes.push(newTheme);
+			s.activeThemeId = newTheme.id;
+			return s;
+		});
+		return newTheme;
+	};
+
+	const importTheme = (theme: Theme): boolean => {
+		// Check if theme with same id already exists
+		const state = get(store);
+		if (state.themes.some((t) => t.id === theme.id)) {
+			return false;
+		}
+		store.update((s) => {
+			s.themes.push(theme);
+			return s;
+		});
+		return true;
+	};
+
+	const exportTheme = (themeId: string): Theme | null => {
+		const state = get(store);
+		return state.themes.find((t) => t.id === themeId) ?? null;
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -516,7 +731,16 @@ const createSettingsStore = () => {
 			addSyncLog,
 			getSyncLogs,
 			setBookshelfSortMode,
-			setBookshelfGroupByYear
+			setBookshelfGroupByYear,
+			setBookshelfDefaultSyncStatusFilter,
+			setActiveTheme,
+			saveTheme,
+			deleteTheme,
+			clearLegacyTemplate,
+			getActiveTheme,
+			duplicateTheme,
+			importTheme,
+			exportTheme
 		}
 	};
 };

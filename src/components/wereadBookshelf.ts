@@ -5,6 +5,7 @@ import type { BookshelfBook } from '../models';
 import { WereadBookDetailModal } from './wereadBookDetailModal';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
+import { getPcUrl } from '../parser/parseResponse';
 
 export const WEREAD_BOOKSHELF_VIEW_ID = 'weread-bookshelf-view';
 
@@ -12,7 +13,6 @@ type CategoryFilter = 'all' | 'book' | 'article';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 type ReadingStatusFilter = 'all' | 'reading' | 'finished';
 type BookshelfSort = 'recent' | 'title';
-const DEFAULT_SYNC_STATUS_FILTER: SyncStatusFilter = 'synced';
 const UNKNOWN_YEAR_LABEL = '未知年份';
 
 class ConfirmDeleteModal extends Modal {
@@ -42,7 +42,8 @@ export class WereadBookshelfView extends ItemView {
 	private shelfBooks: BookshelfBook[] = [];
 	private searchKeyword = '';
 	private categoryFilter: CategoryFilter = 'all';
-	private syncStatusFilter: SyncStatusFilter = DEFAULT_SYNC_STATUS_FILTER;
+	private syncStatusFilter: SyncStatusFilter =
+		get(settingsStore).bookshelfDefaultSyncStatusFilter;
 	private readingStatusFilter: ReadingStatusFilter = 'all';
 	private sortMode: BookshelfSort = 'recent';
 	private groupByYear = true;
@@ -215,9 +216,18 @@ export class WereadBookshelfView extends ItemView {
 		this.summaryEl.setText('加载书架中...');
 		this.emptyStateEl.empty();
 		this.gridEl.empty();
+
+		// Check if user is logged in
+		const settings = get(settingsStore);
+		if (!settings.isCookieValid || settings.cookies.length === 0) {
+			this.loading = false;
+			this.summaryEl.setText('请先登录');
+			this.emptyStateEl.setText('请在设置中登录后开始使用');
+			return;
+		}
+
 		try {
 			this.shelfBooks = await this.bookshelfService.getBookshelfBooks();
-			const settings = get(settingsStore);
 			this.sortMode = settings.bookshelfSortMode;
 			this.groupByYear = settings.bookshelfGroupByYear;
 			this.renderBooks();
@@ -379,6 +389,18 @@ export class WereadBookshelfView extends ItemView {
 						deleteButton.disabled = false;
 					}
 				}).open();
+			};
+		}
+
+		if (book.remoteExists) {
+			const readButton = container.createEl('button', {
+				cls: 'clickable-icon weread-bookshelf-icon-button',
+				attr: { 'aria-label': '阅读此书', title: '阅读此书' }
+			});
+			setIcon(readButton, 'book-open');
+			readButton.onclick = async (event) => {
+				event.stopPropagation();
+				await this.plugin.openPreferredReadingView(getPcUrl(book.bookId));
 			};
 		}
 	}

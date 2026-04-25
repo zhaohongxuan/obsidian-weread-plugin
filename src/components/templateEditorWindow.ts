@@ -15,14 +15,28 @@ export class TemplateEditorWindow extends Modal {
 	private debounceTimer: NodeJS.Timeout | null = null;
 	private isMarkdownRendered = false;
 	private trimBlocks: boolean;
+	private onTrimBlocksChange?: (trimBlocks: boolean) => void;
+	private readOnly: boolean;
+	private themeName: string;
 
-	constructor(app: App, initialTemplate: string, onSave: (template: string) => void) {
+	constructor(
+		app: App,
+		initialTemplate: string,
+		onSave: (template: string) => void,
+		initialTrimBlocks?: boolean,
+		onTrimBlocksChange?: (trimBlocks: boolean) => void,
+		readOnly = false,
+		themeName?: string
+	) {
 		super(app);
 		this.initialTemplate = initialTemplate;
 		this.onSave = onSave;
 		this.renderer = new Renderer();
-		// 从 settings 读取 trimBlocks 配置
-		this.trimBlocks = get(settingsStore).trimBlocks;
+		// Use provided trimBlocks or fall back to settings
+		this.trimBlocks = initialTrimBlocks ?? get(settingsStore).trimBlocks;
+		this.onTrimBlocksChange = onTrimBlocksChange;
+		this.readOnly = readOnly;
+		this.themeName = themeName ?? '';
 	}
 
 	// 禁用点击外部或按 ESC 关闭
@@ -49,57 +63,78 @@ export class TemplateEditorWindow extends Modal {
 
 		// 创建标题栏
 		const titleBar = contentEl.createDiv('weread-editor-titlebar');
-		titleBar.createEl('h2', { text: '📝 模板编辑器' });
+		titleBar.createEl('h2', {
+			text: this.readOnly ? `预览: ${this.themeName}` : `编辑: ${this.themeName}`
+		});
 
 		const buttonGroup = titleBar.createDiv('weread-editor-buttons');
-		const cancelBtn = buttonGroup.createEl('button', { text: '取消', cls: 'mod-cancel' });
-		const saveBtn = buttonGroup.createEl('button', { text: '保存', cls: 'mod-cta' });
-
+		const cancelBtn = buttonGroup.createEl('button', { text: '关闭', cls: 'mod-cancel' });
 		cancelBtn.onclick = () => this.handleCancel();
-		saveBtn.onclick = () => this.handleSave();
 
-		// 创建三栏布局容器
+		// 仅在非只读模式下显示保存按钮
+		if (!this.readOnly) {
+			const saveBtn = buttonGroup.createEl('button', { text: '保存', cls: 'mod-cta' });
+			saveBtn.onclick = () => this.handleSave();
+		}
+
+		// 创建布局容器
 		const container = contentEl.createDiv('weread-editor-container');
 
-		// 左侧：说明文档
-		const instructionsPanel = container.createDiv('weread-editor-instructions');
-		instructionsPanel.innerHTML = templateInstructions;
+		// 左侧：说明文档（仅编辑模式显示）
+		if (!this.readOnly) {
+			const instructionsPanel = container.createDiv('weread-editor-instructions');
+			instructionsPanel.innerHTML = templateInstructions;
+		}
 
 		// 中间：编辑器
 		const editorPanel = container.createDiv('weread-editor-panel');
-		editorPanel.createEl('div', { text: '📄 模板编辑 (Nunjucks)', cls: 'panel-header' });
+		editorPanel.createEl('div', {
+			text: this.readOnly ? '模板内容' : '模板编辑 (Nunjucks)',
+			cls: 'panel-header'
+		});
 
 		this.editorEl = editorPanel.createEl('textarea', { cls: 'weread-editor-textarea' });
 		this.editorEl.value = this.initialTemplate;
+		if (this.readOnly) {
+			this.editorEl.disabled = true;
+			this.editorEl.style.backgroundColor = 'var(--background-secondary)';
+			this.editorEl.style.cursor = 'default';
+		}
 
 		// 右侧：预览
 		const previewPanel = container.createDiv('weread-editor-preview');
 		const previewHeader = previewPanel.createDiv('panel-header');
-		previewHeader.createSpan({ text: '👁️ 实时预览' });
+		previewHeader.createSpan({ text: '实时预览' });
 
-		// 创建开关容器
+		// 预览面板的开关容器
 		const toggleContainer = previewHeader.createDiv('weread-toggle-container');
 
-		// 添加 trimBlocks 切换开关
-		const trimToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
-		trimToggleWrapper.createSpan({ text: '✂️ 自动去空白', cls: 'weread-toggle-label' });
-		const trimToggleSwitch = trimToggleWrapper.createDiv('weread-toggle-switch');
-		if (this.trimBlocks) {
-			trimToggleSwitch.addClass('is-enabled');
-		}
-		trimToggleSwitch.addEventListener('click', () => {
-			this.trimBlocks = !this.trimBlocks;
+		// 仅在非只读模式下添加 trimBlocks 切换开关
+		if (!this.readOnly) {
+			const trimToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
+			trimToggleWrapper.createSpan({ text: '✂️ 自动去空白', cls: 'weread-toggle-label' });
+			const trimToggleSwitch = trimToggleWrapper.createDiv('weread-toggle-switch');
 			if (this.trimBlocks) {
 				trimToggleSwitch.addClass('is-enabled');
-			} else {
-				trimToggleSwitch.removeClass('is-enabled');
 			}
-			// 保存到 settings
-			settingsStore.actions.setTrimBlocks(this.trimBlocks);
-			this.updatePreview();
-		});
+			trimToggleSwitch.addEventListener('click', () => {
+				this.trimBlocks = !this.trimBlocks;
+				if (this.trimBlocks) {
+					trimToggleSwitch.addClass('is-enabled');
+				} else {
+					trimToggleSwitch.removeClass('is-enabled');
+				}
+				// Call theme-specific handler if provided, otherwise save to settings
+				if (this.onTrimBlocksChange) {
+					this.onTrimBlocksChange(this.trimBlocks);
+				} else {
+					settingsStore.actions.setTrimBlocks(this.trimBlocks);
+				}
+				this.updatePreview();
+			});
+		}
 
-		// 添加渲染模式切换开关
+		// 添加渲染模式切换开关（编辑和预览模式都显示）
 		const renderToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
 		renderToggleWrapper.createSpan({ text: '📝 Markdown渲染', cls: 'weread-toggle-label' });
 		const renderToggleSwitch = renderToggleWrapper.createDiv('weread-toggle-switch');
