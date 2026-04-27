@@ -176,9 +176,12 @@ export default class WereadBookshelfService {
 		};
 	}
 
-	private parseProgressValue(progress?: string): number | undefined {
-		if (!progress) {
+	private parseProgressValue(progress?: string | number): number | undefined {
+		if (progress === undefined || progress === null) {
 			return undefined;
+		}
+		if (typeof progress === 'number') {
+			return Number.isNaN(progress) ? undefined : progress;
 		}
 		const progressMatch = progress.trim().match(PROGRESS_TEXT_PATTERN);
 		if (!progressMatch) {
