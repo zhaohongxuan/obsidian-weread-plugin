@@ -942,11 +942,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 				});
 			});
 
-		const settings = get(settingsStore);
-		if (settings.scheduledSyncToggle) {
+		if (get(settingsStore).scheduledSyncToggle) {
 			this.scheduledSyncInterval();
-			this.showLastSyncInfo();
 		}
+		this.showLastSyncInfo();
 	}
 
 	private scheduledSyncInterval(): void {

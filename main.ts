@@ -32,7 +32,7 @@ export default class WereadPlugin extends Plugin {
 
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
-		if (settings.cookies && settings.cookies.length > 0 && !settings.isCookieValid) {
+		if (settings.cookies && settings.cookies.length > 0) {
 			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
 			apiManager.verifyCookieValidity().catch((e) => {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
