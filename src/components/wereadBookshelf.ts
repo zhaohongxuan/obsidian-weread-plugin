@@ -156,18 +156,6 @@ export class WereadBookshelfView extends ItemView {
 		});
 		setIcon(syncButton, 'sync');
 
-		const syncOptionsButton = toolbarActions.createEl('button', {
-			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
-			attr: { 'aria-label': '选项' }
-		});
-		setIcon(syncOptionsButton, 'settings');
-
-		const syncLogButton = toolbarActions.createEl('button', {
-			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
-			attr: { 'aria-label': '同步日志' }
-		});
-		setIcon(syncLogButton, 'scroll-text');
-
 		const openWebButton = Platform.isDesktopApp
 			? (() => {
 					const btn = toolbarActions.createEl('button', {
@@ -178,6 +166,19 @@ export class WereadBookshelfView extends ItemView {
 					return btn;
 			  })()
 			: null;
+
+		const syncLogButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '同步日志' }
+		});
+		setIcon(syncLogButton, 'history');
+
+		const syncOptionsButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '选项' }
+		});
+		setIcon(syncOptionsButton, 'settings');
+
 		syncButton.onclick = async () => {
 			syncButton.disabled = true;
 			syncOptionsButton.disabled = true;
