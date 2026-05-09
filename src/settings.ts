@@ -68,6 +68,7 @@ export interface WereadPluginSettings {
 	fileNameType: string;
 	removeParens: boolean;
 	removeParensWhitelist: string;
+	filterInlineImages: boolean;
 	dailyNotesToggle: boolean;
 	notesBlacklist: string;
 	notesWhitelist: string;
@@ -117,6 +118,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	fileNameType: 'BOOK_NAME',
 	removeParens: false,
 	removeParensWhitelist: '',
+	filterInlineImages: false,
 	dailyNotesToggle: false,
 	notesBlacklist: '',
 	notesWhitelist: '',
@@ -453,6 +455,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setFilterInlineImages = (filterInlineImages: boolean) => {
+		store.update((state) => {
+			state.filterInlineImages = filterInlineImages;
+			return state;
+		});
+	};
+
 	const setRemoveParensWhitelist = (whitelist: string) => {
 		store.update((state) => {
 			state.removeParensWhitelist = whitelist;
@@ -707,6 +716,7 @@ const createSettingsStore = () => {
 			setFileNameType,
 			setRemoveParens,
 			setRemoveParensWhitelist,
+			setFilterInlineImages,
 			setDailyNotesToggle,
 			setDailyNotesFolder,
 			setDailyNotesFormat,

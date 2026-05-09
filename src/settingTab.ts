@@ -103,6 +103,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl).setName('文件设置').setHeading();
 		this.fileNameType();
 		this.removeParens();
+		this.filterInlineImages();
 		this.subFolderType();
 
 		new Setting(this.containerEl).setName('日记设置').setHeading();
@@ -628,6 +629,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 					);
 				});
 		}
+	}
+
+	private filterInlineImages(): void {
+		new Setting(this.containerEl)
+			.setName('过滤弹注图片占位符')
+			.setDesc('启用后，书摘中的 [图片]、[插图] 等弹注占位符将被自动移除，适合古诗文等配有大量弹注的书籍')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).filterInlineImages)
+					.onChange((value) => {
+						settingsStore.actions.setFilterInlineImages(value);
+					});
+			});
 	}
 
 	private showLogout(): void {
