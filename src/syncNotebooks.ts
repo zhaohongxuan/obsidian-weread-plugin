@@ -65,17 +65,46 @@ export default class SyncNotebooks {
 		await this.saveNotebook(notebook);
 		new Notice(`《${currentBookMeta.title}》已同步到本地`);
 	}
-	async syncNotebooks(force = false, journalDate: string): Promise<number> {
+	async syncNotebooks(
+		force = false,
+		journalDate: string,
+		signal?: { cancelled: boolean }
+	): Promise<number> {
 		const syncStartTime = new Date().getTime();
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
 		let syncedNotebooks = 0;
-		const progressNotice = new Notice('微信读书笔记同步中, 请稍后！', 0);
+		let failedNotebooks = 0;
+		const total = filterMetaArr.length;
+		const progressNotice = new Notice('', 0);
 		const syncedNotes: SyncedNote[] = [];
 		let lastError: string | undefined;
 
+		// 一次性建好固定尺寸骨架，后续只更新内容，不触发 reflow
+		const frag = document.createDocumentFragment();
+		const container = frag.createDiv({ cls: 'weread-notice-progress' });
+		const headerEl = container.createDiv({ cls: 'weread-notice-progress-header' });
+		const barTrack = container.createDiv({ cls: 'weread-notice-progress-track' });
+		const barFill = barTrack.createDiv({ cls: 'weread-notice-progress-fill' });
+		const titleEl = container.createDiv({ cls: 'weread-notice-progress-title' });
+		progressNotice.setMessage(frag);
+
+		const updateProgress = (current: number, currentTitle?: string) => {
+			const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+			headerEl.setText(`📚 微信读书同步中 · ${current}/${total} 本 (${pct}%)`);
+			barFill.style.width = `${pct}%`;
+			titleEl.setText(currentTitle ? `正在同步：${currentTitle}` : '');
+		};
+
+		updateProgress(0, filterMetaArr[0]?.title);
+
 		try {
-			for (const meta of filterMetaArr) {
+			for (let i = 0; i < filterMetaArr.length; i++) {
+				if (signal?.cancelled) break;
+				const meta = filterMetaArr[i];
+				const next = filterMetaArr[i + 1];
+				// 提前显示下一本书名，让用户感知当前在处理哪本
+				updateProgress(syncedNotebooks, meta.title);
 				try {
 					const notebook = await this.convertToNotebook(meta);
 					const savedFilePath = await this.saveNotebook(notebook);
@@ -90,23 +119,18 @@ export default class SyncNotebooks {
 						});
 					}
 				} catch (e) {
+					failedNotebooks++;
 					lastError = e instanceof Error ? e.message : String(e);
 					console.error(`[weread plugin] 同步书籍 ${meta.title} 失败`, e);
 				}
-
-				if (syncedNotebooks % 10 === 0 || syncedNotebooks === filterMetaArr.length) {
-					const progress = (syncedNotebooks / filterMetaArr.length) * 100;
-					progressNotice.setMessage(
-						`微信读书笔记同步中, 请稍后！正在更新 ${
-							filterMetaArr.length
-						} 本书 ，更新进度 ${progress.toFixed(0)}%`
-					);
-				}
+			updateProgress(syncedNotebooks, next?.title);
 			}
-		} finally {
+		} catch (e) {
 			progressNotice.hide();
+			throw e;
 		}
 
+		const wasCancelled = signal?.cancelled ?? false;
 		this.saveToJounal(journalDate, metaDataArr);
 		const syncEndTime = new Date().getTime();
 		const syncTimeInMilliseconds = syncEndTime - syncStartTime;
@@ -126,11 +150,19 @@ export default class SyncNotebooks {
 		};
 		settingsStore.actions.addSyncLog(syncLog);
 
-		new Notice(
-			`微信读书笔记同步完成!, 总共 ${metaDataArr.length} 本书 ， 本次更新 ${
-				filterMetaArr.length
-			} 本书, 耗时${syncTimeInSeconds.toFixed(2)} 秒`
-		);
+		// 复用进度 notice 的 DOM 骨架，切换为完成状态，10 秒后关闭
+		const icon = wasCancelled ? '🚫' : '✅';
+		const verb = wasCancelled ? '已取消，已更新' : '完成！更新';
+		headerEl.setText(`${icon} 同步${verb} ${syncedNotebooks} 本书`);
+		barFill.style.width = '100%';
+		if (wasCancelled) barFill.style.background = 'var(--text-muted)';
+		const summaryParts = [
+			`📚 书架共 ${metaDataArr.length} 本 · 本次处理 ${total} 本`,
+			failedNotebooks > 0 ? `⚠️ ${failedNotebooks} 本同步失败` : '',
+			`⏱ 耗时 ${syncTimeInSeconds.toFixed(1)} 秒`
+		].filter(Boolean);
+		titleEl.setText(summaryParts.join(' · '));
+		setTimeout(() => progressNotice.hide(), 5000);
 		return syncedNotebooks;
 	}
 

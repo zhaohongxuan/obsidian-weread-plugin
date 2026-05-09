@@ -1,4 +1,4 @@
-import { App, ItemView, Modal, Notice, Platform, WorkspaceLeaf, moment, setIcon } from 'obsidian';
+import { App, ItemView, Modal, Notice, Platform, WorkspaceLeaf, moment, setIcon, setTooltip } from 'obsidian';
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook } from '../models';
@@ -151,10 +151,51 @@ export class WereadBookshelfView extends ItemView {
 
 		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
 		const syncButton = toolbarActions.createEl('button', {
-			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button mod-cta',
-			attr: { 'aria-label': '同步' }
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button mod-cta'
 		});
-		setIcon(syncButton, 'sync');
+		setIcon(syncButton, 'refresh-ccw');
+
+		// 根据 Alt/Opt 状态切换按钮外观
+		let isHovering = false;
+		let isAltPressed = false;
+		let isSyncing = false;
+		const modKey = Platform.isMacOS ? 'Opt' : 'Alt';
+		const updateSyncButton = (force: boolean) => {
+			if (isSyncing) return;
+			if (force) {
+				setIcon(syncButton, 'refresh-ccw-dot');
+				syncButton.addClass('mod-warning');
+				syncButton.removeClass('mod-cta');
+				setTooltip(syncButton, '强制同步（重新同步所有书籍）');
+			} else {
+				setIcon(syncButton, 'refresh-ccw');
+				syncButton.addClass('mod-cta');
+				syncButton.removeClass('mod-warning');
+				setTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
+			}
+		};
+		setTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
+		syncButton.addEventListener('mouseenter', () => {
+			isHovering = true;
+			updateSyncButton(isAltPressed);
+		});
+		syncButton.addEventListener('mouseleave', () => {
+			isHovering = false;
+			updateSyncButton(false);
+		});
+		// 用 e.code 追踪 Alt 键，比 e.key 在 macOS Electron 下更可靠
+		document.addEventListener('keydown', (e: KeyboardEvent) => {
+			if (e.code === 'AltLeft' || e.code === 'AltRight') {
+				isAltPressed = true;
+				if (isHovering) updateSyncButton(true);
+			}
+		});
+		document.addEventListener('keyup', (e: KeyboardEvent) => {
+			if (e.code === 'AltLeft' || e.code === 'AltRight') {
+				isAltPressed = false;
+				if (isHovering) updateSyncButton(false);
+			}
+		});
 
 		const openWebButton = Platform.isDesktopApp
 			? (() => {
@@ -180,23 +221,36 @@ export class WereadBookshelfView extends ItemView {
 		setIcon(syncOptionsButton, 'settings');
 
 		syncButton.onclick = async () => {
-			syncButton.disabled = true;
+			if (isSyncing) return;
+			const force = isAltPressed;
+
+			// 同步中：切换为取消按钮
+			isSyncing = true;
+			const signal = { cancelled: false };
+			setIcon(syncButton, 'square');
+			setTooltip(syncButton, '取消同步');
+			syncButton.removeClass('mod-cta');
+			syncButton.addClass('mod-warning');
 			syncOptionsButton.disabled = true;
-			if (openWebButton) {
-				openWebButton.disabled = true;
-			}
+			if (openWebButton) openWebButton.disabled = true;
+
+			// 点击取消
+			const cancelHandler = () => { signal.cancelled = true; };
+			syncButton.addEventListener('click', cancelHandler, { once: true });
+
 			try {
-				const updatedCount = await this.plugin.startSync();
+				const updatedCount = await this.plugin.startSync(force, signal);
 				if ((updatedCount ?? 0) > 0) {
 					this.bookshelfService.clearProgressCache();
 					await this.loadBookshelf();
 				}
 			} finally {
-				syncButton.disabled = false;
+				// 恢复同步按钮
+				isSyncing = false;
+				syncButton.removeEventListener('click', cancelHandler);
+				updateSyncButton(isAltPressed);
 				syncOptionsButton.disabled = false;
-				if (openWebButton) {
-					openWebButton.disabled = false;
-				}
+				if (openWebButton) openWebButton.disabled = false;
 			}
 		};
 		syncOptionsButton.onclick = () => {

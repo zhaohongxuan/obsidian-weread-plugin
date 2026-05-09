@@ -1134,6 +1134,40 @@
 	gap: 16px;
 }
 
+.weread-notice-progress {
+	width: 260px;
+}
+
+.weread-notice-progress-header {
+	font-size: var(--font-small);
+	margin-bottom: 6px;
+	white-space: nowrap;
+}
+
+.weread-notice-progress-track {
+	height: 4px;
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+	overflow: hidden;
+	margin-bottom: 6px;
+}
+
+.weread-notice-progress-fill {
+	height: 100%;
+	width: 0%;
+	background: var(--interactive-accent);
+	border-radius: 2px;
+	transition: width 0.3s ease;
+}
+
+.weread-notice-progress-title {
+	font-size: var(--font-smallest);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-height: 1em;
+}
+
 .weread-bookshelf-summary,
 .weread-bookshelf-empty,
 .weread-bookshelf-load-more {
