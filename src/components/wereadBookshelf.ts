@@ -150,24 +150,24 @@ export class WereadBookshelfView extends ItemView {
 
 		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
 		const syncButton = toolbarActions.createEl('button', {
-			cls: 'mod-cta weread-toolbar-button'
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button mod-cta',
+			attr: { 'aria-label': '同步' }
 		});
 		setIcon(syncButton, 'sync');
-		syncButton.createSpan({ text: '同步' });
 
 		const syncOptionsButton = toolbarActions.createEl('button', {
-			cls: 'weread-toolbar-button'
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '选项' }
 		});
 		setIcon(syncOptionsButton, 'settings');
-		syncOptionsButton.createSpan({ text: '选项' });
 
 		const openWebButton = Platform.isDesktopApp
 			? (() => {
 					const btn = toolbarActions.createEl('button', {
-						cls: 'weread-toolbar-button weread-bookshelf-web-button'
+						cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+						attr: { 'aria-label': '网页版' }
 					});
 					setIcon(btn, 'globe');
-					btn.createSpan({ text: '网页版' });
 					return btn;
 			  })()
 			: null;
