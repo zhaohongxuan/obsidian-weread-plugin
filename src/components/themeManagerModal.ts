@@ -120,7 +120,6 @@ export class ThemeManagerModal extends Modal {
 					templateForPreview,
 					() => {},
 					theme.trimBlocks,
-					undefined,
 					true, // readOnly
 					theme.name
 				);
@@ -134,23 +133,18 @@ export class ThemeManagerModal extends Modal {
 					const editorWindow = new TemplateEditorWindow(
 						this.app,
 						theme.template,
-						(newTemplate: string) => {
-							// 从 store 取最新的 theme，避免 trimBlocks 被快照覆盖
+						(newTemplate: string, newTrimBlocks: boolean) => {
 							const latestTheme =
 								get(settingsStore).themes.find((t) => t.id === theme.id) ?? theme;
 							settingsStore.actions.saveTheme({
 								...latestTheme,
-								template: newTemplate
+								template: newTemplate,
+								trimBlocks: newTrimBlocks
 							});
 							new Notice('主题已保存');
+						this.onOpen(); // 刷新 Modal，避免下次打开编辑器用旧数据
 						},
 						theme.trimBlocks,
-						(trimBlocks: boolean) => {
-							settingsStore.actions.saveTheme({
-								...theme,
-								trimBlocks
-							});
-						},
 						false,
 						theme.name
 					);
@@ -503,23 +497,18 @@ class CreateThemeModal extends Modal {
 			const editorWindow = new TemplateEditorWindow(
 				this.app,
 				newTheme.template,
-				(updatedTemplate: string) => {
+				(updatedTemplate: string, updatedTrimBlocks: boolean) => {
 					const latestTheme =
 						get(settingsStore).themes.find((t) => t.id === newTheme.id) ?? newTheme;
 					settingsStore.actions.saveTheme({
 						...latestTheme,
-						template: updatedTemplate
+						template: updatedTemplate,
+						trimBlocks: updatedTrimBlocks
 					});
 					new Notice('主题已创建');
 					this.onCreated();
 				},
 				newTheme.trimBlocks,
-				(trimBlocks: boolean) => {
-					settingsStore.actions.saveTheme({
-						...newTheme,
-						trimBlocks
-					});
-				},
 				false,
 				newTheme.name
 			);

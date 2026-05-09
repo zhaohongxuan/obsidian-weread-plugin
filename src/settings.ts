@@ -22,7 +22,7 @@ export const BUILT_IN_THEMES: Theme[] = [
 		name: '合并式模板',
 		description: '划线和想法 inline 展示，适合快速回顾',
 		template: notebookTemolate,
-		trimBlocks: false,
+		trimBlocks: true,
 		isBuiltIn: true,
 		isReadOnly: true,
 		source: 'builtin'
@@ -32,7 +32,7 @@ export const BUILT_IN_THEMES: Theme[] = [
 		name: '分离式模板',
 		description: '先展示纯划线，笔记统一在底部，适合整理归纳',
 		template: separatedTemplate,
-		trimBlocks: false,
+		trimBlocks: true,
 		isBuiltIn: true,
 		isReadOnly: true,
 		source: 'builtin'
@@ -42,7 +42,7 @@ export const BUILT_IN_THEMES: Theme[] = [
 		name: '微信官方笔记主题',
 		description: '详细的元数据信息，适合生成书籍笔记',
 		template: wereadOfficialTemplate,
-		trimBlocks: false,
+		trimBlocks: true,
 		isBuiltIn: true,
 		isReadOnly: true,
 		source: 'builtin'
