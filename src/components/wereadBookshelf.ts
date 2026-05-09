@@ -3,6 +3,7 @@ import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook } from '../models';
 import { WereadBookDetailModal } from './wereadBookDetailModal';
+import { SyncLogModal } from './syncLogModal';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import { getPcUrl } from '../parser/parseResponse';
@@ -150,27 +151,34 @@ export class WereadBookshelfView extends ItemView {
 
 		const toolbarActions = toolbar.createDiv({ cls: 'weread-bookshelf-toolbar-actions' });
 		const syncButton = toolbarActions.createEl('button', {
-			cls: 'mod-cta weread-toolbar-button'
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button mod-cta',
+			attr: { 'aria-label': '同步' }
 		});
 		setIcon(syncButton, 'sync');
-		syncButton.createSpan({ text: '同步' });
-
-		const syncOptionsButton = toolbarActions.createEl('button', {
-			cls: 'weread-toolbar-button'
-		});
-		setIcon(syncOptionsButton, 'settings');
-		syncOptionsButton.createSpan({ text: '选项' });
 
 		const openWebButton = Platform.isDesktopApp
 			? (() => {
 					const btn = toolbarActions.createEl('button', {
-						cls: 'weread-toolbar-button weread-bookshelf-web-button'
+						cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+						attr: { 'aria-label': '网页版' }
 					});
 					setIcon(btn, 'globe');
-					btn.createSpan({ text: '网页版' });
 					return btn;
 			  })()
 			: null;
+
+		const syncLogButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '同步日志' }
+		});
+		setIcon(syncLogButton, 'history');
+
+		const syncOptionsButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '选项' }
+		});
+		setIcon(syncOptionsButton, 'settings');
+
 		syncButton.onclick = async () => {
 			syncButton.disabled = true;
 			syncOptionsButton.disabled = true;
@@ -193,6 +201,9 @@ export class WereadBookshelfView extends ItemView {
 		};
 		syncOptionsButton.onclick = () => {
 			this.plugin.openWereadSettingsTab();
+		};
+		syncLogButton.onclick = () => {
+			new SyncLogModal(this.app).open();
 		};
 		if (openWebButton) {
 			openWebButton.onclick = async () => {
@@ -357,7 +368,7 @@ export class WereadBookshelfView extends ItemView {
 		if (book.remoteExists && !book.hasLocalFile) {
 			const syncButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '同步此书', title: '同步此书' }
+				attr: { 'aria-label': '同步此书' }
 			});
 			setIcon(syncButton, 'refresh-ccw');
 			syncButton.onclick = async (event) => {
@@ -375,7 +386,7 @@ export class WereadBookshelfView extends ItemView {
 		if (this.isDisplayLocalOnly(book) && book.localFile?.file?.path) {
 			const deleteButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '删除本地文件', title: '删除本地文件' }
+				attr: { 'aria-label': '删除本地文件' }
 			});
 			setIcon(deleteButton, 'trash');
 			deleteButton.onclick = async (event) => {
@@ -395,7 +406,7 @@ export class WereadBookshelfView extends ItemView {
 		if (book.remoteExists) {
 			const readButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '阅读此书', title: '阅读此书' }
+				attr: { 'aria-label': '阅读此书' }
 			});
 			setIcon(readButton, 'book-open');
 			readButton.onclick = async (event) => {

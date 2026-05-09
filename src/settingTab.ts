@@ -18,7 +18,6 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { ThemeManagerModal } from './components/themeManagerModal';
-import { SyncLogModal } from './components/syncLogModal';
 
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
@@ -104,6 +103,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl).setName('文件设置').setHeading();
 		this.fileNameType();
 		this.removeParens();
+		this.filterInlineImages();
 		this.subFolderType();
 
 		new Setting(this.containerEl).setName('日记设置').setHeading();
@@ -631,6 +631,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 	}
 
+	private filterInlineImages(): void {
+		new Setting(this.containerEl)
+			.setName('过滤弹注图片占位符')
+			.setDesc('启用后，书摘中的 [图片]、[插图] 等弹注占位符将被自动移除，适合古诗文等配有大量弹注的书籍')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).filterInlineImages)
+					.onChange((value) => {
+						settingsStore.actions.setFilterInlineImages(value);
+					});
+			});
+	}
+
 	private showLogout(): void {
 		const userAvatar = get(settingsStore).userAvatar;
 		const userName = get(settingsStore).user;
@@ -945,7 +958,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		if (get(settingsStore).scheduledSyncToggle) {
 			this.scheduledSyncInterval();
 		}
-		this.showLastSyncInfo();
 	}
 
 	private scheduledSyncInterval(): void {
@@ -966,31 +978,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 	}
 
-	private showLastSyncInfo(): void {
-		const settings = get(settingsStore);
-		const { lastSyncTime, lastSyncBookCount, lastSyncBookTitles } = settings;
-
-		let statusText = '尚未执行过同步';
-		if (lastSyncTime > 0) {
-			const lastSyncStr = new Date(lastSyncTime).toLocaleString();
-			statusText = `上次同步：${lastSyncStr}，共 ${lastSyncBookCount} 本书`;
-			if (lastSyncBookTitles.length > 0) {
-				statusText += `\n最近同步：${lastSyncBookTitles.join('、')}`;
-			}
-		}
-
-		new Setting(this.containerEl).setName('同步状态').setDesc(statusText);
-
-		// Sync log button at the end of scheduled sync section
-		new Setting(this.containerEl)
-			.setName('查看同步日志')
-			.setDesc('查看最近 10 次同步的详细记录，包括同步的笔记')
-			.addButton((button) => {
-				button.setButtonText('查看日志').onClick(() => {
-					new SyncLogModal(this.app).open();
-				});
-			});
-	}
 
 	private createFolderSuggestModal(onSelect: (value: string) => void) {
 		const folders = this.getFolderPaths();
