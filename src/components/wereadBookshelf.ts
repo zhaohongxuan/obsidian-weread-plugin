@@ -357,7 +357,7 @@ export class WereadBookshelfView extends ItemView {
 		if (book.remoteExists && !book.hasLocalFile) {
 			const syncButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '同步此书', title: '同步此书' }
+				attr: { 'aria-label': '同步此书' }
 			});
 			setIcon(syncButton, 'refresh-ccw');
 			syncButton.onclick = async (event) => {
@@ -375,7 +375,7 @@ export class WereadBookshelfView extends ItemView {
 		if (this.isDisplayLocalOnly(book) && book.localFile?.file?.path) {
 			const deleteButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '删除本地文件', title: '删除本地文件' }
+				attr: { 'aria-label': '删除本地文件' }
 			});
 			setIcon(deleteButton, 'trash');
 			deleteButton.onclick = async (event) => {
@@ -395,7 +395,7 @@ export class WereadBookshelfView extends ItemView {
 		if (book.remoteExists) {
 			const readButton = container.createEl('button', {
 				cls: 'clickable-icon weread-bookshelf-icon-button',
-				attr: { 'aria-label': '阅读此书', title: '阅读此书' }
+				attr: { 'aria-label': '阅读此书' }
 			});
 			setIcon(readButton, 'book-open');
 			readButton.onclick = async (event) => {
