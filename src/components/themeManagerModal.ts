@@ -135,8 +135,11 @@ export class ThemeManagerModal extends Modal {
 						this.app,
 						theme.template,
 						(newTemplate: string) => {
+							// 从 store 取最新的 theme，避免 trimBlocks 被快照覆盖
+							const latestTheme =
+								get(settingsStore).themes.find((t) => t.id === theme.id) ?? theme;
 							settingsStore.actions.saveTheme({
-								...theme,
+								...latestTheme,
 								template: newTemplate
 							});
 							new Notice('主题已保存');
@@ -501,8 +504,10 @@ class CreateThemeModal extends Modal {
 				this.app,
 				newTheme.template,
 				(updatedTemplate: string) => {
+					const latestTheme =
+						get(settingsStore).themes.find((t) => t.id === newTheme.id) ?? newTheme;
 					settingsStore.actions.saveTheme({
-						...newTheme,
+						...latestTheme,
 						template: updatedTemplate
 					});
 					new Notice('主题已创建');
