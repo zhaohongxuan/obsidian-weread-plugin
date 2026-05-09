@@ -208,7 +208,12 @@
 	transform: translateX(20px);
 }
 
-.weread-toggle-switch:hover {
+.weread-toggle-switch.is-disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.weread-toggle-switch:not(.is-disabled):hover {
 	opacity: 0.8;
 }
 

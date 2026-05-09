@@ -7,7 +7,7 @@ import { get } from 'svelte/store';
 
 export class TemplateEditorWindow extends Modal {
 	private initialTemplate: string;
-	private onSave: (template: string) => void;
+	private onSave: (template: string, trimBlocks: boolean) => void;
 	private renderer: Renderer;
 	private editorEl: HTMLTextAreaElement;
 	private previewEl: HTMLElement;
@@ -15,16 +15,14 @@ export class TemplateEditorWindow extends Modal {
 	private debounceTimer: NodeJS.Timeout | null = null;
 	private isMarkdownRendered = false;
 	private trimBlocks: boolean;
-	private onTrimBlocksChange?: (trimBlocks: boolean) => void;
 	private readOnly: boolean;
 	private themeName: string;
 
 	constructor(
 		app: App,
 		initialTemplate: string,
-		onSave: (template: string) => void,
+		onSave: (template: string, trimBlocks: boolean) => void,
 		initialTrimBlocks?: boolean,
-		onTrimBlocksChange?: (trimBlocks: boolean) => void,
 		readOnly = false,
 		themeName?: string
 	) {
@@ -34,7 +32,6 @@ export class TemplateEditorWindow extends Modal {
 		this.renderer = new Renderer();
 		// Use provided trimBlocks or fall back to settings
 		this.trimBlocks = initialTrimBlocks ?? get(settingsStore).trimBlocks;
-		this.onTrimBlocksChange = onTrimBlocksChange;
 		this.readOnly = readOnly;
 		this.themeName = themeName ?? '';
 	}
@@ -109,26 +106,22 @@ export class TemplateEditorWindow extends Modal {
 		// 预览面板的开关容器
 		const toggleContainer = previewHeader.createDiv('weread-toggle-container');
 
-		// 仅在非只读模式下添加 trimBlocks 切换开关
-		if (!this.readOnly) {
-			const trimToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
-			trimToggleWrapper.createSpan({ text: '✂️ 自动去空白', cls: 'weread-toggle-label' });
-			const trimToggleSwitch = trimToggleWrapper.createDiv('weread-toggle-switch');
-			if (this.trimBlocks) {
-				trimToggleSwitch.addClass('is-enabled');
-			}
+		// 自动去空白切换开关（只读模式下展示但禁用）
+		const trimToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
+		trimToggleWrapper.createSpan({ text: '✂️ 自动去空白', cls: 'weread-toggle-label' });
+		const trimToggleSwitch = trimToggleWrapper.createDiv('weread-toggle-switch');
+		if (this.trimBlocks) {
+			trimToggleSwitch.addClass('is-enabled');
+		}
+		if (this.readOnly) {
+			trimToggleSwitch.addClass('is-disabled');
+		} else {
 			trimToggleSwitch.addEventListener('click', () => {
 				this.trimBlocks = !this.trimBlocks;
 				if (this.trimBlocks) {
 					trimToggleSwitch.addClass('is-enabled');
 				} else {
 					trimToggleSwitch.removeClass('is-enabled');
-				}
-				// Call theme-specific handler if provided, otherwise save to settings
-				if (this.onTrimBlocksChange) {
-					this.onTrimBlocksChange(this.trimBlocks);
-				} else {
-					settingsStore.actions.setTrimBlocks(this.trimBlocks);
 				}
 				this.updatePreview();
 			});
@@ -221,7 +214,7 @@ export class TemplateEditorWindow extends Modal {
 			new Notice('模板语法错误，请检查后再保存！');
 			return;
 		}
-		this.onSave(template);
+		this.onSave(template, this.trimBlocks);
 		new Notice('模板已保存！');
 		this.close();
 	}

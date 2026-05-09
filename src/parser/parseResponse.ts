@@ -109,7 +109,10 @@ const addIndentToParagraphs = (content: string): string => {
 const INLINE_IMAGE_PLACEHOLDER_RE = /\[图片\]|\[插图\]/g;
 const removeInlineImagePlaceholders = (content: string): string => {
 	if (!content) return content;
-	return content.replace(INLINE_IMAGE_PLACEHOLDER_RE, '').replace(/\n{3,}/g, '\n\n').trim();
+	return content
+		.replace(INLINE_IMAGE_PLACEHOLDER_RE, '')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
 };
 
 export const parseArticleHighlightReview = (
