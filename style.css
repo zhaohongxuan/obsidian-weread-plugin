@@ -1413,14 +1413,33 @@
 .sync-log-header {
 	padding: 20px;
 	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
 }
 
 .sync-log-header h2 {
-	margin: 0 0 4px 0;
+	margin: 0;
 	font-size: 1.3em;
+	flex: 1 1 auto;
+}
+
+.sync-log-header-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.sync-log-toggle-label {
+	font-size: 0.85em;
+	color: var(--text-muted);
 }
 
 .sync-log-subtitle {
+	width: 100%;
+
 	color: var(--text-muted);
 	font-size: 0.9em;
 }
