@@ -3,6 +3,7 @@ import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook } from '../models';
 import { WereadBookDetailModal } from './wereadBookDetailModal';
+import { SyncLogModal } from './syncLogModal';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import { getPcUrl } from '../parser/parseResponse';
@@ -161,6 +162,12 @@ export class WereadBookshelfView extends ItemView {
 		});
 		setIcon(syncOptionsButton, 'settings');
 
+		const syncLogButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '同步日志' }
+		});
+		setIcon(syncLogButton, 'scroll-text');
+
 		const openWebButton = Platform.isDesktopApp
 			? (() => {
 					const btn = toolbarActions.createEl('button', {
@@ -193,6 +200,9 @@ export class WereadBookshelfView extends ItemView {
 		};
 		syncOptionsButton.onclick = () => {
 			this.plugin.openWereadSettingsTab();
+		};
+		syncLogButton.onclick = () => {
+			new SyncLogModal(this.app).open();
 		};
 		if (openWebButton) {
 			openWebButton.onclick = async () => {
