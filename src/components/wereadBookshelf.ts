@@ -146,12 +146,15 @@ export class WereadBookshelfView extends ItemView {
 			attr: { 'aria-label': '筛选同步状态' }
 		});
 		[
-			['all', '全部状态'],
-			['remoteOnly', '仅远程'],
-			['synced', '已同步'],
-			['localOnly', '仅本地']
-		].forEach(([value, label]) => {
+			['all', '全部状态', ''],
+			['remoteOnly', '仅远程', '只在微信读书有，本地还没同步'],
+			['synced', '已同步', '本地和微信读书都有，笔记保持同步'],
+			['localOnly', '仅本地', '只在本地有，微信读书已删除']
+		].forEach(([value, label, tooltip]) => {
 			const option = syncStatusSelect.createEl('option', { value, text: label });
+			if (tooltip) {
+				option.title = tooltip;
+			}
 			option.selected = value === this.syncStatusFilter;
 		});
 		syncStatusSelect.onchange = () => {
