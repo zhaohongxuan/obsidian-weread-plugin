@@ -1234,8 +1234,8 @@
 	align-items: center;
 	gap: 0;
 	padding: 8px 12px;
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
+	background: transparent;
+	border: none;
 	border-radius: 6px;
 	margin: 0 0 6px;
 	flex-wrap: wrap;
@@ -1325,18 +1325,6 @@
 	border-radius: 16px;
 	margin: 20px 0 12px;
 	text-align: center;
-}
-
-.weread-bookshelf-unlogged-icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 60px;
-	height: 60px;
-	background: var(--text-accent);
-	border-radius: 12px;
-	color: var(--background-primary);
-	font-size: 32px;
 }
 
 .weread-bookshelf-unlogged-content {
@@ -2170,3 +2158,46 @@
 	gap: 8px;
 	padding: 0 20px 16px;
 }
+
+/* 工具栏用户头像按钮 */
+.weread-bookshelf-user-avatar-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	background: transparent;
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	overflow: hidden;
+	flex-shrink: 0;
+	transition: all 0.2s ease;
+	padding: 0;
+}
+
+.weread-bookshelf-user-avatar-btn img {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.weread-bookshelf-user-avatar-btn:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--text-accent);
+}
+
+/* 未登录状态头像 logo */
+.weread-bookshelf-user-avatar-btn.is-unlogged {
+	border: 1px solid var(--text-muted);
+	color: var(--text-muted);
+	font-size: 18px;
+}
+
+.weread-bookshelf-user-avatar-btn.is-unlogged:hover {
+	background: var(--background-modifier-form-field);
+	border-color: var(--text-accent);
+	color: var(--text-accent);
+}
+
