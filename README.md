@@ -26,7 +26,7 @@ https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 - 微信读书书架功能，展示本地同步的书籍汇总数据
 - 主题管理：内置三种主题模板，支持导入导出，自定义主题
 
-<img width="1512" height="893" alt="image" src="https://github.com/user-attachments/assets/fe967324-789b-447a-95a2-3cd477720756" />
+<img width="1548" height="930" alt="image" src="https://github.com/user-attachments/assets/c9252fa6-6ac8-40ab-94db-f72138b63ad5" />
 
 
 ## 安装方法
