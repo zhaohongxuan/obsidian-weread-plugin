@@ -1234,8 +1234,8 @@
 	align-items: center;
 	gap: 0;
 	padding: 8px 12px;
-	background: var(--background-secondary);
-	border: 1px solid var(--background-modifier-border);
+	background: transparent;
+	border: none;
 	border-radius: 6px;
 	margin: 0 0 6px;
 	flex-wrap: wrap;
