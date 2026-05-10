@@ -481,11 +481,11 @@ export class WereadBookshelfView extends ItemView {
 		});
 		setTooltip(bookSection, `展示书籍: ${filteredBooks.length} 本`);
 
-		// Notes count section
-		const totalNotes = filteredBooks.reduce((sum, book) => sum + book.noteCount, 0);
+		// Notes count section (noteCount + reviewCount)
+		const totalNotes = filteredBooks.reduce((sum, book) => sum + book.noteCount + book.reviewCount, 0);
 		const noteSection = card.createDiv({ cls: 'weread-bookshelf-summary-item' });
 		const noteIcon = noteSection.createDiv({ cls: 'weread-bookshelf-summary-icon' });
-		setIcon(noteIcon, 'sticky-note');
+		setIcon(noteIcon, 'pencil');
 		noteSection.createDiv({
 			cls: 'weread-bookshelf-summary-value',
 			text: `${totalNotes} 个笔记`
@@ -500,9 +500,9 @@ export class WereadBookshelfView extends ItemView {
 			setIcon(yearIcon, 'calendar');
 			yearSection.createDiv({
 				cls: 'weread-bookshelf-summary-value',
-				text: `${groupedBooks.length} 个`
+				text: `${groupedBooks.length} 年`
 			});
-			setTooltip(yearSection, `年份分组: ${groupedBooks.length} 个`);
+			setTooltip(yearSection, `年份分组: ${groupedBooks.length} 年`);
 		}
 
 		// Last sync time section
