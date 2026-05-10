@@ -7,7 +7,8 @@ import {
 	WorkspaceLeaf,
 	moment,
 	setIcon,
-	setTooltip
+	setTooltip,
+	Menu
 } from 'obsidian';
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
@@ -259,6 +260,55 @@ export class WereadBookshelfView extends ItemView {
 		});
 		setIcon(syncOptionsButton, 'settings');
 
+		// Create user avatar button
+		const userAvatarBtn = toolbarActions.createEl('button', {
+			cls: 'weread-bookshelf-user-avatar-btn',
+			attr: { 'aria-label': '用户头像' }
+		});
+
+		// Update avatar button based on login state
+		const updateAvatarButton = () => {
+			const settings = get(settingsStore);
+			userAvatarBtn.empty();
+
+			if (settings.isCookieValid && settings.userAvatar) {
+				// Logged in - show avatar image
+				userAvatarBtn.removeClass('is-unlogged');
+				const img = userAvatarBtn.createEl('img');
+				img.src = settings.userAvatar;
+				img.alt = 'User Avatar';
+				setTooltip(userAvatarBtn, settings.user || '用户头像');
+			} else {
+				// Not logged in - show login icon
+				userAvatarBtn.addClass('is-unlogged');
+				setIcon(userAvatarBtn, 'lock');
+				setTooltip(userAvatarBtn, '点击登录');
+			}
+		};
+
+		// Initial avatar button state
+		updateAvatarButton();
+
+		// Subscribe to settings changes to update avatar
+		const unsubscribeSettings = settingsStore.subscribe(() => {
+			updateAvatarButton();
+		});
+
+		// Avatar button click handler
+		userAvatarBtn.addEventListener('click', (event) => {
+			const settings = get(settingsStore);
+			if (settings.isCookieValid && settings.userAvatar) {
+				// Logged in - show right-click menu
+				this.showUserMenu(event as MouseEvent);
+			} else {
+				// Not logged in - open login QR
+				this.openLoginQR();
+			}
+		});
+
+		// Store unsubscribe function for cleanup
+		(userAvatarBtn as any)._unsubscribe = unsubscribeSettings;
+
 		syncButton.onclick = async () => {
 			if (isSyncing) return;
 			const force = isAltPressed;
@@ -367,9 +417,6 @@ export class WereadBookshelfView extends ItemView {
 		this.summaryEl.empty();
 		const card = this.summaryEl.createDiv({ cls: 'weread-bookshelf-unlogged-card' });
 
-		const icon = card.createDiv({ cls: 'weread-bookshelf-unlogged-icon' });
-		setIcon(icon, 'lock');
-
 		const content = card.createDiv({ cls: 'weread-bookshelf-unlogged-content' });
 		content.createDiv({ cls: 'weread-bookshelf-unlogged-title', text: '请先登录' });
 		content.createDiv({
@@ -382,7 +429,7 @@ export class WereadBookshelfView extends ItemView {
 			text: '前往登录'
 		});
 		button.onclick = () => {
-			this.plugin.openWereadSettingsTab();
+			this.openLoginQR();
 		};
 	}
 
@@ -771,5 +818,219 @@ export class WereadBookshelfView extends ItemView {
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(book.localFile.file);
 		this.app.workspace.revealLeaf(leaf);
+	}
+
+	private showUserMenu(event: MouseEvent): void {
+		const menu = new Menu();
+		menu.addItem((item) => {
+			item
+				.setTitle('注销')
+				.setIcon('log-out')
+				.onClick(async () => {
+					// Clear user data
+					settingsStore.actions.clearCookies();
+					new Notice('已注销');
+					// 清空登录窗口的 session
+					try {
+						const { remote } = require('electron');
+						if (remote && remote.session) {
+							const defaultSession = remote.session.defaultSession;
+							if (defaultSession) {
+								const cookies = await defaultSession.cookies.get({});
+								for (const cookie of cookies) {
+									if (cookie.name.startsWith('wr_')) {
+										await defaultSession.cookies.remove(
+											'https://weread.qq.com',
+											cookie.name
+										);
+									}
+								}
+							}
+						}
+					} catch (error) {
+						console.error('Failed to clear session cookies:', error);
+					}
+					await this.loadBookshelf();
+				});
+		});
+		menu.showAtMouseEvent(event);
+	}
+
+	private async openLoginQR(): Promise<void> {
+		// Open login modal
+		try {
+			// Try to open login window, fallback to settings tab if not available
+			const { remote } = require('electron');
+			if (remote) {
+				// Open the login window directly
+				const { BrowserWindow: RemoteBrowserWindow } = remote;
+				const loginWindow = new RemoteBrowserWindow({
+					parent: remote.getCurrentWindow(),
+					width: 960,
+					height: 540,
+					show: false,
+					webPreferences: {
+						// Create a fresh session for login
+						session: undefined
+					}
+				});
+
+				let isHandled = false;
+				let checkCount = 0;
+				const maxChecks = 30; // 最多检查30次
+
+				loginWindow.once('ready-to-show', () => {
+					loginWindow.setTitle('登录微信读书~');
+					loginWindow.show();
+				});
+
+				const session = loginWindow.webContents.session;
+
+				// 监听登录成功的 API 调用
+				const loginFilter = {
+					urls: ['https://weread.qq.com/api/auth/getLoginInfo?uid=*']
+				};
+
+				session.webRequest.onCompleted(loginFilter, (details: any) => {
+					if (details.statusCode === 200 && !isHandled) {
+						console.log('weread login success, redirect to weread shelf');
+						loginWindow.loadURL('https://weread.qq.com/web/shelf');
+						// 短延迟后尝试关闭
+						setTimeout(() => {
+							void this.checkLoginAndClose(loginWindow, () => {
+								if (!isHandled) {
+									isHandled = true;
+									setTimeout(() => {
+										try {
+											loginWindow.close();
+										} catch (e) {
+											console.error('Failed to close login window:', e);
+										}
+									}, 500);
+								}
+							});
+						}, 1000);
+					}
+				});
+
+				// 监听用户页面的 Cookie 发送
+				const userFilter = {
+					urls: ['https://weread.qq.com/web/user?userVid=*']
+				};
+				session.webRequest.onSendHeaders(userFilter, (details: any) => {
+					if (isHandled) {
+						return;
+					}
+
+					const cookies = details.requestHeaders['Cookie'];
+					if (!cookies) {
+						return;
+					}
+
+					// 简单解析 Cookie
+					const cookieArr = cookies
+						.split(';')
+						.map((c: string) => {
+							const [name, value] = c.trim().split('=');
+							return { name, value };
+						})
+						.filter((c: any) => c.name && c.value);
+
+					const wrVid = cookieArr.find((c: any) => c.name === 'wr_vid');
+					if (wrVid && wrVid.value) {
+						isHandled = true;
+						settingsStore.actions.setCookies(cookieArr);
+						void this.loadBookshelf();
+						setTimeout(() => {
+							try {
+								loginWindow.close();
+							} catch (e) {
+								console.error('Failed to close login window:', e);
+							}
+						}, 500);
+					}
+				});
+
+				// 定期检查 Cookie
+				const checkInterval = setInterval(async () => {
+					if (isHandled || checkCount >= maxChecks) {
+						clearInterval(checkInterval);
+						return;
+					}
+
+					checkCount++;
+					void this.checkLoginAndClose(loginWindow, () => {
+						if (!isHandled) {
+							isHandled = true;
+							clearInterval(checkInterval);
+							setTimeout(() => {
+								try {
+									loginWindow.close();
+								} catch (e) {
+									console.error('Failed to close login window:', e);
+								}
+							}, 500);
+						}
+					});
+				}, 1000); // 每秒检查一次
+
+				// 窗口关闭时清理
+				loginWindow.on('closed', () => {
+					clearInterval(checkInterval);
+				});
+
+				await loginWindow.loadURL('https://weread.qq.com/#login');
+			} else {
+				this.plugin.openWereadSettingsTab();
+			}
+		} catch (error) {
+			console.error('Failed to open login modal:', error);
+			// Fallback to settings tab
+			this.plugin.openWereadSettingsTab();
+		}
+	}
+
+	private async checkLoginAndClose(
+		loginWindow: any,
+		onLoginSuccess?: () => void
+	): Promise<void> {
+		try {
+			const cookieStore = loginWindow.webContents.session.cookies;
+			const sessionCookies = [
+				...(await cookieStore.get({ domain: '.weread.qq.com' })),
+				...(await cookieStore.get({ domain: 'weread.qq.com' }))
+			];
+
+			const wrVid = sessionCookies.find((c: any) => c.name === 'wr_vid');
+			const wrSkey = sessionCookies.find((c: any) => c.name === 'wr_skey');
+
+			// wr_vid 或 wr_skey 存在且有值，表示登录成功
+			if ((wrVid && wrVid.value) || (wrSkey && wrSkey.value)) {
+				// Save cookies
+				const uniqueCookies = new Map();
+				for (const cookie of sessionCookies) {
+					if (!uniqueCookies.has(cookie.name)) {
+						uniqueCookies.set(cookie.name, {
+							name: decodeURIComponent(cookie.name),
+							value: decodeURIComponent(cookie.value)
+						});
+					}
+				}
+				settingsStore.actions.setCookies(Array.from(uniqueCookies.values()));
+				await this.loadBookshelf();
+
+				if (onLoginSuccess) {
+					onLoginSuccess();
+				} else {
+					try {
+						loginWindow.close();
+					} catch (e) {
+						console.error('Failed to close login window:', e);
+					}
+				}
+			}
+		} catch (error) {
+			console.error('Failed to sync cookies:', error);
+		}
 	}
 }
