@@ -142,7 +142,7 @@ export class ThemeManagerModal extends Modal {
 								trimBlocks: newTrimBlocks
 							});
 							new Notice('主题已保存');
-						this.onOpen(); // 刷新 Modal，避免下次打开编辑器用旧数据
+							this.onOpen(); // 刷新 Modal，避免下次打开编辑器用旧数据
 						},
 						theme.trimBlocks,
 						false,

@@ -123,7 +123,7 @@ export default class SyncNotebooks {
 					lastError = e instanceof Error ? e.message : String(e);
 					console.error(`[weread plugin] 同步书籍 ${meta.title} 失败`, e);
 				}
-			updateProgress(syncedNotebooks, next?.title);
+				updateProgress(syncedNotebooks, next?.title);
 			}
 		} catch (e) {
 			progressNotice.hide();

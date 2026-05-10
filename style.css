@@ -996,6 +996,7 @@
 	padding: 16px;
 	height: 100%;
 	overflow: auto;
+	container-type: inline-size;
 }
 
 .weread-bookshelf-toolbar-filters,
@@ -1038,6 +1039,55 @@
 .weread-bookshelf-toolbar-filters {
 	flex: 1 1 auto;
 	justify-content: flex-start;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+	position: relative;
+}
+
+.weread-bookshelf-filter-toggle {
+	display: none;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-normal);
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+.weread-bookshelf-filter-toggle:hover {
+	background-color: var(--background-modifier-border);
+}
+
+.weread-bookshelf-filter-dropdowns {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.weread-bookshelf-filter-dropdowns.is-open {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+	padding: 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	z-index: 1000;
+	min-width: 200px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .weread-bookshelf-toolbar-actions {
@@ -1046,8 +1096,8 @@
 }
 
 .weread-bookshelf-search {
-	flex: 0 1 200px;
-	min-width: 200px;
+	flex: 1 1 150px;
+	min-width: 120px;
 }
 
 .weread-bookshelf-toggle {
@@ -1168,11 +1218,163 @@
 	min-height: 1em;
 }
 
-.weread-bookshelf-summary,
+.weread-bookshelf-summary {
+	margin: 8px 0 12px;
+}
+
 .weread-bookshelf-empty,
 .weread-bookshelf-load-more {
 	margin: 8px 0 12px;
 	color: var(--text-muted);
+}
+
+/* Summary Card Styles */
+.weread-bookshelf-summary-card {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	padding: 8px 12px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	margin: 0 0 6px;
+	flex-wrap: wrap;
+}
+
+.weread-bookshelf-summary-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-direction: row;
+	padding: 0;
+	border-radius: 0;
+	transition: background-color 0.2s ease;
+}
+
+.weread-bookshelf-summary-item:not(:first-child)::before {
+	content: '';
+	display: inline-block;
+	width: 1px;
+	height: 16px;
+	background: var(--background-modifier-border);
+	margin: 0 8px;
+}
+
+.weread-bookshelf-summary-item:hover {
+	background-color: transparent;
+}
+
+.weread-bookshelf-summary-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	background: transparent;
+	border-radius: 0;
+	color: var(--text-accent);
+	font-size: 14px;
+}
+
+.weread-bookshelf-summary-info {
+	display: flex;
+	flex-direction: row;
+	gap: 4px;
+	flex: 0;
+	min-width: auto;
+	align-items: center;
+}
+
+.weread-bookshelf-summary-label {
+	display: none;
+	font-size: 10px;
+	color: var(--text-muted);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.2px;
+	line-height: 1;
+}
+
+.weread-bookshelf-summary-value {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-normal);
+	word-break: normal;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.weread-bookshelf-summary-loading,
+.weread-bookshelf-summary-error {
+	padding: 16px;
+	text-align: center;
+	color: var(--text-muted);
+	margin: 0 0 12px;
+}
+
+/* Unlogged State Card Styles */
+.weread-bookshelf-unlogged-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	padding: 40px 24px;
+	background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-modifier-form-field) 100%);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 16px;
+	margin: 20px 0 12px;
+	text-align: center;
+}
+
+.weread-bookshelf-unlogged-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 60px;
+	height: 60px;
+	background: var(--text-accent);
+	border-radius: 12px;
+	color: var(--background-primary);
+	font-size: 32px;
+}
+
+.weread-bookshelf-unlogged-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	align-items: center;
+}
+
+.weread-bookshelf-unlogged-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.weread-bookshelf-unlogged-description {
+	font-size: 14px;
+	color: var(--text-muted);
+	max-width: 300px;
+}
+
+.weread-bookshelf-unlogged-button {
+	padding: 10px 24px;
+	background: var(--text-accent);
+	color: var(--background-primary);
+	border: none;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	margin-top: 8px;
+}
+
+.weread-bookshelf-unlogged-button:hover {
+	background: var(--interactive-accent);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .weread-bookshelf-grid {
@@ -1445,6 +1647,83 @@
 	.weread-book-detail-stats {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 8px 12px;
+	}
+}
+
+/* 窄屏优化：隐藏筛选下拉菜单，显示筛选按钮 */
+@container (max-width: 620px) {
+	.weread-bookshelf-toolbar-filters {
+		flex-wrap: nowrap;
+	}
+
+	.weread-bookshelf-search {
+		flex: 1 1 auto;
+		min-width: 80px;
+	}
+
+	.weread-bookshelf-filter-toggle {
+		display: inline-flex;
+	}
+
+	.weread-bookshelf-filter-dropdowns {
+		display: none;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.weread-bookshelf-filter-dropdowns.is-open {
+		display: flex;
+	}
+
+	.weread-bookshelf-filter-dropdowns.is-open .dropdown {
+		width: 100%;
+	}
+
+	.weread-bookshelf-summary-card {
+		padding: 6px 8px;
+		gap: 0;
+	}
+
+	/* 在更窄的屏幕上，把摘要卡片改为行显示，只显示 icon 和数值 */
+	@container (max-width: 400px) {
+		.weread-bookshelf-summary-card {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: wrap;
+			gap: 0;
+			padding: 6px 8px;
+			align-items: center;
+		}
+
+		.weread-bookshelf-summary-item {
+			flex-direction: row;
+			align-items: center;
+			gap: 4px;
+			flex: 0 0 auto;
+			min-width: auto;
+			padding: 0;
+			background: transparent;
+		}
+
+		.weread-bookshelf-summary-icon {
+			width: 16px;
+			height: 16px;
+			font-size: 12px;
+		}
+
+		.weread-bookshelf-summary-info {
+			gap: 0;
+		}
+
+		.weread-bookshelf-summary-label {
+			display: none;
+		}
+
+		.weread-bookshelf-summary-value {
+			font-size: 11px;
+			white-space: nowrap;
+		}
 	}
 }
 
