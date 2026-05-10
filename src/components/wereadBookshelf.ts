@@ -19,6 +19,28 @@ import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import { getPcUrl } from '../parser/parseResponse';
 
+// 计算相对时间（中文显示）
+function getRelativeTimeInChinese(timestamp: number): string {
+	const now = Date.now();
+	const diff = now - timestamp;
+	const seconds = Math.floor(diff / 1000);
+	const minutes = Math.floor(seconds / 60);
+	const hours = Math.floor(minutes / 60);
+	const days = Math.floor(hours / 24);
+
+	if (seconds < 60) {
+		return '刚刚';
+	} else if (minutes < 60) {
+		return `${minutes}分钟前`;
+	} else if (hours < 24) {
+		return `${hours}小时前`;
+	} else if (days < 30) {
+		return `${days}天前`;
+	} else {
+		return `${Math.floor(days / 30)}月前`;
+	}
+}
+
 export const WEREAD_BOOKSHELF_VIEW_ID = 'weread-bookshelf-view';
 
 type CategoryFilter = 'all' | 'book' | 'article';
@@ -482,7 +504,7 @@ export class WereadBookshelfView extends ItemView {
 		setIcon(bookIcon, 'book');
 		bookSection.createDiv({
 			cls: 'weread-bookshelf-summary-value',
-			text: `${filteredBooks.length} 本`
+			text: `${filteredBooks.length} 本书`
 		});
 		setTooltip(bookSection, `展示书籍: ${filteredBooks.length} 本`);
 
@@ -515,17 +537,19 @@ export class WereadBookshelfView extends ItemView {
 		const syncIcon = syncSection.createDiv({ cls: 'weread-bookshelf-summary-icon' });
 		setIcon(syncIcon, 'clock');
 		let syncText: string;
+		let syncTooltip: string;
 		if (settings.lastSyncTime > 0) {
-			const lastSyncStr = new Date(settings.lastSyncTime).toLocaleString();
-			syncText = lastSyncStr;
+			syncText = getRelativeTimeInChinese(settings.lastSyncTime);
+			syncTooltip = `上次同步: ${new Date(settings.lastSyncTime).toLocaleString()}`;
 		} else {
 			syncText = '尚未同步';
+			syncTooltip = '尚未同步';
 		}
 		syncSection.createDiv({
 			cls: 'weread-bookshelf-summary-value',
 			text: syncText
 		});
-		setTooltip(syncSection, `上次同步: ${syncText}`);
+		setTooltip(syncSection, syncTooltip);
 
 		// Updated books count section
 		const updateSection = card.createDiv({ cls: 'weread-bookshelf-summary-item' });

@@ -1232,7 +1232,7 @@
 .weread-bookshelf-summary-card {
 	display: flex;
 	align-items: center;
-	gap: 0;
+	gap: 8px;
 	padding: 8px 12px;
 	background: transparent;
 	border: none;
@@ -1244,16 +1244,17 @@
 .weread-bookshelf-summary-item {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 3px;
 	flex-direction: row;
 	padding: 0;
+	margin-right: 8px;
 	border-radius: 0;
 	transition: background-color 0.2s ease;
 }
 
 .weread-bookshelf-summary-item:not(:first-child)::before {
 	content: '';
-	display: inline-block;
+	display: none;
 	width: 1px;
 	height: 16px;
 	background: var(--background-modifier-border);
