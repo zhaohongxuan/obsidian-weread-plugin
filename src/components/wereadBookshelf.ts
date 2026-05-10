@@ -333,6 +333,8 @@ export class WereadBookshelfView extends ItemView {
 				const updatedCount = await this.plugin.startSync(force, signal);
 				if ((updatedCount ?? 0) > 0) {
 					this.bookshelfService.clearProgressCache();
+					// 等待 Obsidian 的 metadataCache 更新新创建的文件
+					await new Promise(resolve => setTimeout(resolve, 500));
 					await this.loadBookshelf();
 				}
 			} finally {
@@ -609,6 +611,8 @@ export class WereadBookshelfView extends ItemView {
 				syncButton.disabled = true;
 				try {
 					await this.plugin.syncBookById(book.bookId);
+					// 等待 Obsidian 的 metadataCache 更新新创建的文件
+					await new Promise(resolve => setTimeout(resolve, 500));
 					await this.loadBookshelf();
 				} finally {
 					syncButton.disabled = false;
