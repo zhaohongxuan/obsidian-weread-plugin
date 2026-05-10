@@ -481,6 +481,17 @@ export class WereadBookshelfView extends ItemView {
 		});
 		setTooltip(bookSection, `展示书籍: ${filteredBooks.length} 本`);
 
+		// Notes count section
+		const totalNotes = filteredBooks.reduce((sum, book) => sum + book.noteCount, 0);
+		const noteSection = card.createDiv({ cls: 'weread-bookshelf-summary-item' });
+		const noteIcon = noteSection.createDiv({ cls: 'weread-bookshelf-summary-icon' });
+		setIcon(noteIcon, 'sticky-note');
+		noteSection.createDiv({
+			cls: 'weread-bookshelf-summary-value',
+			text: `${totalNotes} 个笔记`
+		});
+		setTooltip(noteSection, `笔记总数: ${totalNotes}`);
+
 		// Year groups section (only show when grouping by year)
 		if (this.shouldGroupByYear()) {
 			const groupedBooks = this.groupBooksByYear(filteredBooks);
