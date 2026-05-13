@@ -75,7 +75,7 @@ export default class FileManager {
 	}
 
 	private async getFileByPath(filePath: string): Promise<TFile> {
-		const file: TAbstractFile = await this.vault.getAbstractFileByPath(filePath);
+		const file: TAbstractFile = this.vault.getAbstractFileByPath(filePath);
 
 		if (!file) {
 			console.error(`${filePath} not found`);
