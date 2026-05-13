@@ -1,4 +1,4 @@
-import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obsidian';
+import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile, FileManager as ObsidianFileManager, App } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
@@ -11,10 +11,12 @@ export default class FileManager {
 	private vault: Vault;
 	private metadataCache: MetadataCache;
 	private renderer: Renderer;
+	private app: App;
 
-	constructor(vault: Vault, metadataCache: MetadataCache) {
+	constructor(vault: Vault, metadataCache: MetadataCache, app: App) {
 		this.vault = vault;
 		this.metadataCache = metadataCache;
+		this.app = app;
 		this.renderer = new Renderer();
 	}
 
@@ -205,7 +207,7 @@ export default class FileManager {
 	}
 
 	public async deleteNotebookFile(file: TFile): Promise<void> {
-		await this.vault.delete(file);
+		await this.app.fileManager.trashFile(file);
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {

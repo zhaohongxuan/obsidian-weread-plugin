@@ -24,7 +24,7 @@ export default class WereadPlugin extends Plugin {
 		console.log('load weread plugin');
 		await settingsStore.initialise(this);
 
-		const fileManager = new FileManager(this.app.vault, this.app.metadataCache);
+		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.app);
 		this.fileManager = fileManager;
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
