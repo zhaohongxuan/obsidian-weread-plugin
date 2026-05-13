@@ -67,7 +67,7 @@ export class TemplateEditorWindow extends Modal {
 
 		// 中间：编辑器
 		const editorPanel = container.createDiv('weread-editor-panel');
-		editorPanel.createEl('div', { text: '📄 模板编辑 (Nunjucks)', cls: 'panel-header' });
+		editorPanel.createDiv({ text: '📄 模板编辑 (Nunjucks)', cls: 'panel-header' });
 
 		this.editorEl = editorPanel.createEl('textarea', { cls: 'weread-editor-textarea' });
 		this.editorEl.value = this.initialTemplate;
@@ -117,7 +117,7 @@ export class TemplateEditorWindow extends Modal {
 		});
 
 		const previewContent = previewPanel.createDiv('preview-content');
-		this.previewEl = previewContent.createEl('div', { cls: 'preview-text' });
+		this.previewEl = previewContent.createDiv({ cls: 'preview-text' });
 		this.errorEl = previewContent.createDiv('error-message');
 
 		// 初始预览
