@@ -20,10 +20,14 @@ export default class WereadPlugin extends Plugin {
 	private cookieRefreshTimer: number | null = null;
 	private scheduledSyncTimer: number | null = null;
 
-	async onload() {
+	onload() {
 		console.log('load weread plugin');
-		await settingsStore.initialise(this);
+		settingsStore.initialise(this).then(() => {
+			this.initializePlugin();
+		});
+	}
 
+	private initializePlugin() {
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.app);
 		this.fileManager = fileManager;
 		const apiManager = new ApiManager();
