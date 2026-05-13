@@ -146,7 +146,7 @@ export class TemplateEditorWindow extends Modal {
 
 			// 清空预览容器
 			this.previewEl.empty();
-			this.errorEl.style.display = 'none';
+			this.errorEl.removeClass('weread-error-visible');
 			this.errorEl.textContent = '';
 
 			if (this.isMarkdownRendered) {
@@ -163,7 +163,7 @@ export class TemplateEditorWindow extends Modal {
 			}
 		} catch (error: any) {
 			this.previewEl.empty();
-			this.errorEl.style.display = 'block';
+			this.errorEl.addClass('weread-error-visible');
 			this.errorEl.textContent = '❌ ' + (error.message || String(error));
 		}
 	}
