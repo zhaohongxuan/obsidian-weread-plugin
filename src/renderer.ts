@@ -20,7 +20,7 @@ export class Renderer {
 						} else {
 							return str.replaceAll(pattern, replacement);
 						}
-					} catch (e) {
+					} catch {
 						// 如果正则表达式无效，回退到字符串替换
 						return String(str).replaceAll(pattern, replacement);
 					}
@@ -74,7 +74,7 @@ export class Renderer {
 						} else {
 							return str.replaceAll(pattern, replacement);
 						}
-					} catch (e) {
+					} catch {
 						return String(str).replaceAll(pattern, replacement);
 					}
 				} else if (pattern instanceof RegExp) {
@@ -129,7 +129,7 @@ export class Renderer {
 					} else {
 						return str.replaceAll(pattern, replacement);
 					}
-				} catch (e) {
+				} catch {
 					// 如果正则表达式无效，回退到字符串替换
 					return String(str).replaceAll(pattern, replacement);
 				}

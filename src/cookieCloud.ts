@@ -49,7 +49,7 @@ export default class CookieCloudManager {
 
 			new Notice(`CookieCloud 获取微信读书登录信息失败，请检查配置`);
 			return false;
-		} catch (e) {
+		} catch {
 			new Notice(`CookieCloud 获取失败，请检查配置或网络连接`);
 			return false;
 		}
@@ -64,7 +64,7 @@ export default class CookieCloudManager {
 			const decrypted = CryptoJS.AES.decrypt(encrypted, the_key).toString(CryptoJS.enc.Utf8);
 			const parsed = JSON.parse(decrypted);
 			return parsed;
-		} catch (e) {
+		} catch {
 			new Notice(`解密失败，请检查配置`);
 			return '';
 		}
