@@ -1,4 +1,4 @@
-import tsParser from "@typescript-eslint/parser";
+import tseslint from "typescript-eslint";
 import obsidianmd from "eslint-plugin-obsidianmd";
 
 export default [
@@ -8,7 +8,7 @@ export default [
   {
     files: ["**/*.ts"],
     languageOptions: {
-      parser: tsParser,
+      parser: tseslint.parser,
       parserOptions: {
         sourceType: "module",
         ecmaVersion: "latest",
