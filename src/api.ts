@@ -51,6 +51,8 @@ export default class ApiManager {
 	}
 
 	async refreshCookie(showNotice = false): Promise<boolean> {
+		// Step 1: HEAD request to refresh cookies via set-cookie header
+		// This does NOT set isCookieValid — only the API verification below is authoritative
 		try {
 			const req: RequestUrlParam = {
 				url: this.baseUrl,
@@ -60,40 +62,26 @@ export default class ApiManager {
 			const resp = await requestUrl(req);
 			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 
-			if (respCookie !== undefined && this.checkCookies(respCookie)) {
-				if (showNotice) {
-					new Notice('Cookie 刷新成功');
-				}
+			if (respCookie !== undefined) {
 				this.updateCookies(respCookie);
-				settingsStore.actions.setIsCookieValid(true);
-				return true;
-			} else if (respCookie === undefined) {
-				// 没有 set-cookie，说明 Cookie 已是最新
-				if (showNotice) {
-					new Notice('Cookie 已是最新，无须刷新');
-				}
-				settingsStore.actions.setIsCookieValid(true);
-				return true;
 			}
 		} catch (e) {
 			console.error('[weread plugin] Cookie 刷新 HEAD 请求失败', e);
 		}
 
-		const loginMethod = get(settingsStore).loginMethod;
-		if (loginMethod === 'cookieCloud') {
-			const cookieCloudManager = new CookieCloudManager();
-			const isSuccess = await cookieCloudManager.getCookie();
-			if (isSuccess) {
-				// CookieCloud 获取成功后，更新刷新时间
-				settingsStore.actions.updateCookieRefreshTime();
-				return true;
+		// Step 2: If no cookies available, try CookieCloud as fallback
+		const currentCookies = get(settingsStore).cookies;
+		if (currentCookies.length === 0) {
+			const loginMethod = get(settingsStore).loginMethod;
+			if (loginMethod === 'cookieCloud') {
+				const cookieCloudManager = new CookieCloudManager();
+				await cookieCloudManager.getCookie();
 			}
 		}
 
-		// HEAD did not yield new cookies — verify actual validity via authenticated API
+		// Step 3: Always verify via authenticated API — the sole arbiter of isCookieValid
 		const isValid = await this.verifyCookieValidity();
 		if (isValid) {
-			// API 验证成功，提示用户 Cookie 已是最新
 			if (showNotice) {
 				new Notice('Cookie 已是最新，无须刷新');
 			}
@@ -387,19 +375,6 @@ export default class ApiManager {
 			);
 			console.error('get book read info error' + bookId, e);
 		}
-	}
-
-	private checkCookies(respCookie: string): boolean {
-		let refreshCookies: Cookie[];
-		if (Array.isArray(respCookie)) {
-			refreshCookies = parse(respCookie);
-		} else {
-			const arrCookies = splitCookiesString(respCookie);
-			refreshCookies = parse(arrCookies);
-		}
-
-		const wrName = refreshCookies.find((cookie) => cookie.name == 'wr_name');
-		return wrName !== undefined && wrName.value !== '';
 	}
 
 	private updateCookies(respCookie: string) {

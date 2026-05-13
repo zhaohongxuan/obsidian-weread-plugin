@@ -17,14 +17,12 @@ import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
-import { TemplateEditorWindow } from './components/templateEditorWindow';
-import { SyncLogModal } from './components/syncLogModal';
+import { ThemeManagerModal } from './components/themeManagerModal';
 
-import { Renderer } from './renderer';
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
-import type { ReadingOpenMode, SyncMode } from './settings';
+import type { ReadingOpenMode, SyncMode, BookshelfSortMode } from './settings';
 
 const UNLIMITED_NOTE_COUNT = -1;
 
@@ -46,7 +44,6 @@ const getBookLastReadText = (book: Metadata) => {
 
 export class WereadSettingsTab extends PluginSettingTab {
 	private plugin: WereadPlugin;
-	private renderer: Renderer;
 	private selectableBooksCache: Metadata[] = [];
 	private selectableBooksLoadingPromise: Promise<void> | null = null;
 	private syncSettingsHeadingEl: HTMLElement | null = null;
@@ -54,7 +51,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 	constructor(app: App, plugin: WereadPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
-		this.renderer = new Renderer();
 	}
 
 	display() {
@@ -100,12 +96,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		this.notebookFolder();
 		this.readingOpenModeSetting();
+		this.bookshelfSettings();
 		this.syncModeSettings();
 		this.scheduledSync();
 
 		new Setting(this.containerEl).setName('文件设置').setHeading();
 		this.fileNameType();
 		this.removeParens();
+		this.filterInlineImages();
 		this.subFolderType();
 
 		new Setting(this.containerEl).setName('日记设置').setHeading();
@@ -235,6 +233,51 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.setValue(get(settingsStore).readingOpenMode)
 					.onChange((value: string) => {
 						settingsStore.actions.setReadingOpenMode(value as ReadingOpenMode);
+					});
+			});
+	}
+
+	private bookshelfSettings(): void {
+		new Setting(this.containerEl).setName('书架设置').setHeading();
+
+		new Setting(this.containerEl)
+			.setName('书架排序方式')
+			.setDesc('控制书架中书籍的默认排序方式')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('recent', '时间排序')
+					.addOption('title', '按标题排序')
+					.setValue(get(settingsStore).bookshelfSortMode)
+					.onChange((value: string) => {
+						settingsStore.actions.setBookshelfSortMode(value as BookshelfSortMode);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('按年份分组')
+			.setDesc('在时间排序时，按照阅读年份对书架进行分组展示')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).bookshelfGroupByYear)
+					.onChange((value) => {
+						settingsStore.actions.setBookshelfGroupByYear(value);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('默认书架状态')
+			.setDesc('初次打开书架时的默认筛选状态')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('all', '全部状态')
+					.addOption('synced', '已同步')
+					.addOption('remoteOnly', '仅远程')
+					.addOption('localOnly', '仅本地')
+					.setValue(get(settingsStore).bookshelfDefaultSyncStatusFilter)
+					.onChange((value: string) => {
+						settingsStore.actions.setBookshelfDefaultSyncStatusFilter(
+							value as 'all' | 'remoteOnly' | 'synced' | 'localOnly'
+						);
 					});
 			});
 	}
@@ -588,6 +631,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 	}
 
+	private filterInlineImages(): void {
+		new Setting(this.containerEl)
+			.setName('过滤弹注图片占位符')
+			.setDesc(
+				'启用后，书摘中的 [图片]、[插图] 等弹注占位符将被自动移除，适合古诗文等配有大量弹注的书籍'
+			)
+			.addToggle((toggle) => {
+				return toggle.setValue(get(settingsStore).filterInlineImages).onChange((value) => {
+					settingsStore.actions.setFilterInlineImages(value);
+				});
+			});
+	}
+
 	private showLogout(): void {
 		const userAvatar = get(settingsStore).userAvatar;
 		const userName = get(settingsStore).user;
@@ -652,6 +708,24 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cls: 'weread-button-group'
 		});
 
+		// Copy Cookie 按钮
+		const copyCookieBtn = buttonGroup.createEl('button', {
+			cls: 'weread-action-button weread-copy-cookie-btn',
+			text: 'Copy Cookie'
+		});
+		copyCookieBtn.addEventListener('click', async () => {
+			const settings = get(settingsStore);
+			if (settings.cookies.length === 0) {
+				new Notice('无可复制的 Cookie');
+				return;
+			}
+			const cookieStr = settings.cookies
+				.map((c) => `${c.name}=${encodeURIComponent(c.value)}`)
+				.join('; ');
+			await navigator.clipboard.writeText(cookieStr);
+			new Notice('Cookie 已复制到剪贴板');
+		});
+
 		// 注销按钮
 		const logoutBtn = buttonGroup.createEl('button', {
 			cls: 'weread-action-button weread-logout-btn',
@@ -671,24 +745,29 @@ export class WereadSettingsTab extends PluginSettingTab {
 		this.saveReadingInfoToggle();
 		this.showEmptyChapterTitleToggle();
 
+		// Theme management button - opens theme manager modal
 		new Setting(this.containerEl)
-			.setName('自定义笔记渲染模板')
-			.setDesc('控制划线、笔记、书评等内容的输出格式')
+			.setName('主题管理')
+			.setDesc('管理模板主题，包括内置主题、自定义主题和社区主题')
 			.addButton((button) => {
 				return button
-					.setButtonText('编辑模板')
+					.setButtonText('打开主题管理')
 					.setCta()
 					.onClick(() => {
-						const editorWindow = new TemplateEditorWindow(
-							this.app,
-							get(settingsStore).template,
-							(newTemplate: string) => {
-								settingsStore.actions.setTemplate(newTemplate);
-							}
-						);
-						editorWindow.open();
+						new ThemeManagerModal(this.app).open();
 					});
 			});
+
+		// Show current theme info
+		const activeTheme = settingsStore.actions.getActiveTheme();
+		const themeType = activeTheme.isBuiltIn
+			? '内置'
+			: activeTheme.isReadOnly
+			? '社区'
+			: '自定义';
+		new Setting(this.containerEl)
+			.setName('当前使用')
+			.setDesc(`${activeTheme.name} (${themeType})`);
 	}
 
 	private noteCountLimit() {
@@ -876,10 +955,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 				});
 			});
 
-		const settings = get(settingsStore);
-		if (settings.scheduledSyncToggle) {
+		if (get(settingsStore).scheduledSyncToggle) {
 			this.scheduledSyncInterval();
-			this.showLastSyncInfo();
 		}
 	}
 
@@ -898,32 +975,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 							this.plugin.setupScheduledSync();
 						}
 					});
-			});
-	}
-
-	private showLastSyncInfo(): void {
-		const settings = get(settingsStore);
-		const { lastSyncTime, lastSyncBookCount, lastSyncBookTitles } = settings;
-
-		let statusText = '尚未执行过同步';
-		if (lastSyncTime > 0) {
-			const lastSyncStr = new Date(lastSyncTime).toLocaleString();
-			statusText = `上次同步：${lastSyncStr}，共 ${lastSyncBookCount} 本书`;
-			if (lastSyncBookTitles.length > 0) {
-				statusText += `\n最近同步：${lastSyncBookTitles.join('、')}`;
-			}
-		}
-
-		new Setting(this.containerEl).setName('同步状态').setDesc(statusText);
-
-		// Sync log button at the end of scheduled sync section
-		new Setting(this.containerEl)
-			.setName('查看同步日志')
-			.setDesc('查看最近 10 次同步的详细记录，包括同步的笔记')
-			.addButton((button) => {
-				button.setButtonText('查看日志').onClick(() => {
-					new SyncLogModal(this.app).open();
-				});
 			});
 	}
 

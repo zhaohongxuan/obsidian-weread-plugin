@@ -68,6 +68,10 @@ export const parseHighlights = (
 			.filter((chapter) => chapter.chapterUid === highlight.chapterUid)
 			.first();
 		const intentMarkText = addIndentToParagraphs(highlight.markText);
+		const filterInlineImages = get(settingsStore).filterInlineImages;
+		const markText = filterInlineImages
+			? removeInlineImagePlaceholders(intentMarkText)
+			: intentMarkText;
 		return {
 			bookmarkId: highlight.bookmarkId?.replace(/[_~]/g, '-'),
 			created: highlight.createTime,
@@ -79,7 +83,7 @@ export const parseHighlights = (
 			style: highlight.style,
 			colorStyle: highlight.colorStyle,
 			chapterTitle: chapterInfo?.title || '未知章节',
-			markText: intentMarkText,
+			markText: markText,
 			reviewContent: addIndentToParagraphs(reviewContent)
 		};
 	});
@@ -99,6 +103,16 @@ const addIndentToParagraphs = (content: string): string => {
 
 	// 将段落数组重新组合成一个字符串
 	return paragraphs.join('\n');
+};
+
+// 移除弹注图片占位符，如 [图片]、[插图] 等
+const INLINE_IMAGE_PLACEHOLDER_RE = /\[图片\]|\[插图\]/g;
+const removeInlineImagePlaceholders = (content: string): string => {
+	if (!content) return content;
+	return content
+		.replace(INLINE_IMAGE_PLACEHOLDER_RE, '')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
 };
 
 export const parseArticleHighlightReview = (

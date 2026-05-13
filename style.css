@@ -208,7 +208,12 @@
 	transform: translateX(20px);
 }
 
-.weread-toggle-switch:hover {
+.weread-toggle-switch.is-disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.weread-toggle-switch:not(.is-disabled):hover {
 	opacity: 0.8;
 }
 
@@ -991,6 +996,7 @@
 	padding: 16px;
 	height: 100%;
 	overflow: auto;
+	container-type: inline-size;
 }
 
 .weread-bookshelf-toolbar-filters,
@@ -1033,6 +1039,55 @@
 .weread-bookshelf-toolbar-filters {
 	flex: 1 1 auto;
 	justify-content: flex-start;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+	position: relative;
+}
+
+.weread-bookshelf-filter-toggle {
+	display: none;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-normal);
+	transition: all 0.2s ease;
+	white-space: nowrap;
+}
+
+.weread-bookshelf-filter-toggle:hover {
+	background-color: var(--background-modifier-border);
+}
+
+.weread-bookshelf-filter-dropdowns {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.weread-bookshelf-filter-dropdowns.is-open {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+	padding: 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	z-index: 1000;
+	min-width: 200px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .weread-bookshelf-toolbar-actions {
@@ -1041,8 +1096,8 @@
 }
 
 .weread-bookshelf-search {
-	flex: 0 1 200px;
-	min-width: 200px;
+	flex: 1 1 150px;
+	min-width: 120px;
 }
 
 .weread-bookshelf-toggle {
@@ -1129,11 +1184,186 @@
 	gap: 16px;
 }
 
-.weread-bookshelf-summary,
+.weread-notice-progress {
+	width: 260px;
+}
+
+.weread-notice-progress-header {
+	font-size: var(--font-small);
+	margin-bottom: 6px;
+	white-space: nowrap;
+}
+
+.weread-notice-progress-track {
+	height: 4px;
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+	overflow: hidden;
+	margin-bottom: 6px;
+}
+
+.weread-notice-progress-fill {
+	height: 100%;
+	width: 0%;
+	background: var(--interactive-accent);
+	border-radius: 2px;
+	transition: width 0.3s ease;
+}
+
+.weread-notice-progress-title {
+	font-size: var(--font-smallest);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-height: 1em;
+}
+
+.weread-bookshelf-summary {
+	margin: 8px 0 12px;
+}
+
 .weread-bookshelf-empty,
 .weread-bookshelf-load-more {
 	margin: 8px 0 12px;
 	color: var(--text-muted);
+}
+
+/* Summary Card Styles */
+.weread-bookshelf-summary-card {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: transparent;
+	border: none;
+	border-radius: 6px;
+	margin: 0 0 6px;
+	flex-wrap: wrap;
+}
+
+.weread-bookshelf-summary-item {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	flex-direction: row;
+	padding: 0;
+	margin-right: 8px;
+	border-radius: 0;
+	transition: background-color 0.2s ease;
+}
+
+.weread-bookshelf-summary-item:not(:first-child)::before {
+	content: '';
+	display: none;
+	width: 1px;
+	height: 16px;
+	background: var(--background-modifier-border);
+	margin: 0 8px;
+}
+
+.weread-bookshelf-summary-item:hover {
+	background-color: transparent;
+}
+
+.weread-bookshelf-summary-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	background: transparent;
+	border-radius: 0;
+	color: var(--text-accent);
+	font-size: 14px;
+}
+
+.weread-bookshelf-summary-info {
+	display: flex;
+	flex-direction: row;
+	gap: 4px;
+	flex: 0;
+	min-width: auto;
+	align-items: center;
+}
+
+.weread-bookshelf-summary-label {
+	display: none;
+	font-size: 10px;
+	color: var(--text-muted);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.2px;
+	line-height: 1;
+}
+
+.weread-bookshelf-summary-value {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-normal);
+	word-break: normal;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.weread-bookshelf-summary-loading,
+.weread-bookshelf-summary-error {
+	padding: 16px;
+	text-align: center;
+	color: var(--text-muted);
+	margin: 0 0 12px;
+}
+
+/* Unlogged State Card Styles */
+.weread-bookshelf-unlogged-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
+	padding: 40px 24px;
+	background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-modifier-form-field) 100%);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 16px;
+	margin: 20px 0 12px;
+	text-align: center;
+}
+
+.weread-bookshelf-unlogged-content {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	align-items: center;
+}
+
+.weread-bookshelf-unlogged-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.weread-bookshelf-unlogged-description {
+	font-size: 14px;
+	color: var(--text-muted);
+	max-width: 300px;
+}
+
+.weread-bookshelf-unlogged-button {
+	padding: 10px 24px;
+	background: var(--text-accent);
+	color: var(--background-primary);
+	border: none;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	margin-top: 8px;
+}
+
+.weread-bookshelf-unlogged-button:hover {
+	background: var(--interactive-accent);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .weread-bookshelf-grid {
@@ -1323,31 +1553,21 @@
 	margin: -4px 0 12px;
 }
 
-.weread-toolbar-button {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
-	font-size: 13px;
-	border-radius: 4px;
-	cursor: pointer;
-	transition: all 0.2s ease;
+.weread-toolbar-icon-button {
+	width: 32px;
+	height: 32px;
 }
 
-.weread-toolbar-button .svg-icon {
-	width: 18px;
-	height: 18px;
-}
-
-.weread-bookshelf-web-button {
-	background-color: rgba(var(--interactive-accent), 0.1);
-	border: 1px solid rgba(var(--interactive-accent), 0.3);
-	color: var(--interactive-accent);
-}
-
-.weread-bookshelf-web-button:hover {
-	background-color: rgba(var(--interactive-accent), 0.15);
+.weread-toolbar-icon-button.mod-cta {
+	background: var(--interactive-accent);
 	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.weread-toolbar-icon-button.mod-cta:hover {
+	background: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
 }
 
 .weread-book-detail-badge {
@@ -1419,18 +1639,114 @@
 	}
 }
 
+/* 窄屏优化：隐藏筛选下拉菜单，显示筛选按钮 */
+@container (max-width: 620px) {
+	.weread-bookshelf-toolbar-filters {
+		flex-wrap: nowrap;
+	}
+
+	.weread-bookshelf-search {
+		flex: 1 1 auto;
+		min-width: 80px;
+	}
+
+	.weread-bookshelf-filter-toggle {
+		display: inline-flex;
+	}
+
+	.weread-bookshelf-filter-dropdowns {
+		display: none;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 8px;
+	}
+
+	.weread-bookshelf-filter-dropdowns.is-open {
+		display: flex;
+	}
+
+	.weread-bookshelf-filter-dropdowns.is-open .dropdown {
+		width: 100%;
+	}
+
+	.weread-bookshelf-summary-card {
+		padding: 6px 8px;
+		gap: 0;
+	}
+
+	/* 在更窄的屏幕上，把摘要卡片改为行显示，只显示 icon 和数值 */
+	@container (max-width: 400px) {
+		.weread-bookshelf-summary-card {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: wrap;
+			gap: 0;
+			padding: 6px 8px;
+			align-items: center;
+		}
+
+		.weread-bookshelf-summary-item {
+			flex-direction: row;
+			align-items: center;
+			gap: 4px;
+			flex: 0 0 auto;
+			min-width: auto;
+			padding: 0;
+			background: transparent;
+		}
+
+		.weread-bookshelf-summary-icon {
+			width: 16px;
+			height: 16px;
+			font-size: 12px;
+		}
+
+		.weread-bookshelf-summary-info {
+			gap: 0;
+		}
+
+		.weread-bookshelf-summary-label {
+			display: none;
+		}
+
+		.weread-bookshelf-summary-value {
+			font-size: 11px;
+			white-space: nowrap;
+		}
+	}
+}
+
 /* Sync Log Modal Styles */
 .sync-log-header {
 	padding: 20px;
 	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
 }
 
 .sync-log-header h2 {
-	margin: 0 0 4px 0;
+	margin: 0;
 	font-size: 1.3em;
+	flex: 1 1 auto;
+}
+
+.sync-log-header-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+}
+
+.sync-log-toggle-label {
+	font-size: 0.85em;
+	color: var(--text-muted);
 }
 
 .sync-log-subtitle {
+	width: 100%;
+
 	color: var(--text-muted);
 	font-size: 0.9em;
 }
@@ -1558,3 +1874,331 @@
 .sync-log-note-btn:hover {
 	color: var(--text-accent-hover);
 }
+
+/* Theme Manager Modal Styles */
+.weread-theme-manager-modal .modal-content {
+	max-height: none;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.theme-manager-header {
+	padding: 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.theme-manager-header h2 {
+	margin: 0;
+	font-size: 1.4em;
+}
+
+.theme-manager-title {
+	flex: 1;
+}
+
+.theme-manager-header .theme-btn {
+	white-space: nowrap;
+}
+
+.theme-manager-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px 20px;
+}
+
+.theme-card {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	padding: 16px;
+	margin-bottom: 12px;
+	background-color: var(--background-secondary);
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-card:hover {
+	border-color: var(--background-modifier-border-hover);
+}
+
+.theme-card.is-active {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.theme-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 8px;
+}
+
+.theme-title-group {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
+}
+
+.theme-title-group h3 {
+	margin: 0;
+	font-size: 1.1em;
+	font-weight: 600;
+}
+
+.theme-badge {
+	font-size: 0.75em;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-weight: 500;
+}
+
+.theme-badge.badge-builtin {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+
+.theme-badge.badge-legacy {
+	background-color: rgba(234, 179, 8, 0.15);
+	color: #ca8a04;
+}
+
+.theme-badge.badge-community {
+	background-color: rgba(99, 102, 241, 0.15);
+	color: #6366f1;
+}
+
+.theme-badge.badge-custom {
+	background-color: rgba(16, 185, 129, 0.15);
+	color: #10b981;
+}
+
+.theme-active-badge {
+	font-size: 0.85em;
+	color: var(--interactive-accent);
+	font-weight: 500;
+}
+
+.theme-description {
+	margin: 8px 0;
+	font-size: 0.9em;
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.theme-author {
+	margin: 4px 0;
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
+.theme-card-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.theme-btn {
+	padding: 6px 14px;
+	font-size: 0.85em;
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.theme-btn:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.theme-btn.mod-cta {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.theme-btn.mod-cta:hover {
+	background-color: var(--interactive-accent-hover);
+	border-color: var(--interactive-accent-hover);
+}
+
+.theme-btn.mod-danger {
+	color: var(--text-error);
+	border-color: var(--background-modifier-error-border);
+}
+
+.theme-btn.mod-danger:hover {
+	background-color: var(--background-mod-error);
+}
+
+.theme-import-section {
+	padding: 20px;
+	border-top: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+}
+
+.theme-import-section h3 {
+	margin: 0 0 8px 0;
+	font-size: 1em;
+}
+
+.theme-import-section p {
+	margin: 0 0 12px 0;
+	font-size: 0.9em;
+	color: var(--text-muted);
+}
+
+.theme-close-section {
+	padding: 16px 20px;
+	border-top: 1px solid var(--background-modifier-border);
+	display: flex;
+	justify-content: flex-end;
+	background-color: var(--background-secondary);
+}
+
+.theme-rename-header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.theme-rename-header h3 {
+	margin: 0;
+	font-size: 1.1em;
+}
+
+.theme-rename-input {
+	padding: 16px 20px;
+}
+
+.theme-rename-actions {
+	padding: 0 20px 16px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.theme-import-url-header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.theme-import-url-header h3 {
+	margin: 0;
+	font-size: 1.1em;
+}
+
+.theme-import-url-input {
+	padding: 16px 20px;
+}
+
+.theme-import-url-input input {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.theme-import-buttons {
+	display: flex;
+	gap: 8px;
+}
+
+.theme-import-url-actions {
+	padding: 0 20px 16px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.theme-create-header {
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.theme-create-header h3 {
+	margin: 0;
+	font-size: 1.1em;
+}
+
+.theme-create-form {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.theme-create-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.theme-create-label {
+	width: 80px;
+	flex-shrink: 0;
+	font-weight: 500;
+	color: var(--text-secondary);
+}
+
+.theme-create-row input {
+	flex: 1;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.theme-create-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 0 20px 16px;
+}
+
+/* 工具栏用户头像按钮 */
+.weread-bookshelf-user-avatar-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 50%;
+	background: transparent;
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	overflow: hidden;
+	flex-shrink: 0;
+	transition: all 0.2s ease;
+	padding: 0;
+}
+
+.weread-bookshelf-user-avatar-btn img {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.weread-bookshelf-user-avatar-btn:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--text-accent);
+}
+
+/* 未登录状态头像 logo */
+.weread-bookshelf-user-avatar-btn.is-unlogged {
+	border: 1px solid var(--text-muted);
+	color: var(--text-muted);
+	font-size: 18px;
+}
+
+.weread-bookshelf-user-avatar-btn.is-unlogged:hover {
+	background: var(--background-modifier-form-field);
+	border-color: var(--text-accent);
+	color: var(--text-accent);
+}
+

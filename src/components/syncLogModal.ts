@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Platform, setIcon, TFile } from 'obsidian';
+import { App, Modal, Notice, Platform, setIcon, TFile, ToggleComponent } from 'obsidian';
 import type { SyncLogEntry } from '../models';
 import { settingsStore } from '../settings';
 
@@ -7,6 +7,9 @@ const MODAL_MAX_WIDTH = '90vw';
 const MODAL_MAX_HEIGHT = '80vh';
 
 export class SyncLogModal extends Modal {
+	private showAll = false;
+	private logsContainer: HTMLElement;
+
 	constructor(app: App) {
 		super(app);
 	}
@@ -20,22 +23,51 @@ export class SyncLogModal extends Modal {
 
 		const header = contentEl.createDiv({ cls: 'sync-log-header' });
 		header.createEl('h2', { text: '同步日志' });
-		header.createDiv({ cls: 'sync-log-subtitle', text: '最近 10 次同步记录' });
 
-		const logsContainer = contentEl.createDiv({ cls: 'sync-log-container' });
+		const headerRight = header.createDiv({ cls: 'sync-log-header-right' });
+		headerRight.createSpan({ cls: 'sync-log-toggle-label', text: '显示空白记录' });
+		const toggle = new ToggleComponent(headerRight);
+		toggle.setValue(this.showAll);
+		toggle.onChange((value) => {
+			this.showAll = value;
+			this.renderLogs();
+		});
 
-		const logs = settingsStore.actions.getSyncLogs();
+		this.logsContainer = contentEl.createDiv({ cls: 'sync-log-container' });
+		this.renderLogs();
+	}
+
+	private renderLogs() {
+		this.logsContainer.empty();
+		const allLogs = settingsStore.actions.getSyncLogs();
+		const logs = this.showAll ? allLogs : allLogs.filter((log) => log.syncedBooks > 0);
+
+		const visibleCount = logs.length;
+		const totalCount = allLogs.length;
+		const subtitle = this.showAll
+			? `最近 ${totalCount} 次同步记录`
+			: `${visibleCount} 条有效记录（共 ${totalCount} 次）`;
+
+		// 更新或创建 subtitle
+		let subtitleEl = this.contentEl.querySelector('.sync-log-subtitle') as HTMLElement;
+		if (!subtitleEl) {
+			const header = this.contentEl.querySelector('.sync-log-header') as HTMLElement;
+			subtitleEl = header.createDiv({ cls: 'sync-log-subtitle' });
+			// 移到 header 末尾之前（toggle 之前）
+			header.insertBefore(subtitleEl, header.querySelector('.sync-log-header-right'));
+		}
+		subtitleEl.setText(subtitle);
 
 		if (logs.length === 0) {
-			logsContainer.createDiv({
+			this.logsContainer.createDiv({
 				cls: 'sync-log-empty',
-				text: '暂无同步记录'
+				text: this.showAll ? '暂无同步记录' : '暂无有效同步记录'
 			});
 			return;
 		}
 
 		for (const log of logs) {
-			const logItem = logsContainer.createDiv({ cls: 'sync-log-item' });
+			const logItem = this.logsContainer.createDiv({ cls: 'sync-log-item' });
 			this.renderLogEntry(logItem, log);
 		}
 	}
@@ -66,7 +98,7 @@ export class SyncLogModal extends Modal {
 		const status = header.createDiv({
 			cls: log.success ? 'sync-log-status sync-log-success' : 'sync-log-status sync-log-error'
 		});
-		status.setIcon(log.success ? 'check-circle' : 'x-circle');
+		setIcon(status, log.success ? 'check-circle' : 'x-circle');
 		status.createSpan({ text: log.success ? '成功' : '失败' });
 
 		// Stats row

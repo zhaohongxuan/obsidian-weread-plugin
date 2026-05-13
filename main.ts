@@ -36,7 +36,7 @@ export default class WereadPlugin extends Plugin {
 
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
-		if (settings.cookies && settings.cookies.length > 0 && !settings.isCookieValid) {
+		if (settings.cookies && settings.cookies.length > 0) {
 			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
 			apiManager.verifyCookieValidity().catch((e) => {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
@@ -196,7 +196,7 @@ export default class WereadPlugin extends Plugin {
 		await this.activateReadingView(this.getPreferredReadingOpenMode(), url);
 	}
 
-	async startSync(force = false): Promise<number | undefined> {
+	async startSync(force = false, signal?: { cancelled: boolean }): Promise<number | undefined> {
 		if (this.syncing) {
 			new Notice('正在同步微信读书笔记，请勿重复点击');
 			return;
@@ -205,7 +205,8 @@ export default class WereadPlugin extends Plugin {
 		try {
 			const syncedCount = await this.syncNotebooks.syncNotebooks(
 				force,
-				window.moment().format('YYYY-MM-DD')
+				window.moment().format('YYYY-MM-DD'),
+				signal
 			);
 			// 更新最近同步信息
 			const settings = get(settingsStore);
