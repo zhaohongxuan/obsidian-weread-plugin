@@ -126,11 +126,11 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const container = this.containerEl.createDiv({
 			cls: 'weread-mobile-login-container'
 		});
-		container.createEl('div', {
+		container.createDiv({
 			cls: 'weread-mobile-login-text',
 			text: '微信读书未登录'
 		});
-		container.createEl('div', {
+		container.createDiv({
 			cls: 'weread-mobile-login-desc',
 			text: '请先在电脑端登录'
 		});
@@ -172,13 +172,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 
 		// 用户名
-		userInfo.createEl('div', {
+		userInfo.createDiv({
 			cls: 'weread-user-name',
 			text: `微信读书已登录，用户名：${userName}`
 		});
 
 		// Cookie 状态
-		userInfo.createEl('div', {
+		userInfo.createDiv({
 			cls: 'weread-cookie-status',
 			text: statusText
 		});
@@ -392,7 +392,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const textInfo = container.createDiv({
 			cls: 'weread-login-text-info'
 		});
-		textInfo.createEl('div', {
+		textInfo.createDiv({
 			cls: 'weread-login-title',
 			text: '微信读书未登录'
 		});
@@ -400,7 +400,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.createRange()
 			.createContextualFragment(`点击【登录】按钮，在弹出页面【扫码登录】`);
 		textInfo
-			.createEl('div', {
+			.createDiv({
 				cls: 'weread-login-desc-inline'
 			})
 			.appendChild(desc);
@@ -633,16 +633,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const userTextInfo = userInfoLeft.createDiv({
 			cls: 'weread-user-text-info'
 		});
-		userTextInfo.createEl('div', {
+		userTextInfo.createDiv({
 			cls: 'weread-user-name-title',
 			text: `微信读书已登录`
 		});
-		userTextInfo.createEl('div', {
+		userTextInfo.createDiv({
 			cls: 'weread-user-name-value',
 			text: `用户名：${userName}`
 		});
 		// Cookie 状态
-		userTextInfo.createEl('div', {
+		userTextInfo.createDiv({
 			cls: 'weread-cookie-status',
 			text: statusText
 		});
@@ -953,7 +953,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		);
 
 		if (selectedBooks.length === 0) {
-			previewContainer.createEl('div', {
+			previewContainer.createDiv({
 				cls: 'setting-item-description',
 				text:
 					this.selectableBooksLoadingPromise !== null
@@ -972,13 +972,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cover.alt = book.title;
 
 			const details = card.createDiv({ cls: 'weread-selected-book-details' });
-			details.createEl('div', { cls: 'weread-selected-book-title', text: book.title });
-			details.createEl('div', { cls: 'weread-selected-book-author', text: book.author });
-			details.createEl('div', {
+			details.createDiv({ cls: 'weread-selected-book-title', text: book.title });
+			details.createDiv({ cls: 'weread-selected-book-author', text: book.author });
+			details.createDiv({
 				cls: 'weread-book-selector-meta',
 				text: `划线：${book.noteCount} 条`
 			});
-			details.createEl('div', {
+			details.createDiv({
 				cls: 'weread-book-selector-meta',
 				text: getBookLastReadText(book)
 			});
@@ -1256,13 +1256,13 @@ class ManualSyncBookSelectorModal extends Modal {
 		cover.alt = book.title;
 
 		const details = card.createDiv({ cls: 'weread-book-selector-card-details' });
-		details.createEl('div', { cls: 'weread-book-selector-title', text: book.title });
-		details.createEl('div', { cls: 'weread-book-selector-author', text: book.author });
-		details.createEl('div', {
+		details.createDiv({ cls: 'weread-book-selector-title', text: book.title });
+		details.createDiv({ cls: 'weread-book-selector-author', text: book.author });
+		details.createDiv({
 			cls: 'weread-book-selector-meta',
 			text: `划线：${book.noteCount} 条`
 		});
-		details.createEl('div', {
+		details.createDiv({
 			cls: 'weread-book-selector-meta',
 			text: getBookLastReadText(book)
 		});
@@ -1271,7 +1271,7 @@ class ManualSyncBookSelectorModal extends Modal {
 	private renderAutoExcludedSection(title: string, books: Metadata[], description: string): void {
 		const section = this.selectedListEl.createDiv({ cls: 'weread-book-selector-section' });
 		section.createEl('h4', { text: title });
-		section.createEl('div', {
+		section.createDiv({
 			cls: 'weread-book-selector-section-description',
 			text: description
 		});
