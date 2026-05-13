@@ -370,9 +370,9 @@ const getFa = (id: string): [string, string[]] => {
 export const getPcUrl = (bookId: string): string => {
 	const str = CryptoJS.MD5(bookId).toString(CryptoJS.enc.Hex);
 	const fa = getFa(bookId);
-	let strSub = str.substr(0, 3);
+	let strSub = str.slice(0, 3);
 	strSub += fa[0];
-	strSub += '2' + str.substr(str.length - 2, 2);
+	strSub += '2' + str.slice(str.length - 2, str.length);
 
 	for (let j = 0; j < fa[1].length; j++) {
 		const n = fa[1][j].length.toString(16);
@@ -388,10 +388,10 @@ export const getPcUrl = (bookId: string): string => {
 	}
 
 	if (strSub.length < 20) {
-		strSub += str.substr(0, 20 - strSub.length);
+		strSub += str.slice(0, 20 - strSub.length);
 	}
 
-	strSub += CryptoJS.MD5(strSub).toString(CryptoJS.enc.Hex).substr(0, 3);
+	strSub += CryptoJS.MD5(strSub).toString(CryptoJS.enc.Hex).slice(0, 3);
 	const prefix = 'https://weread.qq.com/web/reader/';
 	return prefix + strSub;
 };
