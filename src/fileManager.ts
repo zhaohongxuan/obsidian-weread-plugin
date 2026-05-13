@@ -1,4 +1,12 @@
-import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile, FileManager as ObsidianFileManager, App } from 'obsidian';
+import {
+	Vault,
+	MetadataCache,
+	TFile,
+	TFolder,
+	Notice,
+	TAbstractFile,
+	App
+} from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
