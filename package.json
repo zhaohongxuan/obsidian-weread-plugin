@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-weread-plugin",
-		"version": "1.2.0",
+	"version": "1.2.0",
 	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {
@@ -13,6 +13,8 @@
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
+		"@eslint/compat": "^2.1.0",
+		"@eslint/js": "^10.0.1",
 		"@types/node": "^16.11.35",
 		"@types/nunjucks": "^3.2.1",
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
@@ -21,10 +23,12 @@
 		"css-loader": "^6.8.1",
 		"esbuild": "0.13.12",
 		"esbuild-css-modules-plugin": "^3.1.0",
-		"eslint": "^8.19.0",
+		"eslint": "^9.39.4",
 		"eslint-config-prettier": "^8.5.0",
+		"eslint-plugin-obsidianmd": "^0.3.0",
 		"eslint-plugin-prettier": "^4.0.0",
 		"obsidian": "^1.4.11",
+		"prettier": "^3.8.3",
 		"style-loader": "^3.3.3",
 		"svelte": "^3.59.0",
 		"svelte-check": "^2.7.0",
@@ -32,12 +36,13 @@
 		"ts-loader": "^9.3.0",
 		"tslib": "2.3.1",
 		"typescript": "^4.4.4",
+		"typescript-eslint": "^8.59.3",
 		"webpack": "^5.72.0",
 		"webpack-cli": "^4.9.2"
 	},
 	"dependencies": {
 		"@types/crypto-js": "^4.1.2",
-		"@types/set-cookie-parser": "^4.6.2",
+		"@types/set-cookie-parser": "2.4.10",
 		"crypto-js": "^4.1.1",
 		"electron": "^31.3.1",
 		"node-html-markdown": "^1.2.0",
