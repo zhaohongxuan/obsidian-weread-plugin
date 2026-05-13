@@ -84,32 +84,7 @@ export class Renderer {
 				trimBlocks: true,
 				lstripBlocks: true
 			});
-<<<<<<< HEAD
-
-			// 添加自定义过滤器
-			env.addFilter('replace', function (str, pattern, replacement) {
-				if (!str) return '';
-
-				if (typeof pattern === 'string') {
-					try {
-						if (pattern.startsWith('/') && pattern.lastIndexOf('/') > 0) {
-							const regexBody = pattern.slice(1, pattern.lastIndexOf('/'));
-							const flags = pattern.slice(pattern.lastIndexOf('/') + 1);
-							pattern = new RegExp(regexBody, flags);
-						} else {
-							return str.replaceAll(pattern, replacement);
-						}
-					} catch {
-						return String(str).replaceAll(pattern, replacement);
-					}
-				} else if (pattern instanceof RegExp) {
-					return String(str).replace(pattern, replacement);
-				}
-				return String(str).replaceAll(pattern, replacement);
-			});
-=======
 			addDateFilters(env);
->>>>>>> origin/main
 
 			const content = env.renderString(template, context);
 			return content;
