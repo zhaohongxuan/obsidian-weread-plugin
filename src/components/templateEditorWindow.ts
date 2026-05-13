@@ -126,9 +126,9 @@ export class TemplateEditorWindow extends Modal {
 		// 监听编辑器输入
 		this.editorEl.addEventListener('input', () => {
 			if (this.debounceTimer) {
-				clearTimeout(this.debounceTimer);
+				activeWindow.clearTimeout(this.debounceTimer);
 			}
-			this.debounceTimer = setTimeout(() => {
+			this.debounceTimer = activeWindow.setTimeout(() => {
 				this.updatePreview();
 			}, 300);
 		});
@@ -195,7 +195,7 @@ export class TemplateEditorWindow extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		if (this.debounceTimer) {
-			clearTimeout(this.debounceTimer);
+			activeWindow.clearTimeout(this.debounceTimer);
 		}
 	}
 
