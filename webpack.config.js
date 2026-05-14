@@ -64,6 +64,8 @@ module.exports = {
 	},
 	externals: {
 		electron: 'commonjs2 electron',
-		obsidian: 'commonjs2 obsidian'
+		obsidian: 'commonjs2 obsidian',
+		svelte: 'commonjs2 svelte',
+		'svelte/store': 'commonjs2 svelte/store'
 	}
 };

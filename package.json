@@ -28,7 +28,6 @@
 		"obsidian": "^1.4.11",
 		"prettier": "^3.8.3",
 		"style-loader": "^3.3.3",
-		"svelte": "^4.2.20",
 		"svelte-check": "^4.4.8",
 		"svelte-preprocess": "^6.0.3",
 		"ts-loader": "^9.3.0",
@@ -46,6 +45,7 @@
 		"node-html-markdown": "^1.2.0",
 		"nunjucks": "^3.2.4",
 		"sanitize-filename": "^1.6.3",
-		"set-cookie-parser": "^2.5.0"
+		"set-cookie-parser": "^2.5.0",
+		"svelte": "^4.2.20"
 	}
 }
