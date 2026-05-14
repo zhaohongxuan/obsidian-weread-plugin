@@ -13,6 +13,6 @@ export const getLinesInString = (input: string) => {
 	return lines;
 };
 
-export const escapeRegExp = (text) => {
+export const escapeRegExp = (text: string) => {
 	return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 };

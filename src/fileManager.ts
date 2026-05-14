@@ -130,7 +130,7 @@ export default class FileManager {
 				const existingFile = localFile.file;
 				console.log(`Updating ${existingFile.path}`);
 				const freshContent = this.renderer.render(notebook);
-				const fileContent = buildFrontMatter(freshContent, notebook, existingFile);
+				const fileContent = buildFrontMatter(freshContent, notebook, existingFile, this.app);
 				await this.vault.modify(existingFile, fileContent);
 				return existingFile.path;
 			}
@@ -138,7 +138,7 @@ export default class FileManager {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
 			const markdownContent = this.renderer.render(notebook);
-			const fileContent = buildFrontMatter(markdownContent, notebook);
+			const fileContent = buildFrontMatter(markdownContent, notebook, undefined, this.app);
 			const newFile = await this.vault.create(newFilePath, fileContent);
 			return newFile.path;
 		}

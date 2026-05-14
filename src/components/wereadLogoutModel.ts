@@ -22,7 +22,7 @@ export default class WereadLoginModel {
 		const filter = {
 			urls: ['https://weread.qq.com/api/auth/logout']
 		};
-		session.webRequest.onCompleted(filter, (details) => {
+		session.webRequest.onCompleted(filter, (details: any) => {
 			if (details.statusCode == 200 || details.statusCode == 204) {
 				console.log('weread logout success, clear cookies...');
 				settingsStore.actions.clearCookies();

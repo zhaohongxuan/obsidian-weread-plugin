@@ -12,7 +12,7 @@ export class TemplateEditorWindow extends Modal {
 	private editorEl: HTMLTextAreaElement;
 	private previewEl: HTMLElement;
 	private errorEl: HTMLElement;
-	private debounceTimer: NodeJS.Timeout | null = null;
+	private debounceTimer: NodeJS.Timeout | number | null = null;
 	private isMarkdownRendered = false;
 	private trimBlocks: boolean;
 	private readOnly: boolean;
@@ -154,7 +154,7 @@ export class TemplateEditorWindow extends Modal {
 		// 监听编辑器输入
 		this.editorEl.addEventListener('input', () => {
 			if (this.debounceTimer) {
-				activeWindow.clearTimeout(this.debounceTimer);
+				activeWindow.clearTimeout(this.debounceTimer as unknown as number);
 			}
 			this.debounceTimer = activeWindow.setTimeout(() => {
 				this.updatePreview();
@@ -223,7 +223,7 @@ export class TemplateEditorWindow extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		if (this.debounceTimer) {
-			activeWindow.clearTimeout(this.debounceTimer);
+			activeWindow.clearTimeout(this.debounceTimer as unknown as number);
 		}
 	}
 
