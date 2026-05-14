@@ -8,7 +8,7 @@
 
 Obsidian微信读书插件是一个社区插件，用来同步微信读书中书籍`元信息`、`高亮标注`，`划线感想`、`书评`等，并将这些信息转换为markdown格式保存到Obsidian的文件夹中。
 
-<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/2b3fd764-d3c1-4073-b861-1f82875c6be0" />
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/41340794-9d48-44f2-9512-e1e7ae0672ff" />
 
 
 ## 更新历史
