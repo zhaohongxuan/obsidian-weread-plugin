@@ -56,7 +56,6 @@ module.exports = {
 	],
 	resolve: {
 		alias: {
-			svelte: path.resolve('node_modules', 'svelte'),
 			'~': path.resolve(__dirname, 'src')
 		},
 		extensions: ['.ts', '.tsx', '.js', '.svelte'],
@@ -64,8 +63,6 @@ module.exports = {
 	},
 	externals: {
 		electron: 'commonjs2 electron',
-		obsidian: 'commonjs2 obsidian',
-		svelte: 'commonjs2 svelte',
-		'svelte/store': 'commonjs2 svelte/store'
+		obsidian: 'commonjs2 obsidian'
 	}
 };
