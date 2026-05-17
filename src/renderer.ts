@@ -17,6 +17,10 @@ const addDateFilters = (env: nunjucks.Environment) => {
 		if (!timestamp) return '';
 		return window.moment(timestamp * 1000).format(format ?? 'HH:mm:ss');
 	});
+	env.addFilter('split', function (str: string, separator: string): string[] {
+		if (!str) return [];
+		return str.split(separator);
+	});
 	env.addFilter('replace', function (str, pattern, replacement) {
 		if (!str) return '';
 
