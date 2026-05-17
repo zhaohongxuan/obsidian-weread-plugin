@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "1.5.4",
+	"version": "1.5.5",
 	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {

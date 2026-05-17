@@ -16,7 +16,9 @@ lastReadDate: {{ metaData.lastReadDate }}
 #### {{ chapter.chapterTitle }}
 {% endif %}
 {% for highlight in chapter.highlights %}
-> 📌 {{ highlight.markText | trim }} ^{{ highlight.bookmarkId }}
+{% set rangeParts = highlight.range | split("-") %}
+{% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
+> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
 {% endfor %}
 {% endfor %}
 

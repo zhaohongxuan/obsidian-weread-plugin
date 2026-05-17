@@ -3,6 +3,8 @@ import ApiManager from '../api';
 import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '../models';
 import { getPcUrl } from '../parser/parseResponse';
 import { formatTimeDuration, formatTimestampToDate } from '../utils/dateUtil';
+import { settingsStore } from '../settings';
+import { get } from 'svelte/store';
 
 const MODAL_DESKTOP_WIDTH = '800px';
 const MODAL_DESKTOP_MAX_WIDTH = '92vw';
@@ -99,7 +101,13 @@ export class WereadBookDetailModal extends Modal {
 		}
 		if (isDesktop) {
 			const linkRow = info.createDiv({ cls: 'weread-book-detail-entry-row' });
-			this.createInlineLink(linkRow, '打开网页版详情', getPcUrl(this.book.bookId));
+			const settings = get(settingsStore);
+			if (settings.bookOpenMode === 'app') {
+				const appUrl = `weread://reading?bId=${this.book.bookId}`;
+				this.createInlineLink(linkRow, '在 App 中阅读', appUrl);
+			} else {
+				this.createInlineLink(linkRow, '打开网页版详情', getPcUrl(this.book.bookId));
+			}
 		}
 
 		const stats = contentEl.createDiv({ cls: 'weread-book-detail-stats' });
@@ -157,7 +165,11 @@ export class WereadBookDetailModal extends Modal {
 		});
 		link.onclick = async (event) => {
 			event.preventDefault();
-			await this.onOpenRemoteDetail?.(href);
+			if (href.startsWith('weread://')) {
+				window.open(href);
+			} else {
+				await this.onOpenRemoteDetail?.(href);
+			}
 		};
 	}
 

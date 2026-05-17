@@ -9,6 +9,7 @@ import type { SyncLogEntry, Theme } from './models';
 
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
+export type BookOpenMode = 'web' | 'app';
 export type BookshelfSortMode = 'recent' | 'title';
 export type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 
@@ -78,6 +79,7 @@ export interface WereadPluginSettings {
 	saveArticleToggle: boolean;
 	saveReadingInfoToggle: boolean;
 	readingOpenMode: ReadingOpenMode;
+	bookOpenMode: BookOpenMode;
 	trimBlocks: boolean;
 	cookieCloudInfo: {
 		serverUrl: string;
@@ -128,6 +130,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	saveArticleToggle: true,
 	saveReadingInfoToggle: true,
 	readingOpenMode: 'TAB',
+	bookOpenMode: 'web',
 	trimBlocks: false,
 	cookieCloudInfo: {
 		serverUrl: '',
@@ -525,6 +528,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setBookOpenMode = (bookOpenMode: BookOpenMode) => {
+		store.update((state) => {
+			state.bookOpenMode = bookOpenMode;
+			return state;
+		});
+	};
+
 	const setCookieCloudInfo = (info: { serverUrl: string; uuid: string; password: string }) => {
 		store.update((state) => {
 			state.cookieCloudInfo = info;
@@ -730,6 +740,7 @@ const createSettingsStore = () => {
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
 			setReadingOpenMode,
+			setBookOpenMode,
 			setCookieCloudInfo,
 			setTrimBlocks,
 			setCookieAutoRefreshToggle,

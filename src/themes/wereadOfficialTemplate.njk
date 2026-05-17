@@ -23,16 +23,18 @@ lastReadDate: {{ metaData.lastReadDate }}
 #### ◆ {{ chapter.chapterTitle }}
 {% endif %}
 {% for highlight in chapter.highlights %}
+{% set rangeParts = highlight.range | split("-") %}
+{% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
 {% if highlight.reviewContent %}
 
 {{ highlight.createTime }} 发表想法
 {{ highlight.reviewContent }}
 
-> {{ highlight.markText | trim }} ^{{ highlight.bookmarkId }}
+> [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
 
 {% else %}
 
-> {{ highlight.markText | trim }} ^{{ highlight.bookmarkId }}
+> [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
 
 {% endif %}
 {% endfor %}

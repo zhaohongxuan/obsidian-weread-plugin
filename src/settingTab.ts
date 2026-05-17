@@ -22,7 +22,7 @@ import { ThemeManagerModal } from './components/themeManagerModal';
 import ApiManager from './api';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
-import type { ReadingOpenMode, SyncMode, BookshelfSortMode } from './settings';
+import type { ReadingOpenMode, SyncMode, BookshelfSortMode, BookOpenMode } from './settings';
 
 const UNLIMITED_NOTE_COUNT = -1;
 
@@ -96,6 +96,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		this.notebookFolder();
 		this.readingOpenModeSetting();
+		this.bookOpenModeSetting();
 		this.bookshelfSettings();
 		this.syncModeSettings();
 		this.scheduledSync();
@@ -217,6 +218,21 @@ export class WereadSettingsTab extends PluginSettingTab {
 					});
 					modal.open();
 				});
+			});
+	}
+
+	private bookOpenModeSetting(): void {
+		new Setting(this.containerEl)
+			.setName('书架阅读入口')
+			.setDesc('点击书架"阅读此书"按钮及详情页阅读链接时，跳转到网页版还是 App')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('web', '网页版')
+					.addOption('app', 'App（deeplink）')
+					.setValue(get(settingsStore).bookOpenMode ?? 'web')
+					.onChange((value: string) => {
+						settingsStore.actions.setBookOpenMode(value as BookOpenMode);
+					});
 			});
 	}
 

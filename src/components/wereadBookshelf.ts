@@ -676,7 +676,16 @@ export class WereadBookshelfView extends ItemView {
 			setIcon(readButton, 'book-open');
 			readButton.onclick = async (event) => {
 				event.stopPropagation();
-				await this.plugin.openPreferredReadingView(getPcUrl(book.bookId));
+				const settings = get(settingsStore);
+				const url =
+					settings.bookOpenMode === 'app'
+						? `weread://reading?bId=${book.bookId}`
+						: getPcUrl(book.bookId);
+				if (settings.bookOpenMode === 'app') {
+					window.open(url);
+				} else {
+					await this.plugin.openPreferredReadingView(url);
+				}
 			};
 		}
 	}
