@@ -1,4 +1,4 @@
-import { Notice, parseYaml, stringifyYaml, TFile } from 'obsidian';
+import { Notice, parseYaml, stringifyYaml, TFile, App } from 'obsidian';
 import type { Notebook } from '../models';
 import { formatTimeDuration, formatTimestampToDate } from './dateUtil';
 import { settingsStore } from '../settings';
@@ -32,7 +32,8 @@ enum ReadingStatus {
 export const buildFrontMatter = (
 	markdownContent: string,
 	noteBook: Notebook,
-	existFile?: TFile
+	existFile?: TFile,
+	app?: App
 ) => {
 	const frontMatter: FrontMatterContent = {
 		doc_type: frontMatterDocType,
@@ -53,9 +54,9 @@ export const buildFrontMatter = (
 			// Use finishedDate to determine reading status since markedStatus is no longer available in new API
 			// If finishedDate exists and is valid (> 0), status is "读完", otherwise "在读"
 			if (readInfo.finishedDate && readInfo.finishedDate > 0) {
-				frontMatter.readingStatus = ReadingStatus['读完'];
+				frontMatter.readingStatus = ReadingStatus['读完'].toString();
 			} else {
-				frontMatter.readingStatus = ReadingStatus['在读'];
+				frontMatter.readingStatus = ReadingStatus['在读'].toString();
 			}
 			frontMatter.progress =
 				readInfo.readingProgress === undefined ? '-1' : readInfo.readingProgress + '%';

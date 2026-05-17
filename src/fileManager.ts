@@ -1,4 +1,4 @@
-import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile } from 'obsidian';
+import { Vault, MetadataCache, TFile, TFolder, Notice, TAbstractFile, App } from 'obsidian';
 import { Renderer } from './renderer';
 import { sanitizeTitle } from './utils/sanitizeTitle';
 import { AnnotationFile, DailyNoteReferenece, Metadata, Notebook } from './models';
@@ -11,10 +11,12 @@ export default class FileManager {
 	private vault: Vault;
 	private metadataCache: MetadataCache;
 	private renderer: Renderer;
+	private app: App;
 
-	constructor(vault: Vault, metadataCache: MetadataCache) {
+	constructor(vault: Vault, metadataCache: MetadataCache, app: App) {
 		this.vault = vault;
 		this.metadataCache = metadataCache;
+		this.app = app;
 		this.renderer = new Renderer();
 	}
 
@@ -73,7 +75,7 @@ export default class FileManager {
 	}
 
 	private async getFileByPath(filePath: string): Promise<TFile> {
-		const file: TAbstractFile = await this.vault.getAbstractFileByPath(filePath);
+		const file: TAbstractFile = this.vault.getAbstractFileByPath(filePath);
 
 		if (!file) {
 			console.error(`${filePath} not found`);
@@ -128,7 +130,7 @@ export default class FileManager {
 				const existingFile = localFile.file;
 				console.log(`Updating ${existingFile.path}`);
 				const freshContent = this.renderer.render(notebook);
-				const fileContent = buildFrontMatter(freshContent, notebook, existingFile);
+				const fileContent = buildFrontMatter(freshContent, notebook, existingFile, this.app);
 				await this.vault.modify(existingFile, fileContent);
 				return existingFile.path;
 			}
@@ -136,7 +138,7 @@ export default class FileManager {
 			const newFilePath = await this.getNewNotebookFilePath(notebook);
 			console.log(`Creating ${newFilePath}`);
 			const markdownContent = this.renderer.render(notebook);
-			const fileContent = buildFrontMatter(markdownContent, notebook);
+			const fileContent = buildFrontMatter(markdownContent, notebook, undefined, this.app);
 			const newFile = await this.vault.create(newFilePath, fileContent);
 			return newFile.path;
 		}
@@ -205,7 +207,7 @@ export default class FileManager {
 	}
 
 	public async deleteNotebookFile(file: TFile): Promise<void> {
-		await this.vault.delete(file);
+		await this.app.fileManager.trashFile(file);
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {

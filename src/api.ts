@@ -252,7 +252,7 @@ export default class ApiManager {
 				return code < 16 ? '\\x0' + code.toString(16) : '\\x' + code.toString(16);
 			}
 			const codeHex = code.toString(16);
-			return '\\u' + ('0000' + codeHex).substr(codeHex.length, 4);
+			return '\\u' + ('0000' + codeHex).slice(codeHex.length, codeHex.length + 4);
 		}
 
 		if (/[^\x20-\x7E]|'/.test(str)) {

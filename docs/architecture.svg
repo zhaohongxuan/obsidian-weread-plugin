@@ -1,0 +1,265 @@
+<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
+  <!-- 定义样式 -->
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .layer-bg { fill: #f8f6ff; stroke: #e9d5ff; stroke-width: 2; }
+      .module { fill: #7c3aed; stroke: #6d28d9; stroke-width: 2; border-radius: 8px; }
+      .module-text { fill: #ffffff; font-size: 13px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .util-module { fill: #a78bfa; stroke: #8b5cf6; stroke-width: 2; }
+      .util-text { fill: #ffffff; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .component-module { fill: #c084fc; stroke: #b78bff; stroke-width: 2; }
+      .arrow { stroke: #6d28d9; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label-text { fill: #4b5563; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .title-text { fill: #1f2937; font-size: 24px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .layer-title { fill: #6d28d9; font-size: 14px; font-weight: 700; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .external { fill: #eff6ff; stroke: #0284c7; stroke-width: 2; }
+      .external-text { fill: #0c4a6e; font-size: 12px; font-weight: 600; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#6d28d9" />
+    </marker>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="1400" height="900" class="bg"/>
+
+  <!-- 标题 -->
+  <text x="700" y="35" text-anchor="middle" class="title-text">Weread Plugin for Obsidian - Architecture</text>
+
+  <!-- ═══════════════════════════════════════════════ 第一层：UI Layer ═══════════════════════════════════════════════ -->
+  <g id="ui-layer">
+    <rect x="50" y="70" width="1300" height="140" rx="8" class="layer-bg"/>
+    <text x="70" y="95" class="layer-title">UI Layer (Components & Modals)</text>
+
+    <!-- 登录 -->
+    <rect x="80" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="130" y="127" text-anchor="middle" class="module-text">Login</text>
+    <text x="130" y="142" text-anchor="middle" class="module-text">Modal</text>
+
+    <!-- 书籍详情 -->
+    <rect x="200" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="250" y="127" text-anchor="middle" class="module-text">Book</text>
+    <text x="250" y="142" text-anchor="middle" class="module-text">Detail</text>
+
+    <!-- 书架 -->
+    <rect x="320" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="370" y="127" text-anchor="middle" class="module-text">Book</text>
+    <text x="370" y="142" text-anchor="middle" class="module-text">Shelf</text>
+
+    <!-- 设置页 -->
+    <rect x="440" y="110" width="100" height="55" rx="6" class="component-module"/>
+    <text x="490" y="127" text-anchor="middle" class="module-text">Settings</text>
+    <text x="490" y="142" text-anchor="middle" class="module-text">Tab</text>
+
+    <!-- 模板编辑 -->
+    <rect x="560" y="110" width="100" height="55" rx="6" class="component-module"/>
+    <text x="610" y="127" text-anchor="middle" class="module-text">Template</text>
+    <text x="610" y="142" text-anchor="middle" class="module-text">Editor</text>
+
+    <!-- 主题管理 -->
+    <rect x="680" y="110" width="100" height="55" rx="6" class="component-module"/>
+    <text x="730" y="127" text-anchor="middle" class="module-text">Theme</text>
+    <text x="730" y="142" text-anchor="middle" class="module-text">Manager</text>
+
+    <!-- 同步日志 -->
+    <rect x="800" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="850" y="127" text-anchor="middle" class="module-text">Sync</text>
+    <text x="850" y="142" text-anchor="middle" class="module-text">Log</text>
+
+    <!-- 阅读器 -->
+    <rect x="920" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="970" y="127" text-anchor="middle" class="module-text">Weread</text>
+    <text x="970" y="142" text-anchor="middle" class="module-text">Reading</text>
+
+    <!-- 浏览器 -->
+    <rect x="1040" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="1090" y="127" text-anchor="middle" class="module-text">Browser</text>
+    <text x="1090" y="142" text-anchor="middle" class="module-text">Window</text>
+
+    <!-- 注销 -->
+    <rect x="1160" y="110" width="100" height="55" rx="6" class="module"/>
+    <text x="1210" y="127" text-anchor="middle" class="module-text">Logout</text>
+    <text x="1210" y="142" text-anchor="middle" class="module-text">Modal</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════ 第二层：Business Logic ═══════════════════════════════════════════════ -->
+  <g id="business-layer">
+    <rect x="50" y="230" width="1300" height="180" rx="8" class="layer-bg"/>
+    <text x="70" y="255" class="layer-title">Business Logic Layer</text>
+
+    <!-- 核心同步引擎 -->
+    <rect x="80" y="270" width="120" height="70" rx="6" class="module"/>
+    <text x="140" y="290" text-anchor="middle" class="module-text">Sync</text>
+    <text x="140" y="305" text-anchor="middle" class="module-text">Notebooks</text>
+    <text x="140" y="320" text-anchor="middle" class="module-text">(同步引擎)</text>
+
+    <!-- API 管理器 -->
+    <rect x="230" y="270" width="120" height="70" rx="6" class="module"/>
+    <text x="290" y="290" text-anchor="middle" class="module-text">API</text>
+    <text x="290" y="305" text-anchor="middle" class="module-text">Manager</text>
+    <text x="290" y="320" text-anchor="middle" class="module-text">(WeRead API)</text>
+
+    <!-- 文件管理 -->
+    <rect x="380" y="270" width="120" height="70" rx="6" class="module"/>
+    <text x="440" y="290" text-anchor="middle" class="module-text">File</text>
+    <text x="440" y="305" text-anchor="middle" class="module-text">Manager</text>
+    <text x="440" y="320" text-anchor="middle" class="module-text">(文件 I/O)</text>
+
+    <!-- 渲染引擎 -->
+    <rect x="530" y="270" width="120" height="70" rx="6" class="module"/>
+    <text x="590" y="290" text-anchor="middle" class="module-text">Renderer</text>
+    <text x="590" y="305" text-anchor="middle" class="module-text">(Markdown</text>
+    <text x="590" y="320" text-anchor="middle" class="module-text">生成)</text>
+
+    <!-- Cookie 管理 -->
+    <rect x="680" y="270" width="120" height="70" rx="6" class="module"/>
+    <text x="740" y="290" text-anchor="middle" class="module-text">Cookie</text>
+    <text x="740" y="305" text-anchor="middle" class="module-text">Cloud</text>
+    <text x="740" y="320" text-anchor="middle" class="module-text">(自动刷新)</text>
+
+    <!-- 数据解析 -->
+    <rect x="830" y="270" width="120" height="70" rx="6" class="util-module"/>
+    <text x="890" y="290" text-anchor="middle" class="module-text">Parser</text>
+    <text x="890" y="305" text-anchor="middle" class="module-text">Response</text>
+    <text x="890" y="320" text-anchor="middle" class="module-text">(数据提取)</text>
+
+    <!-- 书架管理 -->
+    <rect x="980" y="270" width="120" height="70" rx="6" class="util-module"/>
+    <text x="1040" y="290" text-anchor="middle" class="module-text">Bookshelf</text>
+    <text x="1040" y="305" text-anchor="middle" class="module-text">Manager</text>
+    <text x="1040" y="320" text-anchor="middle" class="module-text">(缓存)</text>
+
+    <!-- 设置存储 -->
+    <rect x="1130" y="270" width="120" height="70" rx="6" class="util-module"/>
+    <text x="1190" y="290" text-anchor="middle" class="module-text">Settings</text>
+    <text x="1190" y="305" text-anchor="middle" class="module-text">Store</text>
+    <text x="1190" y="320" text-anchor="middle" class="module-text">(Svelte)</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════ 第三层：Utilities ═══════════════════════════════════════════════ -->
+  <g id="utils-layer">
+    <rect x="50" y="430" width="1300" height="100" rx="8" class="layer-bg"/>
+    <text x="70" y="455" class="layer-title">Utilities Layer</text>
+
+    <!-- Cookie 工具 -->
+    <rect x="80" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="135" y="490" text-anchor="middle" class="util-text">Cookie</text>
+    <text x="135" y="505" text-anchor="middle" class="util-text">Utils</text>
+
+    <!-- 文件名工具 -->
+    <rect x="220" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="275" y="490" text-anchor="middle" class="util-text">Filename</text>
+    <text x="275" y="505" text-anchor="middle" class="util-text">Utils</text>
+
+    <!-- BookID 工具 -->
+    <rect x="360" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="415" y="490" text-anchor="middle" class="util-text">BookID</text>
+    <text x="415" y="505" text-anchor="middle" class="util-text">Utils</text>
+
+    <!-- 标题清理 -->
+    <rect x="500" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="555" y="490" text-anchor="middle" class="util-text">Sanitize</text>
+    <text x="555" y="505" text-anchor="middle" class="util-text">Title</text>
+
+    <!-- 同步过滤 -->
+    <rect x="640" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="695" y="490" text-anchor="middle" class="util-text">Sync</text>
+    <text x="695" y="505" text-anchor="middle" class="util-text">Filter</text>
+
+    <!-- 模型定义 -->
+    <rect x="780" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="835" y="490" text-anchor="middle" class="util-text">Models</text>
+    <text x="835" y="505" text-anchor="middle" class="util-text">(Types)</text>
+
+    <!-- 主题资源 -->
+    <rect x="920" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="975" y="490" text-anchor="middle" class="util-text">Themes</text>
+    <text x="975" y="505" text-anchor="middle" class="util-text">Assets</text>
+
+    <!-- 主题定义 -->
+    <rect x="1060" y="470" width="110" height="50" rx="6" class="util-module"/>
+    <text x="1115" y="490" text-anchor="middle" class="util-text">Theme</text>
+    <text x="1115" y="505" text-anchor="middle" class="util-text">Config</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════ 第四层：External Services ═══════════════════════════════════════════════ -->
+  <g id="external-layer">
+    <rect x="50" y="560" width="1300" height="120" rx="8" class="layer-bg"/>
+    <text x="70" y="585" class="layer-title">External Services & Data Sources</text>
+
+    <!-- WeRead API -->
+    <rect x="200" y="610" width="140" height="60" rx="6" class="external"/>
+    <text x="270" y="633" text-anchor="middle" class="external-text">WeChat Weread</text>
+    <text x="270" y="650" text-anchor="middle" class="external-text">API</text>
+    <text x="270" y="665" text-anchor="middle" class="external-text">(highlights, notes)</text>
+
+    <!-- Obsidian Vault -->
+    <rect x="450" y="610" width="140" height="60" rx="6" class="external"/>
+    <text x="520" y="633" text-anchor="middle" class="external-text">Obsidian</text>
+    <text x="520" y="650" text-anchor="middle" class="external-text">Vault</text>
+    <text x="520" y="665" text-anchor="middle" class="external-text">(Markdown files)</text>
+
+    <!-- Cookie Cloud -->
+    <rect x="700" y="610" width="140" height="60" rx="6" class="external"/>
+    <text x="770" y="633" text-anchor="middle" class="external-text">Cookie</text>
+    <text x="770" y="650" text-anchor="middle" class="external-text">Cloud</text>
+    <text x="770" y="665" text-anchor="middle" class="external-text">(Auto-refresh)</text>
+
+    <!-- LocalStorage -->
+    <rect x="950" y="610" width="140" height="60" rx="6" class="external"/>
+    <text x="1020" y="633" text-anchor="middle" class="external-text">Local</text>
+    <text x="1020" y="650" text-anchor="middle" class="external-text">Storage</text>
+    <text x="1020" y="665" text-anchor="middle" class="external-text">(Settings, Cache)</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════ 数据流箭头 ═══════════════════════════════════════════════ -->
+  <!-- UI → Business Logic -->
+  <path d="M 250 165 L 290 270" class="arrow"/>
+  <path d="M 370 165 L 440 270" class="arrow"/>
+  <path d="M 490 165 L 590 270" class="arrow"/>
+  <path d="M 730 165 L 740 270" class="arrow"/>
+  <path d="M 850 165 L 890 270" class="arrow"/>
+
+  <!-- Business Logic → Utils -->
+  <path d="M 140 340 L 135 470" class="arrow"/>
+  <path d="M 290 340 L 275 470" class="arrow"/>
+  <path d="M 440 340 L 415 470" class="arrow"/>
+  <path d="M 590 340 L 555 470" class="arrow"/>
+  <path d="M 890 340 L 835 470" class="arrow"/>
+
+  <!-- Business Logic → External -->
+  <path d="M 290 340 L 270 610" class="arrow"/>
+  <path d="M 440 340 L 520 610" class="arrow"/>
+  <path d="M 740 340 L 770 610" class="arrow"/>
+  <path d="M 1190 340 L 1020 610" class="arrow"/>
+
+  <!-- ═══════════════════════════════════════════════ 核心流程说明 ═══════════════════════════════════════════════ -->
+  <g id="flow-info">
+    <text x="70" y="750" class="layer-title">Core Data Flow</text>
+
+    <rect x="70" y="770" width="600" height="110" fill="#f0f9ff" stroke="#0284c7" stroke-width="1" rx="6"/>
+    <text x="90" y="795" class="label-text" font-weight="600">1. User Interaction</text>
+    <text x="90" y="815" class="label-text">Click "Sync" button → UI triggers syncNotebooks()</text>
+
+    <text x="90" y="835" class="label-text" font-weight="600">2. Fetch Data from WeRead</text>
+    <text x="90" y="855" class="label-text">API Manager requests highlights, notes, metadata via requestUrl()</text>
+
+    <rect x="730" y="770" width="600" height="110" fill="#fdf2f8" stroke="#be185d" stroke-width="1" rx="6"/>
+    <text x="750" y="795" class="label-text" font-weight="600">3. Parse & Render</text>
+    <text x="750" y="815" class="label-text">parseResponse() extracts data → Renderer generates Markdown</text>
+
+    <text x="750" y="835" class="label-text" font-weight="600">4. Save to Vault</text>
+    <text x="750" y="855" class="label-text">FileManager writes files to Obsidian vault (with FrontMatter)</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════ 关键特性 ═══════════════════════════════════════════════ -->
+  <g id="features">
+    <text x="1050" y="750" class="layer-title">Key Features</text>
+
+    <text x="1050" y="780" class="label-text">✓ Real-time Sync (Incremental)</text>
+    <text x="1050" y="805" class="label-text">✓ Custom Templates (Svelte)</text>
+    <text x="1050" y="830" class="label-text">✓ Mobile Support (iOS/Android)</text>
+    <text x="1050" y="855" class="label-text">✓ Cookie Auto-Refresh</text>
+  </g>
+</svg>

@@ -12,7 +12,7 @@ export class TemplateEditorWindow extends Modal {
 	private editorEl: HTMLTextAreaElement;
 	private previewEl: HTMLElement;
 	private errorEl: HTMLElement;
-	private debounceTimer: NodeJS.Timeout | null = null;
+	private debounceTimer: NodeJS.Timeout | number | null = null;
 	private isMarkdownRendered = false;
 	private trimBlocks: boolean;
 	private readOnly: boolean;
@@ -85,7 +85,7 @@ export class TemplateEditorWindow extends Modal {
 
 		// 中间：编辑器
 		const editorPanel = container.createDiv('weread-editor-panel');
-		editorPanel.createEl('div', {
+		editorPanel.createDiv({
 			text: this.readOnly ? '模板内容' : '模板编辑 (Nunjucks)',
 			cls: 'panel-header'
 		});
@@ -145,7 +145,7 @@ export class TemplateEditorWindow extends Modal {
 		});
 
 		const previewContent = previewPanel.createDiv('preview-content');
-		this.previewEl = previewContent.createEl('div', { cls: 'preview-text' });
+		this.previewEl = previewContent.createDiv({ cls: 'preview-text' });
 		this.errorEl = previewContent.createDiv('error-message');
 
 		// 初始预览
@@ -154,9 +154,9 @@ export class TemplateEditorWindow extends Modal {
 		// 监听编辑器输入
 		this.editorEl.addEventListener('input', () => {
 			if (this.debounceTimer) {
-				clearTimeout(this.debounceTimer);
+				activeWindow.clearTimeout(this.debounceTimer as unknown as number);
 			}
-			this.debounceTimer = setTimeout(() => {
+			this.debounceTimer = activeWindow.setTimeout(() => {
 				this.updatePreview();
 			}, 300);
 		});
@@ -174,7 +174,7 @@ export class TemplateEditorWindow extends Modal {
 
 			// 清空预览容器
 			this.previewEl.empty();
-			this.errorEl.style.display = 'none';
+			this.errorEl.removeClass('weread-error-visible');
 			this.errorEl.textContent = '';
 
 			if (this.isMarkdownRendered) {
@@ -191,7 +191,7 @@ export class TemplateEditorWindow extends Modal {
 			}
 		} catch (error: any) {
 			this.previewEl.empty();
-			this.errorEl.style.display = 'block';
+			this.errorEl.addClass('weread-error-visible');
 			this.errorEl.textContent = '❌ ' + (error.message || String(error));
 		}
 	}
@@ -223,7 +223,7 @@ export class TemplateEditorWindow extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		if (this.debounceTimer) {
-			clearTimeout(this.debounceTimer);
+			activeWindow.clearTimeout(this.debounceTimer as unknown as number);
 		}
 	}
 
