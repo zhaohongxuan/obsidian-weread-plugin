@@ -191,6 +191,7 @@ export class WereadReadingStatsView extends ItemView {
 
 		this.renderHeader(el);
 		this.renderTabBar(el);
+		this.renderReadingTimeHero(el, this.data);
 		this.renderKPICards(el, this.data);
 		this.renderTimeSeries(el, this.data);
 		this.renderTopBooks(el, this.data);
@@ -257,10 +258,56 @@ export class WereadReadingStatsView extends ItemView {
 		}
 	}
 
-	// ── KPI Cards ─────────────────────────────────────────────────────
+	// ── Hero 阅读时长 ──────────────────────────────────────────────────
+	private renderReadingTimeHero(el: HTMLElement, data: ReadingStatsResponse) {
+		const hero = el.createDiv({ cls: 'weread-stats-hero' });
+
+		// 大数字：X小时 Y分钟，分别用不同字号
+		const h = Math.floor(data.totalReadTime / 3600);
+		const m = Math.floor((data.totalReadTime % 3600) / 60);
+		const numRow = hero.createDiv({ cls: 'weread-stats-hero-num' });
+		if (h > 0) {
+			numRow.createSpan({ cls: 'weread-stats-hero-big', text: String(h) });
+			numRow.createSpan({ cls: 'weread-stats-hero-unit', text: '小时' });
+		}
+		if (m > 0 || h === 0) {
+			numRow.createSpan({ cls: 'weread-stats-hero-big', text: String(m) });
+			numRow.createSpan({ cls: 'weread-stats-hero-unit', text: '分钟' });
+		}
+
+		// 副标题：不同模式展示不同信息
+		const subtitleParts: string[] = [];
+		if (this.currentMode === 'overall' && data.registTime) {
+			subtitleParts.push(fmtTs(data.registTime) + '至今');
+			subtitleParts.push(`与微信读书相伴 ${data.readDays} 天`);
+		} else if (this.currentMode === 'annually') {
+			subtitleParts.push(`日均阅读 ${fmtDuration(data.dayAverageReadTime)}`);
+			if (data.compare !== undefined) {
+				const c = fmtCompare(data.compare);
+				if (c) subtitleParts.push(`比去年 ${c.up ? '↑' : '↓'}${c.text}`);
+			}
+		} else if (this.currentMode === 'monthly') {
+			subtitleParts.push(`日均阅读 ${fmtDuration(data.dayAverageReadTime)}`);
+			if (data.compare !== undefined) {
+				const c = fmtCompare(data.compare);
+				if (c) subtitleParts.push(`比上月 ${c.up ? '↑' : '↓'}${c.text}`);
+			}
+		} else if (this.currentMode === 'weekly') {
+			subtitleParts.push(`日均阅读 ${fmtDuration(data.dayAverageReadTime)}`);
+			if (data.compare !== undefined) {
+				const c = fmtCompare(data.compare);
+				if (c) subtitleParts.push(`比上周 ${c.up ? '↑' : '↓'}${c.text}`);
+			}
+		}
+
+		if (subtitleParts.length > 0) {
+			hero.createDiv({ cls: 'weread-stats-hero-sub', text: subtitleParts.join(' · ') });
+		}
+	}
+
+	// ── KPI Cards（去掉阅读时长）─────────────────────────────────────
 	private renderKPICards(el: HTMLElement, data: ReadingStatsResponse) {
 		const grid = el.createDiv({ cls: 'weread-stats-kpi-grid' });
-		this.makeKPICard(grid, '阅读时长', fmtDuration(data.totalReadTime), 'clock');
 		this.makeKPICard(grid, '阅读天数', `${data.readDays} 天`, 'calendar');
 		this.makeKPICard(grid, '日均时长', fmtDuration(data.dayAverageReadTime), 'trending-up',
 			data.compare !== undefined ? fmtCompare(data.compare) : null);

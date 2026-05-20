@@ -2361,6 +2361,43 @@
 }
 
 /* ── KPI Cards ───────────────────────────────────────────────────────────── */
+/* ── Hero 阅读时长 ───────────────────────────────────────────────────────── */
+.weread-stats-hero {
+	padding: 16px 20px 14px;
+	margin-bottom: 16px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 14px;
+}
+
+.weread-stats-hero-num {
+	display: flex;
+	align-items: baseline;
+	gap: 2px;
+	flex-wrap: wrap;
+	line-height: 1;
+}
+
+.weread-stats-hero-big {
+	font-size: 2.6em;
+	font-weight: 700;
+	color: var(--text-normal);
+	letter-spacing: -0.02em;
+}
+
+.weread-stats-hero-unit {
+	font-size: 1.1em;
+	font-weight: 500;
+	color: var(--text-normal);
+	margin-right: 6px;
+}
+
+.weread-stats-hero-sub {
+	margin-top: 6px;
+	font-size: 0.82em;
+	color: var(--text-muted);
+}
+
 .weread-stats-kpi-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
