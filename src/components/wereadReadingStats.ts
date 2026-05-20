@@ -196,9 +196,6 @@ export class WereadReadingStatsView extends ItemView {
 		this.renderTimeSeries(el, this.data);
 		this.renderTopBooks(el, this.data);
 		this.renderPreferences(el, this.data);
-		if (this.currentMode === 'overall') {
-			this.renderYearlyOverview(el, this.data);
-		}
 	}
 
 	// ── Header ────────────────────────────────────────────────────────
@@ -276,24 +273,27 @@ export class WereadReadingStatsView extends ItemView {
 		}
 
 		// 副标题：不同模式展示不同信息
+		// overall 模式 API 不返回 dayAverageReadTime，自己算
+		const avgReadTime = data.dayAverageReadTime || (data.readDays > 0 ? Math.round(data.totalReadTime / data.readDays) : 0);
 		const subtitleParts: string[] = [];
 		if (this.currentMode === 'overall' && data.registTime) {
 			subtitleParts.push(fmtTs(data.registTime) + '至今');
+			subtitleParts.push(`日均阅读 ${fmtDuration(avgReadTime)}`);
 			subtitleParts.push(`与微信读书相伴 ${data.readDays} 天`);
 		} else if (this.currentMode === 'annually') {
-			subtitleParts.push(`日均阅读 ${fmtDuration(data.dayAverageReadTime)}`);
+			subtitleParts.push(`日均阅读 ${fmtDuration(avgReadTime)}`);
 			if (data.compare !== undefined) {
 				const c = fmtCompare(data.compare);
 				if (c) subtitleParts.push(`比去年 ${c.up ? '↑' : '↓'}${c.text}`);
 			}
 		} else if (this.currentMode === 'monthly') {
-			subtitleParts.push(`日均阅读 ${fmtDuration(data.dayAverageReadTime)}`);
+			subtitleParts.push(`日均阅读 ${fmtDuration(avgReadTime)}`);
 			if (data.compare !== undefined) {
 				const c = fmtCompare(data.compare);
 				if (c) subtitleParts.push(`比上月 ${c.up ? '↑' : '↓'}${c.text}`);
 			}
 		} else if (this.currentMode === 'weekly') {
-			subtitleParts.push(`日均阅读 ${fmtDuration(data.dayAverageReadTime)}`);
+			subtitleParts.push(`日均阅读 ${fmtDuration(avgReadTime)}`);
 			if (data.compare !== undefined) {
 				const c = fmtCompare(data.compare);
 				if (c) subtitleParts.push(`比上周 ${c.up ? '↑' : '↓'}${c.text}`);
@@ -617,9 +617,9 @@ export class WereadReadingStatsView extends ItemView {
 	private renderPieChart(parent: HTMLElement, items: { label: string; value: number }[]) {
 		if (items.length < 3) return;
 		const n = items.length;
-		const size = 220;
+		const size = 160;
 		const cx = size / 2, cy = size / 2;
-		const maxR = size / 2 - 36; // 留出边距给标签
+		const maxR = size / 2 - 28; // 留出边距给标签
 		const maxVal = Math.max(...items.map(i => i.value), 1);
 
 		const svg = parent.createSvg('svg', {
@@ -704,26 +704,6 @@ export class WereadReadingStatsView extends ItemView {
 			span.style.opacity = String(opacity);
 			span.title = `${p.name}: ${p.count}本`;
 		});
-	}
-
-	// ── Yearly Overview ────────────────────────────────────────────────
-	private renderYearlyOverview(el: HTMLElement, data: ReadingStatsResponse) {
-		if (!data.readTimes || Object.keys(data.readTimes).length === 0) return;
-
-		const section = el.createDiv({ cls: 'weread-stats-section' });
-		section.createEl('h3', { text: '注册信息', cls: 'weread-stats-section-title' });
-		const infoGrid = section.createDiv({ cls: 'weread-stats-info-grid' });
-
-		const addInfo = (label: string, value: string) => {
-			const item = infoGrid.createDiv({ cls: 'weread-stats-info-item' });
-			item.createDiv({ cls: 'weread-stats-info-label', text: label });
-			item.createDiv({ cls: 'weread-stats-info-value', text: value });
-		};
-
-		if (data.registTime) addInfo('注册时间', fmtTs(data.registTime));
-		if (data.readRate !== undefined) addInfo('文字阅读占比', `${data.readRate}%`);
-		if (data.wrReadTime) addInfo('文字阅读', fmtDuration(data.wrReadTime));
-		if (data.wrListenTime) addInfo('听书时长', fmtDuration(data.wrListenTime));
 	}
 
 	// ── Empty states ──────────────────────────────────────────────────
