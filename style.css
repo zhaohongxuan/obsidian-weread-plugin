@@ -2271,36 +2271,93 @@
 	padding: 5px 8px;
 }
 
-/* ── Tab Bar ─────────────────────────────────────────────────────────────── */
+/* ── Nav (tab + timepicker row) ──────────────────────────────────────────── */
+.weread-stats-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 20px;
+}
+
+/* ── Tab Bar 胶囊 ─────────────────────────────────────────────────────────── */
 .weread-stats-tabbar {
 	display: flex;
 	gap: 4px;
-	margin-bottom: 20px;
-	border-bottom: 1px solid var(--background-modifier-border);
-	padding-bottom: 0;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	padding: 3px;
 }
 
 .weread-stats-tab {
-	padding: 6px 16px;
+	padding: 5px 16px;
 	border: none;
 	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
-	font-size: 0.9em;
-	border-bottom: 2px solid transparent;
-	margin-bottom: -1px;
-	border-radius: 0;
-	transition: color 0.15s, border-color 0.15s;
+	font-size: 0.88em;
+	border-radius: 9px;
+	transition: background 0.18s, color 0.18s;
+	white-space: nowrap;
 }
 
 .weread-stats-tab:hover {
 	color: var(--text-normal);
+	background: var(--background-modifier-hover);
 }
 
 .weread-stats-tab.is-active {
+	background: var(--background-primary);
 	color: var(--text-accent);
-	border-bottom-color: var(--text-accent);
 	font-weight: 600;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ── Time Picker ─────────────────────────────────────────────────────────── */
+.weread-stats-timepicker {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 2px 4px;
+}
+
+.weread-stats-timepicker-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 7px;
+	padding: 0;
+	transition: background 0.15s, color 0.15s;
+}
+
+.weread-stats-timepicker-btn:hover:not([disabled]) {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.weread-stats-timepicker-btn.is-disabled,
+.weread-stats-timepicker-btn[disabled] {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.weread-stats-timepicker-label {
+	font-size: 0.82em;
+	color: var(--text-normal);
+	font-weight: 500;
+	padding: 0 6px;
+	white-space: nowrap;
 }
 
 /* ── KPI Cards ───────────────────────────────────────────────────────────── */
@@ -2391,6 +2448,9 @@
 
 .weread-stats-bar-chart {
 	display: block;
+	width: 100%;
+	height: auto;
+	min-width: 0;
 }
 
 .weread-stats-bar {
