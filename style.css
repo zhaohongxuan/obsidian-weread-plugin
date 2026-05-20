@@ -2282,19 +2282,18 @@
 
 /* ── Tab Bar 胶囊 ─────────────────────────────────────────────────────────── */
 .weread-stats-tabbar {
-	display: flex;
+	display: inline-flex;
 	gap: 2px;
 	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	padding: 3px;
 	flex-shrink: 0;
-	width: fit-content;
 }
 
 .weread-stats-tab {
-	min-width: 52px;
-	padding: 5px 10px;
+	width: 52px;
+	padding: 5px 0;
 	text-align: center;
 	border: none;
 	background: transparent;
@@ -2304,6 +2303,7 @@
 	border-radius: 9px;
 	transition: background 0.18s, color 0.18s;
 	white-space: nowrap;
+	box-sizing: border-box;
 }
 
 .weread-stats-tab:hover {
