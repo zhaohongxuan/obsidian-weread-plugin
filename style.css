@@ -2666,6 +2666,11 @@
 	overflow: hidden;
 }
 
+/* author row: wider name, progress bar fills remaining space */
+.weread-stats-pref-row-author .weread-stats-pref-name {
+	width: 80px;
+}
+
 .weread-stats-pref-bar-fill {
 	height: 100%;
 	background: var(--text-accent);
@@ -2725,41 +2730,44 @@
 }
 
 /* ── Pie Chart ───────────────────────────────────────────────────────────── */
-.weread-stats-pie-wrap {
-	display: flex;
-	align-items: flex-start;
-	gap: 16px;
-	flex-wrap: wrap;
-	margin-top: 8px;
+/* ── Radar Chart ─────────────────────────────────────────────────────────── */
+.weread-stats-radar-svg {
+	display: block;
+	margin: 8px auto 0;
 }
-.weread-stats-pie-svg {
-	flex-shrink: 0;
+
+.weread-stats-radar-ring {
+	fill: none;
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
 }
-.weread-stats-pie-slice {
-	transition: opacity 0.15s;
-	cursor: default;
+
+.weread-stats-radar-axis {
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
 }
-.weread-stats-pie-slice:hover { opacity: 0.8; }
-.weread-stats-pie-legend {
-	display: flex;
-	flex-direction: column;
-	gap: 5px;
-	justify-content: center;
+
+.weread-stats-radar-area {
+	stroke: #5aabf0;
+	stroke-width: 1.5;
+	opacity: 0.85;
 }
-.weread-stats-pie-legend-row {
-	display: flex;
-	align-items: center;
-	gap: 6px;
+
+.weread-stats-radar-dot {
+	fill: white;
+	stroke: #5aabf0;
+	stroke-width: 1.5;
 }
-.weread-stats-pie-legend-dot {
-	width: 9px;
-	height: 9px;
-	border-radius: 50%;
-	flex-shrink: 0;
+
+.weread-stats-radar-label {
+	fill: var(--text-muted);
+	font-size: 9px;
 }
-.weread-stats-pie-legend-label {
-	font-size: 0.78em;
-	color: var(--text-normal);
+
+.weread-stats-radar-label.is-top {
+	fill: var(--text-normal);
+	font-size: 11px;
+	font-weight: 600;
 }
 
 /* ── Tag Cloud ───────────────────────────────────────────────────────────── */

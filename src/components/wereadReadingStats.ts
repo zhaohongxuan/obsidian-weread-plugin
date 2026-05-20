@@ -488,16 +488,19 @@ export class WereadReadingStatsView extends ItemView {
 			}
 		}
 
-		// ── 偏好作者
+		// ── 偏好作者（进度条）
 		if (hasAuthor) {
 			const authorCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
 			const authorHeader = authorCard.createDiv({ cls: 'weread-stats-pref-card-header' });
 			setIcon(authorHeader.createSpan(), 'user');
 			authorHeader.createSpan({ text: '偏好作者' });
+			const maxCount = Math.max(...data.preferAuthor!.map(a => a.count), 1);
 			data.preferAuthor!.slice(0, 6).forEach(a => {
-				const row = authorCard.createDiv({ cls: 'weread-stats-pref-row' });
+				const row = authorCard.createDiv({ cls: 'weread-stats-pref-row weread-stats-pref-row-author' });
 				row.createSpan({ cls: 'weread-stats-pref-name', text: a.name });
-				row.createSpan({ cls: 'weread-stats-pref-meta', text: `${a.count}本 · ${a.readTime}` });
+				const barWrap = row.createDiv({ cls: 'weread-stats-pref-bar-track' });
+				barWrap.createDiv({ cls: 'weread-stats-pref-bar-fill' }).style.width = `${(a.count / maxCount) * 100}%`;
+				row.createSpan({ cls: 'weread-stats-pref-meta', text: `${a.count}本` });
 			});
 		}
 	}
@@ -561,50 +564,81 @@ export class WereadReadingStatsView extends ItemView {
 		});
 	}
 
-	/** 简单 SVG 饼图 + 图例 */
+	/** SVG 雷达图（蜘蛛网图），带渐变填充 */
 	private renderPieChart(parent: HTMLElement, items: { label: string; value: number }[]) {
-		const total = items.reduce((s, it) => s + it.value, 0);
-		if (total === 0) return;
+		if (items.length < 3) return;
+		const n = items.length;
+		const size = 220;
+		const cx = size / 2, cy = size / 2;
+		const maxR = size / 2 - 36; // 留出边距给标签
+		const maxVal = Math.max(...items.map(i => i.value), 1);
 
-		const size = 120;
-		const cx = size / 2, cy = size / 2, r = size / 2 - 4;
-		// accent palette: rotate hue from accent color
-		const COLORS = ['#7c6af7','#a78bfa','#6366f1','#818cf8','#c4b5fd','#4f46e5','#ddd6fe','#3730a3'];
-
-		const pieWrap = parent.createDiv({ cls: 'weread-stats-pie-wrap' });
-
-		const svg = pieWrap.createSvg('svg', {
-			attr: { width: String(size), height: String(size), viewBox: `0 0 ${size} ${size}`, class: 'weread-stats-pie-svg' }
+		const svg = parent.createSvg('svg', {
+			attr: { width: '100%', viewBox: `0 0 ${size} ${size}`, class: 'weread-stats-radar-svg', preserveAspectRatio: 'xMidYMid meet' }
 		});
 
-		let angle = -Math.PI / 2; // start top
-		items.forEach((item, idx) => {
-			const sweep = (item.value / total) * 2 * Math.PI;
-			const x1 = cx + r * Math.cos(angle);
-			const y1 = cy + r * Math.sin(angle);
-			const x2 = cx + r * Math.cos(angle + sweep);
-			const y2 = cy + r * Math.sin(angle + sweep);
-			const large = sweep > Math.PI ? 1 : 0;
+		// 定义渐变
+		const defs = svg.createSvg('defs');
+		const grad = defs.createSvg('radialGradient');
+		grad.setAttribute('id', 'radarGrad');
+		grad.setAttribute('cx', '50%'); grad.setAttribute('cy', '50%'); grad.setAttribute('r', '50%');
+		const stop1 = grad.createSvg('stop');
+		stop1.setAttribute('offset', '0%'); stop1.setAttribute('stop-color', '#90c8f8'); stop1.setAttribute('stop-opacity', '0.9');
+		const stop2 = grad.createSvg('stop');
+		stop2.setAttribute('offset', '100%'); stop2.setAttribute('stop-color', '#c8e6fc'); stop2.setAttribute('stop-opacity', '0.4');
 
-			const path = svg.createSvg('path', {
-				attr: {
-					d: `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z`,
-					class: 'weread-stats-pie-slice'
-				}
-			});
-			(path as SVGElement).setAttribute('style', `fill: ${COLORS[idx % COLORS.length]}`);
-			path.createSvg('title').textContent = `${item.label}: ${fmtDuration(item.value)}`;
-			angle += sweep;
+		// 坐标计算（从顶部开始，顺时针）
+		const angle = (i: number) => (2 * Math.PI * i) / n - Math.PI / 2;
+		const pt = (i: number, r: number) => ({
+			x: cx + r * Math.cos(angle(i)),
+			y: cy + r * Math.sin(angle(i))
 		});
 
-		// Legend
-		const legend = pieWrap.createDiv({ cls: 'weread-stats-pie-legend' });
-		items.forEach((item, idx) => {
-			const row = legend.createDiv({ cls: 'weread-stats-pie-legend-row' });
-			const dot = row.createDiv({ cls: 'weread-stats-pie-legend-dot' });
-			dot.style.background = COLORS[idx % COLORS.length];
-			const pct = Math.round((item.value / total) * 100);
-			row.createSpan({ cls: 'weread-stats-pie-legend-label', text: `${item.label} ${pct}%` });
+		// 背景网格圆（3 圈）
+		for (let ring = 1; ring <= 3; ring++) {
+			const r = (maxR * ring) / 3;
+			const pts = Array.from({ length: n }, (_, i) => pt(i, r));
+			const poly = svg.createSvg('polygon');
+			poly.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
+			poly.setAttribute('class', 'weread-stats-radar-ring');
+		}
+
+		// 轴线
+		for (let i = 0; i < n; i++) {
+			const end = pt(i, maxR);
+			const line = svg.createSvg('line');
+			line.setAttribute('x1', String(cx)); line.setAttribute('y1', String(cy));
+			line.setAttribute('x2', String(end.x)); line.setAttribute('y2', String(end.y));
+			line.setAttribute('class', 'weread-stats-radar-axis');
+		}
+
+		// 数据多边形
+		const dataPts = items.map((item, i) => pt(i, (item.value / maxVal) * maxR));
+		const poly = svg.createSvg('polygon');
+		poly.setAttribute('points', dataPts.map(p => `${p.x},${p.y}`).join(' '));
+		poly.setAttribute('class', 'weread-stats-radar-area');
+		poly.setAttribute('fill', 'url(#radarGrad)');
+
+		// 数据点
+		dataPts.forEach((p, i) => {
+			const circle = svg.createSvg('circle');
+			circle.setAttribute('cx', String(p.x)); circle.setAttribute('cy', String(p.y));
+			circle.setAttribute('r', '3'); circle.setAttribute('class', 'weread-stats-radar-dot');
+			circle.createSvg('title').textContent = `${items[i].label}: ${fmtDuration(items[i].value)}`;
+		});
+
+		// 轴标签（大值加粗）
+		const sortedVals = items.map(i => i.value).sort((a, b) => b - a);
+		const top2 = new Set(sortedVals.slice(0, 2));
+		items.forEach((item, i) => {
+			const labelR = maxR + 14;
+			const p = pt(i, labelR);
+			const text = svg.createSvg('text');
+			text.setAttribute('x', String(p.x)); text.setAttribute('y', String(p.y));
+			text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle');
+			const isTop = top2.has(item.value);
+			text.setAttribute('class', isTop ? 'weread-stats-radar-label is-top' : 'weread-stats-radar-label');
+			text.textContent = item.label;
 		});
 	}
 
