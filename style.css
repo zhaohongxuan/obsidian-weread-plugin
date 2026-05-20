@@ -2284,7 +2284,7 @@
 /* ── Tab Bar 胶囊 ─────────────────────────────────────────────────────────── */
 .weread-stats-tabbar {
 	display: flex;
-	gap: 0;
+	gap: 2px;
 	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
@@ -2293,7 +2293,7 @@
 
 .weread-stats-tab {
 	flex: 1;
-	padding: 5px 0;
+	padding: 5px 10px;
 	text-align: center;
 	border: none;
 	background: transparent;
