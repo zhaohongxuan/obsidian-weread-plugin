@@ -451,7 +451,7 @@ export class WereadReadingStatsView extends ItemView {
 		section.createEl('h3', { text: '偏好分析', cls: 'weread-stats-section-title' });
 		const prefGrid = section.createDiv({ cls: 'weread-stats-pref-grid' });
 
-		// ── 阅读时段（柱状图，加时段标签）
+		// ── 阅读时段（全宽柱状图）
 		if (hasTime) {
 			const timeCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card weread-stats-pref-card-wide' });
 			const timeHeader = timeCard.createDiv({ cls: 'weread-stats-pref-card-header' });
@@ -463,17 +463,29 @@ export class WereadReadingStatsView extends ItemView {
 			this.renderHourBarChart(timeCard, data.preferTime!);
 		}
 
-		// ── 分类偏好（饼图）
-		if (hasCat) {
-			const cats = data.preferCategory.filter(c => c.readingTime > 0);
-			const catCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
-			const catHeader = catCard.createDiv({ cls: 'weread-stats-pref-card-header' });
-			setIcon(catHeader.createSpan(), 'tag');
-			catHeader.createSpan({ text: '分类偏好' });
-			if (data.preferCategoryWord) {
-				catCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferCategoryWord });
+		// ── 分类偏好（饼图）+ 出版方（标签云）并排
+		if (hasCat || hasPublisher) {
+			// 分类饼图
+			if (hasCat) {
+				const cats = data.preferCategory.filter(c => c.readingTime > 0);
+				const catCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
+				const catHeader = catCard.createDiv({ cls: 'weread-stats-pref-card-header' });
+				setIcon(catHeader.createSpan(), 'tag');
+				catHeader.createSpan({ text: '分类偏好' });
+				if (data.preferCategoryWord) {
+					catCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferCategoryWord });
+				}
+				this.renderPieChart(catCard, cats.slice(0, 8).map(c => ({ label: c.categoryTitle, value: c.readingTime })));
 			}
-			this.renderPieChart(catCard, cats.slice(0, 8).map(c => ({ label: c.categoryTitle, value: c.readingTime })));
+
+			// 出版方标签云（与分类同行，非全宽）
+			if (hasPublisher) {
+				const pubCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
+				const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });
+				setIcon(pubHeader.createSpan(), 'building-2');
+				pubHeader.createSpan({ text: '偏好出版方' });
+				this.renderTagCloud(pubCard, data.preferPublisher!.slice(0, 20));
+			}
 		}
 
 		// ── 偏好作者
@@ -487,15 +499,6 @@ export class WereadReadingStatsView extends ItemView {
 				row.createSpan({ cls: 'weread-stats-pref-name', text: a.name });
 				row.createSpan({ cls: 'weread-stats-pref-meta', text: `${a.count}本 · ${a.readTime}` });
 			});
-		}
-
-		// ── 出版方标签云
-		if (hasPublisher) {
-			const pubCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card weread-stats-pref-card-wide' });
-			const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });
-			setIcon(pubHeader.createSpan(), 'building-2');
-			pubHeader.createSpan({ text: '偏好出版方' });
-			this.renderTagCloud(pubCard, data.preferPublisher!.slice(0, 20));
 		}
 	}
 

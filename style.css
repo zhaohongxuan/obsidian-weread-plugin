@@ -2608,7 +2608,7 @@
 /* ── Preferences ─────────────────────────────────────────────────────────── */
 .weread-stats-pref-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 14px;
 }
 
@@ -2617,6 +2617,7 @@
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
 	padding: 14px;
+	min-height: 160px;
 }
 
 .weread-stats-pref-card-wide {
