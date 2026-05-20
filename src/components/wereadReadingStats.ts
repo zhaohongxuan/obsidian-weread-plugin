@@ -1,6 +1,7 @@
-import { ItemView, WorkspaceLeaf, setIcon } from 'obsidian';
+import { ItemView, WorkspaceLeaf, setIcon, TFile } from 'obsidian';
 import ApiManager from '../api';
 import SyncReadingStats from '../syncReadingStats';
+import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import type { ReadingStatsResponse, ReadingStatsMode } from '../models';
@@ -32,6 +33,8 @@ function fmtCompare(compare?: number): { text: string; up: boolean } | null {
 
 // preferTime 从 6 点开始排列
 const HOUR_LABELS = ['6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','0','1','2','3','4','5'];
+
+const WEEK_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 
 // ─── 时间偏移计算 ──────────────────────────────────────────────────────────────
 
@@ -85,16 +88,18 @@ function periodLabel(mode: ReadingStatsMode, offset: number): string {
 export class WereadReadingStatsView extends ItemView {
 	private apiManager: ApiManager;
 	private syncReadingStats: SyncReadingStats;
+	private fileManager: FileManager;
 	private currentMode: ReadingStatsMode = 'monthly';
 	private currentOffset = 0; // 0=当前，-1=上一期，...
 	private data: ReadingStatsResponse | null = null;
 	private loading = false;
 	private contentEl2: HTMLElement;
 
-	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, syncReadingStats: SyncReadingStats) {
+	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, syncReadingStats: SyncReadingStats, fileManager: FileManager) {
 		super(leaf);
 		this.apiManager = apiManager;
 		this.syncReadingStats = syncReadingStats;
+		this.fileManager = fileManager;
 	}
 
 	getViewType(): string { return WEREAD_READING_STATS_VIEW_ID; }
@@ -318,32 +323,42 @@ export class WereadReadingStatsView extends ItemView {
 			const d = new Date(Number(ts) * 1000);
 			if (this.currentMode === 'overall') return `${d.getFullYear()}`;
 			if (this.currentMode === 'annually') return `${d.getMonth() + 1}月`;
+			if (this.currentMode === 'weekly') {
+				// getDay(): 0=Sun,1=Mon,...,6=Sat → WEEK_LABELS index: 0=Mon,...,6=Sun
+				const dow = d.getDay();
+				const idx = dow === 0 ? 6 : dow - 1;
+				return WEEK_LABELS[idx];
+			}
 			return `${d.getDate()}`;
 		});
 
 		this.renderBarChart(section, values, labels);
 	}
 
-	// ── Bar Chart (SVG-based) ─────────────────────────────────────────
+	// ── Bar Chart (SVG-based, with Y scale) ──────────────────────────
 	private renderBarChart(parent: HTMLElement, values: number[], labels: string[]) {
 		const maxVal = Math.max(...values, 1);
-		// 根据数量动态计算 bar 宽度，最小 16px 最大 40px
-		const minBarW = 16, maxBarW = 40;
 		const gap = 4;
-		const chartH = 120;
-		const labelH = 20;
+		const chartH = 140;
+		const labelH = 22;
+		const scaleW = 48; // left gutter for Y-axis labels
 
 		const wrapper = parent.createDiv({ cls: 'weread-stats-chart-wrapper' });
 
-		// 先渲染再根据容器宽度调整
-		const barW = Math.min(maxBarW, Math.max(minBarW,
-			Math.floor((wrapper.clientWidth || 600) / values.length) - gap
-		));
-		const totalW = (barW + gap) * values.length;
+		// compute nice scale ticks
+		const tickMax = maxVal; // seconds
+		const ticks = [0, 0.5, 1].map(f => Math.round(tickMax * f)); // 0, mid, max
+
+		// SVG fills full width; bars share space equally
+		const n = values.length;
+		// We use a fixed viewBox wide enough; bars spaced evenly
+		const barAreaW = 600; // logical width for bars
+		const barW = Math.max(8, Math.floor(barAreaW / n) - gap);
+		const totalViewW = scaleW + barAreaW;
 
 		const svg = wrapper.createSvg('svg', {
 			attr: {
-				viewBox: `0 0 ${totalW} ${chartH + labelH}`,
+				viewBox: `0 0 ${totalViewW} ${chartH + labelH}`,
 				width: '100%',
 				height: chartH + labelH,
 				class: 'weread-stats-bar-chart',
@@ -351,9 +366,37 @@ export class WereadReadingStatsView extends ItemView {
 			}
 		});
 
+		// Y-axis guide lines + labels
+		for (let ti = 0; ti < ticks.length; ti++) {
+			const tickVal = ticks[ti];
+			const yPos = chartH - (tickVal / maxVal) * chartH;
+
+			// dashed line across bar area
+			svg.createSvg('line', {
+				attr: {
+					x1: String(scaleW), y1: String(yPos),
+					x2: String(totalViewW), y2: String(yPos),
+					class: 'weread-stats-scale-line'
+				}
+			});
+
+			// label on left
+			const lbl = svg.createSvg('text', {
+				attr: {
+					x: String(scaleW - 4),
+					y: String(yPos + 4),
+					'text-anchor': 'end',
+					class: 'weread-stats-scale-label'
+				}
+			});
+			lbl.textContent = ti === 0 ? '0' : fmtDuration(tickVal);
+		}
+
+		// Bars + labels
 		values.forEach((v, i) => {
 			const barH = Math.max((v / maxVal) * chartH, v > 0 ? 4 : 0);
-			const x = i * (barW + gap);
+			const slotW = barAreaW / n;
+			const x = scaleW + i * slotW + (slotW - barW) / 2;
 			const y = chartH - barH;
 
 			const rect = svg.createSvg('rect', {
@@ -362,11 +405,10 @@ export class WereadReadingStatsView extends ItemView {
 					y: String(y),
 					width: String(barW),
 					height: String(barH),
-					rx: '3',
+					rx: '4',
 					class: 'weread-stats-bar' + (v === maxVal ? ' is-max' : '')
 				}
 			});
-
 			rect.createSvg('title').textContent = `${labels[i]}: ${fmtDuration(v)}`;
 
 			const text = svg.createSvg('text', {
@@ -395,6 +437,7 @@ export class WereadReadingStatsView extends ItemView {
 			const title = item.book?.title ?? item.albumInfo?.name ?? '未知';
 			const author = item.book?.author ?? item.albumInfo?.authorName ?? '';
 			const cover = item.book?.cover ?? item.albumInfo?.cover ?? '';
+			const bookId = item.book?.bookId ?? item.albumInfo?.albumId ?? '';
 			const pct = (item.readTime / maxTime) * 100;
 
 			const row = list.createDiv({ cls: 'weread-stats-book-row' });
@@ -424,6 +467,19 @@ export class WereadReadingStatsView extends ItemView {
 			const barTrack = right.createDiv({ cls: 'weread-stats-mini-bar-track' });
 			const barFill = barTrack.createDiv({ cls: 'weread-stats-mini-bar-fill' });
 			barFill.style.width = `${pct}%`;
+
+			// 点击跳转到本地笔记
+			if (bookId) {
+				row.addClass('weread-stats-book-row-clickable');
+				row.addEventListener('click', async () => {
+					const bookIdMap = await this.fileManager.getNotebookFilesByBookId();
+					const annotationFile = bookIdMap.get(bookId);
+					if (annotationFile?.file instanceof TFile) {
+						const leaf = this.app.workspace.getLeaf(false);
+						await leaf.openFile(annotationFile.file);
+					}
+				});
+			}
 		});
 	}
 

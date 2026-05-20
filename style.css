@@ -2429,6 +2429,8 @@
 /* ── Sections ────────────────────────────────────────────────────────────── */
 .weread-stats-section {
 	margin-bottom: 28px;
+	width: 100%;
+	box-sizing: border-box;
 }
 
 .weread-stats-section-title {
@@ -2472,6 +2474,18 @@
 	font-size: 10px;
 }
 
+/* Y-axis scale */
+.weread-stats-scale-line {
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
+	stroke-dasharray: 4 3;
+}
+
+.weread-stats-scale-label {
+	fill: var(--text-faint);
+	font-size: 9px;
+}
+
 /* ── Top Books ───────────────────────────────────────────────────────────── */
 .weread-stats-book-list {
 	display: flex;
@@ -2487,6 +2501,16 @@
 	background: var(--background-secondary);
 	border-radius: 8px;
 	border: 1px solid var(--background-modifier-border);
+	transition: background 0.15s;
+}
+
+.weread-stats-book-row-clickable {
+	cursor: pointer;
+}
+
+.weread-stats-book-row-clickable:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--text-accent);
 }
 
 .weread-stats-book-rank {

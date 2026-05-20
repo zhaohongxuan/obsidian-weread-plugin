@@ -124,7 +124,7 @@ export default class WereadPlugin extends Plugin {
 		);
 		this.registerView(
 			WEREAD_READING_STATS_VIEW_ID,
-			(leaf) => new WereadReadingStatsView(leaf, apiManager, this.syncReadingStats)
+			(leaf) => new WereadReadingStatsView(leaf, apiManager, this.syncReadingStats, fileManager)
 		);
 
 		this.addCommand({
