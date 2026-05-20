@@ -273,6 +273,16 @@ export class WereadBookshelfView extends ItemView {
 			  })()
 			: null;
 
+		const readingStatsButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '同步阅读统计' }
+		});
+		setIcon(readingStatsButton, 'bar-chart-2');
+		setTooltip(readingStatsButton, '阅读统计');
+		readingStatsButton.addEventListener('click', () => {
+			(this.plugin as any).activateReadingStatsView();
+		});
+
 		const syncLogButton = toolbarActions.createEl('button', {
 			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
 			attr: { 'aria-label': '同步日志' }

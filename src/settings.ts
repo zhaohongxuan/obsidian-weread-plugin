@@ -99,6 +99,8 @@ export interface WereadPluginSettings {
 	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
 	themes: Theme[];
 	activeThemeId: string;
+	wereadApiKey: string;
+	readingStatsLocation: string;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -149,7 +151,9 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	bookshelfGroupByYear: true,
 	bookshelfDefaultSyncStatusFilter: 'all',
 	themes: BUILT_IN_THEMES,
-	activeThemeId: 'builtin_merged'
+	activeThemeId: 'builtin_merged',
+	wereadApiKey: '',
+	readingStatsLocation: '/'
 };
 
 const createSettingsStore = () => {
@@ -710,6 +714,20 @@ const createSettingsStore = () => {
 		return state.themes.find((t) => t.id === themeId) ?? null;
 	};
 
+	const setWereadApiKey = (apiKey: string) => {
+		store.update((state) => {
+			state.wereadApiKey = apiKey;
+			return state;
+		});
+	};
+
+	const setReadingStatsLocation = (location: string) => {
+		store.update((state) => {
+			state.readingStatsLocation = location;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -761,7 +779,9 @@ const createSettingsStore = () => {
 			getActiveTheme,
 			duplicateTheme,
 			importTheme,
-			exportTheme
+			exportTheme,
+			setWereadApiKey,
+			setReadingStatsLocation
 		}
 	};
 };
