@@ -2680,38 +2680,102 @@
 }
 
 /* ── Hour Chart ──────────────────────────────────────────────────────────── */
-.weread-stats-hour-chart {
-	display: flex;
-	align-items: flex-end;
-	gap: 2px;
-	height: 70px;
-}
-
-.weread-stats-hour-col {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	flex: 1;
-}
-
-.weread-stats-hour-bar {
-	width: 100%;
-	background: var(--text-accent);
-	border-radius: 2px 2px 0 0;
-	opacity: 0.7;
+/* ── Hour chart (SVG-based, replaces old div bars) ───────────────────────── */
+.weread-stats-hour-seg-bar {
 	transition: opacity 0.15s;
 	cursor: default;
 }
+.weread-stats-hour-seg-bar:hover { opacity: 0.8; }
 
-.weread-stats-hour-bar:hover {
-	opacity: 1;
+/* Time-of-day color variables */
+:root {
+	--weread-hour-morning: #7c6af7;
+	--weread-hour-afternoon: #f97316;
+	--weread-hour-evening: #ec4899;
+	--weread-hour-night: #6b7280;
+}
+.theme-dark {
+	--weread-hour-morning: #a78bfa;
+	--weread-hour-afternoon: #fb923c;
+	--weread-hour-evening: #f472b6;
+	--weread-hour-night: #9ca3af;
 }
 
-.weread-stats-hour-label {
-	font-size: 9px;
+.weread-stats-hour-legend {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+.weread-stats-hour-legend-item {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.weread-stats-hour-legend-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+.weread-stats-hour-legend-label {
+	font-size: 0.76em;
 	color: var(--text-muted);
-	margin-top: 3px;
 }
+
+/* ── Pie Chart ───────────────────────────────────────────────────────────── */
+.weread-stats-pie-wrap {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+.weread-stats-pie-svg {
+	flex-shrink: 0;
+}
+.weread-stats-pie-slice {
+	transition: opacity 0.15s;
+	cursor: default;
+}
+.weread-stats-pie-slice:hover { opacity: 0.8; }
+.weread-stats-pie-legend {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	justify-content: center;
+}
+.weread-stats-pie-legend-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.weread-stats-pie-legend-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+.weread-stats-pie-legend-label {
+	font-size: 0.78em;
+	color: var(--text-normal);
+}
+
+/* ── Tag Cloud ───────────────────────────────────────────────────────────── */
+.weread-stats-tag-cloud {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	padding: 8px 0;
+}
+.weread-stats-cloud-tag {
+	color: var(--text-accent);
+	cursor: default;
+	line-height: 1.4;
+	transition: opacity 0.15s;
+}
+.weread-stats-cloud-tag:hover { opacity: 1 !important; }
 
 /* ── Info Grid ───────────────────────────────────────────────────────────── */
 .weread-stats-info-grid {

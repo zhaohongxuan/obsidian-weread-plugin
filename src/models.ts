@@ -571,6 +571,7 @@ export type ReadingStatsResponse = {
 	preferTimeWord?: string;
 	preferTime?: number[];       // 24h 分布，从 6 点开始
 	preferAuthor?: ReadingAuthorPref[];
+	preferPublisher?: { name: string; count: number }[];
 	authorCount?: number;
 	yearReport?: YearReportEntry[];
 	registTime?: number;
