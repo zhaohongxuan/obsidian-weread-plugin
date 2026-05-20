@@ -511,6 +511,74 @@ export type RecentBook = {
 	recentTime: number;
 };
 
+// ── 阅读统计（Agent API /readdata/detail）──────────────────────────────────
+
+export type ReadingStatsMode = 'weekly' | 'monthly' | 'annually' | 'overall';
+
+export type ReadingStatItem = {
+	stat: string;   // 如"读过""读完""阅读""笔记"
+	counts: string; // 如"98本""305天"
+};
+
+export type ReadingCategoryPref = {
+	categoryId: number;
+	categoryTitle: string;
+	parentCategoryTitle: string;
+	readingCount: number;
+	readingTime: number; // 秒
+};
+
+export type ReadingAuthorPref = {
+	authorId: number;
+	name: string;
+	count: number;
+	readTime: string; // 格式化字符串，如"5小时30分钟"
+};
+
+export type ReadingLongestItem = {
+	book?: {
+		bookId: string;
+		title: string;
+		author: string;
+		cover?: string;
+	};
+	albumInfo?: {
+		albumId: string;
+		name: string;
+		authorName: string;
+		cover?: string;
+	};
+	readTime: number; // 秒
+	tags: string[];
+};
+
+export type YearReportEntry = {
+	year: number;
+	times: number[]; // 12 个月的阅读时长（秒）
+};
+
+export type ReadingStatsResponse = {
+	baseTime: number;
+	totalReadTime: number;       // 秒
+	readDays: number;
+	dayAverageReadTime: number;  // 秒
+	compare?: number;            // 与上期日均对比，如 0.2 = +20%
+	readStat: ReadingStatItem[];
+	readLongest: ReadingLongestItem[];
+	readTimes: Record<string, number>; // key=时间戳字符串, value=秒
+	preferCategory: ReadingCategoryPref[];
+	preferCategoryWord?: string;
+	preferTimeWord?: string;
+	preferTime?: number[];       // 24h 分布，从 6 点开始
+	preferAuthor?: ReadingAuthorPref[];
+	authorCount?: number;
+	yearReport?: YearReportEntry[];
+	registTime?: number;
+	readRate?: number;
+	wrReadTime?: number;
+	wrListenTime?: number;
+};
+
 export interface Theme {
 	id: string;
 	name: string;

@@ -11,6 +11,7 @@ import {
 	BookDetailResponse,
 	BookProgressResponse
 } from './models';
+import type { ReadingStatsResponse, ReadingStatsMode } from './models';
 import CookieCloudManager from './cookieCloud';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://weread.qq.com';
@@ -393,5 +394,50 @@ export default class ApiManager {
 			}
 		});
 		settingsStore.actions.setCookies(cookies);
+	}
+
+	/**
+	 * 通过 Agent API Gateway 调用微信读书接口（需要 API Key）
+	 */
+	async callAgentGateway<T = unknown>(apiName: string, params: Record<string, unknown> = {}): Promise<T | undefined> {
+		const apiKey = get(settingsStore).wereadApiKey;
+		if (!apiKey) {
+			new Notice('未配置微信读书 API Key，请在设置中填写');
+			return undefined;
+		}
+		try {
+			const body = {
+				api_name: apiName,
+				skill_version: '1.0.3',
+				...params
+			};
+			const req: RequestUrlParam = {
+				url: 'https://i.weread.qq.com/api/agent/gateway',
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${apiKey}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(body)
+			};
+			const resp = await requestUrl(req);
+			if (resp.json?.errcode && resp.json.errcode !== 0) {
+				console.error(`[weread plugin] Agent API error: ${resp.json.errmsg}`);
+				return undefined;
+			}
+			return resp.json as T;
+		} catch (e) {
+			console.error(`[weread plugin] Agent API call failed: ${apiName}`, e);
+			return undefined;
+		}
+	}
+
+	/**
+	 * 获取阅读统计数据
+	 */
+	async getReadingStats(mode: ReadingStatsMode, baseTime?: number): Promise<ReadingStatsResponse | undefined> {
+		const params: Record<string, unknown> = { mode };
+		if (baseTime !== undefined) params.baseTime = baseTime;
+		return this.callAgentGateway<ReadingStatsResponse>('/readdata/detail', params);
 	}
 }

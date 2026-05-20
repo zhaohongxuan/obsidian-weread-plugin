@@ -3,6 +3,7 @@ import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiManager from './src/api';
 import WereadBookshelfService from './src/bookshelf';
+import SyncReadingStats from './src/syncReadingStats';
 import { settingsStore } from './src/settings';
 import type { ReadingOpenMode } from './src/settings';
 import { get } from 'svelte/store';
@@ -10,11 +11,13 @@ import { WereadSettingsTab } from './src/settingTab';
 import WereadBrowserWindow from './src/components/wereadBrowserWindow';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
 import { WEREAD_BOOKSHELF_VIEW_ID, WereadBookshelfView } from './src/components/wereadBookshelf';
+import { WEREAD_READING_STATS_VIEW_ID, WereadReadingStatsView } from './src/components/wereadReadingStats';
 import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private bookshelfService: WereadBookshelfService;
 	private fileManager: FileManager;
+	private syncReadingStats: SyncReadingStats;
 	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
 	private cookieRefreshTimer: number | null = null;
@@ -33,6 +36,7 @@ export default class WereadPlugin extends Plugin {
 		const apiManager = new ApiManager();
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
 		this.bookshelfService = new WereadBookshelfService(fileManager, apiManager);
+		this.syncReadingStats = new SyncReadingStats(this.app.vault, apiManager);
 
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
@@ -118,6 +122,10 @@ export default class WereadPlugin extends Plugin {
 			WEREAD_BOOKSHELF_VIEW_ID,
 			(leaf) => new WereadBookshelfView(leaf, this, this.bookshelfService)
 		);
+		this.registerView(
+			WEREAD_READING_STATS_VIEW_ID,
+			(leaf) => new WereadReadingStatsView(leaf, apiManager, this.syncReadingStats)
+		);
 
 		this.addCommand({
 			id: 'open-weread-reading-view-tab',
@@ -140,6 +148,14 @@ export default class WereadPlugin extends Plugin {
 			name: '打开微信读书书架',
 			callback: () => {
 				this.activateBookshelfView();
+			}
+		});
+
+		this.addCommand({
+			id: 'sync-weread-reading-stats',
+			name: '同步阅读统计数据',
+			callback: () => {
+				this.syncReadingStats.sync();
 			}
 		});
 
@@ -293,6 +309,19 @@ export default class WereadPlugin extends Plugin {
 			await leaf.setViewState({ type: WEREAD_BOOKSHELF_VIEW_ID, active: true });
 		}
 
+		workspace.revealLeaf(leaf);
+	}
+
+	async activateReadingStatsView() {
+		const { workspace } = this.app;
+		const leaves = workspace.getLeavesOfType(WEREAD_READING_STATS_VIEW_ID);
+		let leaf: WorkspaceLeaf;
+		if (leaves.length > 0) {
+			leaf = leaves[0];
+		} else {
+			leaf = workspace.getLeaf('tab');
+			await leaf.setViewState({ type: WEREAD_READING_STATS_VIEW_ID, active: true });
+		}
 		workspace.revealLeaf(leaf);
 	}
 

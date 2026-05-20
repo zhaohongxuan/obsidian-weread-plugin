@@ -2202,3 +2202,495 @@
 	color: var(--text-accent);
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WeRead Reading Stats View
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.weread-stats-view {
+	overflow-y: auto;
+	height: 100%;
+}
+
+.weread-stats-container {
+	padding: 16px 20px 32px;
+	max-width: 900px;
+	margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.weread-stats-header {
+	margin-bottom: 16px;
+}
+
+.weread-stats-title-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.weread-stats-header-icon {
+	color: var(--text-accent);
+	display: flex;
+	align-items: center;
+}
+
+.weread-stats-title {
+	margin: 0;
+	font-size: 1.3em;
+	font-weight: 700;
+	color: var(--text-normal);
+}
+
+.weread-stats-header-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.weread-stats-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 0.85em;
+	transition: background 0.15s;
+}
+
+.weread-stats-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.weread-stats-btn-icon {
+	padding: 5px 8px;
+}
+
+/* ── Tab Bar ─────────────────────────────────────────────────────────────── */
+.weread-stats-tabbar {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 0;
+}
+
+.weread-stats-tab {
+	padding: 6px 16px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 0.9em;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	border-radius: 0;
+	transition: color 0.15s, border-color 0.15s;
+}
+
+.weread-stats-tab:hover {
+	color: var(--text-normal);
+}
+
+.weread-stats-tab.is-active {
+	color: var(--text-accent);
+	border-bottom-color: var(--text-accent);
+	font-weight: 600;
+}
+
+/* ── KPI Cards ───────────────────────────────────────────────────────────── */
+.weread-stats-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+.weread-stats-kpi-card {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 14px 12px;
+	background: var(--background-secondary);
+	border-radius: 10px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.weread-stats-kpi-icon {
+	color: var(--text-accent);
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.weread-stats-kpi-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-stats-kpi-value {
+	font-size: 1.15em;
+	font-weight: 700;
+	color: var(--text-normal);
+	line-height: 1.2;
+	word-break: break-all;
+}
+
+.weread-stats-kpi-label-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 3px;
+}
+
+.weread-stats-kpi-label {
+	font-size: 0.78em;
+	color: var(--text-muted);
+}
+
+.weread-stats-compare-badge {
+	font-size: 0.72em;
+	padding: 1px 5px;
+	border-radius: 4px;
+	font-weight: 600;
+}
+
+.weread-stats-compare-badge.is-up {
+	background: rgba(72, 187, 120, 0.15);
+	color: #48bb78;
+}
+
+.weread-stats-compare-badge.is-down {
+	background: rgba(229, 62, 62, 0.15);
+	color: #e53e3e;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+.weread-stats-section {
+	margin-bottom: 28px;
+}
+
+.weread-stats-section-title {
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin: 0 0 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* ── Bar Chart ───────────────────────────────────────────────────────────── */
+.weread-stats-chart-wrapper {
+	width: 100%;
+	overflow-x: auto;
+}
+
+.weread-stats-bar-chart {
+	display: block;
+}
+
+.weread-stats-bar {
+	fill: var(--text-accent);
+	opacity: 0.6;
+	transition: opacity 0.15s;
+}
+
+.weread-stats-bar.is-max {
+	opacity: 1;
+}
+
+.weread-stats-bar:hover {
+	opacity: 0.85;
+}
+
+.weread-stats-bar-label {
+	fill: var(--text-muted);
+	font-size: 10px;
+}
+
+/* ── Top Books ───────────────────────────────────────────────────────────── */
+.weread-stats-book-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.weread-stats-book-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.weread-stats-book-rank {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: 0.75em;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.weread-stats-book-cover {
+	width: 36px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 4px;
+	flex-shrink: 0;
+}
+
+.weread-stats-book-cover-placeholder {
+	background: var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+}
+
+.weread-stats-book-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-stats-book-title {
+	font-size: 0.9em;
+	font-weight: 600;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.weread-stats-book-author {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.weread-stats-book-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 4px;
+}
+
+.weread-stats-tag {
+	font-size: 0.7em;
+	padding: 1px 6px;
+	background: var(--tag-background);
+	color: var(--tag-color);
+	border-radius: 99px;
+}
+
+.weread-stats-book-right {
+	flex-shrink: 0;
+	text-align: right;
+	min-width: 80px;
+}
+
+.weread-stats-book-duration {
+	font-size: 0.82em;
+	font-weight: 600;
+	color: var(--text-accent);
+	margin-bottom: 5px;
+}
+
+.weread-stats-mini-bar-track {
+	height: 4px;
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.weread-stats-mini-bar-fill {
+	height: 100%;
+	background: var(--text-accent);
+	border-radius: 2px;
+	transition: width 0.4s ease;
+}
+
+/* ── Preferences ─────────────────────────────────────────────────────────── */
+.weread-stats-pref-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 14px;
+}
+
+.weread-stats-pref-card {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 14px;
+}
+
+.weread-stats-pref-card-wide {
+	grid-column: 1 / -1;
+}
+
+.weread-stats-pref-card-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.88em;
+	font-weight: 600;
+	color: var(--text-normal);
+	margin-bottom: 10px;
+}
+
+.weread-stats-pref-subtitle {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	margin-bottom: 10px;
+	font-style: italic;
+}
+
+.weread-stats-pref-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 7px;
+}
+
+.weread-stats-pref-name {
+	width: 72px;
+	font-size: 0.8em;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex-shrink: 0;
+}
+
+.weread-stats-pref-bar-track {
+	flex: 1;
+	height: 6px;
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.weread-stats-pref-bar-fill {
+	height: 100%;
+	background: var(--text-accent);
+	border-radius: 3px;
+	transition: width 0.4s ease;
+}
+
+.weread-stats-pref-meta {
+	font-size: 0.75em;
+	color: var(--text-muted);
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+/* ── Hour Chart ──────────────────────────────────────────────────────────── */
+.weread-stats-hour-chart {
+	display: flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 70px;
+}
+
+.weread-stats-hour-col {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex: 1;
+}
+
+.weread-stats-hour-bar {
+	width: 100%;
+	background: var(--text-accent);
+	border-radius: 2px 2px 0 0;
+	opacity: 0.7;
+	transition: opacity 0.15s;
+	cursor: default;
+}
+
+.weread-stats-hour-bar:hover {
+	opacity: 1;
+}
+
+.weread-stats-hour-label {
+	font-size: 9px;
+	color: var(--text-muted);
+	margin-top: 3px;
+}
+
+/* ── Info Grid ───────────────────────────────────────────────────────────── */
+.weread-stats-info-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.weread-stats-info-item {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 10px 16px;
+}
+
+.weread-stats-info-label {
+	font-size: 0.75em;
+	color: var(--text-muted);
+	margin-bottom: 3px;
+}
+
+.weread-stats-info-value {
+	font-size: 1em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+/* ── Empty States ────────────────────────────────────────────────────────── */
+.weread-stats-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	gap: 12px;
+	text-align: center;
+}
+
+.weread-stats-empty-icon {
+	color: var(--text-muted);
+	opacity: 0.5;
+}
+
+.weread-stats-empty-text {
+	color: var(--text-normal);
+	font-size: 0.95em;
+}
+
+.weread-stats-empty-hint {
+	color: var(--text-muted);
+	font-size: 0.82em;
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.weread-stats-spinner {
+	width: 32px;
+	height: 32px;
+	border: 3px solid var(--background-modifier-border);
+	border-top-color: var(--text-accent);
+	border-radius: 50%;
+	animation: weread-spin 0.8s linear infinite;
+}
+
+@keyframes weread-spin {
+	to { transform: rotate(360deg); }
+}
