@@ -332,6 +332,7 @@ export class WereadReadingStatsView extends ItemView {
 		const maxVal = niceMax(rawMax);
 		const gap = 4;
 		const chartH = 140;
+		const topPad = 14;  // space above the top tick label
 		const labelH = 22;
 		const scaleW = 52; // left gutter
 
@@ -341,22 +342,23 @@ export class WereadReadingStatsView extends ItemView {
 		const barAreaW = 600;
 		const barW = Math.max(8, Math.floor(barAreaW / n) - gap);
 		const totalViewW = scaleW + barAreaW;
+		const totalViewH = topPad + chartH + labelH;
 
 		const svg = wrapper.createSvg('svg', {
 			attr: {
-				viewBox: `0 0 ${totalViewW} ${chartH + labelH}`,
+				viewBox: `0 0 ${totalViewW} ${totalViewH}`,
 				width: '100%',
-				height: chartH + labelH,
+				height: totalViewH,
 				class: 'weread-stats-bar-chart',
 				preserveAspectRatio: 'xMidYMid meet'
 			}
 		});
 
-		// Y-axis: 0, 50%, 100% with nice labels
+		// Y-axis: 0, 50%, 100% — offset down by topPad
 		const tickFractions = [0, 0.5, 1];
 		for (const frac of tickFractions) {
 			const tickVal = maxVal * frac;
-			const yPos = chartH - frac * chartH;
+			const yPos = topPad + chartH - frac * chartH;
 			svg.createSvg('line', {
 				attr: { x1: String(scaleW), y1: String(yPos), x2: String(totalViewW), y2: String(yPos), class: 'weread-stats-scale-line' }
 			});
@@ -371,7 +373,7 @@ export class WereadReadingStatsView extends ItemView {
 			const barH = Math.max((v / maxVal) * chartH, v > 0 ? 4 : 0);
 			const slotW = barAreaW / n;
 			const x = scaleW + i * slotW + (slotW - barW) / 2;
-			const y = chartH - barH;
+			const y = topPad + chartH - barH;
 
 			const rect = svg.createSvg('rect', {
 				attr: { x: String(x), y: String(y), width: String(barW), height: String(barH), rx: '4', class: 'weread-stats-bar' + (v === rawMax && v > 0 ? ' is-max' : '') }
@@ -379,7 +381,7 @@ export class WereadReadingStatsView extends ItemView {
 			rect.createSvg('title').textContent = `${labels[i]}: ${fmtDuration(v)}`;
 
 			const text = svg.createSvg('text', {
-				attr: { x: String(x + barW / 2), y: String(chartH + labelH - 2), 'text-anchor': 'middle', class: 'weread-stats-bar-label' }
+				attr: { x: String(x + barW / 2), y: String(topPad + chartH + labelH - 2), 'text-anchor': 'middle', class: 'weread-stats-bar-label' }
 			});
 			text.textContent = labels[i];
 		});
