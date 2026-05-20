@@ -2289,10 +2289,12 @@
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	padding: 3px;
+	flex-shrink: 0;
+	width: fit-content;
 }
 
 .weread-stats-tab {
-	flex: 1;
+	min-width: 52px;
 	padding: 5px 10px;
 	text-align: center;
 	border: none;
