@@ -309,8 +309,12 @@ export class WereadReadingStatsView extends ItemView {
 	private renderKPICards(el: HTMLElement, data: ReadingStatsResponse) {
 		const grid = el.createDiv({ cls: 'weread-stats-kpi-grid' });
 		this.makeKPICard(grid, '阅读天数', `${data.readDays} 天`, 'calendar');
-		this.makeKPICard(grid, '日均时长', fmtDuration(data.dayAverageReadTime), 'trending-up',
-			data.compare !== undefined ? fmtCompare(data.compare) : null);
+
+		// overall 模式不返回 dayAverageReadTime，跳过
+		if (this.currentMode !== 'overall') {
+			this.makeKPICard(grid, '日均时长', fmtDuration(data.dayAverageReadTime), 'trending-up',
+				data.compare !== undefined ? fmtCompare(data.compare) : null);
+		}
 
 		// 周模式不展示读过/读完/笔记（API 不返回有意义的数据）
 		if (this.currentMode !== 'weekly') {
