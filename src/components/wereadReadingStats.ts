@@ -1,6 +1,5 @@
-import { ItemView, WorkspaceLeaf, setIcon, TFile } from 'obsidian';
+import { ItemView, Menu, WorkspaceLeaf, setIcon, TFile } from 'obsidian';
 import ApiManager from '../api';
-import SyncReadingStats from '../syncReadingStats';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
@@ -139,18 +138,16 @@ function buildWeekValues(
 
 export class WereadReadingStatsView extends ItemView {
 	private apiManager: ApiManager;
-	private syncReadingStats: SyncReadingStats;
 	private fileManager: FileManager;
 	private currentMode: ReadingStatsMode = 'monthly';
 	private currentOffset = 0;
 	private data: ReadingStatsResponse | null = null;
 	private loading = false;
-	private contentEl2: HTMLElement;
+	private statsEl: HTMLElement;
 
-	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, syncReadingStats: SyncReadingStats, fileManager: FileManager) {
+	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, fileManager: FileManager) {
 		super(leaf);
 		this.apiManager = apiManager;
-		this.syncReadingStats = syncReadingStats;
 		this.fileManager = fileManager;
 	}
 
@@ -158,16 +155,28 @@ export class WereadReadingStatsView extends ItemView {
 	getDisplayText(): string { return '阅读统计'; }
 	getIcon(): string { return 'bar-chart-2'; }
 
+	onMoreOptionsMenu(menu: Menu) {
+		menu.addItem((item) =>
+			item
+				.setTitle('刷新数据')
+				.setIcon('refresh-ccw')
+				.onClick(() => {
+					this.data = null;
+					this.loadData();
+				})
+		);
+		menu.addSeparator();
+	}
+
 	async onOpen() {
-		const { containerEl } = this;
-		containerEl.empty();
-		containerEl.addClass('weread-stats-view');
-		this.contentEl2 = containerEl.createDiv({ cls: 'weread-stats-container' });
+		this.contentEl.empty();
+		this.contentEl.addClass('weread-stats-view');
+		this.statsEl = this.contentEl.createDiv({ cls: 'weread-stats-container' });
 		this.render();
 		this.loadData();
 	}
 
-	async onClose() { this.containerEl.empty(); }
+	async onClose() { this.contentEl.empty(); }
 
 	private async loadData() {
 		const settings = get(settingsStore);
@@ -183,7 +192,7 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	private render() {
-		const el = this.contentEl2;
+		const el = this.statsEl;
 		el.empty();
 		if (!get(settingsStore).wereadApiKey) { this.renderNoApiKey(); return; }
 		if (this.loading) { this.renderLoading(); return; }
@@ -205,10 +214,6 @@ export class WereadReadingStatsView extends ItemView {
 		const icon = titleRow.createSpan({ cls: 'weread-stats-header-icon' });
 		setIcon(icon, 'bar-chart-2');
 		titleRow.createEl('h2', { text: '阅读统计', cls: 'weread-stats-title' });
-
-		const refreshBtn = titleRow.createEl('button', { cls: 'weread-stats-btn weread-stats-btn-icon', attr: { 'aria-label': '刷新数据' } });
-		setIcon(refreshBtn, 'refresh-ccw');
-		refreshBtn.addEventListener('click', () => { this.data = null; this.loadData(); });
 	}
 
 	// ── Tab bar + 时间导航 ────────────────────────────────────────────
@@ -706,23 +711,23 @@ export class WereadReadingStatsView extends ItemView {
 
 	// ── Empty states ──────────────────────────────────────────────────
 	private renderLoading() {
-		this.contentEl2.empty();
-		const wrap = this.contentEl2.createDiv({ cls: 'weread-stats-empty' });
+		this.statsEl.empty();
+		const wrap = this.statsEl.createDiv({ cls: 'weread-stats-empty' });
 		wrap.createDiv({ cls: 'weread-stats-spinner' });
 		wrap.createDiv({ text: '正在加载数据…', cls: 'weread-stats-empty-text' });
 	}
 
 	private renderNoApiKey() {
-		this.contentEl2.empty();
-		const wrap = this.contentEl2.createDiv({ cls: 'weread-stats-empty' });
+		this.statsEl.empty();
+		const wrap = this.statsEl.createDiv({ cls: 'weread-stats-empty' });
 		setIcon(wrap.createDiv({ cls: 'weread-stats-empty-icon' }), 'key');
 		wrap.createDiv({ text: '请先在设置中填写微信读书 API Key', cls: 'weread-stats-empty-text' });
 		wrap.createDiv({ text: '设置 → 微信读书 → 阅读统计 → API Key', cls: 'weread-stats-empty-hint' });
 	}
 
 	private renderError() {
-		this.contentEl2.empty();
-		const wrap = this.contentEl2.createDiv({ cls: 'weread-stats-empty' });
+		this.statsEl.empty();
+		const wrap = this.statsEl.createDiv({ cls: 'weread-stats-empty' });
 		setIcon(wrap.createDiv({ cls: 'weread-stats-empty-icon' }), 'alert-circle');
 		wrap.createDiv({ text: '数据加载失败，请检查 API Key 或网络', cls: 'weread-stats-empty-text' });
 		const retryBtn = wrap.createEl('button', { text: '重试', cls: 'weread-stats-btn' });

@@ -109,6 +109,18 @@ export class WereadBookshelfView extends ItemView {
 		return 'library';
 	}
 
+	onMoreOptionsMenu(menu: Menu) {
+		menu.addItem((item) =>
+			item
+				.setTitle('刷新书架')
+				.setIcon('refresh-ccw')
+				.onClick(() => {
+					this.loadBookshelf();
+				})
+		);
+		menu.addSeparator();
+	}
+
 	async onOpen() {
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-bookshelf-view');
