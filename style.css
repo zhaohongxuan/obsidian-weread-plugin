@@ -2292,14 +2292,14 @@
 }
 
 .weread-stats-tab {
-	width: 52px;
-	padding: 5px 0;
+	width: 64px;
+	padding: 6px 0;
 	text-align: center;
 	border: none;
 	background: transparent;
 	color: var(--text-muted);
 	cursor: pointer;
-	font-size: 0.88em;
+	font-size: 0.9em;
 	border-radius: 9px;
 	transition: background 0.18s, color 0.18s;
 	white-space: nowrap;

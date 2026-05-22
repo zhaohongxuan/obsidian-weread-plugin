@@ -220,9 +220,9 @@ export class WereadReadingStatsView extends ItemView {
 	// ── Tab bar + 时间导航 ────────────────────────────────────────────
 	private renderTabBar(el: HTMLElement) {
 		const tabs: { mode: ReadingStatsMode; label: string }[] = [
-			{ mode: 'weekly', label: '本周' },
-			{ mode: 'monthly', label: '本月' },
-			{ mode: 'annually', label: '本年' },
+			{ mode: 'weekly', label: '周' },
+			{ mode: 'monthly', label: '月' },
+			{ mode: 'annually', label: '年' },
 			{ mode: 'overall', label: '全部' },
 		];
 		const nav = el.createDiv({ cls: 'weread-stats-nav' });
