@@ -2229,11 +2229,25 @@
 	margin-bottom: 16px;
 }
 
-.weread-stats-title-row {
+.weread-stats-header-row {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	margin-bottom: 8px;
+	gap: 12px;
+}
+
+.weread-stats-user-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
+}
+
+.weread-stats-export-btn {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 0.82em;
 }
 
 .weread-stats-header-icon {
@@ -2247,6 +2261,35 @@
 	font-size: 1.3em;
 	font-weight: 700;
 	color: var(--text-normal);
+}
+
+.weread-stats-user-avatar {
+	width: 48px;
+	height: 48px;
+	border-radius: 50% !important;
+	object-fit: cover;
+	flex-shrink: 0;
+	overflow: hidden;
+	border: 2px solid var(--background-modifier-border);
+}
+
+.weread-stats-user-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.weread-stats-user-name {
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.3;
+}
+
+.weread-stats-user-sub {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	line-height: 1.3;
 }
 
 .weread-stats-header-actions {
@@ -2441,11 +2484,23 @@
 }
 
 .weread-stats-kpi-value {
-	font-size: 1.15em;
+	font-size: 1em;
 	font-weight: 700;
 	color: var(--text-normal);
-	line-height: 1.2;
-	word-break: break-all;
+	display: flex;
+	align-items: baseline;
+	gap: 1px;
+}
+
+.weread-stats-kpi-number {
+	font-size: 1.6em;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.weread-stats-kpi-unit {
+	font-size: 0.95em;
+	font-weight: 600;
 }
 
 .weread-stats-kpi-label-row {
@@ -2653,15 +2708,14 @@
 
 .weread-ghmap-wrap {
 	width: 100%;
-	overflow-x: auto;
-	padding-bottom: 2px; /* prevent bottom clip on hover scale */
+	overflow-x: hidden;
+	padding-bottom: 2px;
 }
 
 .weread-ghmap-inner {
 	display: flex;
 	gap: 0;
-	padding-right: 4px;
-	min-width: max-content;
+	width: 100%;
 }
 
 /* Weekday label column */
@@ -2688,6 +2742,8 @@
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
+	flex: 1;
+	min-width: 0;
 	overflow: visible;
 }
 
@@ -2702,7 +2758,8 @@
 	height: 16px;
 	line-height: 16px;
 	white-space: nowrap;
-	/* width set inline to match col width */
+	overflow: hidden;
+	flex: 1;
 }
 
 .weread-ghmap-grid {
@@ -2714,12 +2771,13 @@
 	display: flex;
 	flex-direction: column;
 	gap: 3px;
+	flex: 1;
 }
 
 /* Individual cells */
 .weread-ghmap-cell {
-	width: 13px;
-	height: 13px;
+	width: 100%;
+	aspect-ratio: 1;
 	border-radius: 2px;
 	cursor: default;
 	transition: opacity 0.1s, transform 0.1s;
@@ -2754,6 +2812,13 @@
 	gap: 3px;
 	margin-top: 8px;
 	justify-content: flex-end;
+}
+
+.weread-ghmap-legend-cell {
+	width: 12px !important;
+	height: 12px !important;
+	flex: none !important;
+	aspect-ratio: unset !important;
 }
 
 .weread-ghmap-legend-text {
@@ -3180,4 +3245,84 @@
 
 @keyframes weread-spin {
 	to { transform: rotate(360deg); }
+}
+
+/* ── Export Preview Modal ────────────────────────────────────────────────── */
+.weread-export-modal .modal-content {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	align-items: center;
+}
+
+.weread-export-title {
+	margin: 0 0 4px 0;
+	font-size: 1.1em;
+	font-weight: 600;
+	color: var(--text-normal);
+	align-self: flex-start;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.weread-export-title-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-accent);
+}
+
+.weread-export-preview {
+	width: 100%;
+	max-height: 60vh;
+	overflow-y: auto;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.weread-export-preview-img {
+	width: 100%;
+	display: block;
+	border-radius: 8px;
+}
+
+.weread-export-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	flex-wrap: wrap;
+	width: 100%;
+	margin-top: 8px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.weread-export-action-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-size: 0.9em;
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	transition: background 0.15s;
+}
+
+.weread-export-action-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.weread-export-action-btn.mod-cta {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.weread-export-action-btn.mod-cta:hover {
+	background: var(--interactive-accent-hover);
 }

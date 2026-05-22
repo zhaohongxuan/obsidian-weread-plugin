@@ -63,6 +63,7 @@ export interface WereadPluginSettings {
 	user: string;
 	userVid: string;
 	userAvatar: string;
+	userSignature: string;
 	template: string;
 	noteCountLimit: number;
 	subFolderType: string;
@@ -117,6 +118,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	user: '',
 	userVid: '',
 	userAvatar: '',
+	userSignature: '',
 	template: '',
 	noteCountLimit: -1,
 	subFolderType: '-1',
@@ -317,6 +319,7 @@ const createSettingsStore = () => {
 			state.user = '';
 			state.userVid = '';
 			state.userAvatar = '';
+			state.userSignature = '';
 			state.isCookieValid = false;
 			return state;
 		});
@@ -387,6 +390,13 @@ const createSettingsStore = () => {
 				}
 			}
 		}
+	};
+
+	const setUserSignature = (signature: string) => {
+		store.update((state) => {
+			state.userSignature = signature;
+			return state;
+		});
 	};
 
 	const setNoteLocationFolder = (value: string) => {
@@ -792,6 +802,7 @@ const createSettingsStore = () => {
 			setWereadApiKey,
 			setReadingStatsLocation,
 			setStatsStartYear,
+			setUserSignature,
 		}
 	};
 };

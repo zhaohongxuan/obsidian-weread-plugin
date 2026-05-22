@@ -433,6 +433,23 @@ export default class ApiManager {
 	}
 
 	/**
+	 * 获取用户个人信息（含个性签名）
+	 */
+	async getUserInfo(userVid: string): Promise<Record<string, unknown> | undefined> {
+		try {
+			const resp = await requestUrl({
+				url: `https://weread.qq.com/web/user?userVid=${userVid}`,
+				method: 'GET',
+				headers: this.getHeaders()
+			});
+			return resp.json;
+		} catch (e) {
+			console.warn('[weread] getUserInfo failed', e);
+			return undefined;
+		}
+	}
+
+	/**
 	 * 获取阅读统计数据
 	 */
 	async getReadingStats(mode: ReadingStatsMode, baseTime?: number): Promise<ReadingStatsResponse | undefined> {

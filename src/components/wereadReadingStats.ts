@@ -1,4 +1,4 @@
-import { ItemView, Menu, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
+import { ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
 import ApiManager from '../api';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
@@ -171,12 +171,8 @@ async function saveDailyCache(vault: Vault, cache: DailyStatsCache): Promise<voi
 		const exists = await vault.adapter.exists(CACHE_DIR);
 		if (!exists) await vault.adapter.mkdir(CACHE_DIR);
 		const json = JSON.stringify(cache);
-		const file = vault.getAbstractFileByPath(CACHE_FILE);
-		if (file instanceof TFile) {
-			await vault.modify(file, json);
-		} else {
-			await vault.create(CACHE_FILE, json);
-		}
+		// Use adapter.write to always overwrite, avoids "File already exists" race condition
+		await vault.adapter.write(CACHE_FILE, json);
 	} catch (e) {
 		console.error('[weread] Failed to save daily stats cache', e);
 	}
@@ -185,6 +181,93 @@ async function saveDailyCache(vault: Vault, cache: DailyStatsCache): Promise<voi
 
 
 type ChartView = 'bar' | 'calendar' | 'heatmap';
+
+// ─── 导出预览 Modal ────────────────────────────────────────────────────────────
+class ExportPreviewModal extends Modal {
+	private dataUrl: string;
+	private filename: string;
+	private vault: Vault;
+
+	constructor(app: any, dataUrl: string, filename: string, vault: Vault) {
+		super(app);
+		this.dataUrl = dataUrl;
+		this.filename = filename;
+		this.vault = vault;
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.addClass('weread-export-modal');
+
+		// Title
+		const titleEl = contentEl.createEl('h2', { cls: 'weread-export-title' });
+		const titleIcon = titleEl.createSpan({ cls: 'weread-export-title-icon' });
+		setIcon(titleIcon, 'image-down');
+		titleEl.createSpan({ text: '导出阅读统计图片' });
+
+		// Preview image
+		const preview = contentEl.createDiv({ cls: 'weread-export-preview' });
+		const img = preview.createEl('img', { cls: 'weread-export-preview-img' });
+		img.src = this.dataUrl;
+
+		// Action buttons
+		const actions = contentEl.createDiv({ cls: 'weread-export-actions' });
+
+		// 1. Save to Vault
+		const vaultBtn = actions.createEl('button', { cls: 'weread-export-action-btn mod-cta' });
+		setIcon(vaultBtn.createSpan(), 'vault');
+		vaultBtn.createSpan({ text: '保存到 Vault' });
+		vaultBtn.addEventListener('click', async () => {
+			try {
+				const base64 = this.dataUrl.split(',')[1];
+				const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+				const settings = get(settingsStore);
+				const folder = settings.noteLocation || '/';
+				const filePath = folder.replace(/\/$/, '') + '/' + this.filename;
+				await this.vault.adapter.writeBinary(filePath, binary.buffer);
+				new Notice(`✅ 已保存到 Vault：${filePath}`);
+				this.close();
+			} catch (e) {
+				new Notice('❌ 保存失败：' + e.message);
+			}
+		});
+
+		// 2. Save to local disk
+		const localBtn = actions.createEl('button', { cls: 'weread-export-action-btn' });
+		setIcon(localBtn.createSpan(), 'download');
+		localBtn.createSpan({ text: '保存到本地' });
+		localBtn.addEventListener('click', () => {
+			const link = document.createElement('a');
+			link.download = this.filename;
+			link.href = this.dataUrl;
+			link.click();
+			this.close();
+		});
+
+		// 3. Copy to clipboard
+		const copyBtn = actions.createEl('button', { cls: 'weread-export-action-btn' });
+		setIcon(copyBtn.createSpan(), 'copy');
+		copyBtn.createSpan({ text: '复制到剪切板' });
+		copyBtn.addEventListener('click', async () => {
+			try {
+				const base64 = this.dataUrl.split(',')[1];
+				const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+				const blob = new Blob([binary], { type: 'image/png' });
+				await navigator.clipboard.write([
+					new ClipboardItem({ 'image/png': blob })
+				]);
+				new Notice('✅ 已复制到剪切板');
+				this.close();
+			} catch (e) {
+				new Notice('❌ 复制失败：' + e.message);
+			}
+		});
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+}
 
 export class WereadReadingStatsView extends ItemView {
 	private apiManager: ApiManager;
@@ -238,6 +321,18 @@ export class WereadReadingStatsView extends ItemView {
 		if (!settings.wereadApiKey) { this.renderNoApiKey(); return; }
 		this.loading = true;
 		this.renderLoading();
+
+		// Fetch user signature (always refresh on open)
+		if (settings.userVid) {
+			const userInfo = await this.apiManager.getUserInfo(settings.userVid);
+			const parts = [
+				(userInfo as any)?.signature,
+				(userInfo as any)?.vDesc
+			].filter(Boolean);
+			const sig = parts.join(' ｜ ');
+			if (sig) settingsStore.actions.setUserSignature(sig);
+		}
+
 		const baseTime = calcBaseTime(this.currentMode, this.currentOffset);
 		const data = await this.apiManager.getReadingStats(this.currentMode, baseTime);
 		this.loading = false;
@@ -265,10 +360,127 @@ export class WereadReadingStatsView extends ItemView {
 	// ── Header ────────────────────────────────────────────────────────
 	private renderHeader(el: HTMLElement) {
 		const header = el.createDiv({ cls: 'weread-stats-header' });
-		const titleRow = header.createDiv({ cls: 'weread-stats-title-row' });
-		const icon = titleRow.createSpan({ cls: 'weread-stats-header-icon' });
-		setIcon(icon, 'bar-chart-2');
-		titleRow.createEl('h2', { text: '微信读书阅读统计', cls: 'weread-stats-title' });
+		// Single row: user info on left, export button on right
+		const headerRow = header.createDiv({ cls: 'weread-stats-header-row' });
+
+		// Left: avatar + name + signature
+		const settings = get(settingsStore);
+		const userName = settings.user;
+		const userAvatar = settings.userAvatar;
+		const userSignature = settings.userSignature;
+
+		const userLeft = headerRow.createDiv({ cls: 'weread-stats-user-left' });
+		if (userAvatar) {
+			const avatarImg = userLeft.createEl('img', { cls: 'weread-stats-user-avatar' });
+			avatarImg.src = userAvatar;
+			avatarImg.alt = userName || '用户头像';
+		}
+		const userTextWrap = userLeft.createDiv({ cls: 'weread-stats-user-text' });
+		userTextWrap.createSpan({ cls: 'weread-stats-user-name', text: userName || '微信读书用户' });
+		if (userSignature) {
+			userTextWrap.createSpan({ cls: 'weread-stats-user-sub', text: userSignature });
+		}
+
+		// Right: export button
+		if (this.currentMode === 'overall' || this.currentMode === 'annually' || this.currentMode === 'monthly') {
+			const exportBtn = headerRow.createEl('button', {
+				cls: 'weread-stats-btn weread-stats-export-btn',
+				attr: { title: '导出为图片' }
+			});
+			setIcon(exportBtn, 'image-down');
+			exportBtn.createSpan({ text: '导出图片' });
+			exportBtn.addEventListener('click', () => this.exportAsImage(exportBtn));
+		}
+	}
+
+	private async exportAsImage(btn: HTMLElement) {
+		const { toPng } = require('html-to-image');
+		const { requestUrl } = require('obsidian');
+		const origText = btn.querySelector('span')?.textContent ?? '导出图片';
+		const span = btn.querySelector('span') as HTMLElement;
+		if (span) span.textContent = '生成中…';
+		btn.setAttribute('disabled', 'true');
+
+		// Hide export button during capture so it doesn't appear in the image
+		const exportBtn = this.statsEl.querySelector<HTMLElement>('.weread-stats-export-btn');
+		if (exportBtn) exportBtn.style.visibility = 'hidden';
+
+		// Pre-fetch all images via Obsidian's requestUrl (bypasses CORS),
+		// replace src with data URL, restore after capture.
+		const imgs = Array.from(this.statsEl.querySelectorAll<HTMLImageElement>('img'));
+		const origSrcs: string[] = imgs.map(img => img.src);
+		await Promise.allSettled(imgs.map(async (img, i) => {
+			try {
+				const resp = await requestUrl({ url: origSrcs[i], method: 'GET' });
+				const mime = resp.headers['content-type'] || 'image/jpeg';
+				const b64 = btoa(String.fromCharCode(...new Uint8Array(resp.arrayBuffer)));
+				img.src = `data:${mime};base64,${b64}`;
+			} catch { /* keep original, will show blank */ }
+		}));
+
+		// Inline computed fill/stroke/color on all SVG elements — html-to-image doesn't resolve CSS vars for SVG
+		type SvgRestore = { el: SVGElement; fill: string | null; stroke: string | null; style: string };
+		const svgRestores: SvgRestore[] = [];
+		this.statsEl.querySelectorAll<SVGElement>('svg, svg *').forEach(el => {
+			const cs = getComputedStyle(el);
+			const fill = cs.fill;
+			const stroke = cs.stroke;
+			svgRestores.push({ el, fill: el.getAttribute('fill'), stroke: el.getAttribute('stroke'), style: el.getAttribute('style') || '' });
+			// Always set presentation attributes with resolved rgb() values
+			el.setAttribute('fill', fill || 'none');
+			el.setAttribute('stroke', stroke || 'none');
+			// Also clear any style attr that may contain CSS vars (already captured above)
+			const styleAttr = el.getAttribute('style') || '';
+			if (styleAttr.includes('var(') || styleAttr.includes('color-mix(')) {
+				el.setAttribute('style', styleAttr
+					.replace(/fill\s*:[^;]+/g, `fill:${fill}`)
+					.replace(/stroke\s*:[^;]+/g, `stroke:${stroke}`)
+				);
+			}
+		});
+
+		// Temporarily expand scroll container so full content is captured
+		const scrollEl = this.contentEl as HTMLElement;
+		const origOverflow = scrollEl.style.overflow;
+		const origHeight = scrollEl.style.height;
+		scrollEl.style.overflow = 'visible';
+		scrollEl.style.height = 'auto';
+		await new Promise(r => requestAnimationFrame(r));
+
+		try {
+			const dataUrl = await toPng(this.statsEl, {
+				pixelRatio: 2,
+				width: this.statsEl.offsetWidth,
+				height: this.statsEl.scrollHeight,
+				skipFonts: true,
+				style: { overflow: 'visible' },
+			});
+			new ExportPreviewModal(this.app, dataUrl, this.exportFilename(), this.app.vault).open();
+		} catch (e) {
+			console.error('导出图片失败', e);
+		} finally {
+			// Restore export button visibility
+			if (exportBtn) exportBtn.style.visibility = '';
+			// Restore original image srcs
+			imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+			// Restore SVG attributes
+			svgRestores.forEach(({ el, fill, stroke, style }) => {
+				if (fill === null) el.removeAttribute('fill'); else el.setAttribute('fill', fill);
+				if (stroke === null) el.removeAttribute('stroke'); else el.setAttribute('stroke', stroke);
+				if (style === '') el.removeAttribute('style'); else el.setAttribute('style', style);
+			});
+			scrollEl.style.overflow = origOverflow;
+			scrollEl.style.height = origHeight;
+			if (span) span.textContent = origText;
+			btn.removeAttribute('disabled');
+		}
+	}
+
+	private exportFilename(): string {
+		const now = new Date();
+		const date = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+		const time = `${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`;
+		return `weread-stats-${date}_${time}.png`;
 	}
 
 	// ── Tab bar + 时间导航 ────────────────────────────────────────────
@@ -387,7 +599,15 @@ export class WereadReadingStatsView extends ItemView {
 		const iconEl = card.createDiv({ cls: 'weread-stats-kpi-icon' });
 		setIcon(iconEl, iconName);
 		const body = card.createDiv({ cls: 'weread-stats-kpi-body' });
-		body.createDiv({ cls: 'weread-stats-kpi-value', text: value });
+		// Split number from unit so only the number is enlarged
+		const valueEl = body.createDiv({ cls: 'weread-stats-kpi-value' });
+		const match = value.match(/^([\d]+)(.*)/);
+		if (match) {
+			valueEl.createSpan({ cls: 'weread-stats-kpi-number', text: match[1] });
+			if (match[2]) valueEl.createSpan({ cls: 'weread-stats-kpi-unit', text: match[2] });
+		} else {
+			valueEl.setText(value);
+		}
 		const labelRow = body.createDiv({ cls: 'weread-stats-kpi-label-row' });
 		labelRow.createSpan({ text: label, cls: 'weread-stats-kpi-label' });
 		if (compare) {
@@ -732,7 +952,7 @@ export class WereadReadingStatsView extends ItemView {
 		const legend = wrap.createDiv({ cls: 'weread-ghmap-legend' });
 		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '少' });
 		for (let l = 0; l <= 4; l++) {
-			legend.createDiv({ cls: `weread-ghmap-cell level-${l}` });
+			legend.createDiv({ cls: `weread-ghmap-cell weread-ghmap-legend-cell level-${l}` });
 		}
 		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '多' });
 	}
@@ -785,16 +1005,11 @@ export class WereadReadingStatsView extends ItemView {
 
 		const rightCol = inner.createDiv({ cls: 'weread-ghmap-right' });
 
-		// Month labels — each label is exactly (CELL_W + GAP) px wide to align with columns
-		const CELL_W = 13;
-		const GAP = 3;
-		const COL_W = CELL_W + GAP; // 16px per week column
+		// Month labels
 		const monthRow = rightCol.createDiv({ cls: 'weread-ghmap-months' });
 		for (let w = 0; w < totalWeeks; w++) {
 			const mo = Object.entries(monthWeek).find(([, wk]) => wk === w);
-			const label = monthRow.createDiv({ cls: 'weread-ghmap-monthlabel', text: mo ? `${Number(mo[0]) + 1}月` : '' });
-			label.style.width = `${COL_W}px`;
-			label.style.flexShrink = '0';
+			monthRow.createDiv({ cls: 'weread-ghmap-monthlabel', text: mo ? `${Number(mo[0]) + 1}月` : '' });
 		}
 
 		// Cell grid
@@ -845,7 +1060,7 @@ export class WereadReadingStatsView extends ItemView {
 		const legend = wrap.createDiv({ cls: 'weread-ghmap-legend' });
 		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '少' });
 		for (let l = 0; l <= 4; l++) {
-			legend.createDiv({ cls: `weread-ghmap-cell level-${l}` });
+			legend.createDiv({ cls: `weread-ghmap-cell weread-ghmap-legend-cell level-${l}` });
 		}
 		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '多' });
 
@@ -1110,7 +1325,7 @@ export class WereadReadingStatsView extends ItemView {
 		const maxVal = Math.max(...items.map(i => i.value), 1);
 
 		const svg = parent.createSvg('svg', {
-			attr: { width: '100%', viewBox: `0 0 ${size} ${size}`, class: 'weread-stats-radar-svg', preserveAspectRatio: 'xMidYMid meet' }
+			attr: { width: '100%', viewBox: `0 0 ${size} ${size}`, class: 'weread-stats-radar-svg', preserveAspectRatio: 'xMidYMid meet', style: 'background:transparent' }
 		});
 
 		// 定义渐变

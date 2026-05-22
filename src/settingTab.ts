@@ -827,18 +827,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		new Setting(this.containerEl)
-			.setName('阅读统计保存位置')
-			.setDesc('阅读统计 Markdown 文件的保存目录（默认保存在根目录）')
-			.addText((text) =>
-				text
-					.setPlaceholder('/')
-					.setValue(get(settingsStore).readingStatsLocation ?? '/')
-					.onChange((value) => {
-						settingsStore.actions.setReadingStatsLocation(value.trim() || '/');
-					})
-			);
-
-		new Setting(this.containerEl)
 			.setName('Heatmap 起始年份')
 			.setDesc('全部 Tab 的 Heatmap 从该年份开始展示，留空则使用注册时间。例如：2019')
 			.addText((text) =>
@@ -851,17 +839,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 					})
 			);
 
-		new Setting(this.containerEl)
-			.setName('同步阅读统计')
-			.setDesc('立即拉取阅读统计数据并生成 Markdown 文件')
-			.addButton((btn) =>
-				btn
-					.setButtonText('立即同步')
-					.setCta()
-					.onClick(() => {
-						(this.plugin as any).syncReadingStats?.sync();
-					})
-			);
 	}
 
 	private showDebugHelp() {
