@@ -206,13 +206,7 @@ export class WereadReadingStatsView extends ItemView {
 		setIcon(icon, 'bar-chart-2');
 		titleRow.createEl('h2', { text: '阅读统计', cls: 'weread-stats-title' });
 
-		const actions = header.createDiv({ cls: 'weread-stats-header-actions' });
-		const exportBtn = actions.createEl('button', { cls: 'weread-stats-btn', attr: { 'aria-label': '导出 Markdown' } });
-		setIcon(exportBtn, 'file-text');
-		exportBtn.createSpan({ text: '导出 Markdown' });
-		exportBtn.addEventListener('click', () => this.syncReadingStats.sync());
-
-		const refreshBtn = actions.createEl('button', { cls: 'weread-stats-btn weread-stats-btn-icon', attr: { 'aria-label': '刷新数据' } });
+		const refreshBtn = titleRow.createEl('button', { cls: 'weread-stats-btn weread-stats-btn-icon', attr: { 'aria-label': '刷新数据' } });
 		setIcon(refreshBtn, 'refresh-ccw');
 		refreshBtn.addEventListener('click', () => { this.data = null; this.loadData(); });
 	}
