@@ -839,6 +839,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 			);
 
 		new Setting(this.containerEl)
+			.setName('Heatmap 起始年份')
+			.setDesc('全部 Tab 的 Heatmap 从该年份开始展示，留空则使用注册时间。例如：2019')
+			.addText((text) =>
+				text
+					.setPlaceholder('例如：2019')
+					.setValue(get(settingsStore).statsStartYear ? String(get(settingsStore).statsStartYear) : '')
+					.onChange((value) => {
+						const year = parseInt(value.trim());
+						settingsStore.actions.setStatsStartYear(isNaN(year) ? 0 : year);
+					})
+			);
+
+		new Setting(this.containerEl)
 			.setName('同步阅读统计')
 			.setDesc('立即拉取阅读统计数据并生成 Markdown 文件')
 			.addButton((btn) =>

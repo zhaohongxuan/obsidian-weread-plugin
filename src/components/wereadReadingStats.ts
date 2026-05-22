@@ -1,4 +1,4 @@
-import { ItemView, Menu, WorkspaceLeaf, setIcon, TFile } from 'obsidian';
+import { ItemView, Menu, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
 import ApiManager from '../api';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
@@ -30,6 +30,14 @@ function niceTickLabel(seconds: number): string {
 		return m === 0 ? `${h}小时` : `${h}小时${m}分`;
 	}
 	return `${mins}分钟`;
+}
+
+/** 用第 p 百分位数（0–100）代替 max，避免极值压平颜色分布 */
+function percentile(values: number[], p: number): number {
+	if (values.length === 0) return 1;
+	const sorted = [...values].sort((a, b) => a - b);
+	const idx = Math.floor((p / 100) * (sorted.length - 1));
+	return sorted[idx] || 1;
 }
 
 /** 计算"好看"的最大刻度（向上取整到整数分钟/整数半小时/整数小时） */
@@ -134,7 +142,49 @@ function buildWeekValues(
 	return { values, labels };
 }
 
-// ─── View ─────────────────────────────────────────────────────────────────────
+// ─── Daily stats disk cache ───────────────────────────────────────────────────
+
+const CACHE_DIR = '.weread-cache';
+const CACHE_FILE = `${CACHE_DIR}/daily-stats.json`;
+
+interface DailyStatsCache {
+	version: number;
+	// key = "YYYY-M-D", value = seconds
+	data: Record<string, number>;
+	// tracks which months have been fetched: key = "YYYY-M"
+	fetchedMonths: string[];
+}
+
+async function loadDailyCache(vault: Vault): Promise<DailyStatsCache> {
+	try {
+		const file = vault.getAbstractFileByPath(CACHE_FILE);
+		if (file instanceof TFile) {
+			const raw = await vault.read(file);
+			return JSON.parse(raw) as DailyStatsCache;
+		}
+	} catch (_) { /* ignore */ }
+	return { version: 1, data: {}, fetchedMonths: [] };
+}
+
+async function saveDailyCache(vault: Vault, cache: DailyStatsCache): Promise<void> {
+	try {
+		const exists = await vault.adapter.exists(CACHE_DIR);
+		if (!exists) await vault.adapter.mkdir(CACHE_DIR);
+		const json = JSON.stringify(cache);
+		const file = vault.getAbstractFileByPath(CACHE_FILE);
+		if (file instanceof TFile) {
+			await vault.modify(file, json);
+		} else {
+			await vault.create(CACHE_FILE, json);
+		}
+	} catch (e) {
+		console.error('[weread] Failed to save daily stats cache', e);
+	}
+}
+
+
+
+type ChartView = 'bar' | 'calendar' | 'heatmap';
 
 export class WereadReadingStatsView extends ItemView {
 	private apiManager: ApiManager;
@@ -144,6 +194,8 @@ export class WereadReadingStatsView extends ItemView {
 	private data: ReadingStatsResponse | null = null;
 	private loading = false;
 	private statsEl: HTMLElement;
+	// chart view preference per mode
+	private chartView: Partial<Record<ReadingStatsMode, ChartView>> = {};
 
 	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, fileManager: FileManager) {
 		super(leaf);
@@ -152,7 +204,7 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	getViewType(): string { return WEREAD_READING_STATS_VIEW_ID; }
-	getDisplayText(): string { return '阅读统计'; }
+	getDisplayText(): string { return '微信读书阅读统计'; }
 	getIcon(): string { return 'bar-chart-2'; }
 
 	onMoreOptionsMenu(menu: Menu) {
@@ -176,7 +228,10 @@ export class WereadReadingStatsView extends ItemView {
 		this.loadData();
 	}
 
-	async onClose() { this.contentEl.empty(); }
+	async onClose() {
+		this.contentEl.empty();
+	}
+
 
 	private async loadData() {
 		const settings = get(settingsStore);
@@ -213,7 +268,7 @@ export class WereadReadingStatsView extends ItemView {
 		const titleRow = header.createDiv({ cls: 'weread-stats-title-row' });
 		const icon = titleRow.createSpan({ cls: 'weread-stats-header-icon' });
 		setIcon(icon, 'bar-chart-2');
-		titleRow.createEl('h2', { text: '阅读统计', cls: 'weread-stats-title' });
+		titleRow.createEl('h2', { text: '微信读书阅读统计', cls: 'weread-stats-title' });
 	}
 
 	// ── Tab bar + 时间导航 ────────────────────────────────────────────
@@ -348,33 +403,462 @@ export class WereadReadingStatsView extends ItemView {
 		if (!data.readTimes || Object.keys(data.readTimes).length === 0) return;
 
 		const section = el.createDiv({ cls: 'weread-stats-section' });
+
+		// Section title row with view toggle buttons
+		const titleRow = section.createDiv({ cls: 'weread-stats-section-title-row' });
+		const availableViews = this.getAvailableViews();
+		const currentView = this.chartView[this.currentMode] ?? this.getDefaultView(this.currentMode);
 		const modeLabel: Record<ReadingStatsMode, string> = {
 			weekly: '每日阅读时长', monthly: '每日阅读时长',
 			annually: '每月阅读时长', overall: '每年阅读时长'
 		};
-		section.createEl('h3', { text: modeLabel[this.currentMode], cls: 'weread-stats-section-title' });
+		// 年份tab下，heatmap视图显示每日，bar/calendar视图显示每月
+		const sectionTitle = this.currentMode === 'annually' && currentView === 'heatmap'
+			? '每日阅读时长'
+			: modeLabel[this.currentMode];
+		titleRow.createEl('h3', { text: sectionTitle, cls: 'weread-stats-section-title' });
 
-		let values: number[];
-		let labels: string[];
-
-		if (this.currentMode === 'weekly') {
-			const baseTime = calcBaseTime('weekly', this.currentOffset);
-			const built = buildWeekValues(data.readTimes, baseTime);
-			values = built.values;
-			labels = built.labels;
-		} else {
-			const entries = Object.entries(data.readTimes).sort(([a], [b]) => Number(a) - Number(b));
-			values = entries.map(([, v]) => v as number);
-			labels = entries.map(([ts]) => {
-				const d = new Date(Number(ts) * 1000);
-				if (this.currentMode === 'overall') return `${d.getFullYear()}`;
-				if (this.currentMode === 'annually') return `${d.getMonth() + 1}月`;
-				return `${d.getDate()}`;
-			});
+		if (availableViews.length > 1) {
+			const toggleGroup = titleRow.createDiv({ cls: 'weread-stats-view-toggle' });
+			const viewIcons: Record<ChartView, string> = { bar: 'bar-chart-2', calendar: 'calendar-days', heatmap: 'layout-grid' };
+			const viewTitles: Record<ChartView, string> = { bar: '柱状图', calendar: '日历', heatmap: '热力图' };
+			for (const v of availableViews) {
+				const btn = toggleGroup.createEl('button', {
+					cls: 'weread-stats-view-toggle-btn' + (currentView === v ? ' is-active' : ''),
+					attr: { title: viewTitles[v] }
+				});
+				setIcon(btn, viewIcons[v]);
+				btn.addEventListener('click', () => {
+					this.chartView[this.currentMode] = v;
+					this.render();
+				});
+			}
 		}
 
-		this.renderBarChart(section, values, labels);
+		const chartArea = section.createDiv({ cls: 'weread-stats-chart-area' });
+
+		if (currentView === 'calendar' && this.currentMode === 'monthly') {
+			this.renderMonthCalendar(chartArea, data.readTimes);
+		} else if (currentView === 'heatmap' && this.currentMode === 'annually') {
+			this.renderYearHeatmap(chartArea, data);
+		} else if (currentView === 'heatmap' && this.currentMode === 'overall') {
+			this.renderOverallHeatmap(chartArea, data);
+		} else {
+			// bar chart
+			let values: number[];
+			let labels: string[];
+			if (this.currentMode === 'weekly') {
+				const baseTime = calcBaseTime('weekly', this.currentOffset);
+				const built = buildWeekValues(data.readTimes, baseTime);
+				values = built.values;
+				labels = built.labels;
+			} else {
+				const entries = Object.entries(data.readTimes).sort(([a], [b]) => Number(a) - Number(b));
+				values = entries.map(([, v]) => v as number);
+				labels = entries.map(([ts]) => {
+					const d = new Date(Number(ts) * 1000);
+					if (this.currentMode === 'overall') return `${d.getFullYear()}`;
+					if (this.currentMode === 'annually') return `${d.getMonth() + 1}月`;
+					return `${d.getDate()}`;
+				});
+			}
+			this.renderBarChart(chartArea, values, labels);
+		}
 	}
+
+	private getAvailableViews(): ChartView[] {
+		if (this.currentMode === 'monthly') return ['bar', 'calendar'];
+		if (this.currentMode === 'annually') return ['heatmap', 'bar'];
+		if (this.currentMode === 'overall') return ['heatmap', 'bar'];
+		return ['bar'];
+	}
+
+	private getDefaultView(mode: ReadingStatsMode): ChartView {
+		if (mode === 'monthly') return 'bar';
+		if (mode === 'annually') return 'heatmap';
+		if (mode === 'overall') return 'heatmap';
+		return 'bar';
+	}
+
+	// ── Month Calendar ────────────────────────────────────────────────
+	private renderMonthCalendar(parent: HTMLElement, readTimes: Record<string, number>) {
+		// Determine year/month from baseTime or current date
+		const baseTime = calcBaseTime('monthly', this.currentOffset);
+		const refDate = baseTime ? new Date(baseTime * 1000) : new Date();
+		const year = refDate.getFullYear();
+		const month = refDate.getMonth(); // 0-indexed
+
+		// Build a map: day (1-31) -> seconds
+		const dayMap: Record<number, number> = {};
+		for (const [ts, secs] of Object.entries(readTimes)) {
+			const d = new Date(Number(ts) * 1000);
+			if (d.getFullYear() === year && d.getMonth() === month) {
+				dayMap[d.getDate()] = secs as number;
+			}
+		}
+		const dayValues = Object.values(dayMap).filter(v => v > 0);
+		const maxVal = percentile(dayValues, 95);
+
+		const cal = parent.createDiv({ cls: 'weread-calendar' });
+
+		// Weekday headers (Mon - Sun)
+		const dayNames = ['一', '二', '三', '四', '五', '六', '日'];
+		const headerRow = cal.createDiv({ cls: 'weread-calendar-header' });
+		for (const d of dayNames) {
+			headerRow.createDiv({ cls: 'weread-calendar-dow', text: d });
+		}
+
+		// First day of month (0=Sun..6=Sat) → convert to Mon-based (0=Mon..6=Sun)
+		const firstDow = new Date(year, month, 1).getDay();
+		const startOffset = firstDow === 0 ? 6 : firstDow - 1;
+		const daysInMonth = new Date(year, month + 1, 0).getDate();
+		const today = new Date();
+
+		const grid = cal.createDiv({ cls: 'weread-calendar-grid' });
+
+		// Empty cells before first day
+		for (let i = 0; i < startOffset; i++) {
+			grid.createDiv({ cls: 'weread-calendar-cell is-empty' });
+		}
+
+		for (let day = 1; day <= daysInMonth; day++) {
+			const secs = dayMap[day] ?? 0;
+			const intensity = maxVal > 0 ? Math.min(secs / maxVal, 1) : 0;
+			const cell = grid.createDiv({ cls: 'weread-calendar-cell' });
+
+			// Intensity level 0-4
+			const level = secs === 0 ? 0 : Math.max(1, Math.ceil(intensity * 4));
+			cell.addClass(`weread-cal-level-${level}`);
+
+			const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+			if (isToday) cell.addClass('is-today');
+
+			cell.createDiv({ cls: 'weread-calendar-day', text: String(day) });
+			if (secs > 0) {
+				cell.createDiv({ cls: 'weread-calendar-duration', text: fmtDuration(secs) });
+			}
+			if (secs > 0) {
+				cell.setAttribute('title', `${month + 1}月${day}日：${fmtDuration(secs)}`);
+			}
+		}
+
+		// Fill trailing empty cells to complete the last row
+		const totalCells = startOffset + daysInMonth;
+		const remainder = totalCells % 7;
+		if (remainder !== 0) {
+			for (let i = 0; i < 7 - remainder; i++) {
+				grid.createDiv({ cls: 'weread-calendar-cell is-empty' });
+			}
+		}
+
+	}
+
+	// ── Year Heatmap via cal-heatmap ──────────────────────────────────
+	private renderYearHeatmap(parent: HTMLElement, data: ReadingStatsResponse) {
+		if ((data as any)._dailyReadTimes) {
+			this.renderCalHeatmap(parent, (data as any)._dailyReadTimes, data.readDays);
+		} else {
+			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
+			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
+			placeholder.createDiv({ text: '正在加载全年日数据…', cls: 'weread-stats-empty-text' });
+			this.loadAnnualDailyData(data);
+		}
+	}
+
+	private async loadAnnualDailyData(data: ReadingStatsResponse) {
+		const baseTime = calcBaseTime('annually', this.currentOffset);
+		const refDate = baseTime ? new Date(baseTime * 1000) : new Date();
+		const year = refDate.getFullYear();
+		const today = new Date();
+
+		const cache = await loadDailyCache(this.app.vault);
+		let dirty = false;
+		const BATCH = 6;
+
+		const monthTimestamps = Array.from({ length: 12 }, (_, m) =>
+			Math.floor(new Date(year, m, 1).getTime() / 1000)
+		);
+
+		// Only fetch months not yet cached (skip future months)
+		const toFetch = monthTimestamps.filter(ts => {
+			const d = new Date(ts * 1000);
+			const key = `${d.getFullYear()}-${d.getMonth()}`;
+			// Always re-fetch current month (data may change), skip past months if cached
+			const isCurrentMonth = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+			const isFuture = d > today;
+			return !isFuture && (isCurrentMonth || !cache.fetchedMonths.includes(key));
+		});
+
+		for (let i = 0; i < toFetch.length; i += BATCH) {
+			const results = await Promise.all(
+				toFetch.slice(i, i + BATCH).map(ts => this.apiManager.getReadingStats('monthly', ts))
+			);
+			for (let j = 0; j < results.length; j++) {
+				const res = results[j];
+				const ts = toFetch[i + j];
+				const d = new Date(ts * 1000);
+				const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+				if (!res?.readTimes) continue;
+				for (const [dayTs, secs] of Object.entries(res.readTimes)) {
+					const dd = new Date(Number(dayTs) * 1000);
+					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
+				}
+				if (!cache.fetchedMonths.includes(monthKey)) {
+					cache.fetchedMonths.push(monthKey);
+				}
+				dirty = true;
+			}
+		}
+
+		if (dirty) await saveDailyCache(this.app.vault, cache);
+
+		// Build dailyMap from cache for this year
+		const dailyMap: Record<string, number> = {};
+		for (const [k, v] of Object.entries(cache.data)) {
+			if (k.startsWith(`${year}-`)) dailyMap[k] = v;
+		}
+		(data as any)._dailyReadTimes = dailyMap;
+		this.render();
+	}
+
+	// ── Overall Heatmap (all years) ────────────────────────────────────
+	private renderOverallHeatmap(parent: HTMLElement, data: ReadingStatsResponse) {
+		if ((data as any)._allDailyReadTimes) {
+			this.renderAllYearsHeatmap(parent, (data as any)._allDailyReadTimes, data);
+		} else {
+			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
+			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
+			placeholder.createDiv({ text: '正在加载全部阅读数据…', cls: 'weread-stats-empty-text' });
+			this.loadOverallDailyData(data);
+		}
+	}
+
+	private async loadOverallDailyData(data: ReadingStatsResponse) {
+		const today = new Date();
+		const endYear = today.getFullYear();
+		const settings = get(settingsStore);
+		const startYear = settings.statsStartYear && settings.statsStartYear > 2000
+			? settings.statsStartYear
+			: data.registTime
+				? new Date(data.registTime * 1000).getFullYear()
+				: endYear - 2;
+
+		// Collect all month timestamps from startYear to now
+		const monthTimestamps: number[] = [];
+		for (let y = startYear; y <= endYear; y++) {
+			for (let m = 0; m < 12; m++) {
+				monthTimestamps.push(Math.floor(new Date(y, m, 1).getTime() / 1000));
+			}
+		}
+
+		const cache = await loadDailyCache(this.app.vault);
+		let dirty = false;
+		const BATCH = 6;
+
+		// Only fetch uncached months (always re-fetch current month)
+		const toFetch = monthTimestamps.filter(ts => {
+			const d = new Date(ts * 1000);
+			const key = `${d.getFullYear()}-${d.getMonth()}`;
+			const isCurrentMonth = d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+			const isFuture = d > today;
+			return !isFuture && (isCurrentMonth || !cache.fetchedMonths.includes(key));
+		});
+
+		for (let i = 0; i < toFetch.length; i += BATCH) {
+			const results = await Promise.all(
+				toFetch.slice(i, i + BATCH).map(ts => this.apiManager.getReadingStats('monthly', ts))
+			);
+			for (let j = 0; j < results.length; j++) {
+				const res = results[j];
+				const ts = toFetch[i + j];
+				const d = new Date(ts * 1000);
+				const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+				if (!res?.readTimes) continue;
+				for (const [dayTs, secs] of Object.entries(res.readTimes)) {
+					const dd = new Date(Number(dayTs) * 1000);
+					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
+				}
+				if (!cache.fetchedMonths.includes(monthKey)) {
+					cache.fetchedMonths.push(monthKey);
+				}
+				dirty = true;
+			}
+			if (i + BATCH < toFetch.length) {
+				await new Promise(r => setTimeout(r, 200));
+			}
+		}
+
+		if (dirty) await saveDailyCache(this.app.vault, cache);
+
+		(data as any)._allDailyReadTimes = cache.data;
+		(data as any)._statsStartYear = startYear;
+		this.render();
+	}
+
+	private renderAllYearsHeatmap(parent: HTMLElement, dailyMap: Record<string, number>, data: ReadingStatsResponse) {
+		const today = new Date();
+		const endYear = today.getFullYear();
+		const settings = get(settingsStore);
+		const startYear = (data as any)._statsStartYear
+			?? (settings.statsStartYear && settings.statsStartYear > 2000
+				? settings.statsStartYear
+				: data.registTime
+					? new Date(data.registTime * 1000).getFullYear()
+					: endYear - 2);
+
+		// dailyMap keys are already "YYYY-M-D" format from cache
+		const dayMap = dailyMap;
+
+		// Use p95 to avoid extreme outliers (e.g. all-day audio) skewing colours
+		const globalMax = percentile(Object.values(dayMap).filter(v => v > 0), 95);
+		const getLevel = (secs: number) => {
+			if (secs === 0) return 0;
+			const ratio = Math.min(secs / globalMax, 1);
+			if (ratio < 0.25) return 1;
+			if (ratio < 0.50) return 2;
+			if (ratio < 0.75) return 3;
+			return 4;
+		};
+
+		const wrap = parent.createDiv({ cls: 'weread-allheatmap-wrap' });
+
+		for (let year = endYear; year >= startYear; year--) {
+			const yearWrap = wrap.createDiv({ cls: 'weread-allheatmap-year' });
+			yearWrap.createDiv({ cls: 'weread-allheatmap-yearlabel', text: String(year) });
+			this.renderCalHeatmapInto(yearWrap, dayMap, year, today, getLevel);
+		}
+
+		// Legend
+		const legend = wrap.createDiv({ cls: 'weread-ghmap-legend' });
+		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '少' });
+		for (let l = 0; l <= 4; l++) {
+			legend.createDiv({ cls: `weread-ghmap-cell level-${l}` });
+		}
+		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '多' });
+	}
+
+	private renderCalHeatmapInto(
+		parent: HTMLElement,
+		dayMap: Record<string, number>,
+		year: number,
+		today: Date,
+		getLevel: (secs: number) => number
+	) {
+		const allDays: { date: Date; secs: number }[] = [];
+		for (let m = 0; m < 12; m++) {
+			const daysInMonth = new Date(year, m + 1, 0).getDate();
+			for (let d = 1; d <= daysInMonth; d++) {
+				const date = new Date(year, m, d);
+				allDays.push({ date, secs: dayMap[`${year}-${m}-${d}`] ?? 0 });
+			}
+		}
+
+		const firstDow = allDays[0].date.getDay();
+		const startPad = firstDow === 0 ? 6 : firstDow - 1;
+		const paddedDays: ({ date: Date; secs: number } | null)[] = [
+			...Array(startPad).fill(null),
+			...allDays,
+		];
+		const totalWeeks = Math.ceil(paddedDays.length / 7);
+
+		// Month → first week index
+		const monthWeek: Record<number, number> = {};
+		for (let w = 0; w < totalWeeks; w++) {
+			for (let dow = 0; dow < 7; dow++) {
+				const item = paddedDays[w * 7 + dow];
+				if (!item) continue;
+				const mo = item.date.getMonth();
+				if (!(mo in monthWeek)) monthWeek[mo] = w;
+			}
+		}
+
+		const inner = parent.createDiv({ cls: 'weread-ghmap-inner' });
+
+		// Weekday labels
+		const labelsCol = inner.createDiv({ cls: 'weread-ghmap-daylabels' });
+		const dayLabels = ['一', '三', '五'];
+		const dayRows = [0, 2, 4];
+		for (let i = 0; i < 7; i++) {
+			const idx = dayRows.indexOf(i);
+			labelsCol.createDiv({ cls: 'weread-ghmap-daylabel', text: idx >= 0 ? dayLabels[idx] : '' });
+		}
+
+		const rightCol = inner.createDiv({ cls: 'weread-ghmap-right' });
+
+		// Month labels — each label is exactly (CELL_W + GAP) px wide to align with columns
+		const CELL_W = 13;
+		const GAP = 3;
+		const COL_W = CELL_W + GAP; // 16px per week column
+		const monthRow = rightCol.createDiv({ cls: 'weread-ghmap-months' });
+		for (let w = 0; w < totalWeeks; w++) {
+			const mo = Object.entries(monthWeek).find(([, wk]) => wk === w);
+			const label = monthRow.createDiv({ cls: 'weread-ghmap-monthlabel', text: mo ? `${Number(mo[0]) + 1}月` : '' });
+			label.style.width = `${COL_W}px`;
+			label.style.flexShrink = '0';
+		}
+
+		// Cell grid
+		const grid = rightCol.createDiv({ cls: 'weread-ghmap-grid' });
+
+		for (let w = 0; w < totalWeeks; w++) {
+			const col = grid.createDiv({ cls: 'weread-ghmap-col' });
+			for (let dow = 0; dow < 7; dow++) {
+				const item = paddedDays[w * 7 + dow];
+				if (!item) { col.createDiv({ cls: 'weread-ghmap-cell is-empty' }); continue; }
+				const { date, secs } = item;
+				const level = getLevel(secs);
+				const isToday = date.toDateString() === today.toDateString();
+				const cell = col.createDiv({ cls: `weread-ghmap-cell level-${level}${isToday ? ' is-today' : ''}` });
+				const label = `${date.getMonth() + 1}月${date.getDate()}日`;
+				cell.title = secs > 0 ? `${label}：${fmtDuration(secs)}` : label;
+			}
+		}
+	}
+
+	private renderCalHeatmap(parent: HTMLElement, dailyMap: Record<string, number>, apiReadDays?: number) {
+		const baseTime = calcBaseTime('annually', this.currentOffset);
+		const refDate = baseTime ? new Date(baseTime * 1000) : new Date();
+		const year = refDate.getFullYear();
+		const today = new Date();
+
+		// Keys are already "year-month-day" strings (0-indexed month), use directly
+		const dayMap: Record<string, number> = dailyMap;
+
+		// Per-year p95 for colour scale (avoids outliers like all-day audio)
+		const yearVals = Object.entries(dayMap)
+			.filter(([k]) => k.startsWith(`${year}-`))
+			.map(([, v]) => v).filter(v => v > 0);
+		const maxVal = percentile(yearVals, 95);
+		const getLevel = (secs: number) => {
+			if (secs === 0) return 0;
+			const ratio = Math.min(secs / maxVal, 1);
+			if (ratio < 0.25) return 1;
+			if (ratio < 0.50) return 2;
+			if (ratio < 0.75) return 3;
+			return 4;
+		};
+
+		const wrap = parent.createDiv({ cls: 'weread-ghmap-wrap' });
+		this.renderCalHeatmapInto(wrap, dayMap, year, today, getLevel);
+
+		// Legend
+		const legend = wrap.createDiv({ cls: 'weread-ghmap-legend' });
+		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '少' });
+		for (let l = 0; l <= 4; l++) {
+			legend.createDiv({ cls: `weread-ghmap-cell level-${l}` });
+		}
+		legend.createSpan({ cls: 'weread-ghmap-legend-text', text: '多' });
+
+		// Summary
+		const allDays = Object.entries(dayMap).filter(([k]) => k.startsWith(`${year}-`));
+		const displayReadDays = apiReadDays ?? allDays.filter(([, v]) => v > 0).length;
+		const totalSecs = allDays.reduce((s, [, v]) => s + v, 0);
+		wrap.createDiv({
+			cls: 'weread-heatmap-summary',
+			text: `${year} 年共阅读 ${displayReadDays} 天，累计 ${fmtDuration(totalSecs)}`
+		});
+	}
+
 
 	// ── Bar Chart (SVG) with Y-axis scale ────────────────────────────
 	private renderBarChart(parent: HTMLElement, values: number[], labels: string[]) {

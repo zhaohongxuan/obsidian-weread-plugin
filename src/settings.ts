@@ -101,6 +101,7 @@ export interface WereadPluginSettings {
 	activeThemeId: string;
 	wereadApiKey: string;
 	readingStatsLocation: string;
+	statsStartYear?: number;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -153,7 +154,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	themes: BUILT_IN_THEMES,
 	activeThemeId: 'builtin_merged',
 	wereadApiKey: '',
-	readingStatsLocation: '/'
+	readingStatsLocation: '/',
+	statsStartYear: 0,  // 0 = use registTime from API
 };
 
 const createSettingsStore = () => {
@@ -721,6 +723,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setStatsStartYear = (year: number) => {
+		store.update((state) => {
+			state.statsStartYear = year;
+			return state;
+		});
+	};
+
 	const setReadingStatsLocation = (location: string) => {
 		store.update((state) => {
 			state.readingStatsLocation = location;
@@ -781,7 +790,8 @@ const createSettingsStore = () => {
 			importTheme,
 			exportTheme,
 			setWereadApiKey,
-			setReadingStatsLocation
+			setReadingStatsLocation,
+			setStatsStartYear,
 		}
 	};
 };

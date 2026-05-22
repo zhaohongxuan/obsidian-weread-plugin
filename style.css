@@ -2210,11 +2210,17 @@
 .weread-stats-view {
 	overflow-y: auto;
 	height: 100%;
+	/* cal-heatmap heat colors — adapt to accent color */
+	--weread-heat-0: var(--background-modifier-border);
+	--weread-heat-1: rgba(var(--interactive-accent-rgb), 0.20);
+	--weread-heat-2: rgba(var(--interactive-accent-rgb), 0.42);
+	--weread-heat-3: rgba(var(--interactive-accent-rgb), 0.65);
+	--weread-heat-4: rgba(var(--interactive-accent-rgb), 0.88);
 }
 
 .weread-stats-container {
 	padding: 16px 20px 32px;
-	max-width: 900px;
+	max-width: 910px;
 	margin: 0 auto;
 }
 
@@ -2312,10 +2318,11 @@
 }
 
 .weread-stats-tab.is-active {
-	background: var(--background-primary);
+	background: rgba(var(--interactive-accent-rgb), 0.15);
 	color: var(--text-accent);
 	font-weight: 600;
-	box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+	box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+	border-radius: 9px;
 }
 
 /* ── Time Picker ─────────────────────────────────────────────────────────── */
@@ -2481,10 +2488,289 @@
 	font-size: 0.95em;
 	font-weight: 600;
 	color: var(--text-muted);
-	margin: 0 0 12px;
+	margin: 0;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 }
+
+/* ── Section title row with toggle ──────────────────────────────────────── */
+.weread-stats-section-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.weread-stats-view-toggle {
+	display: flex;
+	gap: 2px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 2px;
+}
+
+.weread-stats-view-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 6px;
+	padding: 0;
+	transition: background 0.15s, color 0.15s;
+}
+
+.weread-stats-view-toggle-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.weread-stats-view-toggle-btn.is-active {
+	background: rgba(var(--interactive-accent-rgb), 0.15);
+	color: var(--text-accent);
+}
+
+/* ── Month Calendar ──────────────────────────────────────────────────────── */
+.weread-calendar {
+	width: 100%;
+}
+
+.weread-calendar-header {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+	margin-bottom: 4px;
+}
+
+.weread-calendar-dow {
+	text-align: center;
+	font-size: 0.78em;
+	color: var(--text-faint);
+	font-weight: 600;
+	padding: 4px 0;
+}
+
+.weread-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+}
+
+.weread-calendar-cell {
+	border-radius: 8px;
+	padding: 6px 4px 5px;
+	min-height: 56px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	transition: transform 0.1s;
+}
+
+.weread-calendar-cell.is-empty {
+	background: transparent;
+	border-color: transparent;
+}
+
+.weread-calendar-cell:not(.is-empty):hover {
+	transform: translateY(-1px);
+}
+
+.weread-calendar-cell.is-today .weread-calendar-day {
+	color: var(--text-accent);
+	font-weight: 700;
+}
+
+.weread-calendar-day {
+	font-size: 0.82em;
+	color: var(--text-muted);
+	font-weight: 500;
+	line-height: 1;
+}
+
+.weread-calendar-duration {
+	font-size: 0.7em;
+	color: var(--text-accent);
+	font-weight: 600;
+	text-align: center;
+	line-height: 1.2;
+}
+
+/* Calendar heatmap levels — shared by month calendar & year heatmap */
+.weread-cal-level-0 { background: var(--background-secondary); }
+.weread-cal-level-1 { background: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-primary)); }
+.weread-cal-level-2 { background: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-primary)); }
+.weread-cal-level-3 { background: color-mix(in srgb, var(--interactive-accent) 66%, var(--background-primary)); }
+.weread-cal-level-4 { background: var(--interactive-accent); }
+
+.weread-cal-level-3 .weread-calendar-day,
+.weread-cal-level-4 .weread-calendar-day { color: var(--text-on-accent); }
+.weread-cal-level-4 .weread-calendar-duration { color: var(--text-on-accent); opacity: 0.9; }
+.weread-cal-level-3 .weread-calendar-duration { color: var(--text-on-accent); opacity: 0.85; }
+
+/* ── All-years heatmap ───────────────────────────────────────────────────── */
+.weread-allheatmap-wrap {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.weread-allheatmap-year {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.weread-allheatmap-yearlabel {
+	font-size: 0.85em;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin-bottom: 2px;
+}
+
+
+.weread-heatmap-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 32px 0;
+}
+
+.weread-stats-spinner-sm {
+	width: 20px;
+	height: 20px;
+	border-width: 2px;
+}
+
+.weread-ghmap-wrap {
+	width: 100%;
+	overflow-x: auto;
+	padding-bottom: 2px; /* prevent bottom clip on hover scale */
+}
+
+.weread-ghmap-inner {
+	display: flex;
+	gap: 0;
+	padding-right: 4px;
+	min-width: max-content;
+}
+
+/* Weekday label column */
+.weread-ghmap-daylabels {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding-top: 20px;
+	flex-shrink: 0;
+	margin-right: 4px;
+}
+
+.weread-ghmap-daylabel {
+	width: 14px;
+	height: 13px;
+	font-size: 0.7em;
+	color: var(--text-faint);
+	line-height: 13px;
+	text-align: right;
+}
+
+/* Right side: months + grid */
+.weread-ghmap-right {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	overflow: visible;
+}
+
+.weread-ghmap-months {
+	display: flex;
+}
+
+.weread-ghmap-monthlabel {
+	font-size: 0.75em;
+	color: var(--text-faint);
+	font-weight: 500;
+	height: 16px;
+	line-height: 16px;
+	white-space: nowrap;
+	/* width set inline to match col width */
+}
+
+.weread-ghmap-grid {
+	display: flex;
+	gap: 3px;
+}
+
+.weread-ghmap-col {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+/* Individual cells */
+.weread-ghmap-cell {
+	width: 13px;
+	height: 13px;
+	border-radius: 2px;
+	cursor: default;
+	transition: opacity 0.1s, transform 0.1s;
+}
+
+.weread-ghmap-cell:hover:not(.is-empty) {
+	transform: scale(1.4);
+	z-index: 10;
+	opacity: 1 !important;
+}
+
+.weread-ghmap-cell.is-empty {
+	background: transparent !important;
+}
+
+.weread-ghmap-cell.is-today {
+	outline: 2px solid var(--text-accent);
+	outline-offset: 1px;
+}
+
+/* Intensity levels — level-0 = no reading (light grey), 1–4 = accent color */
+.weread-ghmap-cell.level-0 { background: var(--background-modifier-border); }
+.weread-ghmap-cell.level-1 { background: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-primary)); }
+.weread-ghmap-cell.level-2 { background: color-mix(in srgb, var(--interactive-accent) 52%, var(--background-primary)); }
+.weread-ghmap-cell.level-3 { background: color-mix(in srgb, var(--interactive-accent) 75%, var(--background-primary)); }
+.weread-ghmap-cell.level-4 { background: var(--interactive-accent); }
+
+/* Legend */
+.weread-ghmap-legend {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	margin-top: 8px;
+	justify-content: flex-end;
+}
+
+.weread-ghmap-legend-text {
+	font-size: 0.75em;
+	color: var(--text-faint);
+	margin: 0 2px;
+}
+
+.weread-heatmap-summary {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 8px;
+	text-align: center;
+}
+
+
+
 
 /* ── Bar Chart ───────────────────────────────────────────────────────────── */
 .weread-stats-chart-wrapper {

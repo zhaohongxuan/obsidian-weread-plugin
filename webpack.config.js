@@ -59,7 +59,7 @@ module.exports = {
 			'~': path.resolve(__dirname, 'src')
 		},
 		extensions: ['.ts', '.tsx', '.js', '.svelte'],
-		mainFields: ['svelte', 'browser', 'module', 'main']
+		mainFields: ['svelte', 'browser', 'module', 'main'],
 	},
 	externals: {
 		electron: 'commonjs2 electron',
