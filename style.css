@@ -2361,7 +2361,7 @@
 }
 
 .weread-stats-tab.is-active {
-	background: rgba(var(--interactive-accent-rgb), 0.15);
+	background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 	color: var(--text-accent);
 	font-weight: 600;
 	box-shadow: 0 1px 4px rgba(0,0,0,0.15);
@@ -3325,4 +3325,24 @@
 
 .weread-export-action-btn.mod-cta:hover {
 	background: var(--interactive-accent-hover);
+}
+
+/* ── Export Loading Modal ──────────────────────────────────────────────────── */
+.weread-export-loading-modal .modal-content {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 60px;
+}
+
+.weread-export-loading-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+}
+
+.weread-export-loading-text {
+	font-size: 0.95em;
+	color: var(--text-muted);
 }

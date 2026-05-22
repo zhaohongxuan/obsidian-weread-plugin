@@ -157,9 +157,9 @@ interface DailyStatsCache {
 
 async function loadDailyCache(vault: Vault): Promise<DailyStatsCache> {
 	try {
-		const file = vault.getAbstractFileByPath(CACHE_FILE);
-		if (file instanceof TFile) {
-			const raw = await vault.read(file);
+		const exists = await vault.adapter.exists(CACHE_FILE);
+		if (exists) {
+			const raw = await vault.adapter.read(CACHE_FILE);
 			return JSON.parse(raw) as DailyStatsCache;
 		}
 	} catch (_) { /* ignore */ }
@@ -179,6 +179,18 @@ async function saveDailyCache(vault: Vault, cache: DailyStatsCache): Promise<voi
 }
 
 
+
+// ─── 导出 Loading Modal ───────────────────────────────────────────────────────
+class ExportLoadingModal extends Modal {
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.addClass('weread-export-loading-modal');
+		const wrap = contentEl.createDiv({ cls: 'weread-export-loading-wrap' });
+		wrap.createDiv({ cls: 'weread-stats-spinner' });
+		wrap.createDiv({ cls: 'weread-export-loading-text', text: '正在生成图片…' });
+	}
+	onClose() { this.contentEl.empty(); }
+}
 
 type ChartView = 'bar' | 'calendar' | 'heatmap';
 
@@ -279,6 +291,8 @@ export class WereadReadingStatsView extends ItemView {
 	private statsEl: HTMLElement;
 	// chart view preference per mode
 	private chartView: Partial<Record<ReadingStatsMode, ChartView>> = {};
+	// in-memory image cache: url -> base64 data url
+	private imgCache: Map<string, string> = new Map();
 
 	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, fileManager: FileManager) {
 		super(leaf);
@@ -393,32 +407,36 @@ export class WereadReadingStatsView extends ItemView {
 		}
 	}
 
-	private async exportAsImage(btn: HTMLElement) {
+	private async exportAsImage(_btn: HTMLElement) {
 		const { toPng } = require('html-to-image');
 		const { requestUrl } = require('obsidian');
-		const origText = btn.querySelector('span')?.textContent ?? '导出图片';
-		const span = btn.querySelector('span') as HTMLElement;
-		if (span) span.textContent = '生成中…';
-		btn.setAttribute('disabled', 'true');
 
-		// Hide export button during capture so it doesn't appear in the image
+		// Show loading modal immediately
+		const loadingModal = new ExportLoadingModal(this.app);
+		loadingModal.open();
+
+		// Hide export button
 		const exportBtn = this.statsEl.querySelector<HTMLElement>('.weread-stats-export-btn');
-		if (exportBtn) exportBtn.style.visibility = 'hidden';
+		if (exportBtn) exportBtn.style.display = 'none';
 
-		// Pre-fetch all images via Obsidian's requestUrl (bypasses CORS),
-		// replace src with data URL, restore after capture.
+		// Pre-fetch images — use in-memory cache to avoid re-fetching on repeat exports
 		const imgs = Array.from(this.statsEl.querySelectorAll<HTMLImageElement>('img'));
 		const origSrcs: string[] = imgs.map(img => img.src);
 		await Promise.allSettled(imgs.map(async (img, i) => {
+			const src = origSrcs[i];
+			if (!src || src.startsWith('data:')) return;
 			try {
-				const resp = await requestUrl({ url: origSrcs[i], method: 'GET' });
-				const mime = resp.headers['content-type'] || 'image/jpeg';
-				const b64 = btoa(String.fromCharCode(...new Uint8Array(resp.arrayBuffer)));
-				img.src = `data:${mime};base64,${b64}`;
-			} catch { /* keep original, will show blank */ }
+				if (!this.imgCache.has(src)) {
+					const resp = await requestUrl({ url: src, method: 'GET' });
+					const mime = resp.headers['content-type'] || 'image/jpeg';
+					const b64 = btoa(String.fromCharCode(...new Uint8Array(resp.arrayBuffer)));
+					this.imgCache.set(src, `data:${mime};base64,${b64}`);
+				}
+				img.src = this.imgCache.get(src)!;
+			} catch { /* keep original */ }
 		}));
 
-		// Inline computed fill/stroke/color on all SVG elements — html-to-image doesn't resolve CSS vars for SVG
+		// Inline SVG fill/stroke from computed styles
 		type SvgRestore = { el: SVGElement; fill: string | null; stroke: string | null; style: string };
 		const svgRestores: SvgRestore[] = [];
 		this.statsEl.querySelectorAll<SVGElement>('svg, svg *').forEach(el => {
@@ -426,10 +444,8 @@ export class WereadReadingStatsView extends ItemView {
 			const fill = cs.fill;
 			const stroke = cs.stroke;
 			svgRestores.push({ el, fill: el.getAttribute('fill'), stroke: el.getAttribute('stroke'), style: el.getAttribute('style') || '' });
-			// Always set presentation attributes with resolved rgb() values
 			el.setAttribute('fill', fill || 'none');
 			el.setAttribute('stroke', stroke || 'none');
-			// Also clear any style attr that may contain CSS vars (already captured above)
 			const styleAttr = el.getAttribute('style') || '';
 			if (styleAttr.includes('var(') || styleAttr.includes('color-mix(')) {
 				el.setAttribute('style', styleAttr
@@ -439,40 +455,64 @@ export class WereadReadingStatsView extends ItemView {
 			}
 		});
 
-		// Temporarily expand scroll container so full content is captured
+		// Capture dimensions BEFORE any style changes
+		const captureWidth = this.statsEl.offsetWidth;
+		const captureHeight = this.statsEl.scrollHeight;
+
+		// Expand scroll container
 		const scrollEl = this.contentEl as HTMLElement;
 		const origOverflow = scrollEl.style.overflow;
 		const origHeight = scrollEl.style.height;
 		scrollEl.style.overflow = 'visible';
 		scrollEl.style.height = 'auto';
-		await new Promise(r => requestAnimationFrame(r));
+
+		// Reset scroll offsets on ancestors
+		const scrollParents: { el: Element; left: number; top: number }[] = [];
+		let ancestor: Element | null = this.statsEl.parentElement;
+		while (ancestor && ancestor !== document.body) {
+			if (ancestor.scrollLeft !== 0 || ancestor.scrollTop !== 0) {
+				scrollParents.push({ el: ancestor, left: ancestor.scrollLeft, top: ancestor.scrollTop });
+				(ancestor as HTMLElement).scrollLeft = 0;
+				(ancestor as HTMLElement).scrollTop = 0;
+			}
+			ancestor = ancestor.parentElement;
+		}
 
 		try {
 			const dataUrl = await toPng(this.statsEl, {
-				pixelRatio: 2,
-				width: this.statsEl.offsetWidth,
-				height: this.statsEl.scrollHeight,
+				pixelRatio: 1.5,
+				width: captureWidth,
+				height: captureHeight,
 				skipFonts: true,
-				style: { overflow: 'visible' },
+				cacheBust: false,
+				style: {
+					overflow: 'visible',
+					position: 'fixed',
+					left: '0',
+					top: '0',
+					margin: '0',
+				},
 			});
+			loadingModal.close();
 			new ExportPreviewModal(this.app, dataUrl, this.exportFilename(), this.app.vault).open();
 		} catch (e) {
+			loadingModal.close();
 			console.error('导出图片失败', e);
+			new Notice('❌ 导出图片失败：' + e.message);
 		} finally {
-			// Restore export button visibility
-			if (exportBtn) exportBtn.style.visibility = '';
-			// Restore original image srcs
+			if (exportBtn) exportBtn.style.display = '';
 			imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-			// Restore SVG attributes
 			svgRestores.forEach(({ el, fill, stroke, style }) => {
 				if (fill === null) el.removeAttribute('fill'); else el.setAttribute('fill', fill);
 				if (stroke === null) el.removeAttribute('stroke'); else el.setAttribute('stroke', stroke);
 				if (style === '') el.removeAttribute('style'); else el.setAttribute('style', style);
 			});
+			scrollParents.forEach(({ el, left, top }) => {
+				(el as HTMLElement).scrollLeft = left;
+				(el as HTMLElement).scrollTop = top;
+			});
 			scrollEl.style.overflow = origOverflow;
 			scrollEl.style.height = origHeight;
-			if (span) span.textContent = origText;
-			btn.removeAttribute('disabled');
 		}
 	}
 
@@ -673,14 +713,36 @@ export class WereadReadingStatsView extends ItemView {
 				values = built.values;
 				labels = built.labels;
 			} else {
-				const entries = Object.entries(data.readTimes).sort(([a], [b]) => Number(a) - Number(b));
-				values = entries.map(([, v]) => v as number);
-				labels = entries.map(([ts]) => {
-					const d = new Date(Number(ts) * 1000);
-					if (this.currentMode === 'overall') return `${d.getFullYear()}`;
-					if (this.currentMode === 'annually') return `${d.getMonth() + 1}月`;
-					return `${d.getDate()}`;
-				});
+				if (this.currentMode === 'monthly') {
+					// Build full month: all days including future/unread ones
+					const baseTime = calcBaseTime('monthly', this.currentOffset);
+					const refDate = baseTime ? new Date(baseTime * 1000) : new Date();
+					const year = refDate.getFullYear();
+					const month = refDate.getMonth();
+					const daysInMonth = new Date(year, month + 1, 0).getDate();
+					const dayMap: Record<number, number> = {};
+					for (const [ts, secs] of Object.entries(data.readTimes)) {
+						const d = new Date(Number(ts) * 1000);
+						if (d.getFullYear() === year && d.getMonth() === month) {
+							dayMap[d.getDate()] = secs as number;
+						}
+					}
+					values = [];
+					labels = [];
+					for (let day = 1; day <= daysInMonth; day++) {
+						values.push(dayMap[day] ?? 0);
+						labels.push(String(day));
+					}
+				} else {
+					const entries = Object.entries(data.readTimes).sort(([a], [b]) => Number(a) - Number(b));
+					values = entries.map(([, v]) => v as number);
+					labels = entries.map(([ts]) => {
+						const d = new Date(Number(ts) * 1000);
+						if (this.currentMode === 'overall') return `${d.getFullYear()}`;
+						if (this.currentMode === 'annually') return `${d.getMonth() + 1}月`;
+						return `${d.getDate()}`;
+					});
+				}
 			}
 			this.renderBarChart(chartArea, values, labels);
 		}
@@ -799,6 +861,16 @@ export class WereadReadingStatsView extends ItemView {
 			Math.floor(new Date(year, m, 1).getTime() / 1000)
 		);
 
+		// If cache has data for this year, render immediately
+		const cachedYearData: Record<string, number> = {};
+		for (const [k, v] of Object.entries(cache.data)) {
+			if (k.startsWith(`${year}-`)) cachedYearData[k] = v;
+		}
+		if (Object.keys(cachedYearData).length > 0) {
+			(data as any)._dailyReadTimes = cachedYearData;
+			this.render();
+		}
+
 		// Only fetch months not yet cached (skip future months)
 		const toFetch = monthTimestamps.filter(ts => {
 			const d = new Date(ts * 1000);
@@ -808,6 +880,8 @@ export class WereadReadingStatsView extends ItemView {
 			const isFuture = d > today;
 			return !isFuture && (isCurrentMonth || !cache.fetchedMonths.includes(key));
 		});
+
+		if (toFetch.length === 0) return;
 
 		for (let i = 0; i < toFetch.length; i += BATCH) {
 			const results = await Promise.all(
@@ -875,6 +949,14 @@ export class WereadReadingStatsView extends ItemView {
 		let dirty = false;
 		const BATCH = 6;
 
+		// If cache has data, render immediately with cached data, then refresh current month in background
+		const hasCachedData = Object.keys(cache.data).length > 0;
+		if (hasCachedData) {
+			(data as any)._allDailyReadTimes = { ...cache.data };
+			(data as any)._statsStartYear = startYear;
+			this.render();
+		}
+
 		// Only fetch uncached months (always re-fetch current month)
 		const toFetch = monthTimestamps.filter(ts => {
 			const d = new Date(ts * 1000);
@@ -883,6 +965,16 @@ export class WereadReadingStatsView extends ItemView {
 			const isFuture = d > today;
 			return !isFuture && (isCurrentMonth || !cache.fetchedMonths.includes(key));
 		});
+
+		if (toFetch.length === 0) {
+			// Everything cached, just ensure rendered
+			if (!hasCachedData) {
+				(data as any)._allDailyReadTimes = cache.data;
+				(data as any)._statsStartYear = startYear;
+				this.render();
+			}
+			return;
+		}
 
 		for (let i = 0; i < toFetch.length; i += BATCH) {
 			const results = await Promise.all(
