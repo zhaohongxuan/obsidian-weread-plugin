@@ -63,6 +63,7 @@ export interface WereadPluginSettings {
 	user: string;
 	userVid: string;
 	userAvatar: string;
+	userSignature: string;
 	template: string;
 	noteCountLimit: number;
 	subFolderType: string;
@@ -99,6 +100,9 @@ export interface WereadPluginSettings {
 	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
 	themes: Theme[];
 	activeThemeId: string;
+	wereadApiKey: string;
+	readingStatsLocation: string;
+	statsStartYear?: number;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -114,6 +118,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	user: '',
 	userVid: '',
 	userAvatar: '',
+	userSignature: '',
 	template: '',
 	noteCountLimit: -1,
 	subFolderType: '-1',
@@ -149,7 +154,10 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	bookshelfGroupByYear: true,
 	bookshelfDefaultSyncStatusFilter: 'all',
 	themes: BUILT_IN_THEMES,
-	activeThemeId: 'builtin_merged'
+	activeThemeId: 'builtin_merged',
+	wereadApiKey: '',
+	readingStatsLocation: '/',
+	statsStartYear: 0,  // 0 = use registTime from API
 };
 
 const createSettingsStore = () => {
@@ -311,6 +319,7 @@ const createSettingsStore = () => {
 			state.user = '';
 			state.userVid = '';
 			state.userAvatar = '';
+			state.userSignature = '';
 			state.isCookieValid = false;
 			return state;
 		});
@@ -381,6 +390,13 @@ const createSettingsStore = () => {
 				}
 			}
 		}
+	};
+
+	const setUserSignature = (signature: string) => {
+		store.update((state) => {
+			state.userSignature = signature;
+			return state;
+		});
 	};
 
 	const setNoteLocationFolder = (value: string) => {
@@ -710,6 +726,27 @@ const createSettingsStore = () => {
 		return state.themes.find((t) => t.id === themeId) ?? null;
 	};
 
+	const setWereadApiKey = (apiKey: string) => {
+		store.update((state) => {
+			state.wereadApiKey = apiKey;
+			return state;
+		});
+	};
+
+	const setStatsStartYear = (year: number) => {
+		store.update((state) => {
+			state.statsStartYear = year;
+			return state;
+		});
+	};
+
+	const setReadingStatsLocation = (location: string) => {
+		store.update((state) => {
+			state.readingStatsLocation = location;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -761,7 +798,11 @@ const createSettingsStore = () => {
 			getActiveTheme,
 			duplicateTheme,
 			importTheme,
-			exportTheme
+			exportTheme,
+			setWereadApiKey,
+			setReadingStatsLocation,
+			setStatsStartYear,
+			setUserSignature,
 		}
 	};
 };

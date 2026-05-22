@@ -109,6 +109,18 @@ export class WereadBookshelfView extends ItemView {
 		return 'library';
 	}
 
+	onMoreOptionsMenu(menu: Menu) {
+		menu.addItem((item) =>
+			item
+				.setTitle('刷新书架')
+				.setIcon('refresh-ccw')
+				.onClick(() => {
+					this.loadBookshelf();
+				})
+		);
+		menu.addSeparator();
+	}
+
 	async onOpen() {
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-bookshelf-view');
@@ -272,6 +284,16 @@ export class WereadBookshelfView extends ItemView {
 					return btn;
 			  })()
 			: null;
+
+		const readingStatsButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '同步阅读统计' }
+		});
+		setIcon(readingStatsButton, 'bar-chart-2');
+		setTooltip(readingStatsButton, '阅读统计');
+		readingStatsButton.addEventListener('click', () => {
+			(this.plugin as any).activateReadingStatsView();
+		});
 
 		const syncLogButton = toolbarActions.createEl('button', {
 			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',

@@ -116,6 +116,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.insertAfter();
 		}
 		this.template();
+		this.readingStatsSettings();
 		if (Platform.isDesktopApp) {
 			this.showDebugHelp();
 		}
@@ -806,6 +807,38 @@ export class WereadSettingsTab extends PluginSettingTab {
 						settingsStore.actions.setNoteCountLimit(+value);
 					});
 			});
+	}
+
+	private readingStatsSettings(): void {
+		new Setting(this.containerEl).setName('阅读统计').setHeading();
+
+		new Setting(this.containerEl)
+			.setName('微信读书 API Key')
+			.setDesc('用于调用阅读统计等高级接口，格式：wrk-xxxxxxxx。可在微信读书开放平台申请。')
+			.addText((text) => {
+				text.setPlaceholder('wrk-xxxxxxxx')
+					.setValue(get(settingsStore).wereadApiKey ?? '')
+					.onChange((value) => {
+						settingsStore.actions.setWereadApiKey(value.trim());
+					});
+				text.inputEl.type = 'password';
+				text.inputEl.style.width = '260px';
+				return text;
+			});
+
+		new Setting(this.containerEl)
+			.setName('Heatmap 起始年份')
+			.setDesc('全部 Tab 的 Heatmap 从该年份开始展示，留空则使用注册时间。例如：2019')
+			.addText((text) =>
+				text
+					.setPlaceholder('例如：2019')
+					.setValue(get(settingsStore).statsStartYear ? String(get(settingsStore).statsStartYear) : '')
+					.onChange((value) => {
+						const year = parseInt(value.trim());
+						settingsStore.actions.setStatsStartYear(isNaN(year) ? 0 : year);
+					})
+			);
+
 	}
 
 	private showDebugHelp() {

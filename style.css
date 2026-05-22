@@ -2202,3 +2202,1147 @@
 	color: var(--text-accent);
 }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   WeRead Reading Stats View
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.weread-stats-view {
+	overflow-y: auto;
+	height: 100%;
+	/* cal-heatmap heat colors — adapt to accent color */
+	--weread-heat-0: var(--background-modifier-border);
+	--weread-heat-1: rgba(var(--interactive-accent-rgb), 0.20);
+	--weread-heat-2: rgba(var(--interactive-accent-rgb), 0.42);
+	--weread-heat-3: rgba(var(--interactive-accent-rgb), 0.65);
+	--weread-heat-4: rgba(var(--interactive-accent-rgb), 0.88);
+}
+
+.weread-stats-container {
+	padding: 16px 20px 32px;
+	max-width: 910px;
+	margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.weread-stats-header {
+	margin-bottom: 16px;
+}
+
+.weread-stats-header-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.weread-stats-user-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
+}
+
+.weread-stats-export-btn {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 0.82em;
+}
+
+.weread-stats-header-icon {
+	color: var(--text-accent);
+	display: flex;
+	align-items: center;
+}
+
+.weread-stats-title {
+	margin: 0;
+	font-size: 1.3em;
+	font-weight: 700;
+	color: var(--text-normal);
+}
+
+.weread-stats-user-avatar {
+	width: 48px;
+	height: 48px;
+	border-radius: 50% !important;
+	object-fit: cover;
+	flex-shrink: 0;
+	overflow: hidden;
+	border: 2px solid var(--background-modifier-border);
+}
+
+.weread-stats-user-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.weread-stats-user-name {
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.3;
+}
+
+.weread-stats-user-sub {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	line-height: 1.3;
+}
+
+.weread-stats-header-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.weread-stats-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 0.85em;
+	transition: background 0.15s;
+}
+
+.weread-stats-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.weread-stats-btn-icon {
+	padding: 5px 8px;
+}
+
+/* ── Nav (tab + timepicker row) ──────────────────────────────────────────── */
+.weread-stats-nav {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 20px;
+}
+
+/* ── Tab Bar 胶囊 ─────────────────────────────────────────────────────────── */
+.weread-stats-tabbar {
+	display: inline-flex;
+	gap: 6px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	padding: 3px;
+	flex-shrink: 0;
+}
+
+.weread-stats-tab {
+	width: 64px;
+	padding: 6px 0;
+	text-align: center;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 0.9em;
+	border-radius: 9px;
+	transition: background 0.18s, color 0.18s;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
+.weread-stats-tab:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+
+.weread-stats-tab.is-active {
+	background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	color: var(--text-accent);
+	font-weight: 600;
+	box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+	border-radius: 9px;
+}
+
+/* ── Time Picker ─────────────────────────────────────────────────────────── */
+.weread-stats-timepicker {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 3px 8px;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.weread-stats-timepicker-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 7px;
+	padding: 0;
+	transition: background 0.15s, color 0.15s;
+}
+
+.weread-stats-timepicker-btn:hover:not([disabled]) {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.weread-stats-timepicker-btn.is-disabled,
+.weread-stats-timepicker-btn[disabled] {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.weread-stats-timepicker-label {
+	font-size: 0.88em;
+	color: var(--text-normal);
+	font-weight: 500;
+	padding: 0 10px;
+	min-width: 90px;
+	text-align: center;
+	white-space: nowrap;
+}
+
+/* ── KPI Cards ───────────────────────────────────────────────────────────── */
+/* ── Hero 阅读时长 ───────────────────────────────────────────────────────── */
+.weread-stats-hero {
+	padding: 16px 20px 14px;
+	margin-bottom: 16px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 14px;
+}
+
+.weread-stats-hero-num {
+	display: flex;
+	align-items: baseline;
+	gap: 2px;
+	flex-wrap: wrap;
+	line-height: 1;
+}
+
+.weread-stats-hero-big {
+	font-size: 2.6em;
+	font-weight: 700;
+	color: var(--text-normal);
+	letter-spacing: -0.02em;
+}
+
+.weread-stats-hero-unit {
+	font-size: 1.1em;
+	font-weight: 500;
+	color: var(--text-normal);
+	margin-right: 6px;
+}
+
+.weread-stats-hero-sub {
+	margin-top: 6px;
+	font-size: 0.82em;
+	color: var(--text-muted);
+}
+
+.weread-stats-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+.weread-stats-kpi-card {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 14px 12px;
+	background: var(--background-secondary);
+	border-radius: 10px;
+	border: 1px solid var(--background-modifier-border);
+}
+
+.weread-stats-kpi-icon {
+	color: var(--text-accent);
+	flex-shrink: 0;
+	margin-top: 2px;
+}
+
+.weread-stats-kpi-body {
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-stats-kpi-value {
+	font-size: 1em;
+	font-weight: 700;
+	color: var(--text-normal);
+	display: flex;
+	align-items: baseline;
+	gap: 1px;
+}
+
+.weread-stats-kpi-number {
+	font-size: 1.6em;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.weread-stats-kpi-unit {
+	font-size: 0.95em;
+	font-weight: 600;
+}
+
+.weread-stats-kpi-label-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 3px;
+}
+
+.weread-stats-kpi-label {
+	font-size: 0.78em;
+	color: var(--text-muted);
+}
+
+.weread-stats-compare-badge {
+	font-size: 0.72em;
+	padding: 1px 5px;
+	border-radius: 4px;
+	font-weight: 600;
+}
+
+.weread-stats-compare-badge.is-up {
+	background: rgba(72, 187, 120, 0.15);
+	color: #48bb78;
+}
+
+.weread-stats-compare-badge.is-down {
+	background: rgba(229, 62, 62, 0.15);
+	color: #e53e3e;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+.weread-stats-section {
+	margin-bottom: 28px;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.weread-stats-section-title {
+	font-size: 0.95em;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin: 0;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* ── Section title row with toggle ──────────────────────────────────────── */
+.weread-stats-section-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.weread-stats-view-toggle {
+	display: flex;
+	gap: 2px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 2px;
+}
+
+.weread-stats-view-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 6px;
+	padding: 0;
+	transition: background 0.15s, color 0.15s;
+}
+
+.weread-stats-view-toggle-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.weread-stats-view-toggle-btn.is-active {
+	background: rgba(var(--interactive-accent-rgb), 0.15);
+	color: var(--text-accent);
+}
+
+/* ── Month Calendar ──────────────────────────────────────────────────────── */
+.weread-calendar {
+	width: 100%;
+}
+
+.weread-calendar-header {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+	margin-bottom: 4px;
+}
+
+.weread-calendar-dow {
+	text-align: center;
+	font-size: 0.78em;
+	color: var(--text-faint);
+	font-weight: 600;
+	padding: 4px 0;
+}
+
+.weread-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 4px;
+}
+
+.weread-calendar-cell {
+	border-radius: 8px;
+	padding: 6px 4px 5px;
+	min-height: 56px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 2px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	transition: transform 0.1s;
+}
+
+.weread-calendar-cell.is-empty {
+	background: transparent;
+	border-color: transparent;
+}
+
+.weread-calendar-cell:not(.is-empty):hover {
+	transform: translateY(-1px);
+}
+
+.weread-calendar-cell.is-today .weread-calendar-day {
+	color: var(--text-accent);
+	font-weight: 700;
+}
+
+.weread-calendar-day {
+	font-size: 0.82em;
+	color: var(--text-muted);
+	font-weight: 500;
+	line-height: 1;
+}
+
+.weread-calendar-duration {
+	font-size: 0.7em;
+	color: var(--text-accent);
+	font-weight: 600;
+	text-align: center;
+	line-height: 1.2;
+}
+
+/* Calendar heatmap levels — shared by month calendar & year heatmap */
+.weread-cal-level-0 { background: var(--background-secondary); }
+.weread-cal-level-1 { background: color-mix(in srgb, var(--interactive-accent) 20%, var(--background-primary)); }
+.weread-cal-level-2 { background: color-mix(in srgb, var(--interactive-accent) 42%, var(--background-primary)); }
+.weread-cal-level-3 { background: color-mix(in srgb, var(--interactive-accent) 66%, var(--background-primary)); }
+.weread-cal-level-4 { background: var(--interactive-accent); }
+
+.weread-cal-level-3 .weread-calendar-day,
+.weread-cal-level-4 .weread-calendar-day { color: var(--text-on-accent); }
+.weread-cal-level-4 .weread-calendar-duration { color: var(--text-on-accent); opacity: 0.9; }
+.weread-cal-level-3 .weread-calendar-duration { color: var(--text-on-accent); opacity: 0.85; }
+
+/* ── All-years heatmap ───────────────────────────────────────────────────── */
+.weread-allheatmap-wrap {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.weread-allheatmap-year {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.weread-allheatmap-yearlabel {
+	font-size: 0.85em;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin-bottom: 2px;
+}
+
+
+.weread-heatmap-loading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 32px 0;
+}
+
+.weread-stats-spinner-sm {
+	width: 20px;
+	height: 20px;
+	border-width: 2px;
+}
+
+.weread-ghmap-wrap {
+	width: 100%;
+	overflow-x: hidden;
+	padding-bottom: 2px;
+}
+
+.weread-ghmap-inner {
+	display: flex;
+	gap: 0;
+	width: 100%;
+}
+
+/* Weekday label column */
+.weread-ghmap-daylabels {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding-top: 20px;
+	flex-shrink: 0;
+	margin-right: 4px;
+}
+
+.weread-ghmap-daylabel {
+	width: 14px;
+	height: 13px;
+	font-size: 0.7em;
+	color: var(--text-faint);
+	line-height: 13px;
+	text-align: right;
+}
+
+/* Right side: months + grid */
+.weread-ghmap-right {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	flex: 1;
+	min-width: 0;
+	overflow: visible;
+}
+
+.weread-ghmap-months {
+	display: flex;
+}
+
+.weread-ghmap-monthlabel {
+	font-size: 0.75em;
+	color: var(--text-faint);
+	font-weight: 500;
+	height: 16px;
+	line-height: 16px;
+	white-space: nowrap;
+	overflow: hidden;
+	flex: 1;
+}
+
+.weread-ghmap-grid {
+	display: flex;
+	gap: 3px;
+}
+
+.weread-ghmap-col {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	flex: 1;
+}
+
+/* Individual cells */
+.weread-ghmap-cell {
+	width: 100%;
+	aspect-ratio: 1;
+	border-radius: 2px;
+	cursor: default;
+	transition: opacity 0.1s, transform 0.1s;
+}
+
+.weread-ghmap-cell:hover:not(.is-empty) {
+	transform: scale(1.4);
+	z-index: 10;
+	opacity: 1 !important;
+}
+
+.weread-ghmap-cell.is-empty {
+	background: transparent !important;
+}
+
+.weread-ghmap-cell.is-today {
+	outline: 2px solid var(--text-accent);
+	outline-offset: 1px;
+}
+
+/* Intensity levels — level-0 = no reading (light grey), 1–4 = accent color */
+.weread-ghmap-cell.level-0 { background: var(--background-modifier-border); }
+.weread-ghmap-cell.level-1 { background: color-mix(in srgb, var(--interactive-accent) 28%, var(--background-primary)); }
+.weread-ghmap-cell.level-2 { background: color-mix(in srgb, var(--interactive-accent) 52%, var(--background-primary)); }
+.weread-ghmap-cell.level-3 { background: color-mix(in srgb, var(--interactive-accent) 75%, var(--background-primary)); }
+.weread-ghmap-cell.level-4 { background: var(--interactive-accent); }
+
+/* Legend */
+.weread-ghmap-legend {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	margin-top: 8px;
+	justify-content: flex-end;
+}
+
+.weread-ghmap-legend-cell {
+	width: 12px !important;
+	height: 12px !important;
+	flex: none !important;
+	aspect-ratio: unset !important;
+}
+
+.weread-ghmap-legend-text {
+	font-size: 0.75em;
+	color: var(--text-faint);
+	margin: 0 2px;
+}
+
+.weread-heatmap-summary {
+	font-size: 0.8em;
+	color: var(--text-muted);
+	margin-top: 8px;
+	text-align: center;
+}
+
+
+
+
+/* ── Bar Chart ───────────────────────────────────────────────────────────── */
+.weread-stats-chart-wrapper {
+	width: 100%;
+	overflow-x: auto;
+}
+
+.weread-stats-bar-chart {
+	display: block;
+	width: 100%;
+	height: auto;
+	min-width: 0;
+}
+
+.weread-stats-bar {
+	fill: var(--text-accent);
+	opacity: 0.6;
+	transition: opacity 0.15s;
+}
+
+.weread-stats-bar.is-max {
+	opacity: 1;
+}
+
+.weread-stats-bar:hover {
+	opacity: 0.85;
+}
+
+.weread-stats-bar-label {
+	fill: var(--text-muted);
+	font-size: 10px;
+}
+
+/* Y-axis scale */
+.weread-stats-scale-line {
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
+	stroke-dasharray: 4 3;
+}
+
+.weread-stats-scale-label {
+	fill: var(--text-faint);
+	font-size: 9px;
+}
+
+/* ── Top Books ───────────────────────────────────────────────────────────── */
+.weread-stats-book-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.weread-stats-book-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 12px;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	transition: background 0.15s;
+}
+
+.weread-stats-book-row-clickable {
+	cursor: pointer;
+}
+
+.weread-stats-book-row-clickable:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--text-accent);
+}
+
+.weread-stats-book-rank {
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: 0.75em;
+	font-weight: 700;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.weread-stats-book-cover {
+	width: 36px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: 4px;
+	flex-shrink: 0;
+}
+
+.weread-stats-book-cover-placeholder {
+	background: var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-muted);
+}
+
+.weread-stats-book-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-stats-book-title {
+	font-size: 0.9em;
+	font-weight: 600;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.weread-stats-book-author {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.weread-stats-book-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 4px;
+}
+
+.weread-stats-tag {
+	font-size: 0.7em;
+	padding: 1px 6px;
+	background: var(--tag-background);
+	color: var(--tag-color);
+	border-radius: 99px;
+}
+
+.weread-stats-book-right {
+	flex-shrink: 0;
+	text-align: right;
+	min-width: 80px;
+}
+
+.weread-stats-book-duration {
+	font-size: 0.82em;
+	font-weight: 600;
+	color: var(--text-accent);
+	margin-bottom: 5px;
+}
+
+.weread-stats-mini-bar-track {
+	height: 4px;
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+	overflow: hidden;
+}
+
+.weread-stats-mini-bar-fill {
+	height: 100%;
+	background: var(--text-accent);
+	border-radius: 2px;
+	transition: width 0.4s ease;
+}
+
+/* ── Preferences ─────────────────────────────────────────────────────────── */
+.weread-stats-pref-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
+}
+
+.weread-stats-pref-card {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 14px;
+	min-height: 160px;
+}
+
+.weread-stats-pref-card-wide {
+	grid-column: 1 / -1;
+}
+
+.weread-stats-pref-card-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 0.88em;
+	font-weight: 600;
+	color: var(--text-normal);
+	margin-bottom: 10px;
+}
+
+.weread-stats-pref-subtitle {
+	font-size: 0.78em;
+	color: var(--text-muted);
+	margin-bottom: 10px;
+	font-style: italic;
+}
+
+.weread-stats-pref-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 7px;
+}
+
+.weread-stats-pref-name {
+	width: 72px;
+	font-size: 0.8em;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	flex-shrink: 0;
+}
+
+.weread-stats-pref-bar-track {
+	flex: 1;
+	height: 6px;
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+/* author row: wider name, progress bar fills remaining space */
+.weread-stats-pref-row-author .weread-stats-pref-name {
+	width: 80px;
+}
+
+.weread-stats-pref-bar-fill {
+	height: 100%;
+	background: var(--text-accent);
+	border-radius: 3px;
+	transition: width 0.4s ease;
+}
+
+.weread-stats-pref-meta {
+	font-size: 0.75em;
+	color: var(--text-muted);
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+/* ── Hour Chart ──────────────────────────────────────────────────────────── */
+/* ── Hour chart (SVG-based, replaces old div bars) ───────────────────────── */
+.weread-stats-hour-seg-bar {
+	transition: opacity 0.15s;
+	cursor: default;
+}
+.weread-stats-hour-seg-bar:hover { opacity: 0.8; }
+
+/* Time-of-day color variables */
+:root {
+	--weread-hour-morning: #7c6af7;
+	--weread-hour-afternoon: #f97316;
+	--weread-hour-evening: #ec4899;
+	--weread-hour-night: #6b7280;
+}
+.theme-dark {
+	--weread-hour-morning: #a78bfa;
+	--weread-hour-afternoon: #fb923c;
+	--weread-hour-evening: #f472b6;
+	--weread-hour-night: #9ca3af;
+}
+
+.weread-stats-hour-legend {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-top: 8px;
+}
+.weread-stats-hour-legend-item {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.weread-stats-hour-legend-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+.weread-stats-hour-legend-label {
+	font-size: 0.76em;
+	color: var(--text-muted);
+}
+
+/* ── Pie Chart ───────────────────────────────────────────────────────────── */
+/* ── Radar Chart ─────────────────────────────────────────────────────────── */
+.weread-stats-radar-svg {
+	display: block;
+	margin: 8px auto 0;
+}
+
+.weread-stats-radar-ring {
+	fill: none;
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
+}
+
+.weread-stats-radar-axis {
+	stroke: var(--background-modifier-border);
+	stroke-width: 1;
+}
+
+.weread-stats-radar-area {
+	stroke: #5aabf0;
+	stroke-width: 1.5;
+	opacity: 0.85;
+}
+
+.weread-stats-radar-dot {
+	fill: white;
+	stroke: #5aabf0;
+	stroke-width: 1.5;
+}
+
+.weread-stats-radar-label {
+	fill: var(--text-muted);
+	font-size: 9px;
+}
+
+.weread-stats-radar-label.is-top {
+	fill: var(--text-normal);
+	font-size: 11px;
+	font-weight: 600;
+}
+
+/* ── Tag Cloud ───────────────────────────────────────────────────────────── */
+.weread-stats-tag-cloud {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	padding: 8px 0;
+}
+.weread-stats-cloud-tag {
+	color: var(--text-accent);
+	cursor: default;
+	line-height: 1.4;
+	transition: opacity 0.15s;
+}
+.weread-stats-cloud-tag:hover { opacity: 1 !important; }
+
+/* ── Info Grid ───────────────────────────────────────────────────────────── */
+.weread-stats-info-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.weread-stats-info-item {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 10px 16px;
+}
+
+.weread-stats-info-label {
+	font-size: 0.75em;
+	color: var(--text-muted);
+	margin-bottom: 3px;
+}
+
+.weread-stats-info-value {
+	font-size: 1em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+/* ── Empty States ────────────────────────────────────────────────────────── */
+.weread-stats-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 60px 20px;
+	gap: 12px;
+	text-align: center;
+}
+
+.weread-stats-empty-icon {
+	color: var(--text-muted);
+	opacity: 0.5;
+}
+
+.weread-stats-empty-text {
+	color: var(--text-normal);
+	font-size: 0.95em;
+}
+
+.weread-stats-empty-hint {
+	color: var(--text-muted);
+	font-size: 0.82em;
+}
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.weread-stats-spinner {
+	width: 32px;
+	height: 32px;
+	border: 3px solid var(--background-modifier-border);
+	border-top-color: var(--text-accent);
+	border-radius: 50%;
+	animation: weread-spin 0.8s linear infinite;
+}
+
+@keyframes weread-spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ── Export Preview Modal ────────────────────────────────────────────────── */
+.weread-export-modal .modal-content {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	align-items: center;
+}
+
+.weread-export-title {
+	margin: 0 0 4px 0;
+	font-size: 1.1em;
+	font-weight: 600;
+	color: var(--text-normal);
+	align-self: flex-start;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.weread-export-title-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-accent);
+}
+
+.weread-export-preview {
+	width: 100%;
+	max-height: 60vh;
+	overflow-y: auto;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.weread-export-preview-img {
+	width: 100%;
+	display: block;
+	border-radius: 8px;
+}
+
+.weread-export-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	flex-wrap: wrap;
+	width: 100%;
+	margin-top: 8px;
+	padding-top: 16px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.weread-export-action-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-size: 0.9em;
+	cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	transition: background 0.15s;
+}
+
+.weread-export-action-btn:hover {
+	background: var(--background-modifier-hover);
+}
+
+.weread-export-action-btn.mod-cta {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.weread-export-action-btn.mod-cta:hover {
+	background: var(--interactive-accent-hover);
+}
+
+/* ── Export Loading Modal ──────────────────────────────────────────────────── */
+.weread-export-loading-modal .modal-content {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 60px;
+}
+
+.weread-export-loading-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+}
+
+.weread-export-loading-text {
+	font-size: 0.95em;
+	color: var(--text-muted);
+}
