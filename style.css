@@ -2322,11 +2322,11 @@
 .weread-stats-timepicker {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	gap: 4px;
 	background: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
-	padding: 2px 4px;
+	padding: 3px 8px;
 	margin-left: auto;
 	flex-shrink: 0;
 }
@@ -2335,8 +2335,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 26px;
-	height: 26px;
+	width: 28px;
+	height: 28px;
 	border: none;
 	background: transparent;
 	color: var(--text-muted);
@@ -2358,10 +2358,12 @@
 }
 
 .weread-stats-timepicker-label {
-	font-size: 0.82em;
+	font-size: 0.88em;
 	color: var(--text-normal);
 	font-weight: 500;
-	padding: 0 6px;
+	padding: 0 10px;
+	min-width: 90px;
+	text-align: center;
 	white-space: nowrap;
 }
 
