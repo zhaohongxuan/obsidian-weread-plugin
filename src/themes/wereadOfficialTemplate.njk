@@ -38,4 +38,17 @@ lastReadDate: {{ metaData.lastReadDate }}
 
 {% endif %}
 {% endfor %}
+{% if chapter.likedReviews and chapter.likedReviews.length > 0 %}
+
+#### 👍 点赞的评论
+{% for likedReview in chapter.likedReviews %}
+
+{{ likedReview.createTime }} {{ likedReview.authorName }}
+{{ likedReview.content }}
+{% if likedReview.abstract %}
+> {{ likedReview.abstract | trim }}
+{% endif %}
+
+{% endfor %}
+{% endif %}
 {% endfor %}

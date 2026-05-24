@@ -16,7 +16,9 @@ import {
 	parseDailyNoteReferences,
 	parseReviews,
 	parseChapterResp,
-	parseArticleHighlightReview
+	parseArticleHighlightReview,
+	parseLikedReviews,
+	attachLikedReviewsToChapters
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -206,6 +208,12 @@ export default class SyncNotebooks {
 		} else {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
+
+		if (get(settingsStore).syncLikedReviews && reviewResp) {
+			const likedReviews = parseLikedReviews(reviewResp);
+			attachLikedReviewsToChapters(chapterHighlightReview, likedReviews);
+		}
+
 		const bookReview = parseChapterReviews(reviewResp);
 		return {
 			metaData: metaData,

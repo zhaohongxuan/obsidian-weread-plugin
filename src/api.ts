@@ -321,6 +321,7 @@ export default class ApiManager {
 		}
 	}
 
+
 	async getChapters(bookId: string): Promise<ChapterResponse | undefined> {
 		try {
 			const url = `${this.baseUrl}/web/book/chapterInfos`;

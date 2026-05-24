@@ -319,6 +319,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const syncMode = get(settingsStore).syncMode;
 		if (syncMode === 'blacklist') {
 			this.saveArticleToggle();
+			this.syncLikedReviewsToggle();
 			this.noteCountLimit();
 		}
 		this.renderSyncModeBookSelection(syncMode);
@@ -489,6 +490,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 				});
 			});
 	}
+	private syncLikedReviewsToggle(): void {
+		new Setting(this.containerEl)
+			.setName('同步点赞的评论')
+			.setDesc('开启后将同步划线中你点赞过的其他用户评论')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).syncLikedReviews)
+					.onChange((value) => {
+						settingsStore.actions.setSyncLikedReviews(value);
+					});
+			});
+	}
+
 	private saveReadingInfoToggle(): void {
 		new Setting(this.containerEl)
 			.setName('保存阅读元数据?')

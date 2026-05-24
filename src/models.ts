@@ -415,6 +415,21 @@ export type Review = {
 	};
 };
 
+export type LikedReview = {
+	reviewId: string;
+	chapterUid?: number;
+	chapterTitle?: string;
+	created: number;
+	createTime: string;
+	content: string;
+	mdContent?: string;
+	abstract?: string;
+	range?: string;
+	type: number;
+	authorName: string;
+	authorAvatar?: string;
+};
+
 export type ChapterHighlightReview = {
 	chapterUid?: number;
 	chapterIdx?: number;
@@ -424,6 +439,7 @@ export type ChapterHighlightReview = {
 	// highlight and review can be empty, just output title
 	highlights?: Highlight[];
 	chapterReviews?: Review[];
+	likedReviews?: LikedReview[];
 };
 
 export type RenderTemplate = {

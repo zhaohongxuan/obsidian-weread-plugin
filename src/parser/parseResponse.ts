@@ -8,6 +8,7 @@ import type {
 	DailyNoteReferenece,
 	Highlight,
 	HighlightResponse,
+	LikedReview,
 	Metadata,
 	Notebook,
 	RefBlockDetail,
@@ -379,6 +380,48 @@ const getFa = (id: string): [string, string[]] => {
 		d += id.charCodeAt(i).toString(16);
 	}
 	return ['4', [d]];
+};
+
+export const parseLikedReviews = (resp: BookReviewResponse): LikedReview[] => {
+	if (!resp || !resp.reviews) return [];
+	const convertTags = get(settingsStore).convertTags;
+	return resp.reviews
+		.filter((reviewData) => reviewData.review.isLike === 1)
+		.map((reviewData) => {
+			const review = reviewData.review;
+			const created = review.createTime;
+			const createTime = window.moment(created * 1000).format('YYYY-MM-DD HH:mm:ss');
+			const mdContent = review.htmlContent
+				? NodeHtmlMarkdown.translate(review.htmlContent)
+				: null;
+			const content = mdContent || review.content;
+			const finalContent = convertTags ? convertTagToBiLink(content) : content;
+			return {
+				reviewId: review.reviewId?.replace(/[_~]/g, '-'),
+				chapterUid: review.chapterUid,
+				chapterTitle: review.chapterTitle || review.refMpInfo?.title,
+				created: created,
+				createTime: createTime,
+				content: finalContent,
+				mdContent: mdContent,
+				abstract: review.abstract,
+				range: review.range,
+				type: review.type,
+				authorName: review.author?.name || '匿名',
+				authorAvatar: review.author?.avatar
+			};
+		});
+};
+
+export const attachLikedReviewsToChapters = (
+	chapterHighlights: ChapterHighlightReview[],
+	likedReviews: LikedReview[]
+): void => {
+	for (const chapter of chapterHighlights) {
+		chapter.likedReviews = likedReviews.filter(
+			(review) => review.chapterUid === chapter.chapterUid
+		);
+	}
 };
 
 export const getPcUrl = (bookId: string): string => {

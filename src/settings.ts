@@ -103,6 +103,7 @@ export interface WereadPluginSettings {
 	wereadApiKey: string;
 	readingStatsLocation: string;
 	statsStartYear?: number;
+	syncLikedReviews: boolean;
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -158,6 +159,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	wereadApiKey: '',
 	readingStatsLocation: '/',
 	statsStartYear: 0,  // 0 = use registTime from API
+	syncLikedReviews: false,
 };
 
 const createSettingsStore = () => {
@@ -747,6 +749,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setSyncLikedReviews = (syncLikedReviews: boolean) => {
+		store.update((state) => {
+			state.syncLikedReviews = syncLikedReviews;
+			return state;
+		});
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
@@ -803,6 +812,7 @@ const createSettingsStore = () => {
 			setReadingStatsLocation,
 			setStatsStartYear,
 			setUserSignature,
+			setSyncLikedReviews,
 		}
 	};
 };
