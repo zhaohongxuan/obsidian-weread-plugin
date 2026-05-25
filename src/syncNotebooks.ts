@@ -1,4 +1,4 @@
-import ApiManager from './api';
+import ApiRouter from './api-router';
 import FileManager from './fileManager';
 import {
 	Metadata,
