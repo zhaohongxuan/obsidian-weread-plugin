@@ -1,5 +1,5 @@
 import { App, Modal, Notice, Platform } from 'obsidian';
-import ApiManager from '../api';
+import ApiRouter from '../api-router';
 import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '../models';
 import { getPcUrl } from '../parser/parseResponse';
 import { formatTimeDuration, formatTimestampToDate } from '../utils/dateUtil';
@@ -12,7 +12,7 @@ const MODAL_MOBILE_MAX_WIDTH = '96vw';
 const MODAL_MAX_HEIGHT = '85vh';
 
 export class WereadBookDetailModal extends Modal {
-	private apiManager = new ApiManager();
+	private apiManager = new ApiRouter();
 
 	constructor(
 		app: App,

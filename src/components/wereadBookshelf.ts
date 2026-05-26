@@ -87,6 +87,7 @@ export class WereadBookshelfView extends ItemView {
 	private gridEl: HTMLElement;
 	private settingsUnsubscribe: (() => void) | null = null;
 	private previousCookieValid = false;
+	private previousApiKey: string | undefined;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -95,6 +96,7 @@ export class WereadBookshelfView extends ItemView {
 	) {
 		super(leaf);
 		this.previousCookieValid = get(settingsStore).isCookieValid;
+		this.previousApiKey = get(settingsStore).wereadApiKey;
 	}
 
 	getViewType(): string {
@@ -319,12 +321,17 @@ export class WereadBookshelfView extends ItemView {
 			userAvatarBtn.empty();
 
 			if (settings.isCookieValid && settings.userAvatar) {
-				// Logged in - show avatar image
+				// Cookie 登录 - show avatar image
 				userAvatarBtn.removeClass('is-unlogged');
 				const img = userAvatarBtn.createEl('img');
 				img.src = settings.userAvatar;
 				img.alt = 'User Avatar';
 				setTooltip(userAvatarBtn, settings.user || '用户头像');
+			} else if (settings.wereadApiKey) {
+				// API Key 登录 - show key icon
+				userAvatarBtn.removeClass('is-unlogged');
+				setIcon(userAvatarBtn, 'key');
+				setTooltip(userAvatarBtn, 'API Key 已连接');
 			} else {
 				// Not logged in - show login icon
 				userAvatarBtn.addClass('is-unlogged');
@@ -345,8 +352,11 @@ export class WereadBookshelfView extends ItemView {
 		userAvatarBtn.addEventListener('click', (event) => {
 			const settings = get(settingsStore);
 			if (settings.isCookieValid && settings.userAvatar) {
-				// Logged in - show right-click menu
+				// Cookie 登录 - show user menu
 				this.showUserMenu(event as MouseEvent);
+			} else if (settings.wereadApiKey) {
+				// API Key 登录 - show config hint
+				new Notice('当前使用 API Key 连接，用户信息可在设置中管理');
 			} else {
 				// Not logged in - open login QR
 				this.openLoginQR();
@@ -411,8 +421,11 @@ export class WereadBookshelfView extends ItemView {
 
 		// 订阅设置变化，监听登录状态改变
 		this.settingsUnsubscribe = settingsStore.subscribe((settings) => {
-			if (settings.isCookieValid !== this.previousCookieValid) {
+			const cookieChanged = settings.isCookieValid !== this.previousCookieValid;
+			const apiKeyChanged = settings.wereadApiKey !== this.previousApiKey;
+			if (cookieChanged || apiKeyChanged) {
 				this.previousCookieValid = settings.isCookieValid;
+				this.previousApiKey = settings.wereadApiKey;
 				this.loadBookshelf();
 			}
 		});
@@ -439,7 +452,9 @@ export class WereadBookshelfView extends ItemView {
 
 		// Check if user is logged in
 		const settings = get(settingsStore);
-		if (!settings.isCookieValid || settings.cookies.length === 0) {
+		const hasApiKey = Boolean(settings.wereadApiKey);
+		const hasCookie = settings.isCookieValid && settings.cookies.length > 0;
+		if (!hasCookie && !hasApiKey) {
 			this.loading = false;
 			this.renderUnloggedState();
 			return;

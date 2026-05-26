@@ -1,5 +1,5 @@
 import { Notice, Vault } from 'obsidian';
-import ApiManager from './api';
+import ApiRouter from './api-router';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import type { ReadingStatsResponse } from './models';
@@ -282,7 +282,7 @@ function buildMarkdown(
 export default class SyncReadingStats {
 	constructor(
 		private vault: Vault,
-		private apiManager: ApiManager
+		private apiManager: ApiRouter
 	) {}
 
 	async sync(): Promise<void> {

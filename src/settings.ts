@@ -565,19 +565,7 @@ const createSettingsStore = () => {
 		});
 	};
 
-	const setCookieAutoRefreshToggle = (cookieAutoRefreshToggle: boolean) => {
-		store.update((state) => {
-			state.cookieAutoRefreshToggle = cookieAutoRefreshToggle;
-			return state;
-		});
-	};
 
-	const setCookieRefreshInterval = (cookieRefreshInterval: number) => {
-		store.update((state) => {
-			state.cookieRefreshInterval = cookieRefreshInterval;
-			return state;
-		});
-	};
 
 	const setScheduledSyncToggle = (scheduledSyncToggle: boolean) => {
 		store.update((state) => {
@@ -780,8 +768,6 @@ const createSettingsStore = () => {
 			setBookOpenMode,
 			setCookieCloudInfo,
 			setTrimBlocks,
-			setCookieAutoRefreshToggle,
-			setCookieRefreshInterval,
 			setIsCookieValid,
 			setScheduledSyncToggle,
 			setScheduledSyncInterval,

@@ -1,7 +1,7 @@
 import { Menu, Notice, Platform, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
-import ApiManager from './src/api';
+import ApiRouter from './src/api-router';
 import WereadBookshelfService from './src/bookshelf';
 import SyncReadingStats from './src/syncReadingStats';
 import { settingsStore } from './src/settings';
@@ -20,7 +20,6 @@ export default class WereadPlugin extends Plugin {
 	private syncReadingStats: SyncReadingStats;
 	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
-	private cookieRefreshTimer: number | null = null;
 	private scheduledSyncTimer: number | null = null;
 
 	onload() {
@@ -33,16 +32,16 @@ export default class WereadPlugin extends Plugin {
 	private initializePlugin() {
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.app);
 		this.fileManager = fileManager;
-		const apiManager = new ApiManager();
-		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
-		this.bookshelfService = new WereadBookshelfService(fileManager, apiManager);
-		this.syncReadingStats = new SyncReadingStats(this.app.vault, apiManager);
+		const apiRouter = new ApiRouter();
+		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter);
+		this.bookshelfService = new WereadBookshelfService(fileManager, apiRouter);
+		this.syncReadingStats = new SyncReadingStats(this.app.vault, apiRouter);
 
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
 		if (settings.cookies && settings.cookies.length > 0) {
 			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
-			apiManager.verifyCookieValidity().catch((e) => {
+			apiRouter.verifyCookieValidity().catch((e) => {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
 			});
 		}
@@ -124,7 +123,7 @@ export default class WereadPlugin extends Plugin {
 		);
 		this.registerView(
 			WEREAD_READING_STATS_VIEW_ID,
-			(leaf) => new WereadReadingStatsView(leaf, apiManager, fileManager)
+			(leaf) => new WereadReadingStatsView(leaf, apiRouter, fileManager)
 		);
 
 		this.addCommand({
@@ -181,7 +180,6 @@ export default class WereadPlugin extends Plugin {
 		this.wereadSettingsTab = new WereadSettingsTab(this.app, this);
 		this.addSettingTab(this.wereadSettingsTab);
 
-		this.setupCookieRefresh();
 		this.setupScheduledSync();
 	}
 
@@ -375,34 +373,10 @@ export default class WereadPlugin extends Plugin {
 
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
-		this.clearCookieRefreshTimer();
 		this.clearScheduledSyncTimer();
 	}
 
-	setupCookieRefresh() {
-		this.clearCookieRefreshTimer();
-		const { cookieAutoRefreshToggle, cookieRefreshInterval } = get(settingsStore);
-		if (!cookieAutoRefreshToggle) {
-			return;
-		}
-		const apiManager = new ApiManager();
-		apiManager
-			.refreshCookie()
-			.catch((e) => console.error('[weread plugin] 刷新 Cookie 失败', e));
-		const intervalMs = Math.max(1, cookieRefreshInterval) * 60 * 60 * 1000;
-		this.cookieRefreshTimer = window.setInterval(() => {
-			apiManager
-				.refreshCookie()
-				.catch((e) => console.error('[weread plugin] 定时刷新 Cookie 失败', e));
-		}, intervalMs);
-	}
 
-	private clearCookieRefreshTimer() {
-		if (this.cookieRefreshTimer !== null) {
-			window.clearInterval(this.cookieRefreshTimer);
-			this.cookieRefreshTimer = null;
-		}
-	}
 
 	setupScheduledSync() {
 		this.clearScheduledSyncTimer();

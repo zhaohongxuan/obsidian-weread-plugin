@@ -24,11 +24,11 @@ import { Notice } from 'obsidian';
 import { createSyncFilterContext, evaluateMetadataSyncFilter } from './syncFilter';
 export default class SyncNotebooks {
 	private fileManager: FileManager;
-	private apiManager: ApiManager;
+	private apiManager: ApiRouter;
 
-	constructor(fileManager: FileManager, apiManeger: ApiManager) {
+	constructor(fileManager: FileManager, apiManager: ApiRouter) {
 		this.fileManager = fileManager;
-		this.apiManager = apiManeger;
+		this.apiManager = apiManager;
 	}
 
 	async syncNotebook(noteFile: AnnotationFile) {

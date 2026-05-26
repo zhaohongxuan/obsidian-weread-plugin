@@ -1,5 +1,5 @@
 import { ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
-import ApiManager from '../api';
+import ApiRouter from '../api-router';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
@@ -282,7 +282,7 @@ class ExportPreviewModal extends Modal {
 }
 
 export class WereadReadingStatsView extends ItemView {
-	private apiManager: ApiManager;
+	private apiManager: ApiRouter;
 	private fileManager: FileManager;
 	private currentMode: ReadingStatsMode = 'monthly';
 	private currentOffset = 0;
@@ -294,7 +294,7 @@ export class WereadReadingStatsView extends ItemView {
 	// in-memory image cache: url -> base64 data url
 	private imgCache: Map<string, string> = new Map();
 
-	constructor(leaf: WorkspaceLeaf, apiManager: ApiManager, fileManager: FileManager) {
+	constructor(leaf: WorkspaceLeaf, apiManager: ApiRouter, fileManager: FileManager) {
 		super(leaf);
 		this.apiManager = apiManager;
 		this.fileManager = fileManager;

@@ -129,6 +129,8 @@ export default class ApiManager {
 			if (resp.json && resp.json.books !== undefined) {
 				console.log('[weread plugin] Cookie 有效，书籍数:', resp.json.books.length);
 				settingsStore.actions.setIsCookieValid(true);
+				// 自动获取 API Key
+				this.fetchAndSaveApiKey().catch((e) => console.debug('[weread plugin] 自动获取 API Key 失败', e));
 				return true;
 			}
 
@@ -399,6 +401,26 @@ export default class ApiManager {
 	/**
 	 * 通过 Agent API Gateway 调用微信读书接口（需要 API Key）
 	 */
+	/**
+	 * 扫码登录后自动获取 API Key
+	 */
+	private async fetchAndSaveApiKey(): Promise<void> {
+		try {
+			const req: RequestUrlParam = {
+				url: `${this.baseUrl}/api/skills/apikeyGet?only_show=1`,
+				method: 'GET',
+				headers: this.getHeaders()
+			};
+			const resp = await requestUrl(req);
+			if (resp.json?.apikey) {
+				console.log('[weread plugin] 自动获取 API Key 成功');
+				settingsStore.actions.setWereadApiKey(resp.json.apikey);
+			}
+		} catch (e) {
+			console.debug('[weread plugin] fetchAndSaveApiKey error', e);
+		}
+	}
+
 	async callAgentGateway<T = unknown>(apiName: string, params: Record<string, unknown> = {}): Promise<T | undefined> {
 		const apiKey = get(settingsStore).wereadApiKey;
 		if (!apiKey) {
