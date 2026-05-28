@@ -827,6 +827,46 @@
 	line-height: 1.5;
 }
 
+/* API Key 校验状态 */
+.weread-apikey-validation {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 12px 16px;
+	margin: 8px 0 12px;
+}
+
+.weread-apikey-validation-row {
+	font-size: 13px;
+	color: var(--text-normal);
+	margin-bottom: 4px;
+}
+
+.weread-apikey-validation-row:last-child {
+	margin-bottom: 0;
+}
+
+.weread-apikey-validation-valid {
+	color: var(--color-green);
+	font-weight: 500;
+}
+
+.weread-apikey-validation-invalid {
+	color: var(--text-error);
+	font-weight: 500;
+}
+
+.weread-apikey-validation-status {
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+.weread-apikey-validation-desc {
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-top: 6px;
+}
+
 .weread-manual-sync-preview {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

@@ -75,11 +75,11 @@ class ApiV2Manager {
 
 	/**
 	 * 获取当前 API Key 对应的用户信息
-	 * 通过 /shelf/sync + /review/list/mine 的 author 字段提取
+	 * 通过 /_list + /review/list/mine 的 author 字段提取
 	 */
 	async getCurrentUser(): Promise<Record<string, unknown> | undefined> {
 		// 先从书架拿一个 bookId
-		const shelf = await this.callAgent<{ books: any[] }>('/shelf/sync');
+		const shelf = await this.callAgent<{ books: any[] }>('/_list');
 		if (!shelf?.books?.length) {
 			console.warn('[weread plugin] getCurrentUser: 书架为空');
 			return undefined;
@@ -103,6 +103,14 @@ class ApiV2Manager {
 
 		console.warn('[weread plugin] getCurrentUser: 前 10 本书均无评论');
 		return undefined;
+	}
+
+	/**
+	 * 校验 API Key 有效性（轻量级调用 /_list）
+	 */
+	async validateApiKey(): Promise<{ valid: boolean }> {
+		const result = await this.callAgent<{ errcode?: number }>('/_list');
+		return { valid: result?.errcode === undefined || result?.errcode === 0 };
 	}
 
 	/**

@@ -60,34 +60,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: '设置微信读书插件' });
 		this.preloadSelectableBooks();
 
-		const settings2 = get(settingsStore);
-		const isCookieValid = settings2.isCookieValid;
-		const loginMethod = settings2.loginMethod;
-		const hasApiKey = Boolean(settings2.wereadApiKey);
-
 		// API Key 设置始终可见（桌面端和移动端）
 		this.showApiKeySetting();
 
-		if (Platform.isDesktopApp) {
-			// 仅在没有 API Key 时才显示传统登录方式
-			if (!hasApiKey) {
-				this.showLoginMethod();
-				if (loginMethod === 'scan') {
-					if (isCookieValid) {
-						this.showLogout();
-					} else {
-						this.showLogin();
-					}
-				} else {
-					this.showCookieCloudInfo();
-				}
-				this.showCookieStatus();
-			}
-		}
-
 		this.notebookFolder();
-		this.readingOpenModeSetting();
-		this.bookOpenModeSetting();
 		this.bookshelfSettings();
 		this.syncModeSettings();
 		this.scheduledSync();
@@ -247,6 +223,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private bookshelfSettings(): void {
 		new Setting(this.containerEl).setName('书架设置').setHeading();
+			this.readingOpenModeSetting();
+			this.bookOpenModeSetting();
+
 
 		new Setting(this.containerEl)
 			.setName('书架排序方式')
@@ -822,9 +801,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 	private showApiKeySetting(): void {
 		let apiKeyText: TextComponent;
-		new Setting(this.containerEl)
+
+		const descFrag = document
+			.createRange()
+			.createContextualFragment(
+				`用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。点击「扫码获取」扫码登录后自动获取，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请。格式：wrk-xxxxxxxx。`
+			);
+
+		const setting = new Setting(this.containerEl)
 			.setName('微信读书 API Key')
-			.setDesc('用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。格式：wrk-xxxxxxxx。')
+			.setDesc(descFrag)
 			.addText((text) => {
 				text.setPlaceholder('wrk-xxxxxxxx')
 					.setValue(get(settingsStore).wereadApiKey ?? '')
@@ -849,73 +835,134 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		const apiKey = get(settingsStore).wereadApiKey;
+
 		if (apiKey) {
-			const userInfoContainer = this.containerEl.createDiv({
-				cls: 'weread-apikey-user-info'
+			// 已设置 API Key → 显示注销按钮
+			setting.addButton((button) => {
+				button.setButtonText('注销')
+					.setTooltip('清除 API Key 和登录状态')
+					.onClick(async () => {
+						settingsStore.actions.clearCookies();
+						settingsStore.actions.setWereadApiKey('');
+						new Notice('已注销，API Key 已清除');
+						this.display();
+					});
+				return button;
 			});
-			// 初始加载状态
-			userInfoContainer.createDiv({
-				cls: 'weread-apikey-user-status',
-				text: '✅ API Key 已配置，正在获取用户信息...'
+		} else if (Platform.isDesktopApp) {
+			// 未设置 API Key → 显示扫码获取按钮（仅桌面端）
+			setting.addButton((button) => {
+				button.setButtonText('扫码获取')
+					.setTooltip('扫码登录获取 API Key')
+					.onClick(async () => {
+						await this.handleScanApiKey(button);
+					});
+				return button;
 			});
-			// 异步获取用户信息
-			this.fetchAndDisplayApiKeyUser(userInfoContainer);
-		} else {
-			new Setting(this.containerEl)
-				.setName('⚠️ 请填写 API Key')
-				.setDesc('API Key 格式为 wrk-xxxxxxxx。申请地址：微信读书开放平台');
+		}
+
+		if (apiKey) {
+			const validationContainer = this.containerEl.createDiv({
+				cls: 'weread-apikey-validation'
+			});
+			validationContainer.createDiv({
+				cls: 'weread-apikey-validation-status',
+				text: '⏳ 正在校验 API Key...'
+			});
+			this.fetchAndDisplayValidation(validationContainer);
 		}
 	}
 
+	private async handleScanApiKey(button: any): Promise<void> {
+		if (!Platform.isDesktopApp) {
+			new Notice('扫码登录仅支持桌面端，请在移动端手动粘贴 API Key');
+			return;
+		}
 
-	private async fetchAndDisplayApiKeyUser(container: HTMLElement): Promise<void> {
+		const settings = get(settingsStore);
+		const isLoggedIn = settings.isCookieValid && settings.cookies.length > 0;
+
+		button.setDisabled(true);
+		button.setButtonText('获取中...');
+
+		try {
+			if (isLoggedIn) {
+				const apiRouter = new ApiRouter();
+				const result = await apiRouter.fetchApiKey();
+				if (result?.apikey) {
+					new Notice('API Key 获取成功');
+				} else {
+					new Notice('API Key 获取失败，请尝试重新扫码登录');
+				}
+			} else {
+				const loginModel = new WereadLoginModel(this);
+				await loginModel.doLogin();
+			}
+		} catch (e) {
+			console.error('[weread plugin] 扫码获取 API Key 失败', e);
+			new Notice('扫码获取 API Key 失败，请查看控制台');
+		} finally {
+			button.setDisabled(false);
+			button.setButtonText('扫码获取');
+			this.display();
+		}
+	}
+
+	private async fetchAndDisplayValidation(container: HTMLElement): Promise<void> {
 		try {
 			const apiRouter = new ApiRouter();
-			const userInfo = await apiRouter.getCurrentUser();
-			if (userInfo) {
-				container.empty();
-				// 提取用户信息（V2 返回格式可能嵌套在 data 中）
-				const info = (userInfo as any).data || userInfo;
-				const userName = info.name || info.userName || info.nickname || '未知用户';
-				const userAvatar = info.avatar || info.headImgUrl || info.avatarUrl || '';
-				const userSignature = info.signature || info.description || '';
+			const result = await apiRouter.validateApiKey();
 
-				const userRow = container.createDiv({ cls: 'weread-apikey-user-row' });
-				if (userAvatar) {
-					const avatarImg = userRow.createEl('img', {
-						cls: 'weread-apikey-user-avatar'
-					});
-					avatarImg.src = userAvatar;
-					avatarImg.alt = '用户头像';
+			// 如果有 Cookie，尝试获取 API Key 的元数据（创建日期、最近使用日期）
+			const settings = get(settingsStore);
+			let metadata: { createdAt?: number; lastUsedAt?: number } | null = null;
+			if (settings.isCookieValid && settings.cookies.length > 0) {
+				try {
+					metadata = await apiRouter.fetchApiKey();
+				} catch {
+					// 元数据获取失败不影响主流程
 				}
-				const userText = userRow.createDiv({ cls: 'weread-apikey-user-text' });
-				userText.createDiv({
-					cls: 'weread-apikey-user-name',
-					text: `✅ API Key 已连接 · 用户：${userName}`
-				});
-				if (userSignature) {
-					userText.createDiv({
-						cls: 'weread-apikey-user-signature',
-						text: userSignature
-					});
-				}
-				userText.createDiv({
-					cls: 'weread-apikey-user-desc',
-					text: '同步、书架、阅读统计等功能均可正常使用'
-				});
-			} else {
-				container.empty();
+			}
+
+			container.empty();
+
+			if (result.valid) {
+				// 第一行：状态 + 功能描述
 				container.createDiv({
-					cls: 'weread-apikey-user-status',
-					text: '✅ API Key 已配置（无法获取用户信息，请检查 API Key 有效性）'
+					cls: 'weread-apikey-validation-row weread-apikey-validation-valid',
+					text: '✅ API Key 有效 · 同步、书架、阅读统计等功能均可正常使用'
+				});
+
+				// 第二行：创建日期和最近使用日期
+				if (metadata?.createdAt || metadata?.lastUsedAt) {
+					const parts: string[] = [];
+					if (metadata?.createdAt) {
+						parts.push(`创建日期：${window.moment.unix(metadata.createdAt).format('YYYY-MM-DD')}`);
+					}
+					if (metadata?.lastUsedAt) {
+						parts.push(`最近使用：${window.moment.unix(metadata.lastUsedAt).format('YYYY-MM-DD HH:mm')}`);
+					}
+					container.createDiv({
+						cls: 'weread-apikey-validation-row',
+						text: parts.join(' · ')
+					});
+				}
+			} else {
+				container.createDiv({
+					cls: 'weread-apikey-validation-row weread-apikey-validation-invalid',
+					text: '❌ API Key 无效'
+				});
+				container.createDiv({
+					cls: 'weread-apikey-validation-desc',
+					text: '请检查 Key 是否正确，或点击「扫码获取」重新获取'
 				});
 			}
 		} catch (e) {
-			console.warn('[weread plugin] 获取 API Key 用户信息失败', e);
+			console.warn('[weread plugin] API Key 校验失败', e);
 			container.empty();
 			container.createDiv({
-				cls: 'weread-apikey-user-status',
-				text: '✅ API Key 已配置（用户信息获取失败，功能不受影响）'
+				cls: 'weread-apikey-validation-row',
+				text: '⚠️ API Key 校验失败，请检查网络连接'
 			});
 		}
 	}

@@ -163,6 +163,26 @@ class ApiRouter {
 	}
 
 	/**
+	 * 扫码登录后获取 API Key（需要 Cookie，仅 V1 支持）
+	 */
+	async fetchApiKey(): Promise<{ apikey: string; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number } | null> {
+		return this.v1Manager.fetchAndSaveApiKey();
+	}
+
+	/**
+	 * 校验 API Key 有效性
+	 */
+	async validateApiKey(): Promise<{ valid: boolean; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number }> {
+		if (this.useV2()) {
+			const result = await this.v2Manager.validateApiKey();
+			return result;
+		}
+		// 无 API Key 时通过 Cookie 校验
+		const cookieValid = await this.v1Manager.verifyCookieValidity();
+		return { valid: cookieValid };
+	}
+
+	/**
 	 * 验证 Cookie 有效性（仅 V1 支持）
 	 */
 	async verifyCookieValidity(): Promise<boolean> {

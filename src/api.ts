@@ -402,9 +402,9 @@ export default class ApiManager {
 	 * 通过 Agent API Gateway 调用微信读书接口（需要 API Key）
 	 */
 	/**
-	 * 扫码登录后自动获取 API Key
+	 * 扫码登录后自动获取 API Key，返回 Key 及元数据
 	 */
-	private async fetchAndSaveApiKey(): Promise<void> {
+	async fetchAndSaveApiKey(): Promise<{ apikey: string; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number } | null> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/api/skills/apikeyGet?only_show=1`,
@@ -412,12 +412,22 @@ export default class ApiManager {
 				headers: this.getHeaders()
 			};
 			const resp = await requestUrl(req);
+			console.log('[weread plugin] /api/skills/apikeyGet 完整响应:', JSON.stringify(resp.json));
 			if (resp.json?.apikey) {
 				console.log('[weread plugin] 自动获取 API Key 成功');
 				settingsStore.actions.setWereadApiKey(resp.json.apikey);
+				return {
+					apikey: resp.json.apikey,
+					expireTime: resp.json.expireTime,
+					lastUsedTime: resp.json.lastUsedTime,
+						createdAt: resp.json.created_at,
+						lastUsedAt: resp.json.last_used_at
+				};
 			}
+			return null;
 		} catch (e) {
 			console.debug('[weread plugin] fetchAndSaveApiKey error', e);
+			return null;
 		}
 	}
 
