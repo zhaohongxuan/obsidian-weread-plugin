@@ -38,9 +38,12 @@ lastReadDate: {{ metaData.lastReadDate }}
 
 {% endif %}
 {% endfor %}
-{% if chapter.popularHighlights %}
-{% for item in chapter.popularHighlights %}
-> [{{ item.markText | trim }}] — {{ item.totalCount }} 人划线
+{% endfor %}
+
+{% if popularHighlights %}
+## ◆ 热门划线
+{% for item in popularHighlights %}
+> [{{ item.markText | trim }}] — {{ item.totalCount }} 人划线 · {{ item.chapterTitle }}
+
 {% endfor %}
 {% endif %}
-{% endfor %}
