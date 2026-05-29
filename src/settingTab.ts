@@ -1,6 +1,7 @@
 import WereadPlugin from 'main';
 import {
 	App,
+	ExtraButtonComponent,
 	FuzzySuggestModal,
 	Modal,
 	Notice,
@@ -815,6 +816,22 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 	private showApiKeySetting(): void {
 		let apiKeyText: TextComponent;
+		let statusBtn: ExtraButtonComponent;
+
+		const applyStatus = (valid: boolean | null, btn?: ExtraButtonComponent) => {
+			const b = btn ?? statusBtn;
+			if (!b) return;
+			if (valid === true) {
+				b.setIcon('check-circle').setTooltip('API Key 有效');
+				b.extraSettingsEl.style.color = 'var(--color-green)';
+			} else if (valid === false) {
+				b.setIcon('x-circle').setTooltip('API Key 无效，请检查或重新获取');
+				b.extraSettingsEl.style.color = 'var(--color-red)';
+			} else {
+				b.setIcon('help-circle').setTooltip('API Key 状态未知，点击验证');
+				b.extraSettingsEl.style.color = 'var(--text-muted)';
+			}
+		};
 
 		const descFrag = document
 			.createRange()
@@ -830,6 +847,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.setValue(get(settingsStore).wereadApiKey ?? '')
 					.onChange((value) => {
 						settingsStore.actions.setWereadApiKey(value.trim());
+						settingsStore.actions.setApiKeyValid(null);
+						applyStatus(null);
 					});
 				text.inputEl.type = 'password';
 				text.inputEl.style.width = '220px';
@@ -846,25 +865,39 @@ export class WereadSettingsTab extends PluginSettingTab {
 						button.setIcon(isPassword ? 'eye-off' : 'eye');
 					});
 				return button;
+			})
+			.addExtraButton((button) => {
+				statusBtn = button;
+				applyStatus(get(settingsStore).apiKeyValid, button);
+				button.onClick(async () => {
+					const currentKey = get(settingsStore).wereadApiKey;
+					if (!currentKey) return;
+					button.setIcon('loader-2').setTooltip('验证中...');
+					button.extraSettingsEl.style.color = 'var(--text-muted)';
+					const apiRouter = new ApiRouter();
+					const result = await apiRouter.validateApiKey();
+					settingsStore.actions.setApiKeyValid(result.valid);
+					applyStatus(result.valid);
+				});
+				return button;
 			});
 
 		const apiKey = get(settingsStore).wereadApiKey;
 
 		if (apiKey) {
-			// 已设置 API Key → 显示注销按钮
 			setting.addButton((button) => {
 				button.setButtonText('注销')
 					.setTooltip('清除 API Key 和登录状态')
 					.onClick(async () => {
 						settingsStore.actions.clearCookies();
 						settingsStore.actions.setWereadApiKey('');
+						settingsStore.actions.setApiKeyValid(null);
 						new Notice('已注销，API Key 已清除');
 						this.display();
 					});
 				return button;
 			});
 		} else if (Platform.isDesktopApp) {
-			// 未设置 API Key → 显示扫码获取按钮（仅桌面端）
 			setting.addButton((button) => {
 				button.setButtonText('扫码获取')
 					.setTooltip('扫码登录获取 API Key')
@@ -873,17 +906,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 					});
 				return button;
 			});
-		}
-
-		if (apiKey) {
-			const validationContainer = this.containerEl.createDiv({
-				cls: 'weread-apikey-validation'
-			});
-			validationContainer.createDiv({
-				cls: 'weread-apikey-validation-status',
-				text: '⏳ 正在校验 API Key...'
-			});
-			this.fetchAndDisplayValidation(validationContainer);
 		}
 	}
 
@@ -904,6 +926,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 				const apiRouter = new ApiRouter();
 				const result = await apiRouter.fetchApiKey();
 				if (result?.apikey) {
+					settingsStore.actions.setApiKeyValid(true);
 					new Notice('API Key 获取成功');
 				} else {
 					new Notice('API Key 获取失败，请尝试重新扫码登录');
@@ -919,65 +942,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			button.setDisabled(false);
 			button.setButtonText('扫码获取');
 			this.display();
-		}
-	}
-
-	private async fetchAndDisplayValidation(container: HTMLElement): Promise<void> {
-		try {
-			const apiRouter = new ApiRouter();
-			const result = await apiRouter.validateApiKey();
-
-			// 如果有 Cookie，尝试获取 API Key 的元数据（创建日期、最近使用日期）
-			const settings = get(settingsStore);
-			let metadata: { createdAt?: number; lastUsedAt?: number } | null = null;
-			if (settings.isCookieValid && settings.cookies.length > 0) {
-				try {
-					metadata = await apiRouter.fetchApiKey();
-				} catch {
-					// 元数据获取失败不影响主流程
-				}
-			}
-
-			container.empty();
-
-			if (result.valid) {
-				// 第一行：状态 + 功能描述
-				container.createDiv({
-					cls: 'weread-apikey-validation-row weread-apikey-validation-valid',
-					text: '✅ API Key 有效 · 同步、书架、阅读统计等功能均可正常使用'
-				});
-
-				// 第二行：创建日期和最近使用日期
-				if (metadata?.createdAt || metadata?.lastUsedAt) {
-					const parts: string[] = [];
-					if (metadata?.createdAt) {
-						parts.push(`创建日期：${window.moment.unix(metadata.createdAt).format('YYYY-MM-DD')}`);
-					}
-					if (metadata?.lastUsedAt) {
-						parts.push(`最近使用：${window.moment.unix(metadata.lastUsedAt).format('YYYY-MM-DD HH:mm')}`);
-					}
-					container.createDiv({
-						cls: 'weread-apikey-validation-row',
-						text: parts.join(' · ')
-					});
-				}
-			} else {
-				container.createDiv({
-					cls: 'weread-apikey-validation-row weread-apikey-validation-invalid',
-					text: '❌ API Key 无效'
-				});
-				container.createDiv({
-					cls: 'weread-apikey-validation-desc',
-					text: '请检查 Key 是否正确，或点击「扫码获取」重新获取'
-				});
-			}
-		} catch (e) {
-			console.warn('[weread plugin] API Key 校验失败', e);
-			container.empty();
-			container.createDiv({
-				cls: 'weread-apikey-validation-row',
-				text: '⚠️ API Key 校验失败，请检查网络连接'
-			});
 		}
 	}
 
