@@ -62,12 +62,13 @@ export class Renderer {
 	}
 
 	render(entry: Notebook): string {
-		const { metaData, chapterHighlights, bookReview } = entry;
+		const { metaData, chapterHighlights, bookReview, popularHighlights } = entry;
 
 		const context: RenderTemplate = {
 			metaData,
 			chapterHighlights,
-			bookReview
+			bookReview,
+			popularHighlights
 		};
 		const settings = get(settingsStore);
 
@@ -107,12 +108,13 @@ export class Renderer {
 	 * @returns The rendered content
 	 */
 	renderWithTemplate(templateStr: string, entry: Notebook, trimBlocks = false): string {
-		const { metaData, chapterHighlights, bookReview } = entry;
+		const { metaData, chapterHighlights, bookReview, popularHighlights } = entry;
 
 		const context: RenderTemplate = {
 			metaData,
 			chapterHighlights,
-			bookReview
+			bookReview,
+			popularHighlights
 		};
 
 		// 创建临时环境以支持 trimBlocks 配置

@@ -440,6 +440,7 @@ export type RenderTemplate = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
+	popularHighlights?: PopularHighlight[];
 };
 
 export type DailyNoteReferenece = {
