@@ -869,16 +869,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.addExtraButton((button) => {
 				statusBtn = button;
 				applyStatus(get(settingsStore).apiKeyValid, button);
-				button.onClick(async () => {
-					const currentKey = get(settingsStore).wereadApiKey;
-					if (!currentKey) return;
-					button.setIcon('loader-2').setTooltip('验证中...');
-					button.extraSettingsEl.style.color = 'var(--text-muted)';
-					const apiRouter = new ApiRouter();
-					const result = await apiRouter.validateApiKey();
-					settingsStore.actions.setApiKeyValid(result.valid);
-					applyStatus(result.valid);
-				});
 				return button;
 			});
 
