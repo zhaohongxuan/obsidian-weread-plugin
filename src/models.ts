@@ -399,6 +399,8 @@ export type Highlight = {
 	reviewContent?: string;
 	range: string;
 	refMpReviewId?: string;
+	isPopular?: boolean;
+	popularCount?: number;
 };
 
 export type BookReview = {

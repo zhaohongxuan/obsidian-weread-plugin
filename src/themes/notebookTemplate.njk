@@ -26,7 +26,12 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% for highlight in chapter.highlights %}
 {% set rangeParts = highlight.range | split("-") %}
 {% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
+{% if highlight.isPopular %}
+> 🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>) — 🙋 {{ highlight.popularCount }} 人划线 ^{{ highlight.bookmarkId }}
 {% if highlight.reviewContent %}
+- 💭 {{ highlight.reviewContent }}
+{% endif %}
+{% elif highlight.reviewContent %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
 - 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
 {% else %}
@@ -64,15 +69,5 @@ lastReadDate: {{ metaData.lastReadDate }}
 ## 书评 No.{{ loop.index }}
 {{ bookReview.mdContent }} ^{{ bookReview.reviewId }}
 ⏱ {{ bookReview.createTime }}
-{% endfor %}
-{% endif %}
-
-{% if popularHighlights %}
-# 热门划线
-{% for chapter in popularHighlights %}
-## {{ chapter.chapterTitle }}
-{% for item in chapter.highlights %}
-> 🔥 {{ item.markText | trim }} — 🙋 {{ item.totalCount }} 人划线
-{% endfor %}
 {% endfor %}
 {% endif %}

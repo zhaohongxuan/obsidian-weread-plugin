@@ -16,8 +16,7 @@ import {
 	parseDailyNoteReferences,
 	parseReviews,
 	parseChapterResp,
-	parseArticleHighlightReview,
-	parsePopularHighlights
+	parseArticleHighlightReview
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -208,18 +207,65 @@ export default class SyncNotebooks {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
 		const bookReview = parseChapterReviews(reviewResp);
-		let popularHighlights;
 		if (get(settingsStore).syncPopularHighlightsToggle) {
 			const bestResp = await this.apiManager.getBestBookmarks(metaData.bookId);
 			if (bestResp?.items?.length) {
-				popularHighlights = parsePopularHighlights(bestResp);
+				// 按 chapterUid 分组热门划线
+				const popularByChapter = new Map<number, typeof bestResp.items[0][]>();
+				for (const item of bestResp.items) {
+					if (!popularByChapter.has(item.chapterUid)) popularByChapter.set(item.chapterUid, []);
+					popularByChapter.get(item.chapterUid).push(item);
+				}
+				const chapterInfoMap = new Map(bestResp.chapters.map((c) => [c.chapterUid, c]));
+
+				for (const chapter of chapterHighlightReview) {
+					const chapterPopular = popularByChapter.get(chapter.chapterUid) ?? [];
+					if (chapterPopular.length === 0) continue;
+
+					const existingHighlights = chapter.highlights ?? [];
+					const userRangeSet = new Set(existingHighlights.map((h) => h.range));
+
+					// 已有划线与热门重叠：标记为热门并加人数
+					for (const h of existingHighlights) {
+						const match = chapterPopular.find((p) => p.range === h.range);
+						if (match) {
+							h.isPopular = true;
+							h.popularCount = match.totalCount;
+						}
+					}
+
+					// 热门划线中用户未标注的：追加为新 Highlight
+					for (const p of chapterPopular) {
+						if (!userRangeSet.has(p.range)) {
+							const info = chapterInfoMap.get(p.chapterUid);
+							existingHighlights.push({
+								bookmarkId: p.bookmarkId,
+								created: 0,
+								createTime: '',
+								chapterUid: p.chapterUid,
+								chapterIdx: info?.chapterIdx ?? chapter.chapterIdx ?? 0,
+								chapterTitle: info?.title ?? chapter.chapterTitle,
+								markText: p.markText,
+								style: 0,
+								colorStyle: 0,
+								range: p.range,
+								isPopular: true,
+								popularCount: p.totalCount
+							});
+						}
+					}
+
+					// 按 range 起始位置重新排序
+					chapter.highlights = existingHighlights.sort((a, b) => {
+						return (parseInt(a.range.split('-')[0]) || 0) - (parseInt(b.range.split('-')[0]) || 0);
+					});
+				}
 			}
 		}
 		return {
 			metaData: metaData,
 			chapterHighlights: chapterHighlightReview,
-			bookReview: bookReview,
-			popularHighlights
+			bookReview: bookReview
 		};
 	}
 
