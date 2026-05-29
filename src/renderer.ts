@@ -70,8 +70,8 @@ export class Renderer {
 			bookReview,
 			popularHighlights
 		};
+		console.log('[weread renderer] popularHighlights in context:', popularHighlights?.length ?? 'undefined');
 		const settings = get(settingsStore);
-
 		// Use active theme's template and trimBlocks, fallback to legacy settings
 		const activeTheme = settings.themes?.find((t) => t.id === settings.activeThemeId);
 		// For legacy themes (source === 'legacy' or id === 'legacy_template'), always use the top-level settings.template

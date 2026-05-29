@@ -209,10 +209,25 @@ export default class SyncNotebooks {
 		}
 		const bookReview = parseChapterReviews(reviewResp);
 		let popularHighlights;
-		if (get(settingsStore).syncPopularHighlightsToggle) {
+		const popularEnabled = get(settingsStore).syncPopularHighlightsToggle;
+		console.log('[weread] syncPopularHighlightsToggle =', popularEnabled);
+		if (popularEnabled) {
 			const bestResp = await this.apiManager.getBestBookmarks(metaData.bookId);
+			console.log('[weread] bestbookmarks resp =', bestResp);
 			if (bestResp?.items?.length) {
 				popularHighlights = parsePopularHighlights(bestResp);
+				console.log('[weread] popularHighlights parsed =', popularHighlights.length, 'items');
+				// 按 chapterUid 分发到各章节
+				for (const chapter of chapterHighlightReview) {
+					const chapterPopular = popularHighlights.filter(
+						(p) => p.chapterUid === chapter.chapterUid
+					);
+					if (chapterPopular.length > 0) {
+						chapter.popularHighlights = chapterPopular;
+					}
+				}
+			} else {
+				console.warn('[weread] bestbookmarks: no items returned', bestResp);
 			}
 		}
 		return {

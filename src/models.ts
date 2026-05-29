@@ -434,6 +434,7 @@ export type ChapterHighlightReview = {
 	// highlight and review can be empty, just output title
 	highlights?: Highlight[];
 	chapterReviews?: Review[];
+	popularHighlights?: PopularHighlight[];
 };
 
 export type RenderTemplate = {

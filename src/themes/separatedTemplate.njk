@@ -20,6 +20,11 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
 {% endfor %}
+{% if chapter.popularHighlights %}
+{% for item in chapter.popularHighlights %}
+> 🔥 {{ item.markText | trim }} — 🙋 {{ item.totalCount }} 人划线
+{% endfor %}
+{% endif %}
 {% endfor %}
 
 # 笔记汇总
@@ -39,14 +44,5 @@ lastReadDate: {{ metaData.lastReadDate }}
 # 书评
 {{ bookReview.createTime }}
 {{ bookReview.mdContent }}
-{% endfor %}
-{% endif %}
-
-{% if popularHighlights and popularHighlights.length > 0 %}
-# 热门划线
-{% for item in popularHighlights %}
-> 🔥 {{ item.markText | trim }} — 🙋 {{ item.totalCount }} 人划线
-> 📖 {{ item.chapterTitle }}
-
 {% endfor %}
 {% endif %}
