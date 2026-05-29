@@ -897,6 +897,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 					});
 				return button;
 			});
+
+			// 进入设置页时自动校验一次，结果更新到状态图标
+			statusBtn.setIcon('loader-2').setTooltip('验证中...');
+			statusBtn.extraSettingsEl.style.color = 'var(--text-muted)';
+			new ApiRouter().validateApiKey().then((result) => {
+				settingsStore.actions.setApiKeyValid(result.valid);
+				applyStatus(result.valid);
+			});
 		} else if (Platform.isDesktopApp) {
 			setting.addButton((button) => {
 				button.setButtonText('扫码获取')
