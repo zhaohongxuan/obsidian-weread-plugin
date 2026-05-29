@@ -59,7 +59,23 @@ class ApiV2Manager {
 	}
 
 	async getChapters(bookId: string) {
-		return this.callAgent('/book/chapterinfo', { bookId });
+		const result = await this.callAgent<{
+			bookId: string;
+			synckey: number;
+			chapterUpdateTime: number;
+			chapters: any[];
+		}>('/book/chapterinfo', { bookId });
+
+		if (!result) return undefined;
+
+		// V2 返回 { chapters: [] }，转换为 V1 格式 { data: [{ updated: [] }] }
+		return {
+			data: [{
+				bookId: result.bookId,
+				chapterUpdateTime: result.chapterUpdateTime,
+				updated: result.chapters
+			}]
+		};
 	}
 
 	async getNotebookReviews(bookId: string) {
