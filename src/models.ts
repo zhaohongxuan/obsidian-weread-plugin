@@ -329,11 +329,18 @@ export type PopularHighlight = {
 	totalCount: number;
 };
 
+export type PopularChapterHighlight = {
+	chapterUid: number;
+	chapterIdx: number;
+	chapterTitle: string;
+	highlights: PopularHighlight[];
+};
+
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
-	popularHighlights?: PopularHighlight[];
+	popularHighlights?: PopularChapterHighlight[];
 };
 
 export type Metadata = {
@@ -441,7 +448,7 @@ export type RenderTemplate = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
-	popularHighlights?: PopularHighlight[];
+	popularHighlights?: PopularChapterHighlight[];
 };
 
 export type DailyNoteReferenece = {
