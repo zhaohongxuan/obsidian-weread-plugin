@@ -131,6 +131,17 @@ class ApiRouter {
 		return undefined;
 	}
 
+	async getBestBookmarks(bookId: string) {
+		if (this.useV2()) {
+			try {
+				return await this.v2Manager.getBestBookmarks(bookId);
+			} catch (e) {
+				console.warn('V2 getBestBookmarks 调用失败', e);
+			}
+		}
+		return undefined;
+	}
+
 	async getNotebooks() {
 		if (this.useV2()) {
 			try {

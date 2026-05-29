@@ -16,7 +16,8 @@ import {
 	parseDailyNoteReferences,
 	parseReviews,
 	parseChapterResp,
-	parseArticleHighlightReview
+	parseArticleHighlightReview,
+	parsePopularHighlights
 } from './parser/parseResponse';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
@@ -207,10 +208,18 @@ export default class SyncNotebooks {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
 		const bookReview = parseChapterReviews(reviewResp);
+		let popularHighlights;
+		if (get(settingsStore).syncPopularHighlightsToggle) {
+			const bestResp = await this.apiManager.getBestBookmarks(metaData.bookId);
+			if (bestResp?.items?.length) {
+				popularHighlights = parsePopularHighlights(bestResp);
+			}
+		}
 		return {
 			metaData: metaData,
 			chapterHighlights: chapterHighlightReview,
-			bookReview: bookReview
+			bookReview: bookReview,
+			popularHighlights
 		};
 	}
 

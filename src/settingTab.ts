@@ -291,6 +291,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.saveArticleToggle();
 			this.noteCountLimit();
 		}
+		this.syncPopularHighlightsToggle();
 		this.renderSyncModeBookSelection(syncMode);
 	}
 
@@ -460,6 +461,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 					settingsStore.actions.setSaveArticleToggle(value);
 					this.display();
 				});
+			});
+	}
+
+	private syncPopularHighlightsToggle(): void {
+		new Setting(this.containerEl)
+			.setName('同步热门划线')
+			.setDesc('开启后同步每本书最多 20 条热门划线（按热度排序），需要 API Key，仅 V2 支持')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).syncPopularHighlightsToggle)
+					.onChange((value) => {
+						settingsStore.actions.setSyncPopularHighlightsToggle(value);
+					});
 			});
 	}
 	private saveReadingInfoToggle(): void {

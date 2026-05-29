@@ -10,6 +10,7 @@ import type {
 	HighlightResponse,
 	Metadata,
 	Notebook,
+	PopularHighlight,
 	RefBlockDetail,
 	Review
 } from 'src/models';
@@ -17,6 +18,27 @@ import { NodeHtmlMarkdown } from 'node-html-markdown';
 import * as CryptoJS from 'crypto-js';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
+
+export const parsePopularHighlights = (resp: {
+	items: {
+		bookmarkId: string;
+		chapterUid: number;
+		range: string;
+		markText: string;
+		totalCount: number;
+	}[];
+	chapters: { chapterUid: number; title: string }[];
+}): PopularHighlight[] => {
+	const chapterMap = new Map(resp.chapters.map((c) => [c.chapterUid, c.title]));
+	return resp.items.map((item) => ({
+		bookmarkId: item.bookmarkId,
+		chapterUid: item.chapterUid,
+		chapterTitle: chapterMap.get(item.chapterUid) ?? '未知章节',
+		range: item.range,
+		markText: item.markText,
+		totalCount: item.totalCount
+	}));
+};
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];

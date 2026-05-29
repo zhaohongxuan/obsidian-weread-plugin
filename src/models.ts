@@ -320,10 +320,20 @@ export type Chapter = {
 	level: number;
 };
 
+export type PopularHighlight = {
+	bookmarkId: string;
+	chapterUid: number;
+	chapterTitle: string;
+	range: string;
+	markText: string;
+	totalCount: number;
+};
+
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
+	popularHighlights?: PopularHighlight[];
 };
 
 export type Metadata = {

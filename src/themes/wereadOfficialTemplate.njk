@@ -39,3 +39,11 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% endif %}
 {% endfor %}
 {% endfor %}
+
+{% if popularHighlights and popularHighlights.length > 0 %}
+## ◆ 热门划线
+{% for item in popularHighlights %}
+> [{{ item.markText | trim }}] — {{ item.totalCount }} 人划线 · {{ item.chapterTitle }}
+
+{% endfor %}
+{% endif %}

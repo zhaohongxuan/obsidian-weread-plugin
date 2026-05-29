@@ -85,6 +85,22 @@ class ApiV2Manager {
 		});
 	}
 
+	async getBestBookmarks(bookId: string) {
+		return this.callAgent<{
+			synckey: number;
+			totalCount: number;
+			items: {
+				bookId: string;
+				bookmarkId: string;
+				chapterUid: number;
+				range: string;
+				markText: string;
+				totalCount: number;
+			}[];
+			chapters: { bookId: string; chapterUid: number; chapterIdx: number; title: string }[];
+		}>('/book/bestbookmarks', { bookId, chapterUid: 0 });
+	}
+
 	async getUserInfo(userVid: string) {
 		return this.callAgent('/user/info', { userVid });
 	}

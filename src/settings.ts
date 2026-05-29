@@ -79,6 +79,7 @@ export interface WereadPluginSettings {
 	convertTags: boolean;
 	saveArticleToggle: boolean;
 	saveReadingInfoToggle: boolean;
+	syncPopularHighlightsToggle: boolean;
 	readingOpenMode: ReadingOpenMode;
 	bookOpenMode: BookOpenMode;
 	trimBlocks: boolean;
@@ -134,6 +135,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	convertTags: false,
 	saveArticleToggle: true,
 	saveReadingInfoToggle: true,
+	syncPopularHighlightsToggle: false,
 	readingOpenMode: 'TAB',
 	bookOpenMode: 'web',
 	trimBlocks: false,
@@ -537,6 +539,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setSyncPopularHighlightsToggle = (value: boolean) => {
+		store.update((state) => {
+			state.syncPopularHighlightsToggle = value;
+			return state;
+		});
+	};
+
 	const setReadingOpenMode = (readingOpenMode: ReadingOpenMode) => {
 		store.update((state) => {
 			state.readingOpenMode = readingOpenMode;
@@ -764,6 +773,7 @@ const createSettingsStore = () => {
 			setConvertTags,
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
+			setSyncPopularHighlightsToggle,
 			setReadingOpenMode,
 			setBookOpenMode,
 			setCookieCloudInfo,
