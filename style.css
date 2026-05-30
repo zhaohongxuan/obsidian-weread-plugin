@@ -3335,6 +3335,12 @@
 	gap: 3px;
 }
 
+.weread-book-detail-title-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
 .weread-book-detail-title {
 	margin: 0;
 	font-size: 1.2em;
@@ -3565,11 +3571,28 @@
 	cursor: pointer;
 	border-radius: 50%;
 	transition: color 0.15s, background 0.15s;
+	position: relative;
 }
 
 .weread-book-detail-tab-action:hover {
 	color: var(--text-normal);
 	background: var(--background-secondary);
+}
+
+.weread-book-detail-tab-action:hover::after {
+	content: attr(title);
+	position: absolute;
+	bottom: calc(100% + 4px);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 4px 8px;
+	border-radius: 4px;
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	font-size: 11px;
+	white-space: nowrap;
+	z-index: 100;
+	pointer-events: none;
 }
 
 .weread-book-detail-tab-action.is-spinning svg {
@@ -3912,11 +3935,28 @@
 	color: var(--text-muted);
 	cursor: pointer;
 	flex-shrink: 0;
+	position: relative;
 }
 
 .weread-book-detail-action-btn:hover {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
+}
+
+.weread-book-detail-action-btn:hover::after {
+	content: attr(title);
+	position: absolute;
+	bottom: calc(100% + 4px);
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 4px 8px;
+	border-radius: 4px;
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	font-size: 11px;
+	white-space: nowrap;
+	z-index: 100;
+	pointer-events: none;
 }
 
 /* ── 悬浮按钮 ──────────────────────────────────────────────── */

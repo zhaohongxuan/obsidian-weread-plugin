@@ -241,26 +241,28 @@ export class WereadBookDetailView extends ItemView {
 		const coverSrc = this.detail?.cover || this.bookCover;
 		if (coverSrc) {
 			const coverEl = topRow.createEl('img', {
-				cls: 'weread-book-detail-cover' + (hasLocal ? ' is-clickable' : '')
+				cls: 'weread-book-detail-cover'
 			});
 			coverEl.src = coverSrc;
 			coverEl.alt = this.detail?.title || this.bookTitle;
-			if (hasLocal) {
-				coverEl.setAttr('title', '打开本地笔记');
-				coverEl.addEventListener('click', () => this.openLocalFileIfExists());
-			}
 		}
 
 		// 右侧描述区：标题、作者、评分、进度、统计、简介
 		const info = topRow.createDiv({ cls: 'weread-book-detail-info' });
 
-		const titleEl = info.createEl('h2', {
+		const titleRow = info.createDiv({ cls: 'weread-book-detail-title-row' });
+		titleRow.createEl('h2', {
 			text: this.detail?.title || this.bookTitle,
-			cls: 'weread-book-detail-title' + (hasLocal ? ' is-clickable' : '')
+			cls: 'weread-book-detail-title'
 		});
 		if (hasLocal) {
-			titleEl.setAttr('title', '打开本地笔记');
-			titleEl.addEventListener('click', () => this.openLocalFileIfExists());
+			const localBtn = titleRow.createEl('button', { cls: 'weread-book-detail-action-btn' });
+			setIcon(localBtn, 'file-text');
+			localBtn.setAttr('title', '打开本地笔记');
+			localBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.openLocalFileIfExists();
+			});
 		}
 
 		const author = this.detail?.author || '';
@@ -320,9 +322,6 @@ export class WereadBookDetailView extends ItemView {
 		this.createStatBadge(statsRow, 'pencil', `笔记 ${reviewCount}`);
 		if (popularCount > 0) {
 			this.createStatBadge(statsRow, 'flame', `热门 ${popularCount}`);
-		}
-		if (hasLocal) {
-			this.createStatBadge(statsRow, 'file-text', '本地笔记', true);
 		}
 
 		// 简介（放入 info 右侧描述区，无分割线）

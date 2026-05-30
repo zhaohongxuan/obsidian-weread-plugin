@@ -554,10 +554,10 @@ export class WereadBookshelfView extends ItemView {
 			cls: `weread-bookshelf-card-cover-wrap${book.hasLocalFile ? ' is-clickable' : ''}`
 		});
 		if (book.hasLocalFile) {
-			coverWrap.setAttr('title', `打开《${book.title}》本地文件`);
+			coverWrap.setAttr('title', `查看《${book.title}》详情`);
 			coverWrap.onclick = async (event) => {
 				event.stopPropagation();
-				await this.openLocalFile(book);
+				this.openBookDetail(book);
 			};
 		}
 		if (book.cover) {
@@ -829,7 +829,7 @@ export class WereadBookshelfView extends ItemView {
 
 	private openBookDetail(book: BookshelfBook): void {
 		const localPath = book.localFile?.file?.path || '';
-		this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath, this.leaf);
+		this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath);
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {

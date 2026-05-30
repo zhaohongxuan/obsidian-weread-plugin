@@ -329,15 +329,14 @@ export default class WereadPlugin extends Plugin {
 		workspace.revealLeaf(leaf);
 	}
 
-	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string, sourceLeaf?: WorkspaceLeaf) {
+	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string) {
 		const { workspace } = this.app;
-		const leaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
 
+		// 优先复用已有 detail leaf，否则新建一个 tab，不覆盖 sourceLeaf
 		let leaf: WorkspaceLeaf | null = null;
-		if (leaves.length > 0) {
-			leaf = leaves[0];
-		} else if (sourceLeaf) {
-			leaf = sourceLeaf;
+		const existingLeaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
+		if (existingLeaves.length > 0) {
+			leaf = existingLeaves[0];
 		} else {
 			leaf = workspace.getLeaf('tab');
 		}
@@ -443,8 +442,7 @@ export default class WereadPlugin extends Plugin {
 						annotation.bookId,
 						annotation.title || '',
 						annotation.cover || '',
-						file.path,
-						leaf
+						file.path
 					);
 				});
 				currentBtn = btn;
