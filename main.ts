@@ -1,4 +1,4 @@
-import { Menu, Notice, Platform, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
+import { Menu, Notice, Platform, Plugin, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
 import ApiRouter from './src/api-router';
@@ -12,6 +12,7 @@ import WereadBrowserWindow from './src/components/wereadBrowserWindow';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
 import { WEREAD_BOOKSHELF_VIEW_ID, WereadBookshelfView } from './src/components/wereadBookshelf';
 import { WEREAD_READING_STATS_VIEW_ID, WereadReadingStatsView } from './src/components/wereadReadingStats';
+import { WEREAD_BOOK_DETAIL_VIEW_ID, WereadBookDetailView } from './src/components/wereadBookDetailView';
 import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
@@ -125,6 +126,10 @@ export default class WereadPlugin extends Plugin {
 			WEREAD_READING_STATS_VIEW_ID,
 			(leaf) => new WereadReadingStatsView(leaf, apiRouter, fileManager)
 		);
+		this.registerView(
+			WEREAD_BOOK_DETAIL_VIEW_ID,
+			(leaf) => new WereadBookDetailView(leaf, apiRouter)
+		);
 
 		this.addCommand({
 			id: 'open-weread-reading-view-tab',
@@ -180,6 +185,7 @@ export default class WereadPlugin extends Plugin {
 		this.wereadSettingsTab = new WereadSettingsTab(this.app, this);
 		this.addSettingTab(this.wereadSettingsTab);
 
+		this.setupFloatingPanel();
 		this.setupScheduledSync();
 	}
 
@@ -323,6 +329,27 @@ export default class WereadPlugin extends Plugin {
 		workspace.revealLeaf(leaf);
 	}
 
+	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string) {
+		const { workspace } = this.app;
+		const leaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
+
+		let leaf: WorkspaceLeaf | null = null;
+		if (leaves.length > 0) {
+			leaf = leaves[0];
+		} else {
+			leaf = workspace.getLeaf('tab');
+		}
+
+		if (leaf) {
+			await leaf.setViewState({
+				type: WEREAD_BOOK_DETAIL_VIEW_ID,
+				active: true,
+				state: { bookId, bookTitle, bookCover, localFilePath }
+			});
+			workspace.revealLeaf(leaf);
+		}
+	}
+
 	private async syncCookiesToPartition(): Promise<void> {
 		if (!Platform.isDesktopApp) {
 			return;
@@ -369,6 +396,57 @@ export default class WereadPlugin extends Plugin {
 		} catch (e) {
 			console.error('[weread plugin] startup cookie sync failed', e);
 		}
+	}
+
+	private setupFloatingPanel(): void {
+		const fileManager = this.fileManager;
+		let currentBtn: HTMLElement | null = null;
+		let currentBookId: string | null = null;
+
+		const removeBtn = () => {
+			currentBtn?.remove();
+			currentBtn = null;
+			currentBookId = null;
+		};
+
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', (leaf) => {
+				const view = leaf?.view;
+				const file = (view as any)?.file as TFile | undefined;
+				if (!(file instanceof TFile)) {
+					removeBtn();
+					return;
+				}
+
+				const annotation = fileManager.getWereadNoteAnnotationFile(file);
+				if (!annotation?.bookId) {
+					removeBtn();
+					return;
+				}
+
+				if (currentBookId === annotation.bookId) return;
+
+				removeBtn();
+				currentBookId = annotation.bookId;
+
+				const viewContentEl = (view as any).contentEl as HTMLElement | undefined;
+				if (!viewContentEl) return;
+
+				viewContentEl.style.position = 'relative';
+				const btn = viewContentEl.createDiv({ cls: 'weread-floating-btn' });
+				setIcon(btn, 'book-open');
+				btn.setAttr('title', '查看微信读书详情');
+				btn.addEventListener('click', () => {
+					this.activateBookDetailView(
+						annotation.bookId,
+						annotation.title || '',
+						annotation.cover || '',
+						file.path
+					);
+				});
+				currentBtn = btn;
+			})
+		);
 	}
 
 	onunload() {

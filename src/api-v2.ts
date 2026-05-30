@@ -101,6 +101,14 @@ class ApiV2Manager {
 		}>('/book/bestbookmarks', { bookId, chapterUid: 0 });
 	}
 
+	async getPublicReviews(bookId: string) {
+		return this.callAgent('/review/list', {
+			bookId,
+			reviewListType: 0,
+			count: 30
+		});
+	}
+
 	async getUserInfo(userVid: string) {
 		return this.callAgent('/user/info', { userVid });
 	}

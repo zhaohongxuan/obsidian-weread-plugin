@@ -142,6 +142,18 @@ class ApiRouter {
 		return undefined;
 	}
 
+	async getPublicReviews(bookId: string): Promise<BookReviewResponse | undefined> {
+		if (this.useV2()) {
+			try {
+				const result = await this.v2Manager.getPublicReviews(bookId);
+				if (result) return result as BookReviewResponse;
+			} catch (e) {
+				console.warn('V2 getPublicReviews 调用失败，回退到 V1', e);
+			}
+		}
+		return undefined;
+	}
+
 	async getNotebooks() {
 		if (this.useV2()) {
 			try {

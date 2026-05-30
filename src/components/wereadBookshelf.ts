@@ -13,7 +13,6 @@ import {
 import WereadPlugin from '../../main';
 import WereadBookshelfService from '../bookshelf';
 import type { BookshelfBook } from '../models';
-import { WereadBookDetailModal } from './wereadBookDetailModal';
 import { SyncLogModal } from './syncLogModal';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
@@ -829,16 +828,8 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private openBookDetail(book: BookshelfBook): void {
-		new WereadBookDetailModal(
-			this.app,
-			book,
-			async () => {
-				await this.openLocalFile(book);
-			},
-			async (url: string) => {
-				await this.plugin.openPreferredReadingView(url);
-			}
-		).open();
+		const localPath = book.localFile?.file?.path || '';
+		this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath);
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {
