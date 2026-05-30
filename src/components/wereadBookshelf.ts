@@ -829,7 +829,7 @@ export class WereadBookshelfView extends ItemView {
 
 	private openBookDetail(book: BookshelfBook): void {
 		const localPath = book.localFile?.file?.path || '';
-		this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath);
+		this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath, this.leaf);
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {

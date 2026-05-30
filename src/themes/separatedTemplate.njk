@@ -18,13 +18,7 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% for highlight in chapter.highlights %}
 {% set rangeParts = highlight.range | split("-") %}
 {% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
-{% if highlight.isPopular and highlight.created > 0 %}
-> 📌🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>) — 🙋 {{ highlight.popularCount }} 人划线 ^{{ highlight.bookmarkId }}
-{% elif highlight.isPopular %}
-> 🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>) — 🙋 {{ highlight.popularCount }} 人划线 ^{{ highlight.bookmarkId }}
-{% else %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
-{% endif %}
 {% endfor %}
 {% endfor %}
 

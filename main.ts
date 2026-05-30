@@ -329,13 +329,15 @@ export default class WereadPlugin extends Plugin {
 		workspace.revealLeaf(leaf);
 	}
 
-	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string) {
+	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string, sourceLeaf?: WorkspaceLeaf) {
 		const { workspace } = this.app;
 		const leaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
 
 		let leaf: WorkspaceLeaf | null = null;
 		if (leaves.length > 0) {
 			leaf = leaves[0];
+		} else if (sourceLeaf) {
+			leaf = sourceLeaf;
 		} else {
 			leaf = workspace.getLeaf('tab');
 		}
@@ -441,7 +443,8 @@ export default class WereadPlugin extends Plugin {
 						annotation.bookId,
 						annotation.title || '',
 						annotation.cover || '',
-						file.path
+						file.path,
+						leaf
 					);
 				});
 				currentBtn = btn;

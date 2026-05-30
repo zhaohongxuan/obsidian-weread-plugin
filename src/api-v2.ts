@@ -85,7 +85,7 @@ class ApiV2Manager {
 		});
 	}
 
-	async getBestBookmarks(bookId: string) {
+	async getBestBookmarks(bookId: string, chapterUid = 0) {
 		return this.callAgent<{
 			synckey: number;
 			totalCount: number;
@@ -98,7 +98,7 @@ class ApiV2Manager {
 				totalCount: number;
 			}[];
 			chapters: { bookId: string; chapterUid: number; chapterIdx: number; title: string }[];
-		}>('/book/bestbookmarks', { bookId, chapterUid: 0 });
+		}>('/book/bestbookmarks', { bookId, chapterUid });
 	}
 
 	async getPublicReviews(bookId: string) {

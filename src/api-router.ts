@@ -131,10 +131,10 @@ class ApiRouter {
 		return undefined;
 	}
 
-	async getBestBookmarks(bookId: string) {
+	async getBestBookmarks(bookId: string, chapterUid?: number) {
 		if (this.useV2()) {
 			try {
-				return await this.v2Manager.getBestBookmarks(bookId);
+				return await this.v2Manager.getBestBookmarks(bookId, chapterUid);
 			} catch (e) {
 				console.warn('V2 getBestBookmarks 调用失败', e);
 			}
