@@ -3528,8 +3528,7 @@
 .weread-book-detail-tabbar {
 	display: flex;
 	flex-shrink: 0;
-	border-bottom: 1px solid var(--background-modifier-border);
-	padding: 0 16px;
+	padding: 0 16px 10px;
 	background: var(--background-primary);
 }
 
@@ -3663,8 +3662,8 @@
 
 /* Highlight Card */
 .weread-book-detail-hl-card {
-	margin-bottom: 4px;
-	padding: 4px 8px;
+	margin-bottom: 10px;
+	padding: 8px 10px;
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 6px;
@@ -3800,8 +3799,8 @@
 
 /* Popular Highlight Card */
 .weread-book-detail-popular-card {
-	margin-bottom: 4px;
-	padding: 4px 8px;
+	margin-bottom: 10px;
+	padding: 8px 10px;
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	border-left: 3px solid var(--color-orange);

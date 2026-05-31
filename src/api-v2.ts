@@ -156,10 +156,10 @@ class ApiV2Manager {
 	/**
 	 * 获取笔记本列表（所有有笔记/在书架的书）
 	 * 格式与 V1 /api/user/notebook 兼容
-	 * 自动处理分页，每页 200 本
+	 * 自动处理分页，每页 300 本
 	 */
 	async getNotebooks() {
-		const PAGE_SIZE = 200;
+		const PAGE_SIZE = 300;
 		let allBooks: any[] = [];
 		let lastSort: number | undefined;
 

@@ -32,6 +32,7 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% else %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
 > ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
+
 {% endif %}
 {% endfor %}
 {% endfor %}

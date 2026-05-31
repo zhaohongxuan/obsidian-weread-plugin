@@ -251,18 +251,14 @@ export class WereadBookDetailView extends ItemView {
 		const info = topRow.createDiv({ cls: 'weread-book-detail-info' });
 
 		const titleRow = info.createDiv({ cls: 'weread-book-detail-title-row' });
-		titleRow.createEl('h2', {
+		const titleEl = titleRow.createEl('h2', {
 			text: this.detail?.title || this.bookTitle,
 			cls: 'weread-book-detail-title'
 		});
 		if (hasLocal) {
-			const localBtn = titleRow.createEl('button', { cls: 'weread-book-detail-action-btn' });
-			setIcon(localBtn, 'file-text');
-			localBtn.setAttr('title', '打开本地笔记');
-			localBtn.addEventListener('click', (e) => {
-				e.stopPropagation();
-				this.openLocalFileIfExists();
-			});
+			titleEl.addClass('is-clickable');
+			titleEl.setAttr('title', '打开本地笔记');
+			titleEl.addEventListener('click', () => this.openLocalFileIfExists());
 		}
 
 		const author = this.detail?.author || '';
@@ -367,6 +363,8 @@ export class WereadBookDetailView extends ItemView {
 
 	private renderTabBar(): void {
 		const bar = this.tabBarEl;
+		const hasLocal = !!this.localFilePath;
+
 		for (const tab of TABS) {
 			const btn = bar.createEl('button', {
 				cls: 'weread-book-detail-tab' + (this.currentTab === tab.id ? ' is-active' : '')
@@ -406,6 +404,13 @@ export class WereadBookDetailView extends ItemView {
 			refreshBtn.removeClass('is-spinning');
 			this.render();
 		});
+		if (hasLocal) {
+			const localBtn = bar.createEl('button', { cls: 'weread-book-detail-tab-action' });
+			localBtn.style.marginLeft = '4px';
+			setIcon(localBtn, 'file-text');
+			localBtn.setAttr('title', '打开本地笔记');
+			localBtn.addEventListener('click', () => this.openLocalFileIfExists());
+		}
 	}
 
 	// ── Content Router ──────────────────────────────────────────
