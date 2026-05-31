@@ -613,3 +613,16 @@ export interface Theme {
 	author?: string;
 	version?: string;
 }
+
+export type PopularHighlightCache = {
+	bookId: string;
+	cachedAt: number;
+	ttl: number;
+	items: PopularHighlight[];
+	chapters: {
+		bookId: string;
+		chapterUid: number;
+		chapterIdx: number;
+		title: string;
+	}[];
+};

@@ -105,6 +105,7 @@ export interface WereadPluginSettings {
 	apiKeyValid: boolean | null;
 	readingStatsLocation: string;
 	statsStartYear?: number;
+	popularHighlightsCacheTtl: number; // 天数，默认7
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -162,6 +163,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	apiKeyValid: null,
 	readingStatsLocation: '/',
 	statsStartYear: 0,  // 0 = use registTime from API
+	popularHighlightsCacheTtl: 7, // 默认7天
 };
 
 const createSettingsStore = () => {
