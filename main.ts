@@ -34,7 +34,7 @@ export default class WereadPlugin extends Plugin {
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.app);
 		this.fileManager = fileManager;
 		const apiRouter = new ApiRouter();
-		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter);
+		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter, this.app.vault);
 		this.bookshelfService = new WereadBookshelfService(fileManager, apiRouter);
 		this.syncReadingStats = new SyncReadingStats(this.app.vault, apiRouter);
 
