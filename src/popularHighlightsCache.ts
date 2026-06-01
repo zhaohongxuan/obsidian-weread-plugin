@@ -27,7 +27,7 @@ export default class PopularHighlightsCacheManager {
 			const exists = await this.vault.adapter.exists(cachePath);
 			if (!exists) return null;
 
-			const content = await this.readFile(cachePath);
+			const content = await this.vault.adapter.read(cachePath);
 			const cache: PopularHighlightCache = JSON.parse(content);
 
 			if (this.isCacheExpired(cache)) {
@@ -60,7 +60,8 @@ export default class PopularHighlightsCacheManager {
 
 			const cachePath = this.getCachePath(bookId);
 			await this.ensureCacheDir();
-			await this.writeFile(cachePath, JSON.stringify(cache, null, 2));
+			// 使用 adapter.write，它会自动覆盖已存在的文件
+			await this.vault.adapter.write(cachePath, JSON.stringify(cache, null, 2));
 			console.log(`[weread plugin] 热门划线缓存已写入: ${bookId}`);
 		} catch (e) {
 			console.error(`[weread plugin] 写入热门划线缓存失败: ${bookId}`, e);
@@ -72,8 +73,11 @@ export default class PopularHighlightsCacheManager {
 			const cachePath = this.getCachePath(bookId);
 			const exists = await this.vault.adapter.exists(cachePath);
 			if (exists) {
-				await this.deleteFile(cachePath);
-				console.log(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
+				const file = this.vault.getAbstractFileByPath(cachePath);
+				if (file instanceof TFile) {
+					await this.vault.delete(file);
+					console.log(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
+				}
 			}
 		} catch (e) {
 			console.error(`[weread plugin] 清除热门划线缓存失败: ${bookId}`, e);
@@ -93,10 +97,14 @@ export default class PopularHighlightsCacheManager {
 				if (!file.startsWith('popular-') || !file.endsWith('.json')) continue;
 
 				try {
-					const content = await this.readFile(`${cacheDirPath}/${file}`);
+					const content = await this.vault.adapter.read(`${cacheDirPath}/${file}`);
 					const cache: PopularHighlightCache = JSON.parse(content);
 					if (this.isCacheExpired(cache)) {
-						await this.deleteFile(`${cacheDirPath}/${file}`);
+						const filePath = `${cacheDirPath}/${file}`;
+						const abstractFile = this.vault.getAbstractFileByPath(filePath);
+						if (abstractFile instanceof TFile) {
+							await this.vault.delete(abstractFile);
+						}
 						cleared++;
 					}
 				} catch (e) {
@@ -125,33 +133,15 @@ export default class PopularHighlightsCacheManager {
 		}
 	}
 
-	private async readFile(path: string): Promise<string> {
-		const file = this.vault.getAbstractFileByPath(path);
-		if (!file || !(file instanceof TFile)) throw new Error('File not found');
-		return await this.vault.read(file);
-	}
-
-	private async writeFile(path: string, content: string): Promise<void> {
-		const file = this.vault.getAbstractFileByPath(path);
-		if (file instanceof TFile) {
-			await this.vault.modify(file, content);
-		} else {
-			await this.vault.create(path, content);
-		}
-	}
-
-	private async deleteFile(path: string): Promise<void> {
-		const file = this.vault.getAbstractFileByPath(path);
-		if (file instanceof TFile) {
-			await this.vault.delete(file);
-		}
-	}
-
 	private async listFiles(dirPath: string): Promise<string[]> {
-		const folder = this.vault.getAbstractFileByPath(dirPath);
-		if (!(folder instanceof TFolder)) return [];
-		return folder.children
-			.filter((f) => f instanceof TFile)
-			.map((f) => (f as TFile).name);
+		try {
+			const folder = this.vault.getAbstractFileByPath(dirPath);
+			if (!(folder instanceof TFolder)) return [];
+			return folder.children
+				.filter((f) => f instanceof TFile)
+				.map((f) => (f as TFile).name);
+		} catch (e) {
+			return [];
+		}
 	}
 }
