@@ -1,9 +1,15 @@
+import { Vault, TFile, TFolder } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import type { PopularHighlight, PopularHighlightCache } from './models';
 
 export default class PopularHighlightsCacheManager {
 	private cacheDir: string = '.weread-cache';
+	private vault: Vault;
+
+	constructor(vault: Vault) {
+		this.vault = vault;
+	}
 
 	private getCachePath(bookId: string): string {
 		return `${this.cacheDir}/popular-${bookId}.json`;
@@ -18,7 +24,7 @@ export default class PopularHighlightsCacheManager {
 	async get(bookId: string): Promise<PopularHighlightCache | null> {
 		try {
 			const cachePath = this.getCachePath(bookId);
-			const exists = await this.fileExists(cachePath);
+			const exists = await this.vault.adapter.exists(cachePath);
 			if (!exists) return null;
 
 			const content = await this.readFile(cachePath);
@@ -64,7 +70,7 @@ export default class PopularHighlightsCacheManager {
 	async clear(bookId: string): Promise<void> {
 		try {
 			const cachePath = this.getCachePath(bookId);
-			const exists = await this.fileExists(cachePath);
+			const exists = await this.vault.adapter.exists(cachePath);
 			if (exists) {
 				await this.deleteFile(cachePath);
 				console.log(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
@@ -77,7 +83,7 @@ export default class PopularHighlightsCacheManager {
 	async clearExpired(): Promise<number> {
 		try {
 			const cacheDirPath = this.cacheDir;
-			const exists = await this.fileExists(cacheDirPath);
+			const exists = await this.vault.adapter.exists(cacheDirPath);
 			if (!exists) return 0;
 
 			const files = await this.listFiles(cacheDirPath);
@@ -110,60 +116,42 @@ export default class PopularHighlightsCacheManager {
 
 	private async ensureCacheDir(): Promise<void> {
 		try {
-			const exists = await this.fileExists(this.cacheDir);
+			const exists = await this.vault.adapter.exists(this.cacheDir);
 			if (!exists) {
-				await this.createDir(this.cacheDir);
+				await this.vault.createFolder(this.cacheDir);
 			}
 		} catch (e) {
 			// 目录已存在或其他错误，忽略
 		}
 	}
 
-	// 抽象文件系统操作（由 Obsidian 实现）
-	private async fileExists(path: string): Promise<boolean> {
-		// @ts-ignore - Vault is available in Obsidian context
-		return app.vault.getAbstractFileByPath(path) !== null;
-	}
-
 	private async readFile(path: string): Promise<string> {
-		// @ts-ignore
-		const file = app.vault.getAbstractFileByPath(path);
-		if (!file) throw new Error('File not found');
-		// @ts-ignore
-		return await app.vault.read(file);
+		const file = this.vault.getAbstractFileByPath(path);
+		if (!file || !(file instanceof TFile)) throw new Error('File not found');
+		return await this.vault.read(file);
 	}
 
 	private async writeFile(path: string, content: string): Promise<void> {
-		// @ts-ignore
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file) {
-			// @ts-ignore
-			await app.vault.modify(file, content);
+		const file = this.vault.getAbstractFileByPath(path);
+		if (file instanceof TFile) {
+			await this.vault.modify(file, content);
 		} else {
-			// @ts-ignore
-			await app.vault.create(path, content);
+			await this.vault.create(path, content);
 		}
 	}
 
 	private async deleteFile(path: string): Promise<void> {
-		// @ts-ignore
-		const file = app.vault.getAbstractFileByPath(path);
-		if (file) {
-			// @ts-ignore
-			await app.vault.delete(file);
+		const file = this.vault.getAbstractFileByPath(path);
+		if (file instanceof TFile) {
+			await this.vault.delete(file);
 		}
 	}
 
-	private async createDir(path: string): Promise<void> {
-		// @ts-ignore
-		await app.vault.createFolder(path);
-	}
-
 	private async listFiles(dirPath: string): Promise<string[]> {
-		// @ts-ignore
-		const folder = app.vault.getAbstractFileByPath(dirPath);
-		if (!folder || folder.constructor.name !== 'TFolder') return [];
-		// @ts-ignore
-		return folder.children.filter((f) => f.constructor.name === 'TFile').map((f) => f.name);
+		const folder = this.vault.getAbstractFileByPath(dirPath);
+		if (!(folder instanceof TFolder)) return [];
+		return folder.children
+			.filter((f) => f instanceof TFile)
+			.map((f) => (f as TFile).name);
 	}
 }
