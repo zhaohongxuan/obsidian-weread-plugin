@@ -401,6 +401,7 @@ export type Highlight = {
 	refMpReviewId?: string;
 	isPopular?: boolean;
 	popularCount?: number;
+	isUserHighlight?: boolean;
 };
 
 export type BookReview = {
