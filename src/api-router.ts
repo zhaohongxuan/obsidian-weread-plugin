@@ -158,8 +158,12 @@ class ApiRouter {
 		for (let i = 0; i < chapterUids.length; i += batchSize) {
 			const batch = chapterUids.slice(i, i + batchSize);
 			const promises = batch.map(async (chapterUid) => {
-				const resp = await this.getBestBookmarks(bookId, chapterUid);
-				return { chapterUid, items: resp?.items ?? [] };
+				try {
+					const resp = await this.getBestBookmarks(bookId, chapterUid);
+					return { chapterUid, items: resp?.items ?? [] };
+				} catch (e) {
+					throw { chapterUid, error: e };
+				}
 			});
 
 			const settled = await Promise.allSettled(promises);
@@ -167,7 +171,8 @@ class ApiRouter {
 				if (result.status === 'fulfilled') {
 					results.set(result.value.chapterUid, result.value.items);
 				} else {
-					console.warn(`[weread plugin] 获取章节热门划线失败: chapterUid=${result.reason}`);
+					const { chapterUid } = result.reason as { chapterUid: number; error: unknown };
+					console.warn(`[weread plugin] 获取章节热门划线失败: chapterUid=${chapterUid}`, result.reason);
 				}
 			}
 		}
