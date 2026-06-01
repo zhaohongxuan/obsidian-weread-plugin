@@ -129,8 +129,10 @@ export default class ApiManager {
 			if (resp.json && resp.json.books !== undefined) {
 				console.log('[weread plugin] Cookie 有效，书籍数:', resp.json.books.length);
 				settingsStore.actions.setIsCookieValid(true);
-				// 自动获取 API Key
-				this.fetchAndSaveApiKey().catch((e) => console.debug('[weread plugin] 自动获取 API Key 失败', e));
+				// 只有在未配置 API Key 时才自动获取
+				if (!get(settingsStore).wereadApiKey) {
+					this.fetchAndSaveApiKey().catch((e) => console.debug('[weread plugin] 自动获取 API Key 失败', e));
+				}
 				return true;
 			}
 
