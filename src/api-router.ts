@@ -142,6 +142,39 @@ class ApiRouter {
 		return undefined;
 	}
 
+	/**
+	 * 批量获取热门划线（按章节）
+	 * @param bookId 书籍 ID
+	 * @param chapterUids 章节 UID 数组
+	 * @param batchSize 每批数量，默认 5
+	 */
+	async getBestBookmarksBatch(
+		bookId: string,
+		chapterUids: number[],
+		batchSize = 5
+	): Promise<Map<number, { bookmarkId: string; range: string; markText: string; totalCount: number }[]>> {
+		const results = new Map<number, { bookmarkId: string; range: string; markText: string; totalCount: number }[]>();
+
+		for (let i = 0; i < chapterUids.length; i += batchSize) {
+			const batch = chapterUids.slice(i, i + batchSize);
+			const promises = batch.map(async (chapterUid) => {
+				const resp = await this.getBestBookmarks(bookId, chapterUid);
+				return { chapterUid, items: resp?.items ?? [] };
+			});
+
+			const settled = await Promise.allSettled(promises);
+			for (const result of settled) {
+				if (result.status === 'fulfilled') {
+					results.set(result.value.chapterUid, result.value.items);
+				} else {
+					console.warn(`[weread plugin] 获取章节热门划线失败: chapterUid=${result.reason}`);
+				}
+			}
+		}
+
+		return results;
+	}
+
 	async getPublicReviews(bookId: string): Promise<BookReviewResponse | undefined> {
 		if (this.useV2()) {
 			try {
