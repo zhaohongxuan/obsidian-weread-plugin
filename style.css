@@ -3374,10 +3374,13 @@
 
 .weread-book-detail-rating-icon {
 	color: var(--color-orange);
+	flex-shrink: 0;
+	margin-right: -8px;
 }
 
 .weread-star {
 	color: var(--text-faint);
+	font-size: 0.9em;
 }
 
 .weread-star.is-filled {
@@ -3387,7 +3390,7 @@
 .weread-book-detail-rating-value {
 	font-weight: 600;
 	font-size: 0.95em;
-	margin-left: 4px;
+	margin-left: -2px;
 }
 
 .weread-book-detail-rating-count {
@@ -3960,6 +3963,38 @@
 	white-space: nowrap;
 	z-index: 100;
 	pointer-events: none;
+}
+
+/* ── 加载更多按钮 ────────────────────────────────────────────── */
+
+.weread-book-detail-load-more {
+	display: flex;
+	justify-content: center;
+	padding: 16px 0;
+	margin-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.weread-book-detail-load-more-btn {
+	padding: 8px 16px;
+	border-radius: 6px;
+	border: 1px solid var(--interactive-accent);
+	background: transparent;
+	color: var(--interactive-accent);
+	font-size: 0.9em;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.weread-book-detail-load-more-btn:hover:not(:disabled) {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.weread-book-detail-load-more-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 /* ── 悬浮按钮 ──────────────────────────────────────────────── */
