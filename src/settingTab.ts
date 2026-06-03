@@ -1,4 +1,4 @@
-import WereadPlugin from 'main';
+import WereadPlugin from '../main';
 import {
 	App,
 	ExtraButtonComponent,

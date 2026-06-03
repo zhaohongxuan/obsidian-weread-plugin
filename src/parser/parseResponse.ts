@@ -14,7 +14,7 @@ import type {
 	PopularChapterHighlight,
 	RefBlockDetail,
 	Review
-} from 'src/models';
+} from '../models';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import * as CryptoJS from 'crypto-js';
 import { settingsStore } from '../settings';
