@@ -185,6 +185,9 @@ export class WereadBookDetailView extends ItemView {
 		this.renderHeader();
 		this.renderTabBar();
 		this.renderContent();
+
+		// 每次渲染后重新创建悬浮按钮
+		this.renderFloatingButton();
 	}
 
 	private renderLoadingState(): void {
@@ -193,6 +196,7 @@ export class WereadBookDetailView extends ItemView {
 		this.contentChildEl.empty();
 		const wrap = this.contentChildEl.createDiv({ cls: 'weread-book-detail-status' });
 		wrap.createDiv({ cls: 'weread-book-detail-loading', text: '正在加载...' });
+		this.renderFloatingButton();
 	}
 
 	private renderEmptyState(message: string): void {
@@ -201,6 +205,7 @@ export class WereadBookDetailView extends ItemView {
 		this.contentChildEl.empty();
 		const wrap = this.contentChildEl.createDiv({ cls: 'weread-book-detail-status' });
 		wrap.createDiv({ cls: 'weread-book-detail-empty', text: message });
+		this.renderFloatingButton();
 	}
 
 	private renderErrorState(): void {
@@ -228,6 +233,33 @@ export class WereadBookDetailView extends ItemView {
 		} else {
 			new Notice('本地文件不存在');
 		}
+	}
+
+	private async openLocalFileInCurrentLeaf(): Promise<void> {
+		if (!this.localFilePath) return;
+		const file = this.app.vault.getAbstractFileByPath(this.localFilePath);
+		if (file instanceof TFile) {
+			await this.leaf.openFile(file);
+		} else {
+			new Notice('本地文件不存在');
+		}
+	}
+
+	private renderFloatingButton(): void {
+		if (!this.localFilePath) return;
+
+		// 移除旧的悬浮按钮
+		const existingBtn = this.contentEl.querySelector('.weread-floating-btn');
+		if (existingBtn) {
+			existingBtn.remove();
+		}
+
+		// 创建新的悬浮按钮
+		this.contentEl.style.position = 'relative';
+		const floatingBtn = this.contentEl.createDiv({ cls: 'weread-floating-btn' });
+		setIcon(floatingBtn, 'file-text');
+		floatingBtn.setAttr('aria-label', '查看本地笔记');
+		floatingBtn.addEventListener('click', () => this.openLocalFileInCurrentLeaf());
 	}
 
 	private renderHeader(): void {
@@ -404,13 +436,6 @@ export class WereadBookDetailView extends ItemView {
 			refreshBtn.removeClass('is-spinning');
 			this.render();
 		});
-		if (hasLocal) {
-			const localBtn = bar.createEl('button', { cls: 'weread-book-detail-tab-action' });
-			localBtn.style.marginLeft = '4px';
-			setIcon(localBtn, 'file-text');
-			localBtn.setAttr('title', '打开本地笔记');
-			localBtn.addEventListener('click', () => this.openLocalFileIfExists());
-		}
 	}
 
 	// ── Content Router ──────────────────────────────────────────

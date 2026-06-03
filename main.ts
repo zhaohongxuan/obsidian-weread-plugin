@@ -329,16 +329,22 @@ export default class WereadPlugin extends Plugin {
 		workspace.revealLeaf(leaf);
 	}
 
-	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string) {
+	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string, replaceCurrentLeaf = false) {
 		const { workspace } = this.app;
 
-		// 优先复用已有 detail leaf，否则新建一个 tab，不覆盖 sourceLeaf
 		let leaf: WorkspaceLeaf | null = null;
-		const existingLeaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
-		if (existingLeaves.length > 0) {
-			leaf = existingLeaves[0];
+
+		if (replaceCurrentLeaf) {
+			// 使用 getLeaf(false) 获取当前活跃的 leaf，不创建新 leaf
+			leaf = workspace.getLeaf(false);
 		} else {
-			leaf = workspace.getLeaf('tab');
+			// 原有逻辑：优先复用已有 detail leaf，否则新建一个 tab
+			const existingLeaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
+			if (existingLeaves.length > 0) {
+				leaf = existingLeaves[0];
+			} else {
+				leaf = workspace.getLeaf('tab');
+			}
 		}
 
 		if (leaf) {
@@ -436,13 +442,14 @@ export default class WereadPlugin extends Plugin {
 				viewContentEl.style.position = 'relative';
 				const btn = viewContentEl.createDiv({ cls: 'weread-floating-btn' });
 				setIcon(btn, 'book-open');
-				btn.setAttr('title', '查看微信读书详情');
+				btn.setAttr('aria-label', '查看微信读书详情');
 				btn.addEventListener('click', () => {
 					this.activateBookDetailView(
 						annotation.bookId,
 						annotation.title || '',
 						annotation.cover || '',
-						file.path
+						file.path,
+						true // 在当前标签页打开，替换当前内容
 					);
 				});
 				currentBtn = btn;
