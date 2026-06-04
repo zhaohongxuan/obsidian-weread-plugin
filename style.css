@@ -3271,6 +3271,7 @@
 	box-sizing: border-box;
 	width: 100%;
 	max-width: 100%;
+	padding: 0 !important;
 }
 
 /* Header */
@@ -3332,6 +3333,12 @@
 	align-items: flex-start;
 }
 
+@media (max-width: 768px) {
+	.weread-book-detail-header-top {
+		gap: 10px;
+	}
+}
+
 /* Keep horizontal layout on all screen sizes */
 
 .weread-book-detail-cover {
@@ -3344,14 +3351,14 @@
 
 @media (max-width: 768px) {
 	.weread-book-detail-cover {
-		height: 150px;
+		height: 180px;
 		width: auto;
 	}
 }
 
 @media (max-width: 480px) {
 	.weread-book-detail-cover {
-		height: 120px;
+		height: 150px;
 	}
 }
 
@@ -3547,13 +3554,13 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 4px 10px;
+	gap: 4px 12px;
 	margin-top: 4px;
 }
 
 @media (max-width: 768px) {
 	.weread-book-detail-metadata {
-		gap: 2px 8px;
+		gap: 3px 10px;
 		font-size: 0.75em;
 	}
 }
@@ -3561,15 +3568,22 @@
 .weread-book-detail-meta-item {
 	display: inline-flex;
 	align-items: center;
-	gap: 3px;
-	font-size: 0.8em;
+	gap: 4px;
+	font-size: 0.82em;
 	color: var(--text-muted);
 	white-space: nowrap;
 }
 
+.weread-book-detail-meta-item .svg-icon {
+	width: 13px;
+	height: 13px;
+	flex-shrink: 0;
+	position: relative;
+	top: 0;
+}
+
 .weread-book-detail-meta-item::before {
-	content: '·';
-	opacity: 0.4;
+	content: none;
 }
 
 .weread-book-detail-meta-item:first-child::before {
@@ -3590,7 +3604,9 @@
 	display: flex;
 	align-items: center;
 	gap: 12px;
-	margin-top: 4px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--background-modifier-border);
 	flex-wrap: wrap;
 }
 
@@ -3605,7 +3621,7 @@
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	font-size: 0.85em;
+	font-size: 0.82em;
 	color: var(--text-muted);
 }
 
@@ -3654,18 +3670,17 @@
 /* Tab Bar */
 .weread-book-detail-tabbar {
 	display: flex;
-	padding: 8px 16px 8px 16px;
+	padding: 6px 16px;
 	background: var(--background-primary);
 	flex-wrap: wrap;
 	gap: 4px;
 	position: sticky;
 	top: 0;
 	z-index: 20;
-	border-bottom: 1px solid var(--background-modifier-border);
+	border: none !important;
 	margin: 0;
 	width: 100%;
 	box-sizing: border-box;
-	border-top: none;
 	overflow-x: hidden;
 }
 
@@ -3676,7 +3691,7 @@
 	right: 0;
 	top: 0;
 	transform: none;
-	border-bottom: 1px solid var(--background-modifier-border);
+	border: none !important;
 	margin: 0;
 	width: auto;
 }
@@ -3741,8 +3756,8 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 30px;
-	height: 30px;
+	width: 36px;
+	height: 36px;
 	padding: 0;
 	border: none;
 	background: none;
@@ -3751,6 +3766,11 @@
 	border-radius: 50%;
 	transition: color 0.15s, background 0.15s;
 	position: relative;
+}
+
+.weread-book-detail-tab-action .svg-icon {
+	width: 18px;
+	height: 18px;
 }
 
 .weread-book-detail-tab-action:hover {
@@ -4126,9 +4146,13 @@
 	width: 22px;
 	height: 22px;
 	padding: 0;
-	border: none;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	-webkit-appearance: none !important;
+	appearance: none !important;
 	border-radius: 4px;
-	background: transparent;
+	background: transparent !important;
 	color: var(--text-muted);
 	cursor: pointer;
 	flex-shrink: 0;
@@ -4195,8 +4219,8 @@
 	z-index: 10;
 	bottom: 120px;
 	right: 24px;
-	width: 48px;
-	height: 48px;
+	width: 36px;
+	height: 36px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -4215,8 +4239,21 @@
 }
 
 .weread-floating-btn svg {
-	width: 24px;
-	height: 24px;
+	width: 18px;
+	height: 18px;
+}
+
+/* 移动端悬浮按钮放大，方便点击 */
+.is-mobile .weread-floating-btn {
+	width: 52px;
+	height: 52px;
+	bottom: 100px;
+	right: 20px;
+}
+
+.is-mobile .weread-floating-btn svg {
+	width: 26px;
+	height: 26px;
 }
 
 /* ── 浮层面板 ──────────────────────────────────────────────── */

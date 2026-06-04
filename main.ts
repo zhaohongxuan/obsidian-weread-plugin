@@ -128,7 +128,7 @@ export default class WereadPlugin extends Plugin {
 		);
 		this.registerView(
 			WEREAD_BOOK_DETAIL_VIEW_ID,
-			(leaf) => new WereadBookDetailView(leaf, apiRouter)
+			(leaf) => new WereadBookDetailView(leaf, apiRouter, this)
 		);
 
 		this.addCommand({
