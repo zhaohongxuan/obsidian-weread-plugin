@@ -3293,10 +3293,6 @@
 		padding: 12px 16px;
 		width: calc(100% - 24px);
 	}
-
-	.weread-book-detail-tabbar {
-		width: calc(100% - 24px);
-	}
 }
 
 @media (max-width: 480px) {
@@ -3667,7 +3663,7 @@
 	z-index: 20;
 	border-bottom: 1px solid var(--background-modifier-border);
 	margin: 0;
-	width: calc(100% - 32px);
+	width: 100%;
 	box-sizing: border-box;
 	border-top: none;
 	overflow-x: hidden;
@@ -3676,10 +3672,13 @@
 /* Tab bar 固定在顶部时的样式 */
 .weread-book-detail-tabbar.is-fixed {
 	position: fixed;
-	left: 50%;
-	transform: translateX(-50%);
-	max-width: calc(100% - 32px);
+	left: 0;
+	right: 0;
+	top: 0;
+	transform: none;
 	border-bottom: 1px solid var(--background-modifier-border);
+	margin: 0;
+	width: auto;
 }
 
 @media (max-width: 480px) {
@@ -3804,10 +3803,6 @@
 
 @media (max-width: 480px) {
 	.weread-book-detail-header {
-		width: calc(100% - 16px);
-	}
-
-	.weread-book-detail-tabbar {
 		width: calc(100% - 16px);
 	}
 

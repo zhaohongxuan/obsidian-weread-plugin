@@ -68,6 +68,24 @@ export class WereadBookDetailView extends ItemView {
 		return 'book-open';
 	}
 
+	private updateTabTitle(): void {
+		// 获取当前视图的容器
+		if (!this.containerEl || !this.bookTitle) return;
+
+		// 方案1: 通过 tab-title 类选择器找到标题元素
+		let titleEl = this.containerEl.parentElement?.querySelector<HTMLElement>('.tab-title');
+
+		// 方案2: 如果找不到，尝试找到最接近的 tab-header
+		if (!titleEl) {
+			const tabHeader = this.containerEl.closest('.workspace-leaf')?.querySelector<HTMLElement>('.tab-title');
+			titleEl = tabHeader;
+		}
+
+		if (titleEl) {
+			titleEl.textContent = this.bookTitle;
+		}
+	}
+
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-book-detail-view');
@@ -163,6 +181,9 @@ export class WereadBookDetailView extends ItemView {
 	// ── 主渲染方法 ──────────────────────────────────────────────
 
 	private render(): void {
+		// 更新标签页标题
+		this.updateTabTitle();
+
 		if (this.loading) {
 			this.renderLoadingState();
 			return;
