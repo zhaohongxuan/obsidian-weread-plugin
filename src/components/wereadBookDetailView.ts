@@ -249,14 +249,13 @@ export class WereadBookDetailView extends ItemView {
 		if (!this.localFilePath) return;
 
 		// 移除旧的悬浮按钮
-		const existingBtn = this.contentEl.querySelector('.weread-floating-btn');
+		const existingBtn = this.containerEl.querySelector('.weread-floating-btn');
 		if (existingBtn) {
 			existingBtn.remove();
 		}
 
-		// 创建新的悬浮按钮
-		this.contentEl.style.position = 'relative';
-		const floatingBtn = this.contentEl.createDiv({ cls: 'weread-floating-btn' });
+		// 创建新的悬浮按钮（使用 containerEl 而不是 contentEl，以便使用 position: fixed）
+		const floatingBtn = this.containerEl.createDiv({ cls: 'weread-floating-btn' });
 		setIcon(floatingBtn, 'file-text');
 		floatingBtn.setAttr('aria-label', '查看本地笔记');
 		floatingBtn.addEventListener('click', () => this.openLocalFileInCurrentLeaf());
@@ -282,7 +281,10 @@ export class WereadBookDetailView extends ItemView {
 		// 右侧描述区：标题、作者、评分、进度、统计、简介
 		const info = topRow.createDiv({ cls: 'weread-book-detail-info' });
 
-		const titleRow = info.createDiv({ cls: 'weread-book-detail-title-row' });
+		// ============ 主要内容（始终显示） ============
+		const infoMain = info.createDiv({ cls: 'weread-book-detail-info-main' });
+
+		const titleRow = infoMain.createDiv({ cls: 'weread-book-detail-title-row' });
 		const titleEl = titleRow.createEl('h2', {
 			text: this.detail?.title || this.bookTitle,
 			cls: 'weread-book-detail-title'
@@ -295,7 +297,7 @@ export class WereadBookDetailView extends ItemView {
 
 		const author = this.detail?.author || '';
 		if (author) {
-			const authorRow = info.createDiv({ cls: 'weread-book-detail-author' });
+			const authorRow = infoMain.createDiv({ cls: 'weread-book-detail-author' });
 			setIcon(authorRow.createSpan(), 'user');
 			authorRow.createSpan({ text: ` ${author}` });
 		}
@@ -303,7 +305,7 @@ export class WereadBookDetailView extends ItemView {
 		// 评分（newRating 需除以 100，保留 1 位小数）
 		if (this.detail?.newRating) {
 			const rating = this.detail.newRating / 100;
-			const ratingRow = info.createDiv({ cls: 'weread-book-detail-rating' });
+			const ratingRow = infoMain.createDiv({ cls: 'weread-book-detail-rating' });
 			setIcon(ratingRow.createSpan({ cls: 'weread-book-detail-rating-icon' }), 'star');
 			for (let i = 1; i <= 5; i++) {
 				const star = ratingRow.createSpan({ cls: 'weread-star' });
@@ -323,10 +325,13 @@ export class WereadBookDetailView extends ItemView {
 			}
 		}
 
+		// ============ 展开内容（始终显示） ============
+		const infoExpand = info.createDiv({ cls: 'weread-book-detail-info-expand' });
+
 		// 阅读进度
 		const progressValue = this.getProgressPercent();
 		if (progressValue !== null) {
-			const progressRow = info.createDiv({ cls: 'weread-book-detail-progress' });
+			const progressRow = infoExpand.createDiv({ cls: 'weread-book-detail-progress' });
 			setIcon(progressRow.createSpan({ cls: 'weread-book-detail-progress-icon' }), 'trending-up');
 			const bar = progressRow.createDiv({ cls: 'weread-book-detail-progress-bar' });
 			bar.createDiv({
@@ -339,44 +344,82 @@ export class WereadBookDetailView extends ItemView {
 		}
 
 		// 元数据行
-		this.renderMetadataRow(info);
-		// 快捷统计 + 本地文件链接
-		const statsRow = info.createDiv({ cls: 'weread-book-detail-stats-row' });
+		const metaRow = infoExpand.createDiv({ cls: 'weread-book-detail-metadata' });
+		const metaHasContent = this.renderMetadataRowContent(metaRow);
+		if (!metaHasContent) {
+			metaRow.remove();
+		}
+
+		// 快捷统计
+		const statsRow = infoExpand.createDiv({ cls: 'weread-book-detail-stats-row' });
 		const highlightCount = this.highlightResp?.updated?.length || 0;
 		const reviewCount = this.reviewResp?.totalCount || 0;
 		const popularCount = this.popularResp?.items?.length || 0;
 
-		this.createStatBadge(statsRow, 'highlighter', `划线 ${highlightCount}`);
-		this.createStatBadge(statsRow, 'pencil', `笔记 ${reviewCount}`);
-		if (popularCount > 0) {
-			this.createStatBadge(statsRow, 'flame', `热门 ${popularCount}`);
+		if (highlightCount > 0 || reviewCount > 0 || popularCount > 0) {
+			this.createStatBadge(statsRow, 'highlighter', `划线 ${highlightCount}`);
+			this.createStatBadge(statsRow, 'pencil', `笔记 ${reviewCount}`);
+			if (popularCount > 0) {
+				this.createStatBadge(statsRow, 'flame', `热门 ${popularCount}`);
+			}
+		} else {
+			statsRow.remove();
 		}
 
-		// 简介（放入 info 右侧描述区，无分割线）
+		// 简介（放入展开区）
 		const intro = this.detail?.intro?.trim();
 		if (intro) {
-			const introText = info.createDiv({
+			const introText = infoExpand.createDiv({
 				cls: 'weread-book-detail-intro-text',
 				text: intro
 			});
 			if (intro.length > 200) {
 				introText.addClass('is-collapsed');
-				const toggleBtn = info.createEl('button', {
-					text: '展开',
-					cls: 'weread-book-detail-intro-toggle'
-				});
-				toggleBtn.addEventListener('click', () => {
-					const collapsed = introText.hasClass('is-collapsed');
-					if (collapsed) {
-						introText.removeClass('is-collapsed');
-						toggleBtn.textContent = '收起';
-					} else {
-						introText.addClass('is-collapsed');
-						toggleBtn.textContent = '展开';
-					}
-				});
 			}
 		}
+	}
+
+	private renderMetadataRowContent(container: HTMLElement): boolean {
+		// 阅读状态
+		const finished = this.progress?.book?.finishTime || this.detail?.finishReading;
+		const isReading = this.progress?.book?.progress && this.progress.book.progress > 0;
+		if (finished) {
+			this.createMetaItem(container, 'check-circle', '已读完', 'weread-book-detail-status-finished');
+		} else if (isReading) {
+			this.createMetaItem(container, 'book-open', '阅读中', 'weread-book-detail-status-reading');
+		}
+
+		// 阅读时长
+		const readingTime = this.progress?.book?.readingTime;
+		if (readingTime && readingTime > 0) {
+			const hours = Math.floor(readingTime / 3600);
+			const mins = Math.floor((readingTime % 3600) / 60);
+			const timeStr = hours > 0 ? `${hours}时${mins}分` : `${mins}分钟`;
+			this.createMetaItem(container, 'clock', `阅读 ${timeStr}`);
+		}
+
+		// 开始阅读日期
+		const startTime = this.progress?.book?.startReadingTime;
+		if (startTime && startTime > 0) {
+			const startDate = new Date(startTime * 1000).toISOString().slice(0, 10);
+			this.createMetaItem(container, 'play-circle', `开始 ${startDate}`);
+		}
+
+		// 读完日期
+		const finishTime = this.progress?.book?.finishTime;
+		if (finishTime && finishTime > 0) {
+			const finishDate = new Date(finishTime * 1000).toISOString().slice(0, 10);
+			this.createMetaItem(container, 'flag', `读完 ${finishDate}`);
+		}
+
+		// 出版社
+		const publisher = this.detail?.publisher;
+		if (publisher) {
+			this.createMetaItem(container, 'building', publisher);
+		}
+
+		// 检查是否有内容
+		return container.children.length > 0;
 	}
 
 	private createStatBadge(container: HTMLElement, icon: string, text: string, clickable = false): void {
@@ -395,14 +438,14 @@ export class WereadBookDetailView extends ItemView {
 
 	private renderTabBar(): void {
 		const bar = this.tabBarEl;
-		const hasLocal = !!this.localFilePath;
 
 		for (const tab of TABS) {
 			const btn = bar.createEl('button', {
 				cls: 'weread-book-detail-tab' + (this.currentTab === tab.id ? ' is-active' : '')
 			});
 			setIcon(btn, tab.icon);
-			btn.createSpan({ text: ` ${tab.label}` });
+			const labelSpan = btn.createSpan({ text: ` ${tab.label}` });
+			labelSpan.addClass('weread-book-detail-tab-label');
 			btn.addEventListener('click', () => {
 				if (this.currentTab === tab.id) return;
 				this.currentTab = tab.id;
@@ -901,67 +944,6 @@ export class WereadBookDetailView extends ItemView {
 		item.setAttr('title', text);
 	}
 
-	private renderMetadataRow(container: HTMLElement): void {
-		const meta = container.createDiv({ cls: 'weread-book-detail-metadata' });
-
-		// 阅读状态
-		const finished = this.progress?.book?.finishTime || this.detail?.finishReading;
-		const isReading = this.progress?.book?.progress && this.progress.book.progress > 0;
-		if (finished) {
-			this.createMetaItem(meta, 'check-circle', '已读完', 'weread-book-detail-status-finished');
-		} else if (isReading) {
-			this.createMetaItem(meta, 'book-open', '阅读中', 'weread-book-detail-status-reading');
-		}
-
-		// 阅读时长
-		const readingTime = this.progress?.book?.readingTime;
-		if (readingTime && readingTime > 0) {
-			const hours = Math.floor(readingTime / 3600);
-			const mins = Math.floor((readingTime % 3600) / 60);
-			const timeStr = hours > 0 ? `${hours}时${mins}分` : `${mins}分钟`;
-			this.createMetaItem(meta, 'clock', `阅读 ${timeStr}`);
-		}
-
-		// 开始阅读日期
-		const startTime = this.progress?.book?.startReadingTime;
-		if (startTime && startTime > 0) {
-			const startDate = new Date(startTime * 1000).toISOString().slice(0, 10);
-			this.createMetaItem(meta, 'play-circle', `开始 ${startDate}`);
-		}
-
-		// 读完日期
-		const finishTime = this.progress?.book?.finishTime;
-		if (finishTime && finishTime > 0) {
-			const finishDate = new Date(finishTime * 1000).toISOString().slice(0, 10);
-			this.createMetaItem(meta, 'flag', `读完 ${finishDate}`);
-		}
-
-		// 出版社
-		const publisher = this.detail?.publisher;
-		if (publisher) {
-			this.createMetaItem(meta, 'building', publisher);
-		}
-
-		// 分类
-		const category = this.detail?.category;
-		if (category) {
-			this.createMetaItem(meta, 'folder', category);
-		}
-
-		// 字数
-		const totalWords = this.detail?.totalWords;
-		if (totalWords && totalWords > 0) {
-			const wordsStr = totalWords >= 10000 ? `${(totalWords / 10000).toFixed(1)}万字` : `${totalWords}字`;
-			this.createMetaItem(meta, 'file-text', `字数 ${wordsStr}`);
-		}
-
-		// 出版时间（仅显示日期）
-		const publishTime = this.detail?.publishTime;
-		if (publishTime) {
-			const pubDate = publishTime.length > 10 ? publishTime.slice(0, 10) : publishTime;
-			this.createMetaItem(meta, 'calendar', `出版 ${pubDate}`);
-		}
-	}
 
 	private getProgressPercent(): number | null {
 		if (this.progress?.book?.progress !== undefined) {
