@@ -217,19 +217,9 @@ export default class SyncNotebooks {
 	private async filterNoteMetas(force = false, metaDataArr: Metadata[]): Promise<Metadata[]> {
 		const localFiles: AnnotationFile[] = await this.fileManager.getNotebookFiles();
 		const duplicateBookSet = this.getDuplicateBooks(metaDataArr);
-		const settings = get(settingsStore);
-		const filterContext = createSyncFilterContext(settings);
+		const settingsFilteredMetaArr = this.filterMetasByCurrentSettings(metaDataArr, true);
 		const filterMetaArr: Metadata[] = [];
-		for (const metaData of metaDataArr) {
-			const syncFilter = evaluateMetadataSyncFilter(metaData, filterContext);
-			if (!syncFilter.includedByCurrentSettings) {
-				console.debug(
-					`[weread plugin] skip book ${
-						metaData.title
-					}, reasons: ${syncFilter.reasonLabels.join(', ')}`
-				);
-				continue;
-			}
+		for (const metaData of settingsFilteredMetaArr) {
 			const localNotebookFile = await this.getLocalNotebookFile(metaData, localFiles, force);
 			if (localNotebookFile && !localNotebookFile.new) {
 				continue;
@@ -243,6 +233,25 @@ export default class SyncNotebooks {
 		return filterMetaArr;
 	}
 
+	private filterMetasByCurrentSettings(metaDataArr: Metadata[], logSkipped = false): Metadata[] {
+		const settings = get(settingsStore);
+		const filterContext = createSyncFilterContext(settings);
+		return metaDataArr.filter((metaData) => {
+			const syncFilter = evaluateMetadataSyncFilter(metaData, filterContext);
+			if (syncFilter.includedByCurrentSettings) {
+				return true;
+			}
+			if (logSkipped) {
+				console.debug(
+					`[weread plugin] skip book ${
+						metaData.title
+					}, reasons: ${syncFilter.reasonLabels.join(', ')}`
+				);
+			}
+			return false;
+		});
+	}
+
 	private async getALlMetadata() {
 		const notebookResp = await this.apiManager.getNotebooksWithRetry();
 		const metaDataArr = notebookResp.map((noteBook) => parseMetadata(noteBook));
@@ -250,7 +259,9 @@ export default class SyncNotebooks {
 	}
 
 	private async saveToJounal(journalDate: string, metaDataArr: Metadata[]) {
-		const metaDataArrInDate = metaDataArr.filter((meta) => meta.lastReadDate === journalDate);
+		const metaDataArrInDate = this.filterMetasByCurrentSettings(metaDataArr).filter(
+			(meta) => meta.lastReadDate === journalDate
+		);
 
 		const notebooksInDate = [];
 		for (const meta of metaDataArrInDate) {
