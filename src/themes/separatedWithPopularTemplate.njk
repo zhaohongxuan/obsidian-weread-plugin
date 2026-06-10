@@ -34,7 +34,7 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% endif %}
 
 {% set hasPopularHighlights = false %}
-{% if popularHighlights and popularHighlights.length > 0 %}
+{% if syncPopularHighlightsToggle and popularHighlights and popularHighlights.length > 0 %}
 {% for chapter in popularHighlights %}
   {% if chapter.highlights and chapter.highlights.length > 0 %}
     {% set hasPopularHighlights = true %}
@@ -58,7 +58,7 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% endfor %}
 {% endif %}
 {% endfor %}
-{% else %}
+{% elif syncPopularHighlightsToggle %}
 > 暂无热门划线
 {% endif %}
 

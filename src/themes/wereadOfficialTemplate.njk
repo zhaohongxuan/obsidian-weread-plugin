@@ -30,11 +30,21 @@ lastReadDate: {{ metaData.lastReadDate }}
 {{ highlight.createTime }} 发表想法
 {{ highlight.reviewContent }}
 
+{% if syncPopularHighlightsToggle and highlight.isPopular %}
 > [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+> 🔥 {{ highlight.popularCount }} 人共读
+{% else %}
+> [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+{% endif %}
 
 {% else %}
 
+{% if syncPopularHighlightsToggle and highlight.isPopular %}
 > [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+> 🔥 {{ highlight.popularCount }} 人共读
+{% else %}
+> [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+{% endif %}
 
 {% endif %}
 {% endfor %}

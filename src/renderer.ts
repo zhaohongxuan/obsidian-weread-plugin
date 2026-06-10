@@ -64,14 +64,15 @@ export class Renderer {
 	render(entry: Notebook): string {
 		const { metaData, chapterHighlights, bookReview, popularHighlights } = entry;
 
+		const settings = get(settingsStore);
 		const context: RenderTemplate = {
 			metaData,
 			chapterHighlights,
 			bookReview,
-			popularHighlights
+			popularHighlights,
+			syncPopularHighlightsToggle: settings.syncPopularHighlightsToggle
 		};
 		console.log('[weread renderer] popularHighlights in context:', popularHighlights?.length ?? 'undefined');
-		const settings = get(settingsStore);
 		// Use active theme's template and trimBlocks, fallback to legacy settings
 		const activeTheme = settings.themes?.find((t) => t.id === settings.activeThemeId);
 		// For legacy themes (source === 'legacy' or id === 'legacy_template'), always use the top-level settings.template
@@ -110,11 +111,13 @@ export class Renderer {
 	renderWithTemplate(templateStr: string, entry: Notebook, trimBlocks = false): string {
 		const { metaData, chapterHighlights, bookReview, popularHighlights } = entry;
 
+		const settings = get(settingsStore);
 		const context: RenderTemplate = {
 			metaData,
 			chapterHighlights,
 			bookReview,
-			popularHighlights
+			popularHighlights,
+			syncPopularHighlightsToggle: settings.syncPopularHighlightsToggle
 		};
 
 		// 创建临时环境以支持 trimBlocks 配置

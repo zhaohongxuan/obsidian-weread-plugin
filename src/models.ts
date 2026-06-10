@@ -452,6 +452,7 @@ export type RenderTemplate = {
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
 	popularHighlights?: PopularChapterHighlight[];
+	syncPopularHighlightsToggle?: boolean;
 };
 
 export type DailyNoteReferenece = {
