@@ -94,8 +94,9 @@ export class WereadBookshelfView extends ItemView {
 		private bookshelfService: WereadBookshelfService
 	) {
 		super(leaf);
-		this.previousCookieValid = get(settingsStore).isCookieValid;
-		this.previousApiKey = get(settingsStore).wereadApiKey;
+		const settings = get(settingsStore);
+		this.previousCookieValid = settings.isCookieValid;
+		this.previousApiKey = settings.wereadApiKey;
 	}
 
 	getViewType(): string {
@@ -160,21 +161,28 @@ export class WereadBookshelfView extends ItemView {
 			cls: 'weread-bookshelf-filter-dropdowns'
 		});
 
-		const categorySelect = filterDropdowns.createEl('select', {
-			cls: 'dropdown',
-			attr: { 'aria-label': '筛选书籍类型' }
-		});
-		[
-			['all', '全部类型'],
-			['book', '图书'],
-			['article', '公众号']
-		].forEach(([value, label]) => {
-			categorySelect.createEl('option', { value, text: label });
-		});
-		categorySelect.onchange = () => {
-			this.categoryFilter = categorySelect.value as CategoryFilter;
-			this.renderBooks();
-		};
+		const saveArticleToggle = get(settingsStore).saveArticleToggle;
+		// 只有开启公众号同步时才显示类型筛选下拉框
+		if (saveArticleToggle) {
+			const categorySelect = filterDropdowns.createEl('select', {
+				cls: 'dropdown',
+				attr: { 'aria-label': '筛选书籍类型' }
+			});
+			[
+				['all', '全部类型'],
+				['book', '图书'],
+				['article', '公众号']
+			].forEach(([value, label]) => {
+				categorySelect.createEl('option', { value, text: label });
+			});
+			categorySelect.onchange = () => {
+				this.categoryFilter = categorySelect.value as CategoryFilter;
+				this.renderBooks();
+			};
+		} else {
+			// 关闭公众号同步时，自动过滤掉公众号，只显示图书
+			this.categoryFilter = 'book';
+		}
 
 		const syncStatusSelect = filterDropdowns.createEl('select', {
 			cls: 'dropdown',
@@ -701,12 +709,18 @@ export class WereadBookshelfView extends ItemView {
 
 	private getFilteredBooks(): BookshelfBook[] {
 		const keyword = this.searchKeyword;
+		const saveArticleToggle = get(settingsStore).saveArticleToggle;
 		return [...this.shelfBooks]
 			.filter((book) => {
 				const searchMatched =
 					keyword.length === 0 ||
 					`${book.title} ${book.author}`.toLowerCase().includes(keyword);
 				if (!searchMatched) {
+					return false;
+				}
+
+				// 如果关闭了公众号同步，自动过滤掉公众号书籍
+				if (!saveArticleToggle && book.isArticle) {
 					return false;
 				}
 
