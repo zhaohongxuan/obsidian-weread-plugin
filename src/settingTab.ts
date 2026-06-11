@@ -1,6 +1,7 @@
-import WereadPlugin from 'main';
+import WereadPlugin from '../main';
 import {
 	App,
+	ExtraButtonComponent,
 	FuzzySuggestModal,
 	Modal,
 	Notice,
@@ -19,7 +20,7 @@ import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { ThemeManagerModal } from './components/themeManagerModal';
 
-import ApiManager from './api';
+import ApiRouter from './api-router';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
 import type { ReadingOpenMode, SyncMode, BookshelfSortMode, BookOpenMode } from './settings';
@@ -60,43 +61,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: '设置微信读书插件' });
 		this.preloadSelectableBooks();
 
-		// 登录设置仅在桌面端显示
-		if (Platform.isDesktopApp) {
-			this.showLoginMethod();
-		}
-
-		const isCookieValid = get(settingsStore).isCookieValid;
-		const loginMethod = get(settingsStore).loginMethod;
-
-		if (loginMethod === 'scan') {
-			if (Platform.isDesktopApp) {
-				if (isCookieValid) {
-					this.showLogout();
-				} else {
-					this.showLogin();
-				}
-			} else {
-				if (isCookieValid) {
-					this.showMobileLogout();
-				} else {
-					this.showMobileLogin();
-				}
-			}
-		} else {
-			this.showCookieCloudInfo();
-		}
-
-		this.showCookieStatus();
-		if (Platform.isDesktopApp) {
-			this.cookieAutoRefresh();
-			if (get(settingsStore).cookieAutoRefreshToggle) {
-				this.cookieRefreshInterval();
-			}
-		}
+		// API Key 设置始终可见（桌面端和移动端）
+		this.showApiKeySetting();
 
 		this.notebookFolder();
-		this.readingOpenModeSetting();
-		this.bookOpenModeSetting();
 		this.bookshelfSettings();
 		this.syncModeSettings();
 		this.scheduledSync();
@@ -256,6 +224,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private bookshelfSettings(): void {
 		new Setting(this.containerEl).setName('书架设置').setHeading();
+			this.readingOpenModeSetting();
+			this.bookOpenModeSetting();
+
 
 		new Setting(this.containerEl)
 			.setName('书架排序方式')
@@ -321,6 +292,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			this.saveArticleToggle();
 			this.noteCountLimit();
 		}
+		this.syncPopularHighlightsToggle();
 		this.renderSyncModeBookSelection(syncMode);
 	}
 
@@ -423,10 +395,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const settings = get(settingsStore);
 		if (
 			this.selectableBooksCache.length > 0 ||
-			this.selectableBooksLoadingPromise ||
-			!settings.isCookieValid ||
-			settings.cookies.length === 0
+			this.selectableBooksLoadingPromise
 		) {
+			return;
+		}
+		const hasApiKey = Boolean(settings.wereadApiKey);
+		const hasCookie = settings.isCookieValid && settings.cookies.length > 0;
+		if (!hasCookie && !hasApiKey) {
 			return;
 		}
 		this.selectableBooksLoadingPromise = this.fetchSelectableBooks()
@@ -487,6 +462,19 @@ export class WereadSettingsTab extends PluginSettingTab {
 					settingsStore.actions.setSaveArticleToggle(value);
 					this.display();
 				});
+			});
+	}
+
+	private syncPopularHighlightsToggle(): void {
+		new Setting(this.containerEl)
+			.setName('同步热门划线')
+			.setDesc('开启后同步每本书最多 20 条热门划线（按热度排序），需要 API Key，仅 V2 支持')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).syncPopularHighlightsToggle)
+					.onChange((value) => {
+						settingsStore.actions.setSyncPopularHighlightsToggle(value);
+					});
 			});
 	}
 	private saveReadingInfoToggle(): void {
@@ -813,20 +801,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl).setName('阅读统计').setHeading();
 
 		new Setting(this.containerEl)
-			.setName('微信读书 API Key')
-			.setDesc('用于调用阅读统计等高级接口，格式：wrk-xxxxxxxx。可在微信读书开放平台申请。')
-			.addText((text) => {
-				text.setPlaceholder('wrk-xxxxxxxx')
-					.setValue(get(settingsStore).wereadApiKey ?? '')
-					.onChange((value) => {
-						settingsStore.actions.setWereadApiKey(value.trim());
-					});
-				text.inputEl.type = 'password';
-				text.inputEl.style.width = '260px';
-				return text;
-			});
-
-		new Setting(this.containerEl)
 			.setName('Heatmap 起始年份')
 			.setDesc('全部 Tab 的 Heatmap 从该年份开始展示，留空则使用注册时间。例如：2019')
 			.addText((text) =>
@@ -839,6 +813,134 @@ export class WereadSettingsTab extends PluginSettingTab {
 					})
 			);
 
+	}
+	private showApiKeySetting(): void {
+		let apiKeyText: TextComponent;
+		let statusBtn: ExtraButtonComponent;
+
+		const applyStatus = (valid: boolean | null, btn?: ExtraButtonComponent) => {
+			const b = btn ?? statusBtn;
+			if (!b) return;
+			if (valid === true) {
+				b.setIcon('check-circle').setTooltip('API Key 有效');
+				b.extraSettingsEl.style.color = 'var(--color-green)';
+			} else if (valid === false) {
+				b.setIcon('x-circle').setTooltip('API Key 无效，请检查或重新获取');
+				b.extraSettingsEl.style.color = 'var(--color-red)';
+			} else {
+				b.setIcon('help-circle').setTooltip('API Key 状态未知，点击验证');
+				b.extraSettingsEl.style.color = 'var(--text-muted)';
+			}
+		};
+
+		const descFrag = document
+			.createRange()
+			.createContextualFragment(
+				`用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。点击「扫码获取」扫码登录后自动获取，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请。格式：wrk-xxxxxxxx。`
+			);
+
+		const setting = new Setting(this.containerEl)
+			.setName('微信读书 API Key')
+			.setDesc(descFrag)
+			.addText((text) => {
+				text.setPlaceholder('wrk-xxxxxxxx')
+					.setValue(get(settingsStore).wereadApiKey ?? '')
+					.onChange((value) => {
+						settingsStore.actions.setWereadApiKey(value.trim());
+						settingsStore.actions.setApiKeyValid(null);
+						applyStatus(null);
+					});
+				text.inputEl.type = 'password';
+				text.inputEl.style.width = '220px';
+				apiKeyText = text;
+				return text;
+			})
+			.addExtraButton((button) => {
+				button.setIcon('eye')
+					.setTooltip('显示/隐藏 API Key')
+					.onClick(() => {
+						const inputEl = apiKeyText.inputEl;
+						const isPassword = inputEl.type === 'password';
+						inputEl.type = isPassword ? 'text' : 'password';
+						button.setIcon(isPassword ? 'eye-off' : 'eye');
+					});
+				return button;
+			})
+			.addExtraButton((button) => {
+				statusBtn = button;
+				applyStatus(get(settingsStore).apiKeyValid, button);
+				return button;
+			});
+
+		const apiKey = get(settingsStore).wereadApiKey;
+
+		if (apiKey) {
+			setting.addButton((button) => {
+				button.setButtonText('注销')
+					.setTooltip('清除 API Key 和登录状态')
+					.onClick(async () => {
+						settingsStore.actions.clearCookies();
+						settingsStore.actions.setWereadApiKey('');
+						settingsStore.actions.setApiKeyValid(null);
+						new Notice('已注销，API Key 已清除');
+						this.display();
+					});
+				return button;
+			});
+
+			// 进入设置页时自动校验一次，结果更新到状态图标
+			statusBtn.setIcon('loader-2').setTooltip('验证中...');
+			statusBtn.extraSettingsEl.style.color = 'var(--text-muted)';
+			new ApiRouter().validateApiKey().then((result) => {
+				settingsStore.actions.setApiKeyValid(result.valid);
+				applyStatus(result.valid);
+			});
+		} else if (Platform.isDesktopApp) {
+			setting.addButton((button) => {
+				button.setButtonText('扫码获取')
+					.setTooltip('扫码登录获取 API Key')
+					.onClick(async () => {
+						await this.handleScanApiKey(button);
+					});
+				return button;
+			});
+		}
+	}
+
+	private async handleScanApiKey(button: any): Promise<void> {
+		if (!Platform.isDesktopApp) {
+			new Notice('扫码登录仅支持桌面端，请在移动端手动粘贴 API Key');
+			return;
+		}
+
+		const settings = get(settingsStore);
+		const isLoggedIn = settings.isCookieValid && settings.cookies.length > 0;
+
+		button.setDisabled(true);
+		button.setButtonText('获取中...');
+
+		try {
+			if (isLoggedIn) {
+				const apiRouter = new ApiRouter();
+				const result = await apiRouter.fetchApiKey();
+				if (result?.apikey) {
+					settingsStore.actions.setApiKeyValid(true);
+					new Notice('API Key 获取成功');
+				} else {
+					new Notice('API Key 获取失败，请尝试重新扫码登录');
+				}
+			} else {
+				const loginModel = new WereadLoginModel(this);
+				await loginModel.doLogin();
+			}
+		} catch (e) {
+			console.error('[weread plugin] 扫码获取 API Key 失败', e);
+			new Notice('扫码获取 API Key 失败，请查看控制台');
+		} finally {
+			button.setDisabled(false);
+			button.setButtonText('扫码获取');
+			this.display();
+		}
 	}
 
 	private showDebugHelp() {
@@ -880,12 +982,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.addDropdown((dropdown) => {
 				dropdown.addOptions({
 					scan: '扫码登录',
-					cookieCloud: 'CookieCloud登录'
+					cookieCloud: 'CookieCloud 登录'
 				});
 				return dropdown.setValue(get(settingsStore).loginMethod).onChange(async (value) => {
 					console.debug('set login method to', value);
 					settingsStore.actions.setLoginMethod(value);
-					settingsStore.actions.clearCookies();
+					if (value !== 'apiKey') {
+						settingsStore.actions.clearCookies();
+					}
 					this.display();
 				});
 			});
@@ -951,46 +1055,15 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.onClick(async () => {
 						button.setDisabled(true);
 						button.setButtonText('刷新中...');
-						const apiManager = new ApiManager();
-						await apiManager.refreshCookie();
+						const apiRouter2 = new ApiRouter();
+						await apiRouter2.refreshCookie();
 						this.display();
 					});
 			});
 		}
 	}
 
-	private cookieAutoRefresh(): void {
-		new Setting(this.containerEl)
-			.setName('自动刷新 Cookie')
-			.setDesc('启动 Obsidian 时自动刷新 Cookie，并按照设定的时间间隔定期刷新')
-			.addToggle((toggle) => {
-				return toggle
-					.setValue(get(settingsStore).cookieAutoRefreshToggle)
-					.onChange((value) => {
-						settingsStore.actions.setCookieAutoRefreshToggle(value);
-						this.plugin.setupCookieRefresh();
-						this.display();
-					});
-			});
-	}
 
-	private cookieRefreshInterval(): void {
-		new Setting(this.containerEl)
-			.setName('Cookie 刷新间隔（小时）')
-			.setDesc('设置自动刷新 Cookie 的时间间隔，单位为小时（最小 1 小时）')
-			.addText((text) => {
-				return text
-					.setPlaceholder('12')
-					.setValue(String(get(settingsStore).cookieRefreshInterval))
-					.onChange((value) => {
-						const num = parseInt(value, 10);
-						if (!isNaN(num) && num >= 1) {
-							settingsStore.actions.setCookieRefreshInterval(num);
-							this.plugin.setupCookieRefresh();
-						}
-					});
-			});
-	}
 
 	private scheduledSync(): void {
 		new Setting(this.containerEl)
@@ -1037,11 +1110,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 			return this.selectableBooksCache;
 		}
 		const settings = get(settingsStore);
-		if (!settings.isCookieValid || settings.cookies.length === 0) {
-			throw new Error('请先登录微信读书后再加载书籍列表');
+		const hasApiKey2 = Boolean(settings.wereadApiKey);
+		const hasCookie2 = settings.isCookieValid && settings.cookies.length > 0;
+		if (!hasCookie2 && !hasApiKey2) {
+			throw new Error('请先登录微信读书或配置 API Key 后再加载书籍列表');
 		}
-		const apiManager = new ApiManager();
-		const notebookResp = await apiManager.getNotebooksWithRetry();
+		const apiRouter2 = new ApiRouter();
+		const notebookResp = await apiRouter2.getNotebooksWithRetry();
 		this.selectableBooksCache = notebookResp.map((noteBook) => parseMetadata(noteBook));
 		return this.selectableBooksCache;
 	}

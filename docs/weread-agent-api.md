@@ -2,6 +2,64 @@
 
 通过统一网关调用微信读书接口，支持搜索、书架、笔记、书评、阅读统计等能力。
 
+## V1 vs V2 对比
+
+V1（Cookie 认证）和 V2（Agent Gateway — Bearer Token）接口对照表：
+
+| 功能 | V1 | V2 | 变化 |
+|------|:--:|:--:|------|
+| 笔记本列表 | `GET /api/user/notebook` | `/user/notebooks` | V2 游标分页 (`count`+`lastSort`)，V1 一次返回全部 |
+| 书籍详情 | `GET /web/book/info?bookId=` | `/book/info` | 字段基本一致 |
+| 划线列表 | `GET /web/book/bookmarklist?bookId=` | `/book/bookmarklist` | 字段基本一致 |
+| 个人想法/点评 | `GET /web/review/list?bookId=&listType=11&mine=1` | `/review/list/mine` | 参数名变化，`bookid`（小写） |
+| 章节目录 | `POST /web/book/chapterInfos` | `/book/chapterinfo` | V1 POST body 传数组，V2 只传单个 bookId |
+| 阅读进度 | `GET /web/book/getProgress?bookId=` | `/book/getprogress` | 字段基本一致 |
+| 阅读统计 | V1 通过 `/api/agent/gateway` | `/readdata/detail` | 同样走 Gateway，参数相同 |
+| 书架同步 | ❌ | `/shelf/sync` | **V2 新增** |
+| 用户信息 | `GET /web/user?userVid=` | ❌ **不存在** | V1 需要 `userVid`（来自 Cookie），V2 无此端点 |
+| 获取 API Key | `GET /api/skills/apikeyGet` | ❌ | V1 专有，扫码登录后自动获取 |
+| Cookie 刷新 | `HEAD /` + set-cookie | ❌ | V1 专有 |
+| 个性推荐 | ❌ | `/book/recommend` | **V2 新增** |
+| 相似推荐 | ❌ | `/book/similar` | **V2 新增** |
+| 章节划线热度 | ❌ | `/book/underlines` | **V2 新增**（不含原文，仅人数/得分） |
+| 热门划线 | ❌ | `/book/bestbookmarks` | **V2 新增**（TOP20，含原文+人数） |
+| 划线下想法 | ❌ | `/book/readreviews` | **V2 新增** |
+| 单条想法详情 | ❌ | `/review/single` | **V2 新增** |
+| 公开点评 | ❌ | `/review/list` | **V2 新增** |
+| 搜索 | ❌ | `/store/search` | **V2 新增** |
+
+### 关键差异
+
+1. **认证方式**：V1 使用 Cookie（`wr_skey` + `wr_vid`），V2 使用 `Authorization: Bearer <API_KEY>`，API Key 通过 `GET /api/skills/apikeyGet` 获取
+2. **入口统一**：V1 各接口分布在不同路径（`/web/`、`/api/`、`i.weread.qq.com`），V2 全部通过 `POST /api/agent/gateway` + `api_name` 字段路由
+3. **参数平铺**：V2 所有业务参数和 `api_name`、`skill_version` 平铺在 JSON body 顶层，**不要**嵌套在 `params` 里
+4. **用户身份**：V2 的 API Key 绑定用户 vid，用户相关接口自动注入身份，无需手动传 `userVid`
+5. **V2 缺失接口**：V2 没有 `/user/info` 端点，无法通过 Bearer Token 直接查询用户信息（昵称、头像、签名等）。V1 虽有 `/web/user?userVid=` 但需要 Cookie 中的 `userVid`
+
+### V2 可用接口全览
+
+发送 `{"api_name": "/_list"}` 可获取所有可用接口及参数定义。当前可用接口共 18 个：
+
+| 分类 | api_name | 说明 |
+|------|----------|------|
+| 系统 | `/_list` | 列出所有可用接口 |
+| 搜索 | `/store/search` | 书城搜索（书籍、作者、有声书等） |
+| 书架 | `/shelf/sync` | 获取完整书架（含有声书、书单） |
+| 书籍 | `/book/info` | 书籍基本信息 |
+| 书籍 | `/book/chapterinfo` | 章节目录 |
+| 书籍 | `/book/getprogress` | 阅读进度 |
+| 笔记 | `/user/notebooks` | 笔记本概览（所有有笔记的书） |
+| 笔记 | `/book/bookmarklist` | 单本书划线内容列表 |
+| 笔记 | `/review/list/mine` | 单本书个人想法与点评 |
+| 笔记 | `/book/bestbookmarks` | 书籍热门划线 TOP20 |
+| 笔记 | `/book/underlines` | 章节划线热度统计 |
+| 笔记 | `/book/readreviews` | 划线下的公众想法/评论 |
+| 笔记 | `/review/single` | 单条想法详情 |
+| 书评 | `/review/list` | 书籍公开点评 |
+| 统计 | `/readdata/detail` | 阅读统计（时长/天数/偏好分析） |
+| 推荐 | `/book/recommend` | 个性化推荐 |
+| 推荐 | `/book/similar` | 相似书推荐 |
+
 ## 基础信息
 
 | 项目 | 值 |

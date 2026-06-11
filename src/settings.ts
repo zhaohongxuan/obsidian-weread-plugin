@@ -4,6 +4,7 @@ import { Platform } from 'obsidian';
 import notebookTemolate from './themes/notebookTemplate.njk';
 import wereadOfficialTemplate from './themes/wereadOfficialTemplate.njk';
 import separatedTemplate from './themes/separatedTemplate.njk';
+import separatedWithPopularTemplate from './themes/separatedWithPopularTemplate.njk';
 import WereadPlugin from '../main';
 import type { SyncLogEntry, Theme } from './models';
 
@@ -47,6 +48,16 @@ export const BUILT_IN_THEMES: Theme[] = [
 		isBuiltIn: true,
 		isReadOnly: true,
 		source: 'builtin'
+	},
+	{
+		id: 'builtin_separated_with_popular',
+		name: '分离式（含热门划线）',
+		description: '我的划线、热门划线、笔记分开展示，适合分析学习',
+		template: separatedWithPopularTemplate,
+		trimBlocks: true,
+		isBuiltIn: true,
+		isReadOnly: true,
+		source: 'builtin'
 	}
 ];
 
@@ -79,6 +90,7 @@ export interface WereadPluginSettings {
 	convertTags: boolean;
 	saveArticleToggle: boolean;
 	saveReadingInfoToggle: boolean;
+	syncPopularHighlightsToggle: boolean;
 	readingOpenMode: ReadingOpenMode;
 	bookOpenMode: BookOpenMode;
 	trimBlocks: boolean;
@@ -101,8 +113,10 @@ export interface WereadPluginSettings {
 	themes: Theme[];
 	activeThemeId: string;
 	wereadApiKey: string;
+	apiKeyValid: boolean | null;
 	readingStatsLocation: string;
 	statsStartYear?: number;
+	popularHighlightsCacheTtl: number; // 天数，默认7
 }
 
 const DEFAULT_SETTINGS: WereadPluginSettings = {
@@ -134,6 +148,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	convertTags: false,
 	saveArticleToggle: true,
 	saveReadingInfoToggle: true,
+	syncPopularHighlightsToggle: false,
 	readingOpenMode: 'TAB',
 	bookOpenMode: 'web',
 	trimBlocks: false,
@@ -156,8 +171,10 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	themes: BUILT_IN_THEMES,
 	activeThemeId: 'builtin_merged',
 	wereadApiKey: '',
+	apiKeyValid: null,
 	readingStatsLocation: '/',
 	statsStartYear: 0,  // 0 = use registTime from API
+	popularHighlightsCacheTtl: 7, // 默认7天
 };
 
 const createSettingsStore = () => {
@@ -537,6 +554,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setSyncPopularHighlightsToggle = (value: boolean) => {
+		store.update((state) => {
+			state.syncPopularHighlightsToggle = value;
+			return state;
+		});
+	};
+
 	const setReadingOpenMode = (readingOpenMode: ReadingOpenMode) => {
 		store.update((state) => {
 			state.readingOpenMode = readingOpenMode;
@@ -565,19 +589,7 @@ const createSettingsStore = () => {
 		});
 	};
 
-	const setCookieAutoRefreshToggle = (cookieAutoRefreshToggle: boolean) => {
-		store.update((state) => {
-			state.cookieAutoRefreshToggle = cookieAutoRefreshToggle;
-			return state;
-		});
-	};
 
-	const setCookieRefreshInterval = (cookieRefreshInterval: number) => {
-		store.update((state) => {
-			state.cookieRefreshInterval = cookieRefreshInterval;
-			return state;
-		});
-	};
 
 	const setScheduledSyncToggle = (scheduledSyncToggle: boolean) => {
 		store.update((state) => {
@@ -733,6 +745,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setApiKeyValid = (valid: boolean | null) => {
+		store.update((state) => {
+			state.apiKeyValid = valid;
+			return state;
+		});
+	};
+
 	const setStatsStartYear = (year: number) => {
 		store.update((state) => {
 			state.statsStartYear = year;
@@ -776,12 +795,11 @@ const createSettingsStore = () => {
 			setConvertTags,
 			setSaveArticleToggle,
 			setSaveReadingInfoToggle,
+			setSyncPopularHighlightsToggle,
 			setReadingOpenMode,
 			setBookOpenMode,
 			setCookieCloudInfo,
 			setTrimBlocks,
-			setCookieAutoRefreshToggle,
-			setCookieRefreshInterval,
 			setIsCookieValid,
 			setScheduledSyncToggle,
 			setScheduledSyncInterval,
@@ -800,6 +818,7 @@ const createSettingsStore = () => {
 			importTheme,
 			exportTheme,
 			setWereadApiKey,
+			setApiKeyValid,
 			setReadingStatsLocation,
 			setStatsStartYear,
 			setUserSignature,

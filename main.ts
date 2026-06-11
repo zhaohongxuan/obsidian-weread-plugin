@@ -1,7 +1,7 @@
-import { Menu, Notice, Platform, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
+import { Menu, Notice, Platform, Plugin, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import FileManager from './src/fileManager';
 import SyncNotebooks from './src/syncNotebooks';
-import ApiManager from './src/api';
+import ApiRouter from './src/api-router';
 import WereadBookshelfService from './src/bookshelf';
 import SyncReadingStats from './src/syncReadingStats';
 import { settingsStore } from './src/settings';
@@ -12,6 +12,7 @@ import WereadBrowserWindow from './src/components/wereadBrowserWindow';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
 import { WEREAD_BOOKSHELF_VIEW_ID, WereadBookshelfView } from './src/components/wereadBookshelf';
 import { WEREAD_READING_STATS_VIEW_ID, WereadReadingStatsView } from './src/components/wereadReadingStats';
+import { WEREAD_BOOK_DETAIL_VIEW_ID, WereadBookDetailView } from './src/components/wereadBookDetailView';
 import './style.css';
 export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
@@ -20,7 +21,6 @@ export default class WereadPlugin extends Plugin {
 	private syncReadingStats: SyncReadingStats;
 	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
-	private cookieRefreshTimer: number | null = null;
 	private scheduledSyncTimer: number | null = null;
 
 	onload() {
@@ -33,16 +33,16 @@ export default class WereadPlugin extends Plugin {
 	private initializePlugin() {
 		const fileManager = new FileManager(this.app.vault, this.app.metadataCache, this.app);
 		this.fileManager = fileManager;
-		const apiManager = new ApiManager();
-		this.syncNotebooks = new SyncNotebooks(fileManager, apiManager);
-		this.bookshelfService = new WereadBookshelfService(fileManager, apiManager);
-		this.syncReadingStats = new SyncReadingStats(this.app.vault, apiManager);
+		const apiRouter = new ApiRouter();
+		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter, this.app.vault);
+		this.bookshelfService = new WereadBookshelfService(fileManager, apiRouter);
+		this.syncReadingStats = new SyncReadingStats(this.app.vault, apiRouter);
 
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
 		if (settings.cookies && settings.cookies.length > 0) {
 			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
-			apiManager.verifyCookieValidity().catch((e) => {
+			apiRouter.verifyCookieValidity().catch((e) => {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
 			});
 		}
@@ -124,7 +124,11 @@ export default class WereadPlugin extends Plugin {
 		);
 		this.registerView(
 			WEREAD_READING_STATS_VIEW_ID,
-			(leaf) => new WereadReadingStatsView(leaf, apiManager, fileManager)
+			(leaf) => new WereadReadingStatsView(leaf, apiRouter, fileManager)
+		);
+		this.registerView(
+			WEREAD_BOOK_DETAIL_VIEW_ID,
+			(leaf) => new WereadBookDetailView(leaf, apiRouter, this)
 		);
 
 		this.addCommand({
@@ -181,7 +185,7 @@ export default class WereadPlugin extends Plugin {
 		this.wereadSettingsTab = new WereadSettingsTab(this.app, this);
 		this.addSettingTab(this.wereadSettingsTab);
 
-		this.setupCookieRefresh();
+		this.setupFloatingPanel();
 		this.setupScheduledSync();
 	}
 
@@ -325,6 +329,34 @@ export default class WereadPlugin extends Plugin {
 		workspace.revealLeaf(leaf);
 	}
 
+	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string, replaceCurrentLeaf = false) {
+		const { workspace } = this.app;
+
+		let leaf: WorkspaceLeaf | null = null;
+
+		if (replaceCurrentLeaf) {
+			// 使用 getLeaf(false) 获取当前活跃的 leaf，不创建新 leaf
+			leaf = workspace.getLeaf(false);
+		} else {
+			// 原有逻辑：优先复用已有 detail leaf，否则新建一个 tab
+			const existingLeaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
+			if (existingLeaves.length > 0) {
+				leaf = existingLeaves[0];
+			} else {
+				leaf = workspace.getLeaf('tab');
+			}
+		}
+
+		if (leaf) {
+			await leaf.setViewState({
+				type: WEREAD_BOOK_DETAIL_VIEW_ID,
+				active: true,
+				state: { bookId, bookTitle, bookCover, localFilePath }
+			});
+			workspace.revealLeaf(leaf);
+		}
+	}
+
 	private async syncCookiesToPartition(): Promise<void> {
 		if (!Platform.isDesktopApp) {
 			return;
@@ -373,36 +405,64 @@ export default class WereadPlugin extends Plugin {
 		}
 	}
 
+	private setupFloatingPanel(): void {
+		const fileManager = this.fileManager;
+		let currentBtn: HTMLElement | null = null;
+		let currentBookId: string | null = null;
+
+		const removeBtn = () => {
+			currentBtn?.remove();
+			currentBtn = null;
+			currentBookId = null;
+		};
+
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', (leaf) => {
+				const view = leaf?.view;
+				const file = (view as any)?.file as TFile | undefined;
+				if (!(file instanceof TFile)) {
+					removeBtn();
+					return;
+				}
+
+				const annotation = fileManager.getWereadNoteAnnotationFile(file);
+				if (!annotation?.bookId) {
+					removeBtn();
+					return;
+				}
+
+				if (currentBookId === annotation.bookId) return;
+
+				removeBtn();
+				currentBookId = annotation.bookId;
+
+				const viewContentEl = (view as any).contentEl as HTMLElement | undefined;
+				if (!viewContentEl) return;
+
+				viewContentEl.style.position = 'relative';
+				const btn = viewContentEl.createDiv({ cls: 'weread-floating-btn' });
+				setIcon(btn, 'book-open');
+				btn.setAttr('aria-label', '查看微信读书详情');
+				btn.addEventListener('click', () => {
+					this.activateBookDetailView(
+						annotation.bookId,
+						annotation.title || '',
+						annotation.cover || '',
+						file.path,
+						true // 在当前标签页打开，替换当前内容
+					);
+				});
+				currentBtn = btn;
+			})
+		);
+	}
+
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
-		this.clearCookieRefreshTimer();
 		this.clearScheduledSyncTimer();
 	}
 
-	setupCookieRefresh() {
-		this.clearCookieRefreshTimer();
-		const { cookieAutoRefreshToggle, cookieRefreshInterval } = get(settingsStore);
-		if (!cookieAutoRefreshToggle) {
-			return;
-		}
-		const apiManager = new ApiManager();
-		apiManager
-			.refreshCookie()
-			.catch((e) => console.error('[weread plugin] 刷新 Cookie 失败', e));
-		const intervalMs = Math.max(1, cookieRefreshInterval) * 60 * 60 * 1000;
-		this.cookieRefreshTimer = window.setInterval(() => {
-			apiManager
-				.refreshCookie()
-				.catch((e) => console.error('[weread plugin] 定时刷新 Cookie 失败', e));
-		}, intervalMs);
-	}
 
-	private clearCookieRefreshTimer() {
-		if (this.cookieRefreshTimer !== null) {
-			window.clearInterval(this.cookieRefreshTimer);
-			this.cookieRefreshTimer = null;
-		}
-	}
 
 	setupScheduledSync() {
 		this.clearScheduledSyncTimer();

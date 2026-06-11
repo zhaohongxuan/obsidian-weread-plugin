@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import ApiManager from './api';
+import ApiRouter from './api-router';
 import FileManager from './fileManager';
 import type { AnnotationFile, BookshelfBook, BookshelfProgress, Metadata } from './models';
 import { parseMetadata } from './parser/parseResponse';
@@ -17,7 +17,7 @@ const IDLE_PROGRESS: BookshelfProgress = {
 export default class WereadBookshelfService {
 	private progressCache = new Map<string, BookshelfProgress>();
 
-	constructor(private fileManager: FileManager, private apiManager: ApiManager) {}
+	constructor(private fileManager: FileManager, private apiManager: ApiRouter) {}
 
 	async getBookshelfBooks(): Promise<BookshelfBook[]> {
 		const [notebookResp, localFilesByBookId] = await Promise.all([

@@ -15,6 +15,7 @@ lastReadDate: {{ metaData.lastReadDate }}
 > - PC地址：{{ metaData.pcUrl }}
 
 # 高亮划线
+{% if syncPopularHighlightsToggle %}
 {% for chapter in chapterHighlights %}
 {% if chapter.level == 1 %}
 ## {{ chapter.chapterTitle }}
@@ -26,15 +27,60 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% for highlight in chapter.highlights %}
 {% set rangeParts = highlight.range | split("-") %}
 {% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
+{% if highlight.isPopular and highlight.isUserHighlight %}
+{# 用户自己的划线 + 热门：📌🔥 + 共读人数 #}
+{% if highlight.reviewContent %}
+> 📌🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+> 🔥 {{ highlight.popularCount }} 人共读
+- 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
+{% else %}
+> 📌🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
+> 🔥 {{ highlight.popularCount }} 人共读
+> ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
+
+{% endif %}
+{% elif highlight.isPopular %}
+{# 只有热门划线（非用户）：🔥 + 共读人数 #}
+> 🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
+> 📊 {{ highlight.popularCount }} 人共读 ^{{ highlight.bookmarkId }}
+
+{% else %}
+{# 普通用户划线（非热门）：📌 #}
 {% if highlight.reviewContent %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
 - 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
 {% else %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
 > ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
+
+{% endif %}
 {% endif %}
 {% endfor %}
 {% endfor %}
+{% else %}
+{% for chapter in chapterHighlights %}
+{% if chapter.level == 1 %}
+## {{ chapter.chapterTitle }}
+{% elif chapter.level == 2 %}
+### {{ chapter.chapterTitle }}
+{% elif chapter.level == 3 %}
+#### {{ chapter.chapterTitle }}
+{% endif %}
+{% for highlight in chapter.highlights %}
+{% set rangeParts = highlight.range | split("-") %}
+{% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
+{# 普通用户划线（不显示热门）：📌 #}
+{% if highlight.reviewContent %}
+> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+- 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
+{% else %}
+> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
+> ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
+
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}
 
 # 读书笔记
 {% for chapter in bookReview.chapterReviews %}

@@ -10,13 +10,55 @@ import type {
 	HighlightResponse,
 	Metadata,
 	Notebook,
+	PopularHighlight,
+	PopularChapterHighlight,
 	RefBlockDetail,
 	Review
-} from 'src/models';
+} from '../models';
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 import * as CryptoJS from 'crypto-js';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
+
+export const parsePopularHighlights = (resp: {
+	items: {
+		bookmarkId: string;
+		chapterUid: number;
+		range: string;
+		markText: string;
+		totalCount: number;
+	}[];
+	chapters: { chapterUid: number; chapterIdx: number; title: string }[];
+}): PopularChapterHighlight[] => {
+	const chapterMap = new Map(resp.chapters.map((c) => [c.chapterUid, c]));
+
+	// 按章节分组
+	const grouped = new Map<number, PopularHighlight[]>();
+	for (const item of resp.items) {
+		if (!grouped.has(item.chapterUid)) grouped.set(item.chapterUid, []);
+		grouped.get(item.chapterUid).push({
+			bookmarkId: item.bookmarkId,
+			chapterUid: item.chapterUid,
+			chapterTitle: chapterMap.get(item.chapterUid)?.title ?? '未知章节',
+			range: item.range,
+			markText: item.markText,
+			totalCount: item.totalCount
+		});
+	}
+
+	// 按 chapterIdx 排序
+	return Array.from(grouped.entries())
+		.map(([chapterUid, highlights]) => {
+			const chapter = chapterMap.get(chapterUid);
+			return {
+				chapterUid,
+				chapterIdx: chapter?.chapterIdx ?? 0,
+				chapterTitle: chapter?.title ?? '未知章节',
+				highlights
+			};
+		})
+		.sort((a, b) => a.chapterIdx - b.chapterIdx);
+};
 
 export const parseMetadata = (noteBook: any): Metadata => {
 	const book = noteBook['book'];

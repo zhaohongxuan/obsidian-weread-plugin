@@ -129,6 +129,10 @@ export default class ApiManager {
 			if (resp.json && resp.json.books !== undefined) {
 				console.log('[weread plugin] Cookie 有效，书籍数:', resp.json.books.length);
 				settingsStore.actions.setIsCookieValid(true);
+				// 只有在未配置 API Key 时才自动获取
+				if (!get(settingsStore).wereadApiKey) {
+					this.fetchAndSaveApiKey().catch((e) => console.debug('[weread plugin] 自动获取 API Key 失败', e));
+				}
 				return true;
 			}
 
@@ -399,6 +403,42 @@ export default class ApiManager {
 	/**
 	 * 通过 Agent API Gateway 调用微信读书接口（需要 API Key）
 	 */
+	/**
+	 * 扫码登录后自动获取/创建 API Key，返回 Key 及元数据
+	 * 移除 only_show=1 参数，允许自动创建 API Key
+	 */
+	async fetchAndSaveApiKey(): Promise<{ apikey: string; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number } | null> {
+		try {
+			const req: RequestUrlParam = {
+				url: `${this.baseUrl}/api/skills/apikeyGet`,
+				method: 'GET',
+				headers: this.getHeaders()
+			};
+			const resp = await requestUrl(req);
+			console.log('[weread plugin] /api/skills/apikeyGet 完整响应:', JSON.stringify(resp.json));
+			if (resp.json?.apikey) {
+				console.log('[weread plugin] 自动获取/创建 API Key 成功');
+				settingsStore.actions.setWereadApiKey(resp.json.apikey);
+				return {
+					apikey: resp.json.apikey,
+					expireTime: resp.json.expireTime,
+					lastUsedTime: resp.json.lastUsedTime,
+					createdAt: resp.json.created_at,
+					lastUsedAt: resp.json.last_used_at
+				};
+			}
+			console.warn('[weread plugin] fetchAndSaveApiKey 获取失败：响应中没有 apikey');
+			return null;
+		} catch (e) {
+			console.error('[weread plugin] fetchAndSaveApiKey 网络/服务异常:', e);
+			// 获取失败时提示用户手动获取
+			new Notice(
+				'⚠️ API Key 自动获取失败，请前往以下链接手动获取并在设置中填写：https://weread.qq.com/r/weread-skills'
+			);
+			return null;
+		}
+	}
+
 	async callAgentGateway<T = unknown>(apiName: string, params: Record<string, unknown> = {}): Promise<T | undefined> {
 		const apiKey = get(settingsStore).wereadApiKey;
 		if (!apiKey) {

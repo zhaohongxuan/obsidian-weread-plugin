@@ -320,10 +320,27 @@ export type Chapter = {
 	level: number;
 };
 
+export type PopularHighlight = {
+	bookmarkId: string;
+	chapterUid: number;
+	chapterTitle: string;
+	range: string;
+	markText: string;
+	totalCount: number;
+};
+
+export type PopularChapterHighlight = {
+	chapterUid: number;
+	chapterIdx: number;
+	chapterTitle: string;
+	highlights: PopularHighlight[];
+};
+
 export type Notebook = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
+	popularHighlights?: PopularChapterHighlight[];
 };
 
 export type Metadata = {
@@ -382,6 +399,9 @@ export type Highlight = {
 	reviewContent?: string;
 	range: string;
 	refMpReviewId?: string;
+	isPopular?: boolean;
+	popularCount?: number;
+	isUserHighlight?: boolean;
 };
 
 export type BookReview = {
@@ -424,12 +444,15 @@ export type ChapterHighlightReview = {
 	// highlight and review can be empty, just output title
 	highlights?: Highlight[];
 	chapterReviews?: Review[];
+	popularHighlights?: PopularHighlight[];
 };
 
 export type RenderTemplate = {
 	metaData: Metadata;
 	chapterHighlights: ChapterHighlightReview[];
 	bookReview: BookReview;
+	popularHighlights?: PopularChapterHighlight[];
+	syncPopularHighlightsToggle?: boolean;
 };
 
 export type DailyNoteReferenece = {
@@ -592,3 +615,16 @@ export interface Theme {
 	author?: string;
 	version?: string;
 }
+
+export type PopularHighlightCache = {
+	bookId: string;
+	cachedAt: number;
+	ttl: number;
+	items: PopularHighlight[];
+	chapters: {
+		bookId: string;
+		chapterUid: number;
+		chapterIdx: number;
+		title: string;
+	}[];
+};
