@@ -579,7 +579,7 @@ export class WereadBookshelfView extends ItemView {
 		parentPath: string
 	): FolderGroup[] {
 		return Array.from(map.keys())
-			.sort((left, right) => left.localeCompare(right))
+			.sort((left, right) => String(left).localeCompare(String(right)))
 			.map((name) => {
 				const node = map.get(name);
 				const path = parentPath ? `${parentPath}/${name}` : name;
@@ -636,7 +636,7 @@ export class WereadBookshelfView extends ItemView {
 			if (group.books.length > 0) {
 				const groupGrid = section.createDiv({ cls: 'weread-bookshelf-group-grid' });
 				for (const book of [...group.books].sort((left, right) =>
-					(left.title ?? '').localeCompare(right.title ?? '')
+					String(left.title ?? '').localeCompare(String(right.title ?? ''))
 				)) {
 					this.renderBookCard(book, groupGrid);
 				}
@@ -964,7 +964,7 @@ export class WereadBookshelfView extends ItemView {
 
 	private sortBooks(left: BookshelfBook, right: BookshelfBook): number {
 		if (this.sortMode === 'title') {
-			return (left.title ?? '').localeCompare(right.title ?? '');
+			return String(left.title ?? '').localeCompare(String(right.title ?? ''));
 		}
 		return this.getRecentValue(right) - this.getRecentValue(left);
 	}
