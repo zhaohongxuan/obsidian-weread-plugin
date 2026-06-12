@@ -43,6 +43,10 @@ const addDateFilters = (env: nunjucks.Environment) => {
 		}
 		return String(str).replaceAll(pattern, replacement);
 	});
+	env.addFilter('trim', function (str: string): string {
+		if (!str) return '';
+		return String(str).trim();
+	});
 };
 
 export class Renderer {
@@ -128,7 +132,12 @@ export class Renderer {
 		});
 		addDateFilters(env);
 
-		const content = env.renderString(templateStr, context);
-		return content;
+		try {
+			const content = env.renderString(templateStr, context);
+			return content;
+		} catch (error) {
+			console.error('[weread renderer] nunjucks error:', error);
+			throw error;
+		}
 	}
 }

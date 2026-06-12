@@ -759,7 +759,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const descFrag = document
 			.createRange()
 			.createContextualFragment(
-				`用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。点击「扫码获取」扫码登录后自动获取，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请。格式：wrk-xxxxxxxx。<br><strong>注意：</strong>手动填写 API Key 无法使用公众号同步功能（需扫码登录获取 Cookie）。`
+				`点击「扫码获取」扫码登录后自动获取API Key，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请,格式：wrk-xxxxxxxx。<br><strong>注意：</strong> 一些额外的功能需要依赖Cookie，建议使用扫码登录！！`
 			);
 
 		const setting = new Setting(this.containerEl)

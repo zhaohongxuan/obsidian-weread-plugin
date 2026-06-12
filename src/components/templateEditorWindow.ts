@@ -127,6 +127,13 @@ export class TemplateEditorWindow extends Modal {
 			});
 		}
 
+		// 添加热门划线开关（仅只读模式展示，不可修改）
+		const popularToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
+		popularToggleWrapper.createSpan({ text: '🔥 热门划线', cls: 'weread-toggle-label' });
+		const popularToggleSwitch = popularToggleWrapper.createDiv('weread-toggle-switch');
+		popularToggleSwitch.addClass('is-enabled');
+		popularToggleSwitch.addClass('is-disabled');
+
 		// 添加渲染模式切换开关（编辑和预览模式都显示）
 		const renderToggleWrapper = toggleContainer.createDiv('weread-toggle-wrapper');
 		renderToggleWrapper.createSpan({ text: '📝 Markdown渲染', cls: 'weread-toggle-label' });
@@ -163,6 +170,12 @@ export class TemplateEditorWindow extends Modal {
 	}
 
 	private updatePreview(): void {
+		// 确保 DOM 元素已创建
+		if (!this.previewEl || !this.errorEl) {
+			console.warn('[weread preview] DOM elements not ready yet');
+			return;
+		}
+
 		try {
 			const templateStr = this.editorEl.value;
 			const sampleNotebook = this.buildSampleNotebook();
@@ -177,11 +190,19 @@ export class TemplateEditorWindow extends Modal {
 			this.errorEl.removeClass('weread-error-visible');
 			this.errorEl.textContent = '';
 
+			if (!preview || preview.trim() === '') {
+				this.errorEl.addClass('weread-error-visible');
+				this.errorEl.textContent = '⚠️ 渲染结果为空，请检查模板语法';
+				return;
+			}
+
 			if (this.isMarkdownRendered) {
 				// 渲染模式：使用 Obsidian 的 Markdown 渲染器
 				this.previewEl.addClass('markdown-preview-view');
 				this.previewEl.removeClass('preview-source-mode');
-				MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', null);
+				console.log('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
+				MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this);
+				console.log('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
 			} else {
 				// 源码模式：显示原始文本
 				this.previewEl.removeClass('markdown-preview-view');
@@ -269,7 +290,7 @@ export class TemplateEditorWindow extends Modal {
 					isMPChapter: 0,
 					highlights: [
 						{
-							bookmarkId: '651358_33_3905-3956',
+							bookmarkId: '651358-33-3905-3956',
 							created: 1580201316,
 							createTime: '2020-01-28 16:41:50',
 							chapterUid: 33,
@@ -282,7 +303,7 @@ export class TemplateEditorWindow extends Modal {
 							reviewContent: '以笛卡尔为代表的一批思想家为了打破教会黑暗的统治开始探究科学，所以科学的尽头是哲学完全正确'
 						},
 						{
-							bookmarkId: '651358_33_938-962',
+							bookmarkId: '651358-33-938-962',
 							created: 1580041310,
 							createTime: '2020-01-28 16:41:50',
 							chapterUid: 33,
@@ -297,7 +318,7 @@ export class TemplateEditorWindow extends Modal {
 							isUserHighlight: true
 						},
 						{
-							bookmarkId: '651358_33_1819-1919',
+							bookmarkId: '651358-33-1819-1919',
 							created: 1580052228,
 							createTime: '2020-01-28 22:06:21',
 							chapterUid: 33,
@@ -312,7 +333,7 @@ export class TemplateEditorWindow extends Modal {
 							isUserHighlight: true
 						},
 						{
-							bookmarkId: '651358_33_8387-8441',
+							bookmarkId: '651358-33-8387-8441',
 							created: 1580048348,
 							createTime: '2020-01-28 16:52:28',
 							chapterUid: 33,
@@ -327,7 +348,7 @@ export class TemplateEditorWindow extends Modal {
 							isUserHighlight: true
 						},
 						{
-							bookmarkId: '651358_33_4202-4275',
+							bookmarkId: '651358-33-4202-4275',
 							created: 1580060000,
 							createTime: '2020-01-29 10:00:00',
 							chapterUid: 33,
@@ -342,7 +363,7 @@ export class TemplateEditorWindow extends Modal {
 							isUserHighlight: false
 						},
 						{
-							bookmarkId: '651358_33_9049-9090',
+							bookmarkId: '651358-33-9049-9090',
 							created: 1580100000,
 							createTime: '2020-02-01 09:00:00',
 							chapterUid: 33,
@@ -366,7 +387,7 @@ export class TemplateEditorWindow extends Modal {
 					isMPChapter: 0,
 					highlights: [
 						{
-							bookmarkId: '651358_34_2846-2942',
+							bookmarkId: '651358-34-2846-2942',
 							created: 1580105000,
 							createTime: '2020-02-01 12:00:00',
 							chapterUid: 34,
@@ -381,7 +402,7 @@ export class TemplateEditorWindow extends Modal {
 							isUserHighlight: false
 						},
 						{
-							bookmarkId: '651358_34_9546-9595',
+							bookmarkId: '651358-34-9546-9595',
 							created: 1580105000,
 							createTime: '2020-02-01 12:00:00',
 							chapterUid: 34,
@@ -405,7 +426,7 @@ export class TemplateEditorWindow extends Modal {
 					isMPChapter: 0,
 					highlights: [
 						{
-							bookmarkId: '651358_36_5369-5420',
+							bookmarkId: '651358-36-5369-5420',
 							created: 1580105000,
 							createTime: '2020-02-01 12:00:00',
 							chapterUid: 36,
@@ -429,7 +450,7 @@ export class TemplateEditorWindow extends Modal {
 					isMPChapter: 0,
 					highlights: [
 						{
-							bookmarkId: '651358_60_8669-8685',
+							bookmarkId: '651358-60-8669-8685',
 							created: 1580272972,
 							createTime: '2020-01-29 12:02:52',
 							chapterUid: 60,
@@ -454,7 +475,7 @@ export class TemplateEditorWindow extends Modal {
 					chapterTitle: '第一章 中国哲学的精神',
 					highlights: [
 						{
-							bookmarkId: '651358_33_938-962',
+							bookmarkId: '651358-33-938-962',
 							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
 							range: '938-962',
@@ -462,7 +483,7 @@ export class TemplateEditorWindow extends Modal {
 							totalCount: 7208
 						},
 						{
-							bookmarkId: '651358_33_1819-1919',
+							bookmarkId: '651358-33-1819-1919',
 							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
 							range: '1819-1919',
@@ -470,7 +491,7 @@ export class TemplateEditorWindow extends Modal {
 							totalCount: 7146
 						},
 						{
-							bookmarkId: '651358_33_8387-8441',
+							bookmarkId: '651358-33-8387-8441',
 							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
 							range: '8387-8441',
@@ -478,7 +499,7 @@ export class TemplateEditorWindow extends Modal {
 							totalCount: 7125
 						},
 						{
-							bookmarkId: '651358_33_9049-9090',
+							bookmarkId: '651358-33-9049-9090',
 							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
 							range: '9049-9090',
@@ -486,7 +507,7 @@ export class TemplateEditorWindow extends Modal {
 							totalCount: 4081
 						},
 						{
-							bookmarkId: '651358_33_4202-4275',
+							bookmarkId: '651358-33-4202-4275',
 							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
 							range: '4202-4275',
@@ -501,7 +522,7 @@ export class TemplateEditorWindow extends Modal {
 					chapterTitle: '第二章 中国哲学的背景',
 					highlights: [
 						{
-							bookmarkId: '651358_34_9546-9595',
+							bookmarkId: '651358-34-9546-9595',
 							chapterUid: 34,
 							chapterTitle: '第二章 中国哲学的背景',
 							range: '9546-9595',
@@ -509,7 +530,7 @@ export class TemplateEditorWindow extends Modal {
 							totalCount: 4590
 						},
 						{
-							bookmarkId: '651358_34_2846-2942',
+							bookmarkId: '651358-34-2846-2942',
 							chapterUid: 34,
 							chapterTitle: '第二章 中国哲学的背景',
 							range: '2846-2942',
@@ -524,7 +545,7 @@ export class TemplateEditorWindow extends Modal {
 					chapterTitle: '第二十八章 中国哲学在现代世界',
 					highlights: [
 						{
-							bookmarkId: '651358_60_8669-8685',
+							bookmarkId: '651358-60-8669-8685',
 							chapterUid: 60,
 							chapterTitle: '第二十八章 中国哲学在现代世界',
 							range: '8669-8685',
@@ -541,12 +562,13 @@ export class TemplateEditorWindow extends Modal {
 						chapterTitle: '第一章 中国哲学的精神',
 						reviews: [
 							{
-								reviewId: '15707910_7eIktLxIX',
+								reviewId: '15707910-7eIktLxIX',
 								created: 1580201316,
 								createTime: '2020-01-28 16:41:50',
 								content: '以笛卡尔为代表的一批思想家为了打破教会黑暗的统治开始探究科学，所以科学的尽头是哲学完全正确',
 								range: '3905-3956',
-								type: 1
+								type: 1,
+								abstract: '所以在西方，宗教与科学向来有冲突。科学前进一步，宗教就后退一步；在科学进展的面前，宗教的权威降低了。'
 							}
 						]
 					},
@@ -555,19 +577,20 @@ export class TemplateEditorWindow extends Modal {
 						chapterTitle: '第二十八章 中国哲学在现代世界',
 						reviews: [
 							{
-								reviewId: '15707910_7eJATFNqj',
+								reviewId: '15707910-7eJATFNqj',
 								created: 1580273157,
 								createTime: '2020-01-29 12:02:52',
 								content: '太有哲学意味了🧐',
 								range: '8669-8685',
-								type: 1
+								type: 1,
+								abstract: '人必须先说很多话，然后保持静默。\n'
 							}
 						]
 					}
 				],
 				bookReviews: [
 					{
-						reviewId: '15707910_7eJErADUa',
+						reviewId: '15707910-7eJErADUa',
 						created: 1580276407,
 						createTime: '2020-01-29 13:00:00',
 						content: '哲学的意义\n很多人说中国人没有信仰，在看完这位本书之后我有了很大改观，中国人不是没有信仰，只是没有像基督教、伊斯兰教宗教那样得信仰罢了，但是中国人有自己的哲学体系，这种哲学思想贯穿在整个中华文化，甚至于日常生活中。\n这本书的分量很重，从儒家的孔子孟子到道家的杨朱、老子、庄子，以及墨家的墨子，再到名家、法家阴阳家，再到后来得玄学、新道家、佛教、禅宗到最后的新儒家（理学和心学）等等，极大的开拓了眼界。\n最后用冯先生的一句话总结一下：人必须先说很多话，然后保持静默。',
