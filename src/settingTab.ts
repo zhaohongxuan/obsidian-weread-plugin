@@ -796,39 +796,40 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		const apiKey = get(settingsStore).wereadApiKey;
+		const settings = get(settingsStore);
+		const isCookieValid = settings.isCookieValid;
+		const hasCookies = settings.cookies && settings.cookies.length > 0;
 
 		if (apiKey) {
-			// Cookie 状态图标
-			const settings = get(settingsStore);
-			const isCookieValid = settings.isCookieValid;
-			const hasCookies = settings.cookies && settings.cookies.length > 0;
+			// 只有存在 Cookie 时才显示 Cookie 状态图标
+			if (hasCookies) {
+				setting.addExtraButton((button) => {
+					if (isCookieValid) {
+						button.setIcon('cookie').setTooltip('Cookie 有效');
+						button.extraSettingsEl.style.color = 'var(--color-green)';
+					} else {
+						button.setIcon('cookie').setTooltip('Cookie 已失效');
+						button.extraSettingsEl.style.color = 'var(--color-red)';
+					}
+					return button;
+				});
+			}
 
-			setting.addExtraButton((button) => {
-				if (isCookieValid && hasCookies) {
-					button.setIcon('cookie').setTooltip('Cookie 有效');
-					button.extraSettingsEl.style.color = 'var(--color-green)';
-				} else if (hasCookies) {
-					button.setIcon('cookie').setTooltip('Cookie 已失效');
-					button.extraSettingsEl.style.color = 'var(--color-red)';
-				} else {
-					button.setIcon('cookie').setTooltip('无 Cookie（仅 API Key）');
-					button.extraSettingsEl.style.color = 'var(--text-muted)';
-				}
-				return button;
-			});
-
-			setting.addButton((button) => {
-				button.setButtonText('注销')
-					.setTooltip('清除 API Key 和登录状态')
-					.onClick(async () => {
-						settingsStore.actions.clearCookies();
-						settingsStore.actions.setWereadApiKey('');
-						settingsStore.actions.setApiKeyValid(null);
-						new Notice('已注销，API Key 已清除');
-						this.display();
-					});
-				return button;
-			});
+			// 只有 Cookie 有效时才显示注销按钮
+			if (isCookieValid) {
+				setting.addButton((button) => {
+					button.setButtonText('注销')
+						.setTooltip('清除 API Key 和登录状态')
+						.onClick(async () => {
+							settingsStore.actions.clearCookies();
+							settingsStore.actions.setWereadApiKey('');
+							settingsStore.actions.setApiKeyValid(null);
+							new Notice('已注销，API Key 已清除');
+							this.display();
+						});
+					return button;
+				});
+			}
 
 			// 进入设置页时自动校验一次，结果更新到状态图标
 			statusBtn.setIcon('loader-2').setTooltip('验证中...');
