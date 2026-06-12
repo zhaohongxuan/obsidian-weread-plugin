@@ -30,9 +30,10 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% if highlight.isPopular and highlight.isUserHighlight %}
 {# 用户自己的划线 + 热门：📌🔥 + 共读人数 #}
 {% if highlight.reviewContent %}
-> 📌🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
+> 📌🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
 > 🔥 {{ highlight.popularCount }} 人共读
-- 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
+> 💭 {{ highlight.reviewContent }} 
+> ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
 {% else %}
 > 📌🔥 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
 > 🔥 {{ highlight.popularCount }} 人共读
@@ -47,8 +48,9 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% else %}
 {# 普通用户划线（非热门）：📌 #}
 {% if highlight.reviewContent %}
-> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
-- 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
+> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
+> 💭 {{ highlight.reviewContent }} 
+> ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
 {% else %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
 > ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
@@ -71,8 +73,9 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% set deeplink = "weread://bestbookmark?bookId=" + metaData.bookId + "&chapterUid=" + highlight.chapterUid + "&rangeStart=" + rangeParts[0] + "&rangeEnd=" + rangeParts[1] %}
 {# 普通用户划线（不显示热门）：📌 #}
 {% if highlight.reviewContent %}
-> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>) ^{{ highlight.bookmarkId }}
-- 💭 {{ highlight.reviewContent }} - ⏱ {{ highlight.createTime }}
+> 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
+ 💭 {{ highlight.reviewContent }} 
+ ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
 {% else %}
 > 📌 [{{ highlight.markText | trim }}](<{{ deeplink }}>)
 > ⏱ {{ highlight.createTime }} ^{{ highlight.bookmarkId }}
@@ -97,8 +100,8 @@ lastReadDate: {{ metaData.lastReadDate }}
 {% for review in chapter.reviews %}
 ### 划线评论
 > 📌 {{ review.abstract | trim }} ^{{ review.reviewId }}
-    - 💭 {{ review.content }}
-    - ⏱ {{ review.createTime }}
+    💭 {{ review.content }}
+    ⏱ {{ review.createTime }}
 {% endfor %}
 {% endif %}
 {% endif %}

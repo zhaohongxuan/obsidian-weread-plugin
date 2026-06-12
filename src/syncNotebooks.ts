@@ -196,9 +196,19 @@ export default class SyncNotebooks {
 			};
 		}
 
-		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
-		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
-		const chapterResp = await this.apiManager.getChapters(metaData.bookId);
+		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId, metaData.bookType === 3);
+		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId, metaData.bookType === 3);
+		const chapterResp = await this.apiManager.getChapters(metaData.bookId, metaData.bookType === 3);
+
+		// 处理 V1 API 返回 undefined 的情况（如 Cookie 无效）
+		if (!highlightResp || !chapterResp) {
+			console.warn(`[weread plugin] 获取书籍数据失败: ${metaData.title}, bookType=${metaData.bookType}`);
+			if (metaData.bookType === 3) {
+				throw new Error(`公众号"${metaData.title}"数据获取失败，请检查 Cookie 是否有效（需扫码登录）`);
+			}
+			throw new Error(`书籍"${metaData.title}"数据获取失败`);
+		}
+
 		const highlights = parseHighlights(highlightResp, reviewResp);
 		const reviews = parseReviews(reviewResp);
 		const chapters = parseChapterResp(chapterResp, highlightResp);
@@ -226,82 +236,54 @@ export default class SyncNotebooks {
 			// 获取热门划线（缓存优先 + 并发查询）
 			popularHighlights = await this.getPopularHighlights(metaData.bookId, chaptersInfo);
 
-			// 判断当前是否为分离式主题
-			const activeTheme = get(settingsStore).themes?.find(
-				(t) => t.id === get(settingsStore).activeThemeId
-			);
-			const isSeparatedWithPopularTheme = activeTheme?.id === 'builtin_separated_with_popular';
+			// 合并热门划线到章节划线中
+			const popularByChapter = new Map<number, PopularHighlight[]>();
+			for (const chapter of popularHighlights) {
+				popularByChapter.set(chapter.chapterUid, chapter.highlights);
+			}
 
-			if (!isSeparatedWithPopularTheme) {
-				// 合并模式：热门划线合并到章节划线中
-				const popularByChapter = new Map<number, PopularHighlight[]>();
-				for (const chapter of popularHighlights) {
-					popularByChapter.set(chapter.chapterUid, chapter.highlights);
+			for (const chapter of chapterHighlightReview) {
+				const chapterPopular = popularByChapter.get(chapter.chapterUid ?? 0) ?? [];
+				if (chapterPopular.length === 0) continue;
+
+				const existingHighlights = chapter.highlights ?? [];
+				const userRangeSet = new Set(existingHighlights.map((h) => h.range));
+
+				// 已有划线与热门重叠：标记为热门并加人数，同时标记为用户划线
+				for (const h of existingHighlights) {
+					const match = chapterPopular.find((p) => p.range === h.range);
+					if (match) {
+						h.isPopular = true;
+						h.popularCount = match.totalCount;
+					}
+					h.isUserHighlight = true;
 				}
 
-				for (const chapter of chapterHighlightReview) {
-					const chapterPopular = popularByChapter.get(chapter.chapterUid ?? 0) ?? [];
-					if (chapterPopular.length === 0) continue;
-
-					const existingHighlights = chapter.highlights ?? [];
-					const userRangeSet = new Set(existingHighlights.map((h) => h.range));
-
-					// 已有划线与热门重叠：标记为热门并加人数，同时标记为用户划线
-					for (const h of existingHighlights) {
-						const match = chapterPopular.find((p) => p.range === h.range);
-						if (match) {
-							h.isPopular = true;
-							h.popularCount = match.totalCount;
-						}
-						h.isUserHighlight = true;
-					}
-
-					// 热门划线中用户未标注的：追加为新 Highlight
-					for (const p of chapterPopular) {
-						if (!userRangeSet.has(p.range)) {
-							existingHighlights.push({
-								bookmarkId: p.bookmarkId?.replace(/[_~]/g, '-'),
-								created: 0,
-								createTime: '',
-								chapterUid: chapter.chapterUid ?? 0,
-								chapterIdx: chapter.chapterIdx ?? 0,
-								chapterTitle: chapter.chapterTitle,
-								markText: p.markText,
-								style: 0,
-								colorStyle: 0,
-								range: p.range,
-								isPopular: true,
-								popularCount: p.totalCount,
-								isUserHighlight: false
-							});
-						}
-					}
-
-					// 按 range 起始位置重新排序
-					chapter.highlights = existingHighlights.sort((a, b) => {
-						return (parseInt(a.range.split('-')[0]) || 0) - (parseInt(b.range.split('-')[0]) || 0);
-					});
-				}
-			} else {
-				// 分离模式：标记用户划线中的热门
-				for (const chapter of chapterHighlightReview) {
-					if (chapter.highlights) {
-						for (const h of chapter.highlights) {
-							h.isUserHighlight = true;
-							// 查找对应的热门划线
-							const popularChapter = popularHighlights.find(
-								(p) => p.chapterUid === chapter.chapterUid
-							);
-							if (popularChapter) {
-								const match = popularChapter.highlights.find((p) => p.range === h.range);
-								if (match) {
-									h.isPopular = true;
-									h.popularCount = match.totalCount;
-								}
-							}
-						}
+				// 热门划线中用户未标注的：追加为新 Highlight
+				for (const p of chapterPopular) {
+					if (!userRangeSet.has(p.range)) {
+						existingHighlights.push({
+							bookmarkId: p.bookmarkId?.replace(/[_~]/g, '-'),
+							created: 0,
+							createTime: '',
+							chapterUid: chapter.chapterUid ?? 0,
+							chapterIdx: chapter.chapterIdx ?? 0,
+							chapterTitle: chapter.chapterTitle,
+							markText: p.markText,
+							style: 0,
+							colorStyle: 0,
+							range: p.range,
+							isPopular: true,
+							popularCount: p.totalCount,
+							isUserHighlight: false
+						});
 					}
 				}
+
+				// 按 range 起始位置重新排序
+				chapter.highlights = existingHighlights.sort((a, b) => {
+					return (parseInt(a.range.split('-')[0]) || 0) - (parseInt(b.range.split('-')[0]) || 0);
+				});
 			}
 		}
 		return {

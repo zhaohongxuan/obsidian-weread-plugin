@@ -454,10 +454,28 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private saveArticleToggle(): void {
+		const settings = get(settingsStore);
+		const isCookieValid = settings.isCookieValid && settings.cookies.length > 0;
+		const hasApiKeyOnly = Boolean(settings.wereadApiKey) && !isCookieValid;
+
 		new Setting(this.containerEl)
 			.setName('同步公众号内容')
-			.setDesc('关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项')
+			.setDesc(
+				isCookieValid
+					? '关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项。'
+					: hasApiKeyOnly
+					? '⚠️ 此功能需要 Cookie（扫码登录获取），手动填入 API Key 无法使用。'
+					: '关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项。注意：公众号类型数据依赖 Cookie（需扫码登录）。'
+			)
 			.addToggle((toggle) => {
+				if (!isCookieValid) {
+					toggle.setDisabled(true);
+					toggle.setValue(false);
+					toggle.toggleEl.onclick = () => {
+						new Notice('同步公众号内容需要 Cookie，请使用扫码登录');
+					};
+					return toggle;
+				}
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
 					settingsStore.actions.setSaveArticleToggle(value);
 					this.display();
@@ -649,101 +667,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 	}
 
-	private showLogout(): void {
-		const userAvatar = get(settingsStore).userAvatar;
-		const userName = get(settingsStore).user;
-		const settings = get(settingsStore);
-		const isCookieValid = settings.isCookieValid;
-		const hasCookies = settings.cookies && settings.cookies.length > 0;
-		const lastCookieTime = settings.lastCookieTime;
-
-		// Cookie 状态文本
-		let statusText: string;
-		if (isCookieValid) {
-			statusText = '✅ Cookie 有效';
-		} else if (hasCookies) {
-			statusText = '⚠️ Cookie 已失效';
-		} else {
-			statusText = '❌ 未登录';
-		}
-		if (lastCookieTime > 0) {
-			const lastRefreshStr = new Date(lastCookieTime).toLocaleString();
-			statusText += `，上次刷新时间：${lastRefreshStr}`;
-		}
-
-		// 创建自定义容器而不是使用 Setting 的默认名称
-		const userContainer = this.containerEl.createDiv({
-			cls: 'weread-user-logout-container'
-		});
-
-		// 左边：头像 + 用户信息
-		const userInfoLeft = userContainer.createDiv({
-			cls: 'weread-user-info-left'
-		});
-
-		// 头像
-		if (userAvatar) {
-			const avatarImg = userInfoLeft.createEl('img', {
-				cls: 'weread-user-avatar-desktop'
-			});
-			avatarImg.src = userAvatar;
-			avatarImg.alt = '用户头像';
-		}
-
-		// 用户名和描述
-		const userTextInfo = userInfoLeft.createDiv({
-			cls: 'weread-user-text-info'
-		});
-		userTextInfo.createDiv({
-			cls: 'weread-user-name-title',
-			text: `微信读书已登录`
-		});
-		userTextInfo.createDiv({
-			cls: 'weread-user-name-value',
-			text: `用户名：${userName}`
-		});
-		// Cookie 状态
-		userTextInfo.createDiv({
-			cls: 'weread-cookie-status',
-			text: statusText
-		});
-
-		// 右边：按钮
-		const buttonGroup = userContainer.createDiv({
-			cls: 'weread-button-group'
-		});
-
-		// Copy Cookie 按钮
-		const copyCookieBtn = buttonGroup.createEl('button', {
-			cls: 'weread-action-button weread-copy-cookie-btn',
-			text: 'Copy Cookie'
-		});
-		copyCookieBtn.addEventListener('click', async () => {
-			const settings = get(settingsStore);
-			if (settings.cookies.length === 0) {
-				new Notice('无可复制的 Cookie');
-				return;
-			}
-			const cookieStr = settings.cookies
-				.map((c) => `${c.name}=${encodeURIComponent(c.value)}`)
-				.join('; ');
-			await navigator.clipboard.writeText(cookieStr);
-			new Notice('Cookie 已复制到剪贴板');
-		});
-
-		// 注销按钮
-		const logoutBtn = buttonGroup.createEl('button', {
-			cls: 'weread-action-button weread-logout-btn',
-			text: '注销'
-		});
-		logoutBtn.addEventListener('click', async () => {
-			logoutBtn.disabled = true;
-			const logoutModel = new WereadLogoutModel(this);
-			await logoutModel.doLogout();
-			this.display();
-		});
-	}
-
 	private template(): void {
 		new Setting(this.containerEl).setName('模板设置').setHeading();
 		this.convertTagToggle();
@@ -836,7 +759,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const descFrag = document
 			.createRange()
 			.createContextualFragment(
-				`用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。点击「扫码获取」扫码登录后自动获取，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请。格式：wrk-xxxxxxxx。`
+				`点击「扫码获取」扫码登录后自动获取API Key，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请,格式：wrk-xxxxxxxx。<br><strong>注意：</strong> 一些额外的功能需要依赖Cookie，建议使用扫码登录！！`
 			);
 
 		const setting = new Setting(this.containerEl)
@@ -873,20 +796,50 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		const apiKey = get(settingsStore).wereadApiKey;
+		const settings = get(settingsStore);
+		const isCookieValid = settings.isCookieValid;
+		const hasCookies = settings.cookies && settings.cookies.length > 0;
 
 		if (apiKey) {
-			setting.addButton((button) => {
-				button.setButtonText('注销')
-					.setTooltip('清除 API Key 和登录状态')
-					.onClick(async () => {
-						settingsStore.actions.clearCookies();
-						settingsStore.actions.setWereadApiKey('');
-						settingsStore.actions.setApiKeyValid(null);
-						new Notice('已注销，API Key 已清除');
-						this.display();
-					});
-				return button;
-			});
+			// 只有存在 Cookie 时才显示 Cookie 状态图标
+			if (hasCookies) {
+				setting.addExtraButton((button) => {
+					if (isCookieValid) {
+						button.setIcon('cookie').setTooltip('Cookie 有效');
+						button.extraSettingsEl.style.color = 'var(--color-green)';
+					} else {
+						button.setIcon('cookie').setTooltip('Cookie 已失效');
+						button.extraSettingsEl.style.color = 'var(--color-red)';
+					}
+					return button;
+				});
+			}
+
+			if (isCookieValid) {
+				// Cookie 有效时显示注销按钮
+				setting.addButton((button) => {
+					button.setButtonText('注销')
+						.setTooltip('清除 API Key 和登录状态')
+						.onClick(async () => {
+							settingsStore.actions.clearCookies();
+							settingsStore.actions.setWereadApiKey('');
+							settingsStore.actions.setApiKeyValid(null);
+							new Notice('已注销，API Key 已清除');
+							this.display();
+						});
+					return button;
+				});
+			} else if (Platform.isDesktopApp) {
+				// Cookie 无效或无 Cookie 时显示扫码登录按钮
+				setting.addButton((button) => {
+					button.setButtonText(hasCookies ? '扫码登录' : '扫码获取')
+						.setTooltip(hasCookies ? 'Cookie 已失效，点击重新扫码登录' : '扫码登录获取 Cookie')
+						.onClick(async () => {
+							await this.handleScanApiKey(button);
+						});
+					return button;
+				});
+			}
 
 			// 进入设置页时自动校验一次，结果更新到状态图标
 			statusBtn.setIcon('loader-2').setTooltip('验证中...');
@@ -1408,7 +1361,7 @@ class ManualSyncBookSelectorModal extends Modal {
 			this.renderAutoExcludedSection(
 				'已自动排除的公众号',
 				articleExcludedBooks,
-				'由“同步公众号内容”设置自动排除'
+				'由”同步公众号内容”设置自动排除'
 			);
 		}
 

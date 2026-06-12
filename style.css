@@ -4257,3 +4257,20 @@
 }
 
 /* ── 浮层面板 ──────────────────────────────────────────────── */
+
+/* API Key 输入框内的眼睛按钮 */
+.weread-eye-btn {
+	position: absolute !important;
+	right: 8px !important;
+	top: 50% !important;
+	transform: translateY(-50%) !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.weread-eye-btn.extra-settings-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+

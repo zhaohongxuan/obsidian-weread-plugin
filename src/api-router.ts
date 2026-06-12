@@ -27,6 +27,18 @@ class ApiRouter {
 		return Boolean(settings.wereadApiKey);
 	}
 
+	/**
+	 * 判断是否为公众号类型（bookType === 3）
+	 * 公众号类型必须使用 V1 接口（依赖 Cookie）
+	 */
+	private isArticleBook(bookId: string): boolean {
+		const settings = get(settingsStore);
+		// 通过书架缓存或实时检查判断是否为公众号
+		// 这里简单通过 bookId 特征判断，公众号 bookId 通常以特定格式存在
+		// 实际使用时通过 metaData.bookType 判断
+		return false;
+	}
+
 	async getBook(bookId: string): Promise<BookDetailResponse | undefined> {
 		if (this.useV2()) {
 			try {
@@ -39,7 +51,13 @@ class ApiRouter {
 		return this.v1Manager.getBook(bookId);
 	}
 
-	async getNotebookHighlights(bookId: string): Promise<HighlightResponse | undefined> {
+	async getNotebookHighlights(bookId: string, isArticle = false): Promise<HighlightResponse | undefined> {
+		// 公众号类型强制使用 V1 接口（依赖 Cookie）
+		if (isArticle) {
+			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取划线');
+			return this.v1Manager.getNotebookHighlights(bookId);
+		}
+
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getNotebookHighlights(bookId);
@@ -51,7 +69,13 @@ class ApiRouter {
 		return this.v1Manager.getNotebookHighlights(bookId);
 	}
 
-	async getNotebookReviews(bookId: string): Promise<BookReviewResponse | undefined> {
+	async getNotebookReviews(bookId: string, isArticle = false): Promise<BookReviewResponse | undefined> {
+		// 公众号类型强制使用 V1 接口（依赖 Cookie）
+		if (isArticle) {
+			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取笔记');
+			return this.v1Manager.getNotebookReviews(bookId);
+		}
+
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getNotebookReviews(bookId);
@@ -63,7 +87,13 @@ class ApiRouter {
 		return this.v1Manager.getNotebookReviews(bookId);
 	}
 
-	async getChapters(bookId: string): Promise<ChapterResponse | undefined> {
+	async getChapters(bookId: string, isArticle = false): Promise<ChapterResponse | undefined> {
+		// 公众号类型强制使用 V1 接口（依赖 Cookie）
+		if (isArticle) {
+			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取章节');
+			return this.v1Manager.getChapters(bookId);
+		}
+
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getChapters(bookId);
