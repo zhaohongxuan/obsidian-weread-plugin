@@ -23,7 +23,13 @@ import { ThemeManagerModal } from './components/themeManagerModal';
 import ApiRouter from './api-router';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
-import type { ReadingOpenMode, SyncMode, BookshelfSortMode, BookOpenMode } from './settings';
+import type {
+	ReadingOpenMode,
+	SyncMode,
+	BookshelfSortMode,
+	BookshelfGroupBy,
+	BookOpenMode
+} from './settings';
 
 const UNLIMITED_NOTE_COUNT = -1;
 
@@ -224,9 +230,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private bookshelfSettings(): void {
 		new Setting(this.containerEl).setName('书架设置').setHeading();
-			this.readingOpenModeSetting();
-			this.bookOpenModeSetting();
-
+		this.readingOpenModeSetting();
+		this.bookOpenModeSetting();
 
 		new Setting(this.containerEl)
 			.setName('书架排序方式')
@@ -242,13 +247,38 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		new Setting(this.containerEl)
-			.setName('按年份分组')
-			.setDesc('在时间排序时，按照阅读年份对书架进行分组展示')
+			.setName('分组方式')
+			.setDesc('按年份或文件夹对书架进行分组展示；关闭分组则默认平铺所有书籍')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('none', '无分组（平铺）')
+					.addOption('year', '按年份分组')
+					.addOption('folder', '按文件夹分组')
+					.setValue(get(settingsStore).bookshelfGroupBy)
+					.onChange((value: string) => {
+						settingsStore.actions.setBookshelfGroupBy(value as BookshelfGroupBy);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('允许折叠分组')
+			.setDesc('开启后，点击分组标题即可折叠或展开该分组')
 			.addToggle((toggle) => {
 				return toggle
-					.setValue(get(settingsStore).bookshelfGroupByYear)
+					.setValue(get(settingsStore).bookshelfCollapseEnabled)
 					.onChange((value) => {
-						settingsStore.actions.setBookshelfGroupByYear(value);
+						settingsStore.actions.setBookshelfCollapseEnabled(value);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('组级名称颜色')
+			.setDesc('设置分组时组别名称文本的颜色（仅在有分组时生效），默认使用主题默认颜色')
+			.addColorPicker((color) => {
+				return color
+					.setValue(get(settingsStore).bookshelfGroupTitleColor || '')
+					.onChange((value) => {
+						settingsStore.actions.setBookshelfGroupTitleColor(value);
 					});
 			});
 
@@ -310,8 +340,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 				? `当前已排除 ${selectedBookIds.size} 本书，同步时将跳过这些书籍`
 				: '当前未排除任何书籍，同步时会处理全部书籍'
 			: selectedBookIds.size > 0
-			? `当前已选择 ${selectedBookIds.size} 本书，同步时仅处理这些书籍`
-			: '当前未选择任何书籍，同步时不会处理任何书籍';
+				? `当前已选择 ${selectedBookIds.size} 本书，同步时仅处理这些书籍`
+				: '当前未选择任何书籍，同步时不会处理任何书籍';
 
 		new Setting(this.containerEl)
 			.setName(`${getSyncModeText(syncMode)}书籍`)
@@ -393,10 +423,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private preloadSelectableBooks(): void {
 		const settings = get(settingsStore);
-		if (
-			this.selectableBooksCache.length > 0 ||
-			this.selectableBooksLoadingPromise
-		) {
+		if (this.selectableBooksCache.length > 0 || this.selectableBooksLoadingPromise) {
 			return;
 		}
 		const hasApiKey = Boolean(settings.wereadApiKey);
@@ -768,8 +795,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const themeType = activeTheme.isBuiltIn
 			? '内置'
 			: activeTheme.isReadOnly
-			? '社区'
-			: '自定义';
+				? '社区'
+				: '自定义';
 		new Setting(this.containerEl)
 			.setName('当前使用')
 			.setDesc(`${activeTheme.name} (${themeType})`);
@@ -806,13 +833,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setPlaceholder('例如：2019')
-					.setValue(get(settingsStore).statsStartYear ? String(get(settingsStore).statsStartYear) : '')
+					.setValue(
+						get(settingsStore).statsStartYear
+							? String(get(settingsStore).statsStartYear)
+							: ''
+					)
 					.onChange((value) => {
 						const year = parseInt(value.trim());
 						settingsStore.actions.setStatsStartYear(isNaN(year) ? 0 : year);
 					})
 			);
-
 	}
 	private showApiKeySetting(): void {
 		let apiKeyText: TextComponent;
@@ -856,7 +886,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 				return text;
 			})
 			.addExtraButton((button) => {
-				button.setIcon('eye')
+				button
+					.setIcon('eye')
 					.setTooltip('显示/隐藏 API Key')
 					.onClick(() => {
 						const inputEl = apiKeyText.inputEl;
@@ -876,7 +907,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		if (apiKey) {
 			setting.addButton((button) => {
-				button.setButtonText('注销')
+				button
+					.setButtonText('注销')
 					.setTooltip('清除 API Key 和登录状态')
 					.onClick(async () => {
 						settingsStore.actions.clearCookies();
@@ -897,7 +929,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 		} else if (Platform.isDesktopApp) {
 			setting.addButton((button) => {
-				button.setButtonText('扫码获取')
+				button
+					.setButtonText('扫码获取')
 					.setTooltip('扫码登录获取 API Key')
 					.onClick(async () => {
 						await this.handleScanApiKey(button);
@@ -1063,8 +1096,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 	}
 
-
-
 	private scheduledSync(): void {
 		new Setting(this.containerEl)
 			.setName('定时同步')
@@ -1135,7 +1166,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 						? '正在异步加载书籍信息，请稍候...'
 						: `${getSyncModeText(syncMode)}已选书籍共 ${
 								selectedBookIds.size
-						  } 本（部分书籍信息尚未加载）`
+							} 本（部分书籍信息尚未加载）`
 			});
 			return;
 		}

@@ -12,7 +12,9 @@ export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
 export type BookOpenMode = 'web' | 'app';
 export type BookshelfSortMode = 'recent' | 'title';
+export type BookshelfGroupBy = 'none' | 'year' | 'folder';
 export type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
+export type BookshelfReadingStatusFilter = 'all' | 'reading' | 'finished' | 'unread';
 
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
 	manualSyncMode?: boolean;
@@ -108,8 +110,11 @@ export interface WereadPluginSettings {
 	lastSyncBookTitles: string[];
 	syncLogs: SyncLogEntry[];
 	bookshelfSortMode: BookshelfSortMode;
-	bookshelfGroupByYear: boolean;
+	bookshelfGroupBy: BookshelfGroupBy;
+	bookshelfCollapseEnabled: boolean;
+	bookshelfGroupTitleColor: string;
 	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
+	bookshelfReadingStatusFilter: BookshelfReadingStatusFilter;
 	themes: Theme[];
 	activeThemeId: string;
 	wereadApiKey: string;
@@ -166,15 +171,18 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	lastSyncBookTitles: [],
 	syncLogs: [],
 	bookshelfSortMode: 'recent',
-	bookshelfGroupByYear: true,
+	bookshelfGroupBy: 'none',
+	bookshelfCollapseEnabled: false,
+	bookshelfGroupTitleColor: '',
 	bookshelfDefaultSyncStatusFilter: 'all',
+	bookshelfReadingStatusFilter: 'all',
 	themes: BUILT_IN_THEMES,
 	activeThemeId: 'builtin_merged',
 	wereadApiKey: '',
 	apiKeyValid: null,
 	readingStatsLocation: '/',
-	statsStartYear: 0,  // 0 = use registTime from API
-	popularHighlightsCacheTtl: 7, // 默认7天
+	statsStartYear: 0, // 0 = use registTime from API
+	popularHighlightsCacheTtl: 7 // 默认7天
 };
 
 const createSettingsStore = () => {
@@ -196,8 +204,8 @@ const createSettingsStore = () => {
 				data.syncMode === 'blacklist' || data.syncMode === 'whitelist'
 					? data.syncMode
 					: manualSyncMode
-					? 'whitelist'
-					: 'blacklist'
+						? 'whitelist'
+						: 'blacklist'
 		};
 		console.log(
 			'[weread plugin] Cookie 详情: 数量=' +
@@ -589,8 +597,6 @@ const createSettingsStore = () => {
 		});
 	};
 
-
-
 	const setScheduledSyncToggle = (scheduledSyncToggle: boolean) => {
 		store.update((state) => {
 			state.scheduledSyncToggle = scheduledSyncToggle;
@@ -634,9 +640,30 @@ const createSettingsStore = () => {
 		});
 	};
 
-	const setBookshelfGroupByYear = (groupByYear: boolean) => {
+	const setBookshelfGroupBy = (groupBy: BookshelfGroupBy) => {
 		store.update((state) => {
-			state.bookshelfGroupByYear = groupByYear;
+			state.bookshelfGroupBy = groupBy;
+			return state;
+		});
+	};
+
+	const setBookshelfCollapseEnabled = (collapseEnabled: boolean) => {
+		store.update((state) => {
+			state.bookshelfCollapseEnabled = collapseEnabled;
+			return state;
+		});
+	};
+
+	const setBookshelfGroupTitleColor = (color: string) => {
+		store.update((state) => {
+			state.bookshelfGroupTitleColor = color;
+			return state;
+		});
+	};
+
+	const setBookshelfReadingStatusFilter = (filter: BookshelfReadingStatusFilter) => {
+		store.update((state) => {
+			state.bookshelfReadingStatusFilter = filter;
 			return state;
 		});
 	};
@@ -807,8 +834,11 @@ const createSettingsStore = () => {
 			addSyncLog,
 			getSyncLogs,
 			setBookshelfSortMode,
-			setBookshelfGroupByYear,
+			setBookshelfGroupBy,
+			setBookshelfCollapseEnabled,
+			setBookshelfGroupTitleColor,
 			setBookshelfDefaultSyncStatusFilter,
+			setBookshelfReadingStatusFilter,
 			setActiveTheme,
 			saveTheme,
 			deleteTheme,
@@ -821,7 +851,7 @@ const createSettingsStore = () => {
 			setApiKeyValid,
 			setReadingStatsLocation,
 			setStatsStartYear,
-			setUserSignature,
+			setUserSignature
 		}
 	};
 };

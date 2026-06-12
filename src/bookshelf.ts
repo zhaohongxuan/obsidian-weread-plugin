@@ -17,7 +17,10 @@ const IDLE_PROGRESS: BookshelfProgress = {
 export default class WereadBookshelfService {
 	private progressCache = new Map<string, BookshelfProgress>();
 
-	constructor(private fileManager: FileManager, private apiManager: ApiRouter) {}
+	constructor(
+		private fileManager: FileManager,
+		private apiManager: ApiRouter
+	) {}
 
 	async getBookshelfBooks(): Promise<BookshelfBook[]> {
 		const [notebookResp, localFilesByBookId] = await Promise.all([
