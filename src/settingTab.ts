@@ -815,8 +815,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 				});
 			}
 
-			// 只有 Cookie 有效时才显示注销按钮
 			if (isCookieValid) {
+				// Cookie 有效时显示注销按钮
 				setting.addButton((button) => {
 					button.setButtonText('注销')
 						.setTooltip('清除 API Key 和登录状态')
@@ -826,6 +826,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 							settingsStore.actions.setApiKeyValid(null);
 							new Notice('已注销，API Key 已清除');
 							this.display();
+						});
+					return button;
+				});
+			} else if (Platform.isDesktopApp && hasCookies) {
+				// Cookie 无效但有 Cookie 时显示扫码登录按钮
+				setting.addButton((button) => {
+					button.setButtonText('扫码登录')
+						.setTooltip('Cookie 已失效，点击重新扫码登录')
+						.onClick(async () => {
+							await this.handleScanApiKey(button);
 						});
 					return button;
 				});
