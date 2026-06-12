@@ -4,7 +4,6 @@ import { Platform } from 'obsidian';
 import notebookTemolate from './themes/notebookTemplate.njk';
 import wereadOfficialTemplate from './themes/wereadOfficialTemplate.njk';
 import separatedTemplate from './themes/separatedTemplate.njk';
-import separatedWithPopularTemplate from './themes/separatedWithPopularTemplate.njk';
 import WereadPlugin from '../main';
 import type { SyncLogEntry, Theme } from './models';
 
@@ -44,16 +43,6 @@ export const BUILT_IN_THEMES: Theme[] = [
 		name: '微信官方笔记主题',
 		description: '详细的元数据信息，适合生成书籍笔记',
 		template: wereadOfficialTemplate,
-		trimBlocks: true,
-		isBuiltIn: true,
-		isReadOnly: true,
-		source: 'builtin'
-	},
-	{
-		id: 'builtin_separated_with_popular',
-		name: '分离式（含热门划线）',
-		description: '我的划线、热门划线、笔记分开展示，适合分析学习',
-		template: separatedWithPopularTemplate,
 		trimBlocks: true,
 		isBuiltIn: true,
 		isReadOnly: true,

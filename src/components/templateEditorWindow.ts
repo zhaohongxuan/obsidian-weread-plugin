@@ -280,7 +280,10 @@ export class TemplateEditorWindow extends Modal {
 							style: 0,
 							colorStyle: 1,
 							range: '0-50',
-							reviewContent: '宗教与哲学的关系很深刻'
+							reviewContent: '宗教与哲学的关系很深刻',
+							isPopular: true,
+							popularCount: 1280,
+							isUserHighlight: true
 						},
 						{
 							bookmarkId: 'bookmark002',
@@ -292,7 +295,10 @@ export class TemplateEditorWindow extends Modal {
 							markText: '知者不惑，仁者不忧，勇者不惧',
 							style: 0,
 							colorStyle: 2,
-							range: '100-150'
+							range: '100-150',
+							isPopular: true,
+							popularCount: 3560,
+							isUserHighlight: true
 						},
 						{
 							bookmarkId: 'bookmark003',
@@ -306,6 +312,105 @@ export class TemplateEditorWindow extends Modal {
 							style: 0,
 							colorStyle: 1,
 							range: '150-200'
+						},
+						{
+							bookmarkId: 'bookmark004',
+							created: 1580060000,
+							createTime: '2020-01-29 10:00:00',
+							chapterUid: 1001,
+							chapterIdx: 1,
+							chapterTitle: '第一章 中国哲学的精神',
+							markText: '哲学的功能不是为了增进正的知识，而是为了提高人的心灵，超越现实世界，体验高于道德的价值。',
+							style: 0,
+							colorStyle: 3,
+							range: '200-280'
+						}
+					]
+				},
+				{
+					chapterUid: 1002,
+					chapterIdx: 2,
+					chapterTitle: '第二章 中国哲学的背景',
+					level: 1,
+					isMPChapter: 0,
+					highlights: [
+						{
+							bookmarkId: 'bookmark005',
+							created: 1580100000,
+							createTime: '2020-02-01 09:00:00',
+							chapterUid: 1002,
+							chapterIdx: 2,
+							chapterTitle: '第二章 中国哲学的背景',
+							markText: '中国哲学的背景与儒家、道家等流派的发展密切相关。',
+							style: 0,
+							colorStyle: 1,
+							range: '0-40',
+							isPopular: true,
+							popularCount: 890,
+							isUserHighlight: false
+						},
+						{
+							bookmarkId: 'bookmark006',
+							created: 1580105000,
+							createTime: '2020-02-01 12:00:00',
+							chapterUid: 1002,
+							chapterIdx: 2,
+							chapterTitle: '第二章 中国哲学的背景',
+							markText: '哲学与宗教的区别在于，哲学使人成为人，而不是成为某种神。',
+							style: 0,
+							colorStyle: 2,
+							range: '100-160',
+							isPopular: true,
+							popularCount: 2100,
+							isUserHighlight: true
+						}
+					]
+				}
+			],
+			popularHighlights: [
+				{
+					chapterUid: 1001,
+					chapterIdx: 1,
+					chapterTitle: '第一章 中国哲学的精神',
+					highlights: [
+						{
+							bookmarkId: 'bookmark001',
+							chapterUid: 1001,
+							chapterTitle: '第一章 中国哲学的精神',
+							range: '0-50',
+							markText: '宗教也和人生有关系。每种大宗教的核心都有一种哲学。事实上，每种大宗教就是一种哲学加上一定的上层建筑。',
+							totalCount: 1280
+						},
+						{
+							bookmarkId: 'bookmark002',
+							chapterUid: 1001,
+							chapterTitle: '第一章 中国哲学的精神',
+							range: '100-150',
+							markText: '知者不惑，仁者不忧，勇者不惧',
+							totalCount: 3560
+						}
+					]
+				},
+				{
+					chapterUid: 1002,
+					chapterIdx: 2,
+					chapterTitle: '第二章 中国哲学的背景',
+					highlights: [
+						{
+							bookmarkId: 'bookmark005',
+							chapterUid: 1002,
+							chapterTitle: '第二章 中国哲学的背景',
+							range: '0-40',
+							markText: '中国哲学的背景与儒家、道家等流派的发展密切相关。',
+							totalCount: 890
+						},
+						{
+							bookmarkId: 'bookmark006',
+							chapterUid: 1002,
+							chapterTitle: '第二章 中国哲学的背景',
+							range: '100-160',
+							markText: '哲学与宗教的区别在于，哲学使人成为人，而不是成为某种神。',
+							totalCount: 2100
 						}
 					]
 				}
