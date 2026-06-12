@@ -23,6 +23,7 @@ import type {
 } from '../settings';
 import { get } from 'svelte/store';
 import { getPcUrl } from '../parser/parseResponse';
+import { hasFinishedDate, hasPositiveReadingTime } from '../utils/readingStatus';
 
 // 计算相对时间（中文显示）
 function getRelativeTimeInChinese(timestamp: number): string {
@@ -1049,22 +1050,13 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private isBookFinished(book: BookshelfBook): boolean {
-		return Boolean(book.localFile?.finishedDate || book.progress?.finishedDateText);
+		return hasFinishedDate(book.localFile?.finishedDate);
 	}
 
 	private isBookReading(book: BookshelfBook): boolean {
 		if (this.isBookFinished(book)) return false;
-		return this.hasReadingTime(book.progress?.readingTime);
-	}
-
-	private hasReadingTime(value?: string | number): boolean {
-		if (value === undefined || value === null) return false;
-		if (typeof value === 'number') return value > 0;
-		const trimmedValue = value.trim();
-		if (trimmedValue === '') return false;
-		const numericValue = Number(trimmedValue);
-		if (!Number.isNaN(numericValue)) return numericValue > 0;
-		return trimmedValue.match(/\d+(?:\.\d+)?/g)?.some((m) => Number(m) > 0) ?? false;
+		// 在读 = 无完成时间 + 有阅读时长（readingTime > 0）
+		return hasPositiveReadingTime(book.localFile?.readingTime);
 	}
 
 	private normalizeCount(value: unknown): number {

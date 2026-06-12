@@ -120,32 +120,6 @@ export default class WereadBookshelfService {
 		localFile: AnnotationFile | undefined,
 		filterContext: ReturnType<typeof createSyncFilterContext>
 	): BookshelfBook {
-		const baseProgress = this.getProgress(
-			metaData.bookId,
-			this.getLocalFallbackProgress(localFile)
-		);
-		const readInfo = metaData.readInfo;
-
-		// 当 progress 缓存未加载时，从 notebook API 返回的 readInfo 提供兜底阅读状态
-		// 避免书架首次渲染时全部被判为"未读"
-		const fallbackReadingTime =
-			baseProgress.state === 'idle' && readInfo?.readingTime
-				? readInfo.readingTime
-				: undefined;
-		const fallbackFinishedDateText =
-			baseProgress.state === 'idle' && readInfo?.finishedDate
-				? formatTimestampToDate(readInfo.finishedDate)
-				: undefined;
-
-		const progress: BookshelfProgress =
-			fallbackReadingTime !== undefined || fallbackFinishedDateText !== undefined
-				? {
-						...baseProgress,
-						readingTime: fallbackReadingTime ?? baseProgress.readingTime,
-						finishedDateText: fallbackFinishedDateText ?? baseProgress.finishedDateText
-					}
-				: baseProgress;
-
 		return {
 			bookId: metaData.bookId,
 			title: metaData.title,
@@ -160,7 +134,7 @@ export default class WereadBookshelfService {
 			remoteExists: true,
 			isLocalOnly: false,
 			syncFilter: evaluateMetadataSyncFilter(metaData, filterContext),
-			progress
+			progress: this.getProgress(metaData.bookId, this.getLocalFallbackProgress(localFile))
 		};
 	}
 

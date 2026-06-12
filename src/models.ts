@@ -471,6 +471,7 @@ export type AnnotationFile = {
 	author?: string;
 	cover?: string;
 	progress?: string;
+	readingTime?: string;
 	readingDate?: string;
 	finishedDate?: string;
 	noteCount: number;

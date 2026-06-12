@@ -3,6 +3,7 @@ import type { Notebook } from '../models';
 import { formatTimeDuration, formatTimestampToDate } from './dateUtil';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
+import { hasFinishedDate, hasPositiveReadingTime } from './readingStatus';
 
 type FrontMatterContent = {
 	doc_type: string;
@@ -51,19 +52,21 @@ export const buildFrontMatter = (
 
 		const readInfo = noteBook.metaData.readInfo;
 		if (readInfo) {
-			// Use finishedDate to determine reading status since markedStatus is no longer available in new API
-			// If finishedDate exists and is valid (> 0), status is "读完", otherwise "在读"
-			if (readInfo.finishedDate && readInfo.finishedDate > 0) {
+			if (hasFinishedDate(readInfo.finishedDate)) {
 				frontMatter.readingStatus = ReadingStatus['读完'].toString();
-			} else {
+			} else if (hasPositiveReadingTime(readInfo.readingTime)) {
 				frontMatter.readingStatus = ReadingStatus['在读'].toString();
+			} else {
+				frontMatter.readingStatus = ReadingStatus['未标记'].toString();
 			}
 			frontMatter.progress =
 				readInfo.readingProgress === undefined ? '-1' : readInfo.readingProgress + '%';
 			frontMatter.totalReadDay = readInfo.totalReadDay;
 			frontMatter.readingTime = formatTimeDuration(readInfo.readingTime);
-			frontMatter.readingDate = formatTimestampToDate(readInfo.readingBookDate);
-			if (readInfo.finishedDate) {
+			if (readInfo.readingBookDate) {
+				frontMatter.readingDate = formatTimestampToDate(readInfo.readingBookDate);
+			}
+			if (hasFinishedDate(readInfo.finishedDate)) {
 				frontMatter.finishedDate = formatTimestampToDate(readInfo.finishedDate);
 			}
 		}
