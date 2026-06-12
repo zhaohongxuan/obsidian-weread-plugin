@@ -201,7 +201,7 @@ export class TemplateEditorWindow extends Modal {
 				this.previewEl.addClass('markdown-preview-view');
 				this.previewEl.removeClass('preview-source-mode');
 				console.log('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
-				MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this);
+				MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this as any);
 				console.log('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
 			} else {
 				// 源码模式：显示原始文本
