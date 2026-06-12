@@ -829,11 +829,11 @@ export class WereadSettingsTab extends PluginSettingTab {
 						});
 					return button;
 				});
-			} else if (Platform.isDesktopApp && hasCookies) {
-				// Cookie 无效但有 Cookie 时显示扫码登录按钮
+			} else if (Platform.isDesktopApp) {
+				// Cookie 无效或无 Cookie 时显示扫码登录按钮
 				setting.addButton((button) => {
-					button.setButtonText('扫码登录')
-						.setTooltip('Cookie 已失效，点击重新扫码登录')
+					button.setButtonText(hasCookies ? '扫码登录' : '扫码获取')
+						.setTooltip(hasCookies ? 'Cookie 已失效，点击重新扫码登录' : '扫码登录获取 Cookie')
 						.onClick(async () => {
 							await this.handleScanApiKey(button);
 						});
