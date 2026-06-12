@@ -220,6 +220,7 @@ export class WereadBookshelfView extends ItemView {
 		});
 		syncStatusSelect.onchange = () => {
 			this.syncStatusFilter = syncStatusSelect.value as SyncStatusFilter;
+			settingsStore.actions.setBookshelfDefaultSyncStatusFilter(this.syncStatusFilter);
 			this.renderBooks();
 		};
 
@@ -238,6 +239,7 @@ export class WereadBookshelfView extends ItemView {
 		});
 		readingStatusSelect.onchange = () => {
 			this.readingStatusFilter = readingStatusSelect.value as ReadingStatusFilter;
+			settingsStore.actions.setBookshelfReadingStatusFilter(this.readingStatusFilter);
 			this.renderBooks();
 		};
 
@@ -654,7 +656,8 @@ export class WereadBookshelfView extends ItemView {
 
 		// Notes count section (noteCount + reviewCount)
 		const totalNotes = filteredBooks.reduce(
-			(sum, book) => sum + book.noteCount + book.reviewCount,
+			(sum, book) =>
+				sum + this.normalizeCount(book.noteCount) + this.normalizeCount(book.reviewCount),
 			0
 		);
 		const noteSection = card.createDiv({ cls: 'weread-bookshelf-summary-item' });
@@ -778,7 +781,7 @@ export class WereadBookshelfView extends ItemView {
 
 		details.createDiv({
 			cls: 'weread-bookshelf-card-meta',
-			text: `划线 ${book.noteCount} · 想法 ${book.reviewCount}`
+			text: `划线 ${this.normalizeCount(book.noteCount)} · 想法 ${this.normalizeCount(book.reviewCount)}`
 		});
 		details.createDiv({
 			cls: 'weread-bookshelf-card-meta',
@@ -862,10 +865,14 @@ export class WereadBookshelfView extends ItemView {
 		labels.push(book.isArticle ? '公众号' : '图书');
 
 		// 添加阅读状态标签
-		if (book.hasLocalFile && book.localFile?.finishedDate) {
+		const isFinished = this.isBookFinished(book);
+		const isReading = !isFinished && this.isBookReading(book);
+		if (isFinished) {
 			labels.push('已读');
-		} else if (book.hasLocalFile) {
+		} else if (isReading) {
 			labels.push('在读');
+		} else {
+			labels.push('未读');
 		}
 
 		// 文件夹路径标签
@@ -925,7 +932,7 @@ export class WereadBookshelfView extends ItemView {
 
 				if (this.readingStatusFilter !== 'all') {
 					const isFinished = this.isBookFinished(book);
-					const isReading = !isFinished && book.hasLocalFile;
+					const isReading = !isFinished && this.isBookReading(book);
 					if (this.readingStatusFilter === 'finished' && !isFinished) {
 						return false;
 					}
@@ -944,7 +951,7 @@ export class WereadBookshelfView extends ItemView {
 
 	private sortBooks(left: BookshelfBook, right: BookshelfBook): number {
 		if (this.sortMode === 'title') {
-			return left.title.localeCompare(right.title);
+			return (left.title ?? '').localeCompare(right.title ?? '');
 		}
 		return this.getRecentValue(right) - this.getRecentValue(left);
 	}
@@ -1029,8 +1036,27 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private isBookFinished(book: BookshelfBook): boolean {
-		// 检查本地文件的 finishedDate 来判断是否已读
-		return book.hasLocalFile && book.localFile?.finishedDate !== undefined;
+		return Boolean(book.localFile?.finishedDate || book.progress?.finishedDateText);
+	}
+
+	private isBookReading(book: BookshelfBook): boolean {
+		if (this.isBookFinished(book)) return false;
+		return this.hasReadingTime(book.progress?.readingTime);
+	}
+
+	private hasReadingTime(value?: string | number): boolean {
+		if (value === undefined || value === null) return false;
+		if (typeof value === 'number') return value > 0;
+		const trimmedValue = value.trim();
+		if (trimmedValue === '') return false;
+		const numericValue = Number(trimmedValue);
+		if (!Number.isNaN(numericValue)) return numericValue > 0;
+		return trimmedValue.match(/\d+(?:\.\d+)?/g)?.some((m) => Number(m) > 0) ?? false;
+	}
+
+	private normalizeCount(value: unknown): number {
+		const count = Number(value ?? 0);
+		return Number.isFinite(count) ? count : 0;
 	}
 
 	private isRemoteIncludedInCurrentSettings(book: BookshelfBook): boolean {
