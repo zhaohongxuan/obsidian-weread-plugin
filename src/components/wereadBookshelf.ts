@@ -497,22 +497,19 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private renderYearGroups(books: BookshelfBook[]): void {
+		const canCollapse = this.collapseEnabled;
 		for (const group of this.groupBooksByYear(books)) {
 			const groupKey = `year:${group.year}`;
-			const collapsed = this.collapseEnabled && this.collapsedGroups.has(groupKey);
+			const collapsed = canCollapse && this.collapsedGroups.has(groupKey);
 			const section = this.gridEl.createDiv({ cls: 'weread-bookshelf-group' });
-			const titleRow = section.createDiv({ cls: 'weread-bookshelf-group-title-row' });
-			if (this.collapseEnabled) {
-				titleRow.createSpan({
-					cls: 'weread-bookshelf-group-toggle',
-					text: collapsed ? '▶' : '▼'
-				});
-			}
+			const titleRow = section.createDiv({
+				cls: `weread-bookshelf-group-title-row${canCollapse ? ' is-collapsible' : ''}`
+			});
 			titleRow.createEl('h3', {
 				cls: 'weread-bookshelf-group-title',
 				text: group.year === UNKNOWN_YEAR_LABEL ? group.year : `${group.year} 年`
 			});
-			if (this.collapseEnabled) {
+			if (canCollapse) {
 				titleRow.addEventListener('click', () => {
 					this.toggleGroup(groupKey);
 				});
@@ -592,17 +589,14 @@ export class WereadBookshelfView extends ItemView {
 	}
 
 	private renderFolderTree(groups: FolderGroup[], container: HTMLElement): void {
+		const canCollapse = this.collapseEnabled;
 		for (const group of groups) {
 			const groupKey = `folder:${group.path}`;
-			const collapsed = this.collapseEnabled && this.collapsedGroups.has(groupKey);
+			const collapsed = canCollapse && this.collapsedGroups.has(groupKey);
 			const section = container.createDiv({ cls: 'weread-bookshelf-group' });
-			const titleRow = section.createDiv({ cls: 'weread-bookshelf-group-title-row' });
-			if (this.collapseEnabled) {
-				titleRow.createSpan({
-					cls: 'weread-bookshelf-group-toggle',
-					text: collapsed ? '▶' : '▼'
-				});
-			}
+			const titleRow = section.createDiv({
+				cls: `weread-bookshelf-group-title-row${canCollapse ? ' is-collapsible' : ''}`
+			});
 			const title = titleRow.createEl('h3', {
 				cls: 'weread-bookshelf-group-title',
 				text: group.name
@@ -610,7 +604,7 @@ export class WereadBookshelfView extends ItemView {
 			if (group.depth > 0) {
 				title.addClass('weread-bookshelf-group-title-sub');
 			}
-			if (this.collapseEnabled) {
+			if (canCollapse) {
 				titleRow.addEventListener('click', () => {
 					this.toggleGroup(groupKey);
 				});
@@ -627,7 +621,7 @@ export class WereadBookshelfView extends ItemView {
 			if (group.books.length > 0) {
 				const groupGrid = section.createDiv({ cls: 'weread-bookshelf-group-grid' });
 				for (const book of [...group.books].sort((left, right) =>
-					left.title.localeCompare(right.title)
+					(left.title ?? '').localeCompare(right.title ?? '')
 				)) {
 					this.renderBookCard(book, groupGrid);
 				}

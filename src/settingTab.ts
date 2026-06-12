@@ -262,7 +262,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName('允许折叠分组')
-			.setDesc('开启后，年份/文件夹分组的标题行可以点击折叠或展开')
+			.setDesc('开启后，点击分组标题即可折叠或展开该分组')
 			.addToggle((toggle) => {
 				return toggle
 					.setValue(get(settingsStore).bookshelfCollapseEnabled)
