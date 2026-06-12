@@ -272,6 +272,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 
 		new Setting(this.containerEl)
+			.setName('组级名称颜色')
+			.setDesc('设置分组时组别名称文本的颜色（仅在有分组时生效），默认使用主题默认颜色')
+			.addColorPicker((color) => {
+				return color
+					.setValue(get(settingsStore).bookshelfGroupTitleColor || '')
+					.onChange((value) => {
+						settingsStore.actions.setBookshelfGroupTitleColor(value);
+					});
+			});
+
+		new Setting(this.containerEl)
 			.setName('默认书架状态')
 			.setDesc('初次打开书架时的默认筛选状态')
 			.addDropdown((dropdown) => {

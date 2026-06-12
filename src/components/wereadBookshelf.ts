@@ -500,6 +500,8 @@ export class WereadBookshelfView extends ItemView {
 
 	private renderYearGroups(books: BookshelfBook[]): void {
 		const canCollapse = this.collapseEnabled;
+		const settings = get(settingsStore);
+		const titleColor = settings.bookshelfGroupTitleColor || '';
 		for (const group of this.groupBooksByYear(books)) {
 			const groupKey = `year:${group.year}`;
 			const collapsed = canCollapse && this.collapsedGroups.has(groupKey);
@@ -507,10 +509,13 @@ export class WereadBookshelfView extends ItemView {
 			const titleRow = section.createDiv({
 				cls: `weread-bookshelf-group-title-row${canCollapse ? ' is-collapsible' : ''}`
 			});
-			titleRow.createEl('h3', {
+			const title = titleRow.createEl('h3', {
 				cls: 'weread-bookshelf-group-title',
 				text: group.year === UNKNOWN_YEAR_LABEL ? group.year : `${group.year} 年`
 			});
+			if (titleColor) {
+				title.style.color = titleColor;
+			}
 			if (canCollapse) {
 				titleRow.addEventListener('click', () => {
 					this.toggleGroup(groupKey);
@@ -592,6 +597,9 @@ export class WereadBookshelfView extends ItemView {
 
 	private renderFolderTree(groups: FolderGroup[], container: HTMLElement): void {
 		const canCollapse = this.collapseEnabled;
+		const settings = get(settingsStore);
+		const titleColor = settings.bookshelfGroupTitleColor || '';
+		const depthSizes = [16, 14, 12.5, 11];
 		for (const group of groups) {
 			const groupKey = `folder:${group.path}`;
 			const collapsed = canCollapse && this.collapsedGroups.has(groupKey);
@@ -603,6 +611,11 @@ export class WereadBookshelfView extends ItemView {
 				cls: 'weread-bookshelf-group-title',
 				text: group.name
 			});
+			const depth = Math.min(group.depth, depthSizes.length - 1);
+			title.style.fontSize = `${depthSizes[depth]}px`;
+			if (titleColor) {
+				title.style.color = titleColor;
+			}
 			if (group.depth > 0) {
 				title.addClass('weread-bookshelf-group-title-sub');
 			}

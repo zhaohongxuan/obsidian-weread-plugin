@@ -112,6 +112,7 @@ export interface WereadPluginSettings {
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfGroupBy: BookshelfGroupBy;
 	bookshelfCollapseEnabled: boolean;
+	bookshelfGroupTitleColor: string;
 	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
 	bookshelfReadingStatusFilter: BookshelfReadingStatusFilter;
 	themes: Theme[];
@@ -172,6 +173,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	bookshelfSortMode: 'recent',
 	bookshelfGroupBy: 'none',
 	bookshelfCollapseEnabled: false,
+	bookshelfGroupTitleColor: '',
 	bookshelfDefaultSyncStatusFilter: 'all',
 	bookshelfReadingStatusFilter: 'all',
 	themes: BUILT_IN_THEMES,
@@ -652,6 +654,13 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setBookshelfGroupTitleColor = (color: string) => {
+		store.update((state) => {
+			state.bookshelfGroupTitleColor = color;
+			return state;
+		});
+	};
+
 	const setBookshelfReadingStatusFilter = (filter: BookshelfReadingStatusFilter) => {
 		store.update((state) => {
 			state.bookshelfReadingStatusFilter = filter;
@@ -827,6 +836,7 @@ const createSettingsStore = () => {
 			setBookshelfSortMode,
 			setBookshelfGroupBy,
 			setBookshelfCollapseEnabled,
+			setBookshelfGroupTitleColor,
 			setBookshelfDefaultSyncStatusFilter,
 			setBookshelfReadingStatusFilter,
 			setActiveTheme,
