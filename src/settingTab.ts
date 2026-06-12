@@ -64,13 +64,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 		// API Key 设置始终可见（桌面端和移动端）
 		this.showApiKeySetting();
 
-		// Cookie 登录状态（仅在有 Cookie 时显示）
-		const settings = get(settingsStore);
-		const hasCookies = settings.cookies && settings.cookies.length > 0;
-		if (hasCookies) {
-			this.showLogout();
-		}
-
 		this.notebookFolder();
 		this.bookshelfSettings();
 		this.syncModeSettings();
@@ -656,101 +649,6 @@ export class WereadSettingsTab extends PluginSettingTab {
 			});
 	}
 
-	private showLogout(): void {
-		const userAvatar = get(settingsStore).userAvatar;
-		const userName = get(settingsStore).user;
-		const settings = get(settingsStore);
-		const isCookieValid = settings.isCookieValid;
-		const hasCookies = settings.cookies && settings.cookies.length > 0;
-		const lastCookieTime = settings.lastCookieTime;
-
-		// Cookie 状态文本
-		let statusText: string;
-		if (isCookieValid) {
-			statusText = '✅ Cookie 有效';
-		} else if (hasCookies) {
-			statusText = '⚠️ Cookie 已失效';
-		} else {
-			statusText = '❌ 未登录';
-		}
-		if (lastCookieTime > 0) {
-			const lastRefreshStr = new Date(lastCookieTime).toLocaleString();
-			statusText += `，上次刷新时间：${lastRefreshStr}`;
-		}
-
-		// 创建自定义容器而不是使用 Setting 的默认名称
-		const userContainer = this.containerEl.createDiv({
-			cls: 'weread-user-logout-container'
-		});
-
-		// 左边：头像 + 用户信息
-		const userInfoLeft = userContainer.createDiv({
-			cls: 'weread-user-info-left'
-		});
-
-		// 头像
-		if (userAvatar) {
-			const avatarImg = userInfoLeft.createEl('img', {
-				cls: 'weread-user-avatar-desktop'
-			});
-			avatarImg.src = userAvatar;
-			avatarImg.alt = '用户头像';
-		}
-
-		// 用户名和描述
-		const userTextInfo = userInfoLeft.createDiv({
-			cls: 'weread-user-text-info'
-		});
-		userTextInfo.createDiv({
-			cls: 'weread-user-name-title',
-			text: `微信读书已登录`
-		});
-		userTextInfo.createDiv({
-			cls: 'weread-user-name-value',
-			text: `用户名：${userName}`
-		});
-		// Cookie 状态
-		userTextInfo.createDiv({
-			cls: 'weread-cookie-status',
-			text: statusText
-		});
-
-		// 右边：按钮
-		const buttonGroup = userContainer.createDiv({
-			cls: 'weread-button-group'
-		});
-
-		// Copy Cookie 按钮
-		const copyCookieBtn = buttonGroup.createEl('button', {
-			cls: 'weread-action-button weread-copy-cookie-btn',
-			text: 'Copy Cookie'
-		});
-		copyCookieBtn.addEventListener('click', async () => {
-			const settings = get(settingsStore);
-			if (settings.cookies.length === 0) {
-				new Notice('无可复制的 Cookie');
-				return;
-			}
-			const cookieStr = settings.cookies
-				.map((c) => `${c.name}=${encodeURIComponent(c.value)}`)
-				.join('; ');
-			await navigator.clipboard.writeText(cookieStr);
-			new Notice('Cookie 已复制到剪贴板');
-		});
-
-		// 注销按钮
-		const logoutBtn = buttonGroup.createEl('button', {
-			cls: 'weread-action-button weread-logout-btn',
-			text: '注销'
-		});
-		logoutBtn.addEventListener('click', async () => {
-			logoutBtn.disabled = true;
-			const logoutModel = new WereadLogoutModel(this);
-			await logoutModel.doLogout();
-			this.display();
-		});
-	}
-
 	private template(): void {
 		new Setting(this.containerEl).setName('模板设置').setHeading();
 		this.convertTagToggle();
@@ -882,6 +780,25 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const apiKey = get(settingsStore).wereadApiKey;
 
 		if (apiKey) {
+			// Cookie 状态图标
+			const settings = get(settingsStore);
+			const isCookieValid = settings.isCookieValid;
+			const hasCookies = settings.cookies && settings.cookies.length > 0;
+
+			setting.addExtraButton((button) => {
+				if (isCookieValid && hasCookies) {
+					button.setIcon('cookie').setTooltip('Cookie 有效');
+					button.extraSettingsEl.style.color = 'var(--color-green)';
+				} else if (hasCookies) {
+					button.setIcon('cookie').setTooltip('Cookie 已失效');
+					button.extraSettingsEl.style.color = 'var(--color-red)';
+				} else {
+					button.setIcon('cookie').setTooltip('无 Cookie（仅 API Key）');
+					button.extraSettingsEl.style.color = 'var(--text-muted)';
+				}
+				return button;
+			});
+
 			setting.addButton((button) => {
 				button.setButtonText('注销')
 					.setTooltip('清除 API Key 和登录状态')
