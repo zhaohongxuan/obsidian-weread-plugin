@@ -196,9 +196,19 @@ export default class SyncNotebooks {
 			};
 		}
 
-		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId);
-		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId);
-		const chapterResp = await this.apiManager.getChapters(metaData.bookId);
+		const highlightResp = await this.apiManager.getNotebookHighlights(metaData.bookId, metaData.bookType === 3);
+		const reviewResp = await this.apiManager.getNotebookReviews(metaData.bookId, metaData.bookType === 3);
+		const chapterResp = await this.apiManager.getChapters(metaData.bookId, metaData.bookType === 3);
+
+		// 处理 V1 API 返回 undefined 的情况（如 Cookie 无效）
+		if (!highlightResp || !chapterResp) {
+			console.warn(`[weread plugin] 获取书籍数据失败: ${metaData.title}, bookType=${metaData.bookType}`);
+			if (metaData.bookType === 3) {
+				throw new Error(`公众号"${metaData.title}"数据获取失败，请检查 Cookie 是否有效（需扫码登录）`);
+			}
+			throw new Error(`书籍"${metaData.title}"数据获取失败`);
+		}
+
 		const highlights = parseHighlights(highlightResp, reviewResp);
 		const reviews = parseReviews(reviewResp);
 		const chapters = parseChapterResp(chapterResp, highlightResp);

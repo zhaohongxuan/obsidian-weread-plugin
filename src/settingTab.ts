@@ -64,6 +64,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 		// API Key 设置始终可见（桌面端和移动端）
 		this.showApiKeySetting();
 
+		// Cookie 登录状态（仅在有 Cookie 时显示）
+		const settings = get(settingsStore);
+		const hasCookies = settings.cookies && settings.cookies.length > 0;
+		if (hasCookies) {
+			this.showLogout();
+		}
+
 		this.notebookFolder();
 		this.bookshelfSettings();
 		this.syncModeSettings();
@@ -456,7 +463,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private saveArticleToggle(): void {
 		new Setting(this.containerEl)
 			.setName('同步公众号内容')
-			.setDesc('关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项')
+			.setDesc('关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项。注意：公众号类型数据依赖 Cookie（需扫码登录），API Key 方式不支持。')
 			.addToggle((toggle) => {
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
 					settingsStore.actions.setSaveArticleToggle(value);
@@ -1408,7 +1415,7 @@ class ManualSyncBookSelectorModal extends Modal {
 			this.renderAutoExcludedSection(
 				'已自动排除的公众号',
 				articleExcludedBooks,
-				'由“同步公众号内容”设置自动排除'
+				'由”同步公众号内容”设置自动排除'
 			);
 		}
 
