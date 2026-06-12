@@ -4274,7 +4274,3 @@
 	justify-content: center;
 }
 
-/* 调整 Setting 行使 input 相对定位 */
-.setting-item:has(.weread-eye-btn) .setting-item-control {
-	position: relative;
-}
