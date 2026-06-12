@@ -246,20 +246,21 @@ export default class SyncNotebooks {
 					const existingHighlights = chapter.highlights ?? [];
 					const userRangeSet = new Set(existingHighlights.map((h) => h.range));
 
-					// 已有划线与热门重叠：标记为热门并加人数
+					// 已有划线与热门重叠：标记为热门并加人数，同时标记为用户划线
 					for (const h of existingHighlights) {
 						const match = chapterPopular.find((p) => p.range === h.range);
 						if (match) {
 							h.isPopular = true;
 							h.popularCount = match.totalCount;
 						}
+						h.isUserHighlight = true;
 					}
 
 					// 热门划线中用户未标注的：追加为新 Highlight
 					for (const p of chapterPopular) {
 						if (!userRangeSet.has(p.range)) {
 							existingHighlights.push({
-								bookmarkId: p.bookmarkId,
+								bookmarkId: p.bookmarkId?.replace(/[_~]/g, '-'),
 								created: 0,
 								createTime: '',
 								chapterUid: chapter.chapterUid ?? 0,
@@ -274,11 +275,6 @@ export default class SyncNotebooks {
 								isUserHighlight: false
 							});
 						}
-					}
-
-					// 标记所有用户划线
-					for (const h of existingHighlights) {
-						h.isUserHighlight = true;
 					}
 
 					// 按 range 起始位置重新排序
@@ -348,7 +344,7 @@ export default class SyncNotebooks {
 			const chapterInfo = chapterMap.get(chapterUid);
 			for (const h of highlights) {
 				items.push({
-					bookmarkId: h.bookmarkId,
+					bookmarkId: h.bookmarkId?.replace(/[_~]/g, '-'),
 					chapterUid,
 					chapterTitle: chapterInfo?.title ?? '',
 					range: h.range,
@@ -385,6 +381,8 @@ export default class SyncNotebooks {
 		const grouped = new Map<number, PopularChapterHighlight>();
 
 		for (const item of items) {
+			// Normalize bookmarkId: replace _/~ with - for Obsidian block reference compatibility
+			item.bookmarkId = item.bookmarkId?.replace(/[_~]/g, '-');
 			if (!grouped.has(item.chapterUid)) {
 				const chapterInfo = chapterMap.get(item.chapterUid);
 				grouped.set(item.chapterUid, {

@@ -37,7 +37,7 @@ export const parsePopularHighlights = (resp: {
 	for (const item of resp.items) {
 		if (!grouped.has(item.chapterUid)) grouped.set(item.chapterUid, []);
 		grouped.get(item.chapterUid).push({
-			bookmarkId: item.bookmarkId,
+			bookmarkId: item.bookmarkId?.replace(/[_~]/g, '-'),
 			chapterUid: item.chapterUid,
 			chapterTitle: chapterMap.get(item.chapterUid)?.title ?? '未知章节',
 			range: item.range,
