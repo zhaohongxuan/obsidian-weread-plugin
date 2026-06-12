@@ -238,7 +238,7 @@ export class TemplateEditorWindow extends Modal {
 				pcUrl: 'https://weread.qq.com/web/reader/9f832d8059f05e9f8657f05',
 				bookType: 1,
 				publishTime: '2013-01-01',
-				noteCount: 128,
+				noteCount: 11,
 				reviewCount: 11,
 				isbn: '9787301215692',
 				category: '哲学宗教-东方哲学',
@@ -262,106 +262,186 @@ export class TemplateEditorWindow extends Modal {
 			},
 			chapterHighlights: [
 				{
-					chapterUid: 1001,
-					chapterIdx: 1,
+					chapterUid: 33,
+					chapterIdx: 4,
 					chapterTitle: '第一章 中国哲学的精神',
 					level: 1,
 					isMPChapter: 0,
 					highlights: [
 						{
-							bookmarkId: 'bookmark001',
+							bookmarkId: '651358_33_3905-3956',
+							created: 1580201316,
+							createTime: '2020-01-28 16:41:50',
+							chapterUid: 33,
+							chapterIdx: 4,
+							chapterTitle: '第一章 中国哲学的精神',
+							markText: '所以在西方，宗教与科学向来有冲突。科学前进一步，宗教就后退一步；在科学进展的面前，宗教的权威降低了。',
+							style: 0,
+							colorStyle: 1,
+							range: '3905-3956',
+							reviewContent: '以笛卡尔为代表的一批思想家为了打破教会黑暗的统治开始探究科学，所以科学的尽头是哲学完全正确'
+						},
+						{
+							bookmarkId: '651358_33_938-962',
 							created: 1580041310,
 							createTime: '2020-01-28 16:41:50',
-							chapterUid: 1001,
-							chapterIdx: 1,
+							chapterUid: 33,
+							chapterIdx: 4,
 							chapterTitle: '第一章 中国哲学的精神',
-							markText:
-								'宗教也和人生有关系。每种大宗教的核心都有一种哲学。事实上，每种大宗教就是一种哲学加上一定的上层建筑。',
-							style: 0,
-							colorStyle: 1,
-							range: '0-50',
-							reviewContent: '宗教与哲学的关系很深刻',
-							isPopular: true,
-							popularCount: 1280,
-							isUserHighlight: true
-						},
-						{
-							bookmarkId: 'bookmark002',
-							created: 1580052228,
-							createTime: '2020-01-28 22:06:21',
-							chapterUid: 1001,
-							chapterIdx: 1,
-							chapterTitle: '第一章 中国哲学的精神',
-							markText: '知者不惑，仁者不忧，勇者不惧',
+							markText: '我所说的哲学，就是对于人生的有系统的反思的思想。',
 							style: 0,
 							colorStyle: 2,
-							range: '100-150',
+							range: '938-962',
 							isPopular: true,
-							popularCount: 3560,
+							popularCount: 7208,
 							isUserHighlight: true
 						},
 						{
-							bookmarkId: 'bookmark003',
-							created: 1580048348,
-							createTime: '2020-01-28 16:52:28',
-							chapterUid: 1001,
-							chapterIdx: 1,
+							bookmarkId: '651358_33_1819-1919',
+							created: 1580052228,
+							createTime: '2020-01-28 22:06:21',
+							chapterUid: 33,
+							chapterIdx: 4,
 							chapterTitle: '第一章 中国哲学的精神',
-							markText:
-								'入世与出世是对立的，正如现实主义与理想主义也是对立的一样。中国哲学的任务，就是把这些反命题统一成一个合命题。',
+							markText: '宗教也和人生有关系。每种大宗教的核心都有一种哲学。事实上，每种大宗教就是一种哲学加上一定的上层建筑，包括迷信、教条、仪式和组织。这就是我所说的宗教。',
 							style: 0,
 							colorStyle: 1,
-							range: '150-200'
+							range: '1819-1919',
+							isPopular: true,
+							popularCount: 7146,
+							isUserHighlight: true
 						},
 						{
-							bookmarkId: 'bookmark004',
-							created: 1580060000,
-							createTime: '2020-01-29 10:00:00',
-							chapterUid: 1001,
-							chapterIdx: 1,
+							bookmarkId: '651358_33_8387-8441',
+							created: 1580048348,
+							createTime: '2020-01-28 16:52:28',
+							chapterUid: 33,
+							chapterIdx: 4,
 							chapterTitle: '第一章 中国哲学的精神',
-							markText: '哲学的功能不是为了增进正的知识，而是为了提高人的心灵，超越现实世界，体验高于道德的价值。',
+							markText: '学哲学的目的，是使人作为人能够成为人，而不是成为某种人。',
 							style: 0,
 							colorStyle: 3,
-							range: '200-280'
+							range: '8387-8441',
+							isPopular: true,
+							popularCount: 7125,
+							isUserHighlight: true
+						},
+						{
+							bookmarkId: '651358_33_4202-4275',
+							created: 1580060000,
+							createTime: '2020-01-29 10:00:00',
+							chapterUid: 33,
+							chapterIdx: 4,
+							chapterTitle: '第一章 中国哲学的精神',
+							markText: '在未来的世界，人类将要以哲学代宗教。这是与中国传统相合的。人不一定应当是宗教的，但是他一定应当是哲学的。他一旦是哲学的，他也就有了正是宗教的洪福。',
+							style: 0,
+							colorStyle: 1,
+							range: '4202-4275',
+							isPopular: true,
+							popularCount: 2424,
+							isUserHighlight: false
+						},
+						{
+							bookmarkId: '651358_33_9049-9090',
+							created: 1580100000,
+							createTime: '2020-02-01 09:00:00',
+							chapterUid: 33,
+							chapterIdx: 4,
+							chapterTitle: '第一章 中国哲学的精神',
+							markText: '富于暗示，而不是明晰得一览无遗，是一切中国艺术的理想，诗歌、绘画以及其他无不如此。',
+							style: 0,
+							colorStyle: 2,
+							range: '9049-9090',
+							isPopular: true,
+							popularCount: 4081,
+							isUserHighlight: false
 						}
 					]
 				},
 				{
-					chapterUid: 1002,
-					chapterIdx: 2,
+					chapterUid: 34,
+					chapterIdx: 5,
 					chapterTitle: '第二章 中国哲学的背景',
 					level: 1,
 					isMPChapter: 0,
 					highlights: [
 						{
-							bookmarkId: 'bookmark005',
-							created: 1580100000,
-							createTime: '2020-02-01 09:00:00',
-							chapterUid: 1002,
-							chapterIdx: 2,
+							bookmarkId: '651358_34_2846-2942',
+							created: 1580105000,
+							createTime: '2020-02-01 12:00:00',
+							chapterUid: 34,
+							chapterIdx: 5,
 							chapterTitle: '第二章 中国哲学的背景',
-							markText: '中国哲学的背景与儒家、道家等流派的发展密切相关。',
+							markText: '在自然界和人类社会的任何事物，发展到了一个极端，就反向另一个极端；这就是说，借用黑格尔的说法，一切事物都包含着它自己的否定。这是老子哲学的主要论点之一，也是儒家所解释的《易经》的主要论点之一。',
 							style: 0,
 							colorStyle: 1,
-							range: '0-40',
+							range: '2846-2942',
 							isPopular: true,
-							popularCount: 890,
+							popularCount: 2608,
 							isUserHighlight: false
 						},
 						{
-							bookmarkId: 'bookmark006',
+							bookmarkId: '651358_34_9546-9595',
 							created: 1580105000,
 							createTime: '2020-02-01 12:00:00',
-							chapterUid: 1002,
-							chapterIdx: 2,
+							chapterUid: 34,
+							chapterIdx: 5,
 							chapterTitle: '第二章 中国哲学的背景',
-							markText: '哲学与宗教的区别在于，哲学使人成为人，而不是成为某种神。',
+							markText: '说西方侵略东方，这样说并不准确。事实上，正是现代侵略中世纪。要生存在现代世界里，中国就必须现代化。',
 							style: 0,
 							colorStyle: 2,
-							range: '100-160',
+							range: '9546-9595',
 							isPopular: true,
-							popularCount: 2100,
+							popularCount: 4590,
+							isUserHighlight: false
+						}
+					]
+				},
+				{
+					chapterUid: 36,
+					chapterIdx: 7,
+					chapterTitle: '第四章 孔子：第一位教师',
+					level: 1,
+					isMPChapter: 0,
+					highlights: [
+						{
+							bookmarkId: '651358_36_5369-5420',
+							created: 1580105000,
+							createTime: '2020-02-01 12:00:00',
+							chapterUid: 36,
+							chapterIdx: 7,
+							chapterTitle: '第四章 孔子：第一位教师',
+							markText: '所以我们能够做的，莫过于一心一意地尽力去做我们知道是我们应该做的事，而不计成败。这样做，就是"知命"。',
+							style: 0,
+							colorStyle: 1,
+							range: '5369-5420',
+							isPopular: true,
+							popularCount: 1950,
+							isUserHighlight: false
+						}
+					]
+				},
+				{
+					chapterUid: 60,
+					chapterIdx: 31,
+					chapterTitle: '第二十八章 中国哲学在现代世界',
+					level: 1,
+					isMPChapter: 0,
+					highlights: [
+						{
+							bookmarkId: '651358_60_8669-8685',
+							created: 1580272972,
+							createTime: '2020-01-29 12:02:52',
+							chapterUid: 60,
+							chapterIdx: 31,
+							chapterTitle: '第二十八章 中国哲学在现代世界',
+							markText: '人必须先说很多话，然后保持静默。\n',
+							style: 0,
+							colorStyle: 2,
+							range: '8669-8685',
+							reviewContent: '太有哲学意味了🧐',
+							isPopular: true,
+							popularCount: 6048,
 							isUserHighlight: true
 						}
 					]
@@ -369,64 +449,130 @@ export class TemplateEditorWindow extends Modal {
 			],
 			popularHighlights: [
 				{
-					chapterUid: 1001,
-					chapterIdx: 1,
+					chapterUid: 33,
+					chapterIdx: 4,
 					chapterTitle: '第一章 中国哲学的精神',
 					highlights: [
 						{
-							bookmarkId: 'bookmark001',
-							chapterUid: 1001,
+							bookmarkId: '651358_33_938-962',
+							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
-							range: '0-50',
-							markText: '宗教也和人生有关系。每种大宗教的核心都有一种哲学。事实上，每种大宗教就是一种哲学加上一定的上层建筑。',
-							totalCount: 1280
+							range: '938-962',
+							markText: '我所说的哲学，就是对于人生的有系统的反思的思想。',
+							totalCount: 7208
 						},
 						{
-							bookmarkId: 'bookmark002',
-							chapterUid: 1001,
+							bookmarkId: '651358_33_1819-1919',
+							chapterUid: 33,
 							chapterTitle: '第一章 中国哲学的精神',
-							range: '100-150',
-							markText: '知者不惑，仁者不忧，勇者不惧',
-							totalCount: 3560
+							range: '1819-1919',
+							markText: '宗教也和人生有关系。每种大宗教的核心都有一种哲学。事实上，每种大宗教就是一种哲学加上一定的上层建筑，包括迷信、教条、仪式和组织。这就是我所说的宗教。',
+							totalCount: 7146
+						},
+						{
+							bookmarkId: '651358_33_8387-8441',
+							chapterUid: 33,
+							chapterTitle: '第一章 中国哲学的精神',
+							range: '8387-8441',
+							markText: '学哲学的目的，是使人作为人能够成为人，而不是成为某种人。',
+							totalCount: 7125
+						},
+						{
+							bookmarkId: '651358_33_9049-9090',
+							chapterUid: 33,
+							chapterTitle: '第一章 中国哲学的精神',
+							range: '9049-9090',
+							markText: '富于暗示，而不是明晰得一览无遗，是一切中国艺术的理想，诗歌、绘画以及其他无不如此。',
+							totalCount: 4081
+						},
+						{
+							bookmarkId: '651358_33_4202-4275',
+							chapterUid: 33,
+							chapterTitle: '第一章 中国哲学的精神',
+							range: '4202-4275',
+							markText: '在未来的世界，人类将要以哲学代宗教。这是与中国传统相合的。人不一定应当是宗教的，但是他一定应当是哲学的。他一旦是哲学的，他也就有了正是宗教的洪福。',
+							totalCount: 2424
 						}
 					]
 				},
 				{
-					chapterUid: 1002,
-					chapterIdx: 2,
+					chapterUid: 34,
+					chapterIdx: 5,
 					chapterTitle: '第二章 中国哲学的背景',
 					highlights: [
 						{
-							bookmarkId: 'bookmark005',
-							chapterUid: 1002,
+							bookmarkId: '651358_34_9546-9595',
+							chapterUid: 34,
 							chapterTitle: '第二章 中国哲学的背景',
-							range: '0-40',
-							markText: '中国哲学的背景与儒家、道家等流派的发展密切相关。',
-							totalCount: 890
+							range: '9546-9595',
+							markText: '说西方侵略东方，这样说并不准确。事实上，正是现代侵略中世纪。要生存在现代世界里，中国就必须现代化。',
+							totalCount: 4590
 						},
 						{
-							bookmarkId: 'bookmark006',
-							chapterUid: 1002,
+							bookmarkId: '651358_34_2846-2942',
+							chapterUid: 34,
 							chapterTitle: '第二章 中国哲学的背景',
-							range: '100-160',
-							markText: '哲学与宗教的区别在于，哲学使人成为人，而不是成为某种神。',
-							totalCount: 2100
+							range: '2846-2942',
+							markText: '在自然界和人类社会的任何事物，发展到了一个极端，就反向另一个极端；这就是说，借用黑格尔的说法，一切事物都包含着它自己的否定。这是老子哲学的主要论点之一，也是儒家所解释的《易经》的主要论点之一。',
+							totalCount: 2608
+						}
+					]
+				},
+				{
+					chapterUid: 60,
+					chapterIdx: 31,
+					chapterTitle: '第二十八章 中国哲学在现代世界',
+					highlights: [
+						{
+							bookmarkId: '651358_60_8669-8685',
+							chapterUid: 60,
+							chapterTitle: '第二十八章 中国哲学在现代世界',
+							range: '8669-8685',
+							markText: '人必须先说很多话，然后保持静默。\n',
+							totalCount: 6048
 						}
 					]
 				}
 			],
 			bookReview: {
-				chapterReviews: [],
+				chapterReviews: [
+					{
+						chapterUid: 33,
+						chapterTitle: '第一章 中国哲学的精神',
+						reviews: [
+							{
+								reviewId: '15707910_7eIktLxIX',
+								created: 1580201316,
+								createTime: '2020-01-28 16:41:50',
+								content: '以笛卡尔为代表的一批思想家为了打破教会黑暗的统治开始探究科学，所以科学的尽头是哲学完全正确',
+								range: '3905-3956',
+								type: 1
+							}
+						]
+					},
+					{
+						chapterUid: 60,
+						chapterTitle: '第二十八章 中国哲学在现代世界',
+						reviews: [
+							{
+								reviewId: '15707910_7eJATFNqj',
+								created: 1580273157,
+								createTime: '2020-01-29 12:02:52',
+								content: '太有哲学意味了🧐',
+								range: '8669-8685',
+								type: 1
+							}
+						]
+					}
+				],
 				bookReviews: [
 					{
-						reviewId: 'bookReview001',
-						created: 1580227200,
-						createTime: '2020-01-29 00:00:00',
-						content:
-							'这是一部名副其实的可以影响大众一生的文化经典。冯友兰先生以宏观开阔的视野对中国哲学进行了深入浅出的讲解，融会了史与思的智慧结晶。',
-						mdContent:
-							'## 总体评价\n\n这是一部影响深远的哲学经典著作，适合所有想要了解中国传统思想的读者。',
-						type: 3
+						reviewId: '15707910_7eJErADUa',
+						created: 1580276407,
+						createTime: '2020-01-29 13:00:00',
+						content: '哲学的意义\n很多人说中国人没有信仰，在看完这位本书之后我有了很大改观，中国人不是没有信仰，只是没有像基督教、伊斯兰教宗教那样得信仰罢了，但是中国人有自己的哲学体系，这种哲学思想贯穿在整个中华文化，甚至于日常生活中。\n这本书的分量很重，从儒家的孔子孟子到道家的杨朱、老子、庄子，以及墨家的墨子，再到名家、法家阴阳家，再到后来得玄学、新道家、佛教、禅宗到最后的新儒家（理学和心学）等等，极大的开拓了眼界。\n最后用冯先生的一句话总结一下：人必须先说很多话，然后保持静默。',
+						mdContent: '## 总体评价\n\n这是一部影响深远的哲学经典著作，适合所有想要了解中国传统思想的读者。',
+						type: 4
 					}
 				]
 			}
