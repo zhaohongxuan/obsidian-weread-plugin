@@ -454,10 +454,28 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private saveArticleToggle(): void {
+		const settings = get(settingsStore);
+		const isCookieValid = settings.isCookieValid && settings.cookies.length > 0;
+		const hasApiKeyOnly = Boolean(settings.wereadApiKey) && !isCookieValid;
+
 		new Setting(this.containerEl)
 			.setName('同步公众号内容')
-			.setDesc('关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项。注意：公众号类型数据依赖 Cookie（需扫码登录），API Key 方式不支持。')
+			.setDesc(
+				isCookieValid
+					? '关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项。'
+					: hasApiKeyOnly
+					? '⚠️ 此功能需要 Cookie（扫码登录获取），手动填入 API Key 无法使用。'
+					: '关闭后将过滤公众号内容；在黑名单模式的选择器中会单独展示这些自动排除项。注意：公众号类型数据依赖 Cookie（需扫码登录）。'
+			)
 			.addToggle((toggle) => {
+				if (!isCookieValid) {
+					toggle.setDisabled(true);
+					toggle.setValue(false);
+					toggle.toggleEl.onclick = () => {
+						new Notice('同步公众号内容需要 Cookie，请使用扫码登录');
+					};
+					return toggle;
+				}
 				return toggle.setValue(get(settingsStore).saveArticleToggle).onChange((value) => {
 					settingsStore.actions.setSaveArticleToggle(value);
 					this.display();
@@ -741,7 +759,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const descFrag = document
 			.createRange()
 			.createContextualFragment(
-				`用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。点击「扫码获取」扫码登录后自动获取，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请。格式：wrk-xxxxxxxx。`
+				`用于调用微信读书 Agent API，支持同步笔记、划线、阅读统计等功能。点击「扫码获取」扫码登录后自动获取，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请。格式：wrk-xxxxxxxx。<br><strong>注意：</strong>手动填写 API Key 无法使用公众号同步功能（需扫码登录获取 Cookie）。`
 			);
 
 		const setting = new Setting(this.containerEl)
@@ -757,6 +775,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 					});
 				text.inputEl.type = 'password';
 				text.inputEl.style.width = '220px';
+				text.inputEl.style.paddingRight = '28px'; // 为眼睛图标留出空间
 				apiKeyText = text;
 				return text;
 			})
@@ -769,6 +788,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 						inputEl.type = isPassword ? 'text' : 'password';
 						button.setIcon(isPassword ? 'eye-off' : 'eye');
 					});
+				// 将按钮定位到 input 框内
+				button.extraSettingsEl.classList.add('weread-eye-btn');
 				return button;
 			})
 			.addExtraButton((button) => {
