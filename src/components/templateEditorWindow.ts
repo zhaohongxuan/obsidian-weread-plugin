@@ -80,7 +80,9 @@ export class TemplateEditorWindow extends Modal {
 		// 左侧：说明文档（仅编辑模式显示）
 		if (!this.readOnly) {
 			const instructionsPanel = container.createDiv('weread-editor-instructions');
-			instructionsPanel.innerHTML = templateInstructions;
+			const instructionsDoc = new DOMParser().parseFromString(templateInstructions, 'text/html');
+			instructionsPanel.empty();
+			instructionsPanel.append(...Array.from(instructionsDoc.body.childNodes));
 		}
 
 		// 中间：编辑器
