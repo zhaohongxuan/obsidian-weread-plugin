@@ -10,6 +10,7 @@ lastReadDate: {{ metaData.lastReadDate }}
 > - 简介： {% set intro = metaData.intro | replace("\n","") | replace("\r","") %}{{ intro }}
 > - 出版时间： {{ metaData.publishTime }}
 > - ISBN： {{ metaData.isbn }}
+> - 字数： {{ metaData.totalWords }}
 > - 分类： {{ metaData.category }}
 > - 出版社： {{ metaData.publisher }}
 > - PC地址：{{ metaData.pcUrl }}
