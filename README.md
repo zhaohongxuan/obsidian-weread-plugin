@@ -203,4 +203,4 @@ Header 区域展示封面、阅读进度、时长、分类、出版社等元数�
 
 ## Star History
 
-[![Star History](https://api.star-history.com/svg?repos=zhaohongxuan/obsidian-weread-plugin&type=Timeline)](https://star-history.com/#zhaohongxuan/obsidian-weread-plugin&type=Timeline)
+[![Star History](https://star-history.dera.page/svg?repos=zhaohongxuan/obsidian-weread-plugin&type=Timeline)](https://star-history.dera.page/#zhaohongxuan/obsidian-weread-plugin&type=Timeline)
