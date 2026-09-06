@@ -1,0 +1,24 @@
+versions.json
+  s_4d2b9544713968::t_179b78fb09a3e8 11
+  s_4d2b9544713968::t_2626ac6b8ee45a 10,12
+package.json
+  s_4d2b9544713968::t_179b78fb09a3e8 3
+manifest.json
+  s_4d2b9544713968::t_179b78fb09a3e8 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.43-trip",
+  "base_commit_sha": "2d61618151e74b23538e6df67385f386f9b08467",
+  "prompts": {},
+  "sessions": {
+    "s_4d2b9544713968": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "947d922b-e7c2-40e7-a901-95e70752a0d2",
+        "model": "ep-07p4u7vn"
+      },
+      "human_author": "zhaohongxuan <hxzhenu@gmail.com>"
+    }
+  }
+}
