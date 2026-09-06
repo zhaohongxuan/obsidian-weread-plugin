@@ -46,6 +46,7 @@ type CategoryFilter = 'all' | 'book' | 'article';
 type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 type ReadingStatusFilter = 'all' | 'reading' | 'finished';
 type BookshelfSort = 'recent' | 'title';
+type BookshelfViewMode = 'list' | 'cover';
 const UNKNOWN_YEAR_LABEL = '未知年份';
 
 class ConfirmDeleteModal extends Modal {
@@ -79,6 +80,7 @@ export class WereadBookshelfView extends ItemView {
 		get(settingsStore).bookshelfDefaultSyncStatusFilter;
 	private readingStatusFilter: ReadingStatusFilter = 'all';
 	private sortMode: BookshelfSort = 'recent';
+	private viewMode: BookshelfViewMode = get(settingsStore).bookshelfViewMode;
 	private groupByYear = true;
 	private loading = false;
 	private emptyStateEl: HTMLElement;
@@ -304,6 +306,27 @@ export class WereadBookshelfView extends ItemView {
 			(this.plugin as any).activateReadingStatsView();
 		});
 
+		const viewToggleButton = toolbarActions.createEl('button', {
+			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
+			attr: { 'aria-label': '切换视图模式' }
+		});
+		const updateViewToggleIcon = () => {
+			if (this.viewMode === 'cover') {
+				setIcon(viewToggleButton, 'layout-grid');
+				setTooltip(viewToggleButton, '封面视图（点击切换到列表视图）');
+			} else {
+				setIcon(viewToggleButton, 'list');
+				setTooltip(viewToggleButton, '列表视图（点击切换到封面视图）');
+			}
+		};
+		updateViewToggleIcon();
+		viewToggleButton.addEventListener('click', () => {
+			this.viewMode = this.viewMode === 'list' ? 'cover' : 'list';
+			settingsStore.actions.setBookshelfViewMode(this.viewMode);
+			updateViewToggleIcon();
+			this.renderBooks();
+		});
+
 		const syncLogButton = toolbarActions.createEl('button', {
 			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
 			attr: { 'aria-label': '同步日志' }
@@ -413,6 +436,7 @@ export class WereadBookshelfView extends ItemView {
 		try {
 			this.shelfBooks = await this.bookshelfService.getBookshelfBooks();
 			this.sortMode = settings.bookshelfSortMode;
+			this.viewMode = settings.bookshelfViewMode;
 			this.groupByYear = settings.bookshelfGroupByYear;
 			this.renderBooks();
 		} catch (error: unknown) {
@@ -457,6 +481,14 @@ export class WereadBookshelfView extends ItemView {
 
 		if (filteredBooks.length === 0) {
 			this.emptyStateEl.setText(this.loading ? '加载中...' : '没有找到匹配的书籍');
+			return;
+		}
+
+		if (this.viewMode === 'cover') {
+			const coverGrid = this.gridEl.createDiv({ cls: 'weread-bookshelf-cover-grid' });
+			for (const book of filteredBooks) {
+				this.renderCoverCard(book, coverGrid);
+			}
 			return;
 		}
 
@@ -547,6 +579,48 @@ export class WereadBookshelfView extends ItemView {
 			text: `${settings.lastSyncBookCount} 本`
 		});
 		setTooltip(updateSection, `更新数量: ${settings.lastSyncBookCount} 本`);
+	}
+
+	private renderCoverCard(book: BookshelfBook, container: HTMLElement): void {
+		const card = container.createDiv({ cls: 'weread-bookshelf-cover-card' });
+		card.setAttr('title', `查看《${book.title}》详情`);
+		card.onclick = () => {
+			this.openBookDetail(book);
+		};
+
+		// 悬浮操作图标（复用现有同步/删除/阅读按钮逻辑）
+		const coverTopActions = card.createDiv({ cls: 'weread-bookshelf-card-top-actions' });
+		this.renderActionIcons(book, coverTopActions);
+
+		if (book.cover) {
+			const cover = card.createEl('img', {
+				cls: 'weread-bookshelf-cover-card-img'
+			});
+			cover.src = book.cover;
+			cover.alt = book.title;
+			cover.loading = 'lazy';
+		} else {
+			card.createDiv({
+				cls: 'weread-bookshelf-card-cover-placeholder',
+				text: '无封面'
+			});
+		}
+
+		// 封面下方书名（由用户设置决定是否展示）
+		if (get(settingsStore).bookshelfShowCoverTitle) {
+			const title = card.createDiv({
+				cls: 'weread-bookshelf-cover-card-title',
+				text: book.title,
+				attr: { title: book.title }
+			});
+			if (book.hasLocalFile) {
+				title.setAttr('title', `打开《${book.title}》本地文件`);
+				title.onclick = async (event) => {
+					event.stopPropagation();
+					await this.openLocalFile(book);
+				};
+			}
+		}
 	}
 
 	private renderBookCard(book: BookshelfBook, container: HTMLElement = this.gridEl): void {

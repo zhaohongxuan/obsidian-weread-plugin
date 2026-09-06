@@ -23,7 +23,13 @@ import { ThemeManagerModal } from './components/themeManagerModal';
 import ApiRouter from './api-router';
 import { parseBookIdList } from './utils/bookIdUtils';
 import { formatTimestampToDate } from './utils/dateUtil';
-import type { ReadingOpenMode, SyncMode, BookshelfSortMode, BookOpenMode } from './settings';
+import type {
+	ReadingOpenMode,
+	SyncMode,
+	BookshelfSortMode,
+	BookshelfViewMode,
+	BookOpenMode
+} from './settings';
 
 const UNLIMITED_NOTE_COUNT = -1;
 
@@ -238,6 +244,30 @@ export class WereadSettingsTab extends PluginSettingTab {
 					.setValue(get(settingsStore).bookshelfSortMode)
 					.onChange((value: string) => {
 						settingsStore.actions.setBookshelfSortMode(value as BookshelfSortMode);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('书架默认视图')
+			.setDesc('书架页的默认展示方式，可在书架工具栏图标间快速切换')
+			.addDropdown((dropdown) => {
+				return dropdown
+					.addOption('list', '列表（封面+详情）')
+					.addOption('cover', '纯封面')
+					.setValue(get(settingsStore).bookshelfViewMode)
+					.onChange((value: string) => {
+						settingsStore.actions.setBookshelfViewMode(value as BookshelfViewMode);
+					});
+			});
+
+		new Setting(this.containerEl)
+			.setName('封面视图显示书名')
+			.setDesc('在纯封面视图下，是否在封面下方展示书名')
+			.addToggle((toggle) => {
+				return toggle
+					.setValue(get(settingsStore).bookshelfShowCoverTitle)
+					.onChange((value) => {
+						settingsStore.actions.setBookshelfShowCoverTitle(value);
 					});
 			});
 

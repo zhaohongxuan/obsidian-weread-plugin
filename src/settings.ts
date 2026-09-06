@@ -11,6 +11,7 @@ export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
 export type BookOpenMode = 'web' | 'app';
 export type BookshelfSortMode = 'recent' | 'title';
+export type BookshelfViewMode = 'list' | 'cover';
 export type SyncStatusFilter = 'all' | 'remoteOnly' | 'synced' | 'localOnly';
 
 type LegacyWereadPluginSettings = Partial<WereadPluginSettings> & {
@@ -97,6 +98,8 @@ export interface WereadPluginSettings {
 	lastSyncBookTitles: string[];
 	syncLogs: SyncLogEntry[];
 	bookshelfSortMode: BookshelfSortMode;
+	bookshelfViewMode: BookshelfViewMode;
+	bookshelfShowCoverTitle: boolean;
 	bookshelfGroupByYear: boolean;
 	bookshelfDefaultSyncStatusFilter: SyncStatusFilter;
 	themes: Theme[];
@@ -155,6 +158,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	lastSyncBookTitles: [],
 	syncLogs: [],
 	bookshelfSortMode: 'recent',
+	bookshelfViewMode: 'list',
+	bookshelfShowCoverTitle: true,
 	bookshelfGroupByYear: true,
 	bookshelfDefaultSyncStatusFilter: 'all',
 	themes: BUILT_IN_THEMES,
@@ -623,9 +628,23 @@ const createSettingsStore = () => {
 		});
 	};
 
+	const setBookshelfViewMode = (viewMode: BookshelfViewMode) => {
+		store.update((state) => {
+			state.bookshelfViewMode = viewMode;
+			return state;
+		});
+	};
+
 	const setBookshelfGroupByYear = (groupByYear: boolean) => {
 		store.update((state) => {
 			state.bookshelfGroupByYear = groupByYear;
+			return state;
+		});
+	};
+
+	const setBookshelfShowCoverTitle = (show: boolean) => {
+		store.update((state) => {
+			state.bookshelfShowCoverTitle = show;
 			return state;
 		});
 	};
@@ -796,6 +815,8 @@ const createSettingsStore = () => {
 			addSyncLog,
 			getSyncLogs,
 			setBookshelfSortMode,
+			setBookshelfShowCoverTitle,
+			setBookshelfViewMode,
 			setBookshelfGroupByYear,
 			setBookshelfDefaultSyncStatusFilter,
 			setActiveTheme,
