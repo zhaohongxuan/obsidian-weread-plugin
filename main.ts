@@ -10,6 +10,10 @@ import { get } from 'svelte/store';
 import { WereadSettingsTab } from './src/settingTab';
 import WereadBrowserWindow from './src/components/wereadBrowserWindow';
 import { WEREAD_BROWSER_VIEW_ID, WereadReadingView } from './src/components/wereadReading';
+import {
+	getReaderUrlForBookmark,
+	type WereadBookmarkLocation
+} from './src/utils/webReaderBookmark';
 import { WEREAD_BOOKSHELF_VIEW_ID, WereadBookshelfView } from './src/components/wereadBookshelf';
 import { WEREAD_READING_STATS_VIEW_ID, WereadReadingStatsView } from './src/components/wereadReadingStats';
 import { WEREAD_BOOK_DETAIL_VIEW_ID, WereadBookDetailView } from './src/components/wereadBookDetailView';
@@ -212,8 +216,8 @@ export default class WereadPlugin extends Plugin {
 		return get(settingsStore).readingOpenMode ?? 'TAB';
 	}
 
-	async openPreferredReadingView(url?: string) {
-		await this.activateReadingView(this.getPreferredReadingOpenMode(), url);
+	async openPreferredReadingView(url?: string, bookmark?: WereadBookmarkLocation) {
+		await this.activateReadingView(this.getPreferredReadingOpenMode(), url, bookmark);
 	}
 
 	async startSync(force = false, signal?: { cancelled: boolean }): Promise<number | undefined> {
@@ -272,9 +276,10 @@ export default class WereadPlugin extends Plugin {
 		new Notice('本地文件已删除');
 	}
 
-	async activateReadingView(type: string, url?: string) {
+	async activateReadingView(type: string, url?: string, bookmark?: WereadBookmarkLocation) {
 		const { workspace } = this.app;
-		const targetUrl = url ?? 'https://weread.qq.com/web/shelf';
+		const targetUrl =
+			url ?? (bookmark ? getReaderUrlForBookmark(bookmark) : 'https://weread.qq.com/web/shelf');
 
 		if (type === 'WINDOW') {
 			const browserWindow = new WereadBrowserWindow();
@@ -294,7 +299,8 @@ export default class WereadPlugin extends Plugin {
 			type: WEREAD_BROWSER_VIEW_ID,
 			active: true,
 			state: {
-				url: targetUrl
+				url: targetUrl,
+				bookmark
 			}
 		});
 

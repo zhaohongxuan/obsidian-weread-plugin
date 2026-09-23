@@ -3946,6 +3946,15 @@
 	text-align: center;
 }
 
+.weread-book-detail-local-banner {
+	margin: 8px 0 12px;
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: 0.85em;
+}
+
 .weread-book-detail-error {
 	font-size: 0.95em;
 	color: var(--text-error);

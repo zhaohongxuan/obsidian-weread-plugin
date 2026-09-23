@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Platform } from 'obsidian';
+import { openWereadDeepLink } from '../utils/openWereadUrl';
 import ApiRouter from '../api-router';
 import type { BookDetailResponse, BookProgressResponse, BookshelfBook } from '../models';
 import { getPcUrl } from '../parser/parseResponse';
@@ -166,7 +167,7 @@ export class WereadBookDetailModal extends Modal {
 		link.onclick = async (event) => {
 			event.preventDefault();
 			if (href.startsWith('weread://')) {
-				window.open(href);
+				await openWereadDeepLink(href);
 			} else {
 				await this.onOpenRemoteDetail?.(href);
 			}
