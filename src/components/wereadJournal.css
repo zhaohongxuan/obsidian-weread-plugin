@@ -1,4 +1,10 @@
 /* Quiet journal layouts inherit Obsidian's light and dark theme colors. */
+.weread-journal-view .weread-journal-favorite[aria-pressed='true'] {
+	color: var(--interactive-accent);
+}
+.weread-journal-favorite[aria-pressed='true'] svg {
+	fill: currentColor;
+}
 .weread-journal-view {
 	--weread-journal-serif: ui-serif, 'Songti SC', 'Noto Serif CJK SC', serif;
 	--weread-journal-paper: var(--background-secondary);

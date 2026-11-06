@@ -99,6 +99,7 @@ export interface WereadPluginSettings {
 	syncLogs: SyncLogEntry[];
 	bookshelfSourceMode: 'bookshelf' | 'notebooks';
 	journalRefreshHours: number;
+	favoritesViewMode: 'cards' | 'list';
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfViewMode: BookshelfViewMode;
 	bookshelfShowCoverTitle: boolean;
@@ -161,6 +162,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	syncLogs: [],
 	bookshelfSourceMode: 'bookshelf',
 	journalRefreshHours: 24,
+	favoritesViewMode: 'cards',
 	bookshelfSortMode: 'recent',
 	bookshelfViewMode: 'list',
 	bookshelfShowCoverTitle: true,
@@ -786,10 +788,15 @@ const createSettingsStore = () => {
 		store.update((state) => ({ ...state, journalRefreshHours: hours === 12 ? 12 : 24 }));
 	};
 
+	const setFavoritesViewMode = (mode: 'cards' | 'list') => {
+		store.update((state) => ({ ...state, favoritesViewMode: mode === 'list' ? 'list' : 'cards' }));
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
 		actions: {
+			setFavoritesViewMode,
 			setBookshelfSourceMode,
 			setJournalRefreshHours,
 			setLoginMethod,

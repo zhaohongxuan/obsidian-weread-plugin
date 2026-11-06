@@ -18,6 +18,7 @@ import { WEREAD_BOOKSHELF_VIEW_ID } from './src/components/wereadBookshelf';
 import { WEREAD_READING_STATS_VIEW_ID } from './src/components/wereadReadingStats';
 import { WEREAD_BOOK_DETAIL_VIEW_ID, WereadBookDetailView } from './src/components/wereadBookDetailView';
 import { WereadJournalService } from './src/journal';
+import { WereadFavoritesService } from './src/favorites';
 import { WEREAD_TODAY_VIEW_ID, WEREAD_REVIEW_VIEW_ID } from './src/components/wereadJournal';
 import { WereadLibraryView, WEREAD_LIBRARY_VIEW_ID } from './src/components/wereadLibrary';
 import type { WereadTab } from './src/components/wereadPanel';
@@ -27,6 +28,7 @@ export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private bookshelfService: WereadBookshelfService;
 	private journalService: WereadJournalService;
+	public favoritesService: WereadFavoritesService;
 	private fileManager: FileManager;
 	private syncReadingStats: SyncReadingStats;
 	private wereadSettingsTab!: WereadSettingsTab;
@@ -48,6 +50,12 @@ export default class WereadPlugin extends Plugin {
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter, this.app.vault);
 		this.bookshelfService = new WereadBookshelfService(fileManager, apiRouter);
 		this.journalService = new WereadJournalService(this, apiRouter);
+		this.favoritesService = new WereadFavoritesService(this);
+		this.addCommand({
+			id: 'open-weread-favorites',
+			name: '打开微信读书收藏',
+			callback: () => { void this.activateLibraryTab('favorites'); }
+		});
 		for (const [type, tab] of [
 			[WEREAD_LIBRARY_VIEW_ID, 'today'],
 			[WEREAD_TODAY_VIEW_ID, 'today'],
@@ -477,6 +485,7 @@ export default class WereadPlugin extends Plugin {
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
 		this.journalService?.dispose();
+		this.favoritesService?.dispose();
 		this.clearScheduledSyncTimer();
 	}
 

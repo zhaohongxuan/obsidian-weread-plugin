@@ -1,4 +1,4 @@
-/** One Obsidian leaf owns four lazily mounted panels and a persistent tab bar. */
+/** One Obsidian leaf owns five lazily mounted panels and a persistent tab bar. */
 import { ItemView, Notice, type Menu, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
 import type WereadPlugin from '../../main';
 import type ApiRouter from '../api-router';
@@ -8,6 +8,7 @@ import type { WereadJournalService } from '../journal';
 import { WereadJournalPanel } from './wereadJournal';
 import { WereadBookshelfPanel } from './wereadBookshelf';
 import { WereadReadingStatsPanel } from './wereadReadingStats';
+import { WereadFavoritesPanel } from './wereadFavorites';
 import type { WereadPanel, WereadTab } from './wereadPanel';
 import './wereadLibrary.css';
 
@@ -16,6 +17,7 @@ const TABS: readonly [WereadTab, string][] = [
 	['today', '今日'],
 	['bookshelf', '书架'],
 	['review', '回顾'],
+	['favorites', '收藏'],
 	['stats', '统计']
 ];
 const isTab = (value: unknown): value is WereadTab => TABS.some(([tab]) => tab === value);
@@ -140,9 +142,21 @@ export class WereadLibraryView extends ItemView {
 					? new WereadBookshelfPanel(element, this.plugin, this.bookshelf, (next) =>
 							this.selectTab(next)
 						)
-					: tab === 'stats'
-						? new WereadReadingStatsPanel(element, this.app, this.api, this.files)
-						: new WereadJournalPanel(element, this.plugin, this.journal, this.api, tab);
+					: tab === 'favorites'
+						? new WereadFavoritesPanel(
+								element,
+								this.plugin,
+								this.plugin.favoritesService
+							)
+						: tab === 'stats'
+							? new WereadReadingStatsPanel(element, this.app, this.api, this.files)
+							: new WereadJournalPanel(
+									element,
+									this.plugin,
+									this.journal,
+									this.api,
+									tab
+								);
 			this.addChild(panel);
 			// Publish before opening because subscriptions can synchronously navigate.
 			entry = { panel, element, opening: Promise.resolve() };

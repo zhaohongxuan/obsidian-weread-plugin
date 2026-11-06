@@ -20,6 +20,7 @@ try {
 
 const fixture = String.raw`
 import { WereadJournalView } from './src/components/wereadJournal';
+import { WereadFavoritesPanel } from './src/components/wereadFavorites';
 import { settingsStore } from './src/settings';
 const RealDate = Date;
 const NOW = RealDate.parse('2026-11-06T04:00:00Z');
@@ -82,17 +83,46 @@ const listeners = new Set();
 const journal = {
   getSnapshot: () => state,
   subscribe(listener) { listeners.add(listener); listener(state); return () => listeners.delete(listener); },
-  async load() { return state; },
+  async load() { journalLoads++; return state; },
   publish(next = state) { state = next; for (const listener of listeners) listener(state); }
 };
-const settings = (key) => ({ wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24 });
+let favoriteState = { favorites: [], loaded: true, loading: false, writable: true, error: '', warning: '', pendingIds: [] };
+const favoriteListeners = new Set();
+let favoriteWriteGate;
+let favoriteWriteFails = false;
+let favoriteWrites = 0;
+let journalLoads = 0;
+const favorites = {
+  getSnapshot: () => favoriteState,
+  subscribe(listener) { favoriteListeners.add(listener); listener(favoriteState); return () => favoriteListeners.delete(listener); },
+  publish(patch = {}) { favoriteState = {...favoriteState, ...patch}; for (const listener of favoriteListeners) listener(favoriteState); },
+  async load() { return favoriteState; },
+  isFavorite(id) { return favoriteState.favorites.some(entry => entry.id === id); },
+  async write(id, change) {
+    favoriteWrites++; this.publish({pendingIds: [id]});
+    try {
+      if (favoriteWriteGate) await favoriteWriteGate.promise;
+      if (favoriteWriteFails) throw new Error('FAKE DISK WRITE FAILED');
+      change(); this.publish({pendingIds: [], error: ''});
+    } catch (error) { this.publish({pendingIds: [], error: error.message}); throw error; }
+  },
+  async setFavorite(note, active) {
+    await this.write(note.id, () => { favoriteState.favorites = favoriteState.favorites.filter(entry => entry.id !== note.id); if (active) favoriteState.favorites.push({id: note.id, note: {...note}, favoritedAt: NOW, updatedAt: NOW}); });
+  },
+  async remove(id) { await this.write(id, () => { favoriteState.favorites = favoriteState.favorites.filter(entry => entry.id !== id); }); },
+  async restore(entry) { await this.write(entry.id, () => { favoriteState.favorites = [...favoriteState.favorites.filter(current => current.id !== entry.id), {...entry, note: {...entry.note}}]; }); },
+  async exportBackup() { return 'local-fixture/favorites-backup.json'; }
+};
+const settings = (key) => ({ wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, favoritesViewMode: 'cards' });
 settingsStore.set(settings('account-a'));
 const plugin = {
+  favoritesService: favorites,
   async activateJournalView() {}, async activateBookshelfView() {}, async activateReadingStatsView() {},
   async activateBookDetailView() {}
 };
+let apiCalls = 0;
 let api = {
-  async getShelf() { return {books: [
+  async getShelf() { apiCalls++; return {books: [
     { bookId: 'older', title: 'OLDER BOOK SENTINEL', author: '旧书', readUpdateTime: NOW / 1000 - 400 },
     { bookId: 'a', title: '山间的阅读', author: '林间', readUpdateTime: NOW / 1000 - 60 },
     { bookId: 'third', title: '第三本今日书', author: '作者三', readUpdateTime: NOW / 1000 - 120 },
@@ -100,9 +130,16 @@ let api = {
     { bookId: 'fourth', title: 'FOURTH BOOK SENTINEL', author: '作者四', readUpdateTime: NOW / 1000 - 300 },
     { bookId: 'b', title: 'YESTERDAY BOOK SENTINEL', readUpdateTime: RealDate.parse('2026-11-05T15:59:00Z') / 1000 }
   ].map((book) => ({...book, cover: 'https://fixture.invalid/' + book.bookId + '.svg'}))}; },
-  async getReadingStats() { return { readTimes: { [RealDate.parse('2026-11-05T16:00:00Z') / 1000]: 3660 } }; }
+  async getReadingStats() { apiCalls++; return { readTimes: { [RealDate.parse('2026-11-05T16:00:00Z') / 1000]: 3660 } }; }
 };
 let view;
+let favoritesPreviewPanel;
+const closeFavoritesPreview = async () => {
+  if (!favoritesPreviewPanel) return;
+  await favoritesPreviewPanel.onClose();
+  favoritesPreviewPanel.contentEl.remove();
+  favoritesPreviewPanel = undefined;
+};
 const mount = async (mode, cache = journal, router = api) => {
   if (view) { await view.onClose(); view.contentEl.remove(); }
   view = new WereadJournalView({}, plugin, cache, router, mode);
@@ -116,6 +153,25 @@ const cards = (root = document) => [...root.querySelectorAll('article')].map((no
 const results = () => document.querySelector('.weread-journal-day-notes');
 window.smoke = {
   assertions,
+  async favoritesPreview(mode = 'cards') {
+    await closeFavoritesPreview();
+    if (view) { await view.onClose(); view.contentEl.remove(); view = undefined; }
+    settingsStore.actions.setFavoritesViewMode(mode);
+    favorites.publish({
+      loaded: true, loading: false, writable: true, error: '', warning: '', pendingIds: [],
+      favorites: [baseNotes[0], baseNotes[2], baseNotes[4]].map((note, index) => ({
+        id: note.id, note: {...note}, favoritedAt: NOW - index * 86400000, updatedAt: NOW - index * 86400000
+      }))
+    });
+    const host = document.createElement('main'); document.body.append(host);
+    favoritesPreviewPanel = new WereadFavoritesPanel(host, plugin, favorites);
+    await favoritesPreviewPanel.onOpen();
+    if (mode === 'list') host.querySelector('.weread-favorites-summary').click();
+    await tick();
+    check(host.querySelectorAll('article').length === 3 && host.querySelector('.is-' + mode), 'Favorites preview mounts three realistic records in ' + mode);
+    check(document.documentElement.scrollWidth <= innerWidth, 'Favorites ' + mode + ' preview fits its viewport');
+  },
+  async closeFavoritesPreview() { await closeFavoritesPreview(); },
   async today() {
     await mount('today');
     check(document.body.textContent.includes('1小时1分钟'), 'Today reads local-day duration');
@@ -204,6 +260,109 @@ window.smoke = {
     check(document.querySelector('input[type=month]').value === '2026-11', 'Latest note shortcut returns to latest non-future note month');
     return assertions;
   },
+  async favorites() {
+    await mount('review');
+    const search = document.querySelector('input[type=search]');
+    search.value = '昨日句子'; search.dispatchEvent(new Event('input'));
+    const stars = () => [...document.querySelectorAll('.weread-journal-favorite')].filter(star => star.dataset.favoriteId === baseNotes[2].id);
+    check(stars().length === 2, 'Same source highlight has stars in search and featured quote');
+    check(!document.querySelector('.is-thought .weread-journal-favorite'), 'Thoughts never show favorites');
+    const quote = document.querySelector('.weread-journal-quote article');
+    const prose = quote.querySelector('.weread-journal-note-text');
+    const loads = journalLoads;
+    const pending = gate(); favoriteWriteGate = pending;
+    const first = stars()[0]; first.click(); await tick();
+    check(stars().every(star => star.disabled && star.getAttribute('aria-pressed') === 'false'), 'Stars disable while disk acknowledgement is pending without false success');
+    pending.resolve(); await tick(); favoriteWriteGate = undefined;
+    check(stars().every(star => !star.disabled && star.getAttribute('aria-pressed') === 'true'), 'Acknowledged favorite appears in both copies');
+    check(document.querySelector('.weread-journal-quote article') === quote && quote.querySelector('.weread-journal-note-text') === prose && journalLoads === loads, 'Favorite mutation preserves quote DOM and does not reload journal');
+    check(window.journalNotices.at(-1) === '已收藏', 'Favorite success notice follows disk acknowledgement');
+    first.click(); await tick();
+    check(stars().every(star => star.getAttribute('aria-pressed') === 'false') && document.querySelector('.weread-favorites-undo'), 'Cancel updates both stars and offers undo');
+    click('撤销'); await tick();
+    check(stars().every(star => star.getAttribute('aria-pressed') === 'true'), 'Journal undo restores both stars');
+    first.click(); await tick();
+    favoriteWriteFails = true; first.click(); await tick(); favoriteWriteFails = false;
+    check(stars().every(star => star.getAttribute('aria-pressed') === 'false') && window.journalNotices.at(-1) === 'FAKE DISK WRITE FAILED', 'Disk failure keeps star inactive and surfaces error');
+    favorites.publish({writable: false, error: 'READ ONLY FIXTURE'});
+    check(stars().every(star => star.disabled && star.title === 'READ ONLY FIXTURE'), 'Read-only stars explain the storage error');
+    favorites.publish({writable: true, error: ''});
+    await view.onClose(); view.contentEl.remove(); view = undefined;
+    check(favoriteListeners.size === 0, 'Journal closes its sole favorites subscription');
+    const favoriteEntries = [baseNotes[0], baseNotes[2], baseNotes[4]].map((note, index) => ({id: note.id, note, favoritedAt: NOW + index * 1000, updatedAt: NOW + index * 1000}));
+    favorites.publish({favorites: favoriteEntries, error: ''});
+    const offlineApiCalls = apiCalls, offlineJournalLoads = journalLoads;
+    const host = document.createElement('main'); document.body.append(host);
+    let panel = new WereadFavoritesPanel(host, plugin, favorites); await panel.onOpen();
+    check(host.querySelector('.is-cards') && host.querySelectorAll('article').length === 3 && host.querySelector('article').dataset.favoriteId === baseNotes[4].id, 'Favorites default to cards sorted by latest favorite');
+    check(host.querySelector('.weread-favorites-cover') && host.textContent.includes('划线于') && host.textContent.includes('收藏于'), 'Cards show cover and separate source/favorite dates');
+    const sort = host.querySelector('select'); sort.value = 'created'; sort.dispatchEvent(new Event('change'));
+    check(host.querySelector('article').dataset.favoriteId === baseNotes[0].id, 'Source-created sort orders by note timestamp');
+    const query = host.querySelector('input');
+    for (const term of ['城市记忆', '城市与记忆', '周行']) {
+      query.value = term; query.dispatchEvent(new Event('input'));
+      check(host.querySelectorAll('article').length === 1, 'Local favorites search covers ' + term);
+    }
+    query.value = '在日常里发现光'; query.dispatchEvent(new Event('input'));
+    check(host.querySelectorAll('article').length === 3, 'Favorites search includes chapter');
+    query.value = '<script>not present</script>'; query.dispatchEvent(new Event('input'));
+    check(host.querySelectorAll('article').length === 0 && host.textContent.includes('没有找到'), 'Search explains no matching favorites');
+    query.value = ''; query.dispatchEvent(new Event('input'));
+    click('列表', host);
+    check(host.querySelector('.is-list') && settingsStore.current().favoritesViewMode === 'list', 'List mode is saved through settings action');
+    const summary = host.querySelector('.weread-favorites-summary'); summary.click();
+    check(summary.getAttribute('aria-expanded') === 'true' && !summary.nextElementSibling.hidden && summary.textContent === '收起全文', 'List expansion shows the full body once with a collapse control');
+    const previous = favoriteState.favorites.find(entry => entry.id === host.querySelector('article').dataset.favoriteId);
+    host.querySelector('button[aria-label="取消收藏"]').click(); await tick();
+    check(!favorites.isFavorite(previous.id) && host.querySelector('.weread-favorites-undo'), 'Panel removal offers five-second undo');
+    const staleUndo = host.querySelector('.weread-favorites-undo button');
+    click('撤销', host); await tick();
+    check(favorites.isFavorite(previous.id) && favoriteState.favorites.find(entry => entry.id === previous.id).favoritedAt === previous.favoritedAt, 'Undo restores the precise favorite timestamp');
+    host.querySelector('button[aria-label="取消收藏"]').click(); await tick();
+    const writes = favoriteWrites; staleUndo.click(); await tick();
+    check(favoriteWrites === writes, 'Detached earlier undo cannot restore the wrong later removal');
+    click('撤销', host); await tick();
+    click('导出收藏备份', host); await tick();
+    check(window.journalNotices.at(-1).includes('local-fixture/favorites-backup.json'), 'Backup reports the vault-relative export path');
+    favorites.publish({writable: false, warning: 'RECOVERY WARNING FIXTURE', error: 'READ ONLY FIXTURE'});
+    check(host.querySelectorAll('article').length === 3 && host.querySelector('button[aria-label="取消收藏"]').disabled && host.textContent.includes('RECOVERY WARNING FIXTURE') && host.textContent.includes('只读'), 'Read-only mode preserves records and explains recovery warnings');
+    favorites.publish({writable: true, warning: '', error: '', favorites: []});
+    check(host.textContent.includes('还没有收藏'), 'Empty collection explains where to add favorites');
+    const longNote = {...baseNotes[0], text: '<img src=x onerror=alert(1)> ' + '长句'.repeat(300)};
+    favorites.publish({favorites: Array.from({length: 35}, (_, index) => ({id: 'page:' + index, note: {...longNote, id: 'page:' + index}, favoritedAt: NOW + index, updatedAt: NOW}))});
+    click('卡片', host);
+    check(host.querySelectorAll('article').length === 30 && !host.querySelector('.weread-favorites-text img'), 'Favorites page size is 30 and note text cannot inject HTML');
+    click('再看 5 条', host); check(host.querySelectorAll('article').length === 35, 'Load more reveals remaining local favorites');
+    check(document.documentElement.scrollWidth <= innerWidth, 'Favorites fit the mobile viewport without horizontal overflow');
+    await panel.onClose();
+    const closed = host.innerHTML; favorites.publish({favorites: []});
+    check(favoriteListeners.size === 0 && host.innerHTML === closed && !host.querySelector('.weread-favorites-undo'), 'Panel close removes its subscription and prevents later DOM writes');
+    panel = new WereadFavoritesPanel(host, plugin, favorites); await panel.onOpen();
+    check(host.querySelector('button[aria-pressed="true"]').textContent === '卡片', 'Panel reopens using saved view preference');
+    await panel.onClose();
+    check(apiCalls === offlineApiCalls && journalLoads === offlineJournalLoads, 'Favorites panel interactions never call APIs or load the journal');
+    const hydration = gate();
+    favorites.publish({loaded: false, loading: true, writable: false});
+    const loadingFavorites = {...favorites, load: () => hydration.promise};
+    panel = new WereadFavoritesPanel(host, plugin, loadingFavorites);
+    const opening = panel.onOpen(); await tick();
+    check(host.textContent.includes('正在读取本地收藏') && host.querySelector('button').disabled, 'Hydration shows loading and disables backup until records are loaded');
+    await panel.onClose(); const closedLoading = host.innerHTML;
+    favorites.publish({loaded: true, loading: false, error: 'HYDRATION FAILED FIXTURE', writable: false});
+    hydration.resolve(favoriteState); await opening;
+    check(host.innerHTML === closedLoading && favoriteListeners.size === 0, 'Closing during favorites hydration prevents late DOM writes and subscriptions');
+    panel = new WereadFavoritesPanel(host, plugin, favorites); await panel.onOpen();
+    check(host.textContent.includes('HYDRATION FAILED FIXTURE') && host.textContent.includes('只读'), 'Hydration error is visible with meaningful read-only recovery state');
+    click('重新读取收藏', host);
+    favorites.publish({favorites: favoriteEntries, writable: true, error: ''});
+    check(host.querySelectorAll('article').length === 3 && !host.textContent.includes('HYDRATION FAILED FIXTURE'), 'Recovery publishes usable records and clears hydration error');
+    await panel.onClose(); host.remove();
+    const service = plugin.favoritesService; delete plugin.favoritesService;
+    await mount('review'); check(!document.querySelector('.weread-journal-favorite'), 'Legacy plugin fixtures work without favorites service');
+    plugin.favoritesService = service;
+    await view.onClose(); view.contentEl.remove(); view = undefined;
+    return assertions;
+  },
   async behavior() {
     const many = Array.from({length: 105}, (_, i) => note('page-' + i, 'a', 'thought', 'PAGE FIXTURE ' + i, '2026-11-06T03:00:00Z'));
     journal.publish({ ...state, notes: many, syncing: false });
@@ -258,8 +417,8 @@ async function browserBundle() {
 					builder.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({
 						contents:
 							name === 'obsidian'
-								? `export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
-								: `let value; const listeners = new Set(); export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set(next) { value = next; for (const fn of listeners) fn(value); }, listenerCount: () => listeners.size };`
+								? `export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
+								: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`
 					}));
 					builder.onLoad({ filter: /\.css$/ }, async ({ path: filename }) => ({
 						contents: `const style = document.createElement('style'); style.textContent = ${JSON.stringify(await readFile(filename, 'utf8'))}; document.head.append(style);`,
@@ -356,6 +515,8 @@ test(
 		const send = (method, params) => cdp(method, params, sessionId);
 		await send('Page.enable');
 		await send('Runtime.enable');
+		await send('Network.enable');
+		await send('Network.setBlockedURLs', { urls: ['http://*', 'https://*'] });
 		await send('Emulation.setTimezoneOverride', { timezoneId: 'Asia/Shanghai' });
 		await send('Emulation.setDeviceMetricsOverride', {
 			width: 1180,
@@ -461,10 +622,45 @@ test(
 			Buffer.from(screenshot.data, 'base64')
 		);
 		await evaluate('smoke.review()');
-		const assertions = await evaluate('smoke.behavior()');
+		await evaluate('smoke.behavior()');
+		const assertions = await evaluate('smoke.favorites()');
 		assert(assertions.length >= 20);
+		await send('Emulation.setDeviceMetricsOverride', {
+			width: 1180,
+			height: 1000,
+			deviceScaleFactor: 1,
+			mobile: false
+		});
+		await evaluate('smoke.favoritesPreview("cards")');
+		await evaluate(
+			'Promise.all([...document.images].map(image => image.decode().catch(() => {})))'
+		);
+		screenshot = await send('Page.captureScreenshot', {
+			format: 'png',
+			captureBeyondViewport: true
+		});
+		await writeFile(
+			'/tmp/obsidian-weread-favorites.png',
+			Buffer.from(screenshot.data, 'base64')
+		);
+		await send('Emulation.setDeviceMetricsOverride', {
+			width: 390,
+			height: 844,
+			deviceScaleFactor: 1,
+			mobile: true
+		});
+		await evaluate('smoke.favoritesPreview("list")');
+		screenshot = await send('Page.captureScreenshot', {
+			format: 'png',
+			captureBeyondViewport: true
+		});
+		await writeFile(
+			'/tmp/obsidian-weread-favorites-mobile.png',
+			Buffer.from(screenshot.data, 'base64')
+		);
+		await evaluate('smoke.closeFavoritesPreview()');
 		t.diagnostic(
-			`${assertions.length} browser assertions passed; screenshots: /tmp/obsidian-weread-today.png, /tmp/obsidian-weread-review.png`
+			`${await evaluate('smoke.assertions.length')} browser assertions passed; screenshots: /tmp/obsidian-weread-today.png, /tmp/obsidian-weread-review.png, /tmp/obsidian-weread-favorites.png, /tmp/obsidian-weread-favorites-mobile.png`
 		);
 	}
 );

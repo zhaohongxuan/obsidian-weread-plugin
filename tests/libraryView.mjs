@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { transformSync } from 'esbuild';
 
-const TABS = ['today', 'bookshelf', 'review', 'stats'];
+const TABS = ['today', 'bookshelf', 'review', 'favorites', 'stats'];
 function load(filename, mocks) {
 	const module = { exports: {} };
 	const code = transformSync(readFileSync(filename, 'utf8'), {
@@ -167,11 +167,17 @@ function fixture({ initialTab = 'today', viewType, gates = {} } = {}) {
 			super(element, app, 'stats');
 		}
 	}
+	class FavoritesPanel extends Panel {
+		constructor(element, plugin) {
+			super(element, plugin.app, 'favorites');
+		}
+	}
 	const { WereadLibraryView } = load('src/components/wereadLibrary.ts', {
 		obsidian,
 		'./wereadJournal': { WereadJournalPanel: JournalPanel },
 		'./wereadBookshelf': { WereadBookshelfPanel: BookshelfPanel },
 		'./wereadReadingStats': { WereadReadingStatsPanel: StatsPanel },
+		'./wereadFavorites': { WereadFavoritesPanel: FavoritesPanel },
 		'./wereadLibrary.css': {}
 	});
 	const app = {
@@ -228,7 +234,7 @@ function fixture({ initialTab = 'today', viewType, gates = {} } = {}) {
 	};
 }
 
-test('all four tabs navigate within one leaf and lazily open each retained panel once', async () => {
+test('all five tabs navigate within one leaf and lazily open each retained panel once', async () => {
 	const f = fixture();
 	await f.view.onOpen();
 	assert.deepEqual([...f.created.keys()], ['today']);
@@ -237,7 +243,17 @@ test('all four tabs navigate within one leaf and lazily open each retained panel
 	today.filter.value = 'retained search';
 	today.contentEl.scrollTop = 173;
 	const originalInput = today.filter;
-	for (const tab of ['bookshelf', 'review', 'stats', 'today', 'review', 'bookshelf', 'stats']) {
+	for (const tab of [
+		'bookshelf',
+		'review',
+		'favorites',
+		'stats',
+		'today',
+		'favorites',
+		'review',
+		'bookshelf',
+		'stats'
+	]) {
 		f.button(tab).click();
 		await tick();
 		f.assertSelected(tab);
@@ -323,6 +339,8 @@ test('keyboard arrows wrap and Home/End move selection and focus with roving tab
 		['stats', 'ArrowRight', 'today'],
 		['today', 'End', 'stats'],
 		['stats', 'Home', 'today'],
+		['review', 'ArrowRight', 'favorites'],
+		['favorites', 'ArrowRight', 'stats'],
 		['today', 'ArrowRight', 'bookshelf']
 	]) {
 		const event = f.button(from).key(key);
@@ -343,13 +361,14 @@ test('closing unloads every visited child exactly once, including a pending pane
 	await f.view.onOpen();
 	await f.view.selectTab('bookshelf');
 	const pending = f.view.selectTab('review');
+	await f.view.selectTab('favorites');
 	await f.view.selectTab('stats');
 	await f.view.onClose();
 	await f.view.onClose();
 	gate.resolve();
 	await pending;
 	for (const tab of TABS) assert.equal(f.panel(tab).closes, 1);
-	assert.equal(f.calls.removeChild, 4);
+	assert.equal(f.calls.removeChild, 5);
 	assert.equal(f.view.children.length, 0);
 	assert.equal(f.contentEl.children.length, 0);
 	await f.view.selectTab('bookshelf');

@@ -50,6 +50,7 @@ Tests:
 - Run `npm test` for cache, parser, bookshelf and pagination regression tests. Tests mock network/settings and do not require an Obsidian runtime or credentials.
 - Run a single test with `node --test --test-name-pattern='partial failures' tests/journal.mjs`.
 - Journal cache code lives in `src/journal.ts` / `src/journalHelpers.ts`; it persists JSON under the plugin directory and must never rewrite synced Markdown or persist credentials.
+- Favorites are durable vault-owned data in `WereadData/favorites`, independent of journal caches and authentication. Never delete favorites when clearing caches or logging out. Use the singleton `WereadFavoritesService`; preserve schema validation, verified writes, previous-version backup and corrupt-file quarantine. Run `node --test tests/favorites.mjs tests/favoritesFilesystem.mjs` for persistence regressions; all fixtures use synthetic data, not installed vaults.
 
 ## Tooling configuration
 - TypeScript: `tsconfig.json` (ESNext modules, ES6 target, `noImplicitAny: true`).

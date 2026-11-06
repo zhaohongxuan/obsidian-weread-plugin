@@ -239,6 +239,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.setValue(get(settingsStore).bookshelfSourceMode ?? 'bookshelf')
 				.onChange((value) => settingsStore.actions.setBookshelfSourceMode(value as 'bookshelf' | 'notebooks')));
 		new Setting(this.containerEl)
+			.setName('收藏默认视图')
+			.setDesc('收藏保存在笔记库 WereadData/favorites 下的独立 JSON 中，跨登录保留，不随笔记缓存清理。多设备并发写入不提供自动合并保证。')
+			.addDropdown((dropdown) => dropdown
+				.addOption('cards', '卡片视图')
+				.addOption('list', '列表视图')
+				.setValue(get(settingsStore).favoritesViewMode ?? 'cards')
+				.onChange((value) => settingsStore.actions.setFavoritesViewMode(value as 'cards' | 'list')));
+		new Setting(this.containerEl)
 			.setName('今日与回顾更新频率')
 			.setDesc('首次整理后复用本地缓存；按划线和想法数量校验，仅更新有变化的书。可在页面手动刷新。')
 			.addDropdown((dropdown) => dropdown

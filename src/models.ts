@@ -1,4 +1,23 @@
 import { TFile } from 'obsidian';
+import type { JournalNote } from './journalHelpers';
+
+export interface FavoriteEntry {
+	id: string;
+	note: JournalNote;
+	favoritedAt: number;
+	updatedAt: number;
+	deletedAt?: number;
+}
+
+export interface FavoritesState {
+	favorites: FavoriteEntry[];
+	loaded: boolean;
+	loading: boolean;
+	writable: boolean;
+	error: string;
+	warning: string;
+	pendingIds: string[];
+}
 
 export interface HighlightResponse {
 	synckey: number;
