@@ -341,7 +341,8 @@ test(
 			const resolved = path.resolve(directory);
 			assert.equal(path.dirname(resolved), path.resolve(tmpdir()));
 			assert(path.basename(resolved).startsWith('stats-view-chrome-'));
-			await rm(resolved, { recursive: true, force: true });
+			// Chromium helpers may finish profile writes just after the browser exits.
+			await rm(resolved, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 });
 		});
 		const cdp = cdpClient(chrome);
 		let sessionId;

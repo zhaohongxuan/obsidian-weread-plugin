@@ -496,10 +496,15 @@ test(
 		t.after(async () => {
 			chrome.kill('SIGTERM');
 			await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 2000))]);
+			if (chrome.exitCode === null && chrome.signalCode === null) {
+				chrome.kill('SIGKILL');
+				await exited;
+			}
 			const resolved = path.resolve(directory);
 			assert.equal(path.dirname(resolved), path.resolve(tmpdir()));
 			assert(path.basename(resolved).startsWith('journal-view-chrome-'));
-			await rm(resolved, { recursive: true, force: true });
+			// Chromium helpers may finish profile writes just after the browser exits.
+			await rm(resolved, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 });
 		});
 		const cdp = cdpClient(chrome);
 		let sessionId;
