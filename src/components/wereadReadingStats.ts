@@ -1,9 +1,12 @@
-import { ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
+import './wereadReadingStats.css';
+import { getDailyReadingInsights, niceTickLabel } from '../statsInsights';
+import { App, ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
 import ApiRouter from '../api-router';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import type { ReadingStatsResponse, ReadingStatsMode } from '../models';
+import { WereadPanel } from './wereadPanel';
 
 export const WEREAD_READING_STATS_VIEW_ID = 'weread-reading-stats-view';
 
@@ -16,20 +19,6 @@ function fmtDuration(seconds: number): string {
 	if (h > 0 && m > 0) return `${h}小时${m}分钟`;
 	if (h > 0) return `${h}小时`;
 	return `${m}分钟`;
-}
-
-/** 计算"好看"的整数刻度：0、中间、最大值，尽量是整数分钟或整数小时 */
-function niceTickLabel(seconds: number): string {
-	if (seconds === 0) return '0';
-	const mins = Math.round(seconds / 60);
-	const hours = seconds / 3600;
-	if (hours >= 1 && Number.isInteger(Math.round(hours))) return `${Math.round(hours)}小时`;
-	if (mins >= 60) {
-		const h = Math.floor(mins / 60);
-		const m = mins % 60;
-		return m === 0 ? `${h}小时` : `${h}小时${m}分`;
-	}
-	return `${mins}分钟`;
 }
 
 /** 用第 p 百分位数（0–100）代替 max，避免极值压平颜色分布 */
@@ -64,7 +53,6 @@ function fmtCompare(compare?: number): { text: string; up: boolean } | null {
 }
 
 const HOUR_LABELS = ['6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','0','1','2','3','4','5'];
-const WEEK_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 
 // ─── 时间偏移计算 ──────────────────────────────────────────────────────────────
 
@@ -99,7 +87,8 @@ function periodLabel(mode: ReadingStatsMode, offset: number): string {
 	if (mode === 'weekly') {
 		const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
 		const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow + offset * 7);
-		const sunday = new Date(monday.getTime() + 6 * 86400000);
+		const sunday = new Date(monday);
+		sunday.setDate(sunday.getDate() + 6);
 		const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
 		return `${monday.getFullYear()} · ${fmt(monday)} - ${fmt(sunday)}`;
 	}
@@ -111,40 +100,6 @@ function periodLabel(mode: ReadingStatsMode, offset: number): string {
 		return `${now.getFullYear() + offset}年`;
 	}
 	return '';
-}
-
-/**
- * 周模式：返回完整 7 天数组（一～日），每天对应秒数，
- * 日期不在 readTimes 里则为 0
- */
-function buildWeekValues(
-	readTimes: Record<string, number>,
-	baseTime: number | undefined
-): { values: number[]; labels: string[] } {
-	// 找到本周一的 0:00
-	let mondayTs: number;
-	if (baseTime !== undefined) {
-		mondayTs = baseTime;
-	} else {
-		const now = new Date();
-		const dow = now.getDay() === 0 ? 6 : now.getDay() - 1;
-		const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
-		mondayTs = Math.floor(monday.getTime() / 1000);
-	}
-
-	const values: number[] = [];
-	const labels: string[] = WEEK_LABELS.slice(); // 一二三四五六日
-	for (let d = 0; d < 7; d++) {
-		// readTimes key may be the exact day start timestamp
-		const dayTs = mondayTs + d * 86400;
-		// API may return any timestamp within that day as key; find closest match
-		const key = Object.keys(readTimes).find(k => {
-			const diff = Number(k) - dayTs;
-			return diff >= 0 && diff < 86400;
-		});
-		values.push(key ? (readTimes[key] as number) : 0);
-	}
-	return { values, labels };
 }
 
 // ─── Daily stats disk cache ───────────────────────────────────────────────────
@@ -318,27 +273,70 @@ class ExportPreviewModal extends Modal {
 }
 
 export class WereadReadingStatsView extends ItemView {
+	private panel: WereadReadingStatsPanel | null = null;
+
+	constructor(
+		leaf: WorkspaceLeaf,
+		private apiManager: ApiRouter,
+		private fileManager: FileManager
+	) {
+		super(leaf);
+	}
+
+	getViewType(): string {
+		return WEREAD_READING_STATS_VIEW_ID;
+	}
+	getDisplayText(): string {
+		return '微信读书阅读统计';
+	}
+	getIcon(): string {
+		return 'bar-chart-2';
+	}
+	onMoreOptionsMenu(menu: Menu): void {
+		this.panel?.onMoreOptionsMenu(menu);
+	}
+
+	async onOpen(): Promise<void> {
+		if (this.panel) return;
+		const panel = new WereadReadingStatsPanel(
+			this.contentEl,
+			this.app,
+			this.apiManager,
+			this.fileManager
+		);
+		this.panel = panel;
+		this.addChild(panel);
+		await panel.onOpen();
+	}
+
+	async onClose(): Promise<void> {
+		const panel = this.panel;
+		this.panel = null;
+		if (panel) this.removeChild(panel);
+	}
+}
+
+export class WereadReadingStatsPanel extends WereadPanel {
 	private apiManager: ApiRouter;
 	private fileManager: FileManager;
 	private currentMode: ReadingStatsMode = 'monthly';
 	private currentOffset = 0;
 	private data: ReadingStatsResponse | null = null;
 	private loading = false;
+	private closed = false;
+	private loadGeneration = 0;
+	private chartResizeObserver: ResizeObserver | null = null;
 	private statsEl: HTMLElement;
 	// chart view preference per mode
 	private chartView: Partial<Record<ReadingStatsMode, ChartView>> = {};
 	// in-memory image cache: url -> base64 data url
 	private imgCache: Map<string, string> = new Map();
 
-	constructor(leaf: WorkspaceLeaf, apiManager: ApiRouter, fileManager: FileManager) {
-		super(leaf);
+	constructor(contentEl: HTMLElement, app: App, apiManager: ApiRouter, fileManager: FileManager) {
+		super(contentEl, app);
 		this.apiManager = apiManager;
 		this.fileManager = fileManager;
 	}
-
-	getViewType(): string { return WEREAD_READING_STATS_VIEW_ID; }
-	getDisplayText(): string { return '微信读书阅读统计'; }
-	getIcon(): string { return 'bar-chart-2'; }
 
 	onMoreOptionsMenu(menu: Menu) {
 		menu.addItem((item) =>
@@ -354,6 +352,7 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	async onOpen() {
+		this.closed = false;
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-stats-view');
 		this.statsEl = this.contentEl.createDiv({ cls: 'weread-stats-container' });
@@ -362,36 +361,57 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	async onClose() {
+		if (this.closed) return;
+		this.closed = true;
+		this.loadGeneration++;
+		this.disconnectChartResize();
 		this.contentEl.empty();
 	}
 
 
 	private async loadData() {
+		if (this.closed) return;
+		const generation = ++this.loadGeneration;
 		const settings = get(settingsStore);
 		if (!settings.wereadApiKey) { this.renderNoApiKey(); return; }
 		this.loading = true;
 		this.renderLoading();
-
-		// Fetch user signature (always refresh on open)
-		if (settings.userVid) {
-			const userInfo = await this.apiManager.getUserInfo(settings.userVid);
-			const parts = [
-				(userInfo as any)?.signature,
-				(userInfo as any)?.vDesc
-			].filter(Boolean);
-			const sig = parts.join(' ｜ ');
-			if (sig) settingsStore.actions.setUserSignature(sig);
+		const mode = this.currentMode;
+		const baseTime = calcBaseTime(mode, this.currentOffset);
+		try {
+			if (settings.userVid) {
+				const userInfo = await this.apiManager.getUserInfo(settings.userVid);
+				if (this.closed || generation !== this.loadGeneration) return;
+				const parts = [(userInfo as any)?.signature, (userInfo as any)?.vDesc].filter(Boolean);
+				const sig = parts.join(' ｜ ');
+				if (sig) settingsStore.actions.setUserSignature(sig);
+			}
+			const data = await this.apiManager.getReadingStats(mode, baseTime);
+			if (this.closed || generation !== this.loadGeneration) return;
+			this.loading = false;
+			if (!data) { this.renderError(); return; }
+			this.data = data;
+			this.render();
+		} catch (error) {
+			if (this.closed || generation !== this.loadGeneration) return;
+			this.loading = false;
+			console.error('[weread] Failed to load reading stats', error);
+			this.renderError();
 		}
+	}
 
-		const baseTime = calcBaseTime(this.currentMode, this.currentOffset);
-		const data = await this.apiManager.getReadingStats(this.currentMode, baseTime);
-		this.loading = false;
-		if (!data) { this.renderError(); return; }
-		this.data = data;
-		this.render();
+	private isCurrentData(data: ReadingStatsResponse, generation: number): boolean {
+		return !this.closed && generation === this.loadGeneration && this.data === data;
+	}
+
+	private disconnectChartResize() {
+		this.chartResizeObserver?.disconnect();
+		this.chartResizeObserver = null;
 	}
 
 	private render() {
+		if (this.closed) return;
+		this.disconnectChartResize();
 		const el = this.statsEl;
 		el.empty();
 		if (!get(settingsStore).wereadApiKey) { this.renderNoApiKey(); return; }
@@ -400,17 +420,21 @@ export class WereadReadingStatsView extends ItemView {
 
 		this.renderHeader(el);
 		this.renderTabBar(el);
-		this.renderReadingTimeHero(el, this.data);
-		this.renderKPICards(el, this.data);
-		this.renderTimeSeries(el, this.data);
-		this.renderTopBooks(el, this.data);
+		const overview = el.createDiv({ cls: 'weread-stats-overview' });
+		this.renderReadingTimeHero(overview, this.data);
+		this.renderKPICards(overview, this.data);
+		this.renderRhythm(el, this.data);
+		const content = el.createDiv({ cls: 'weread-stats-content-grid' });
+		this.renderTimeSeries(content, this.data);
+		this.renderTopBooks(content, this.data);
 		this.renderPreferences(el, this.data);
 	}
 
 	// ── Header ────────────────────────────────────────────────────────
 	private renderHeader(el: HTMLElement) {
 		const header = el.createDiv({ cls: 'weread-stats-header' });
-		// Single row: user info on left, export button on right
+		header.createDiv({ cls: 'weread-stats-eyebrow', text: '阅读手记 · 统计' });
+		header.createEl('h1', { cls: 'weread-stats-heading', text: '阅读统计' });
 		const headerRow = header.createDiv({ cls: 'weread-stats-header-row' });
 
 		// Left: avatar + name + signature
@@ -435,7 +459,7 @@ export class WereadReadingStatsView extends ItemView {
 		if (this.currentMode === 'overall' || this.currentMode === 'annually' || this.currentMode === 'monthly') {
 			const exportBtn = headerRow.createEl('button', {
 				cls: 'weread-stats-btn weread-stats-export-btn',
-				attr: { title: '导出为图片' }
+				attr: { title: '导出为图片', 'aria-label': '导出阅读统计图片' }
 			});
 			setIcon(exportBtn, 'image-down');
 			exportBtn.createSpan({ text: '导出图片' });
@@ -444,6 +468,9 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	private async exportAsImage(_btn: HTMLElement) {
+		if (this.closed) return;
+		const generation = this.loadGeneration;
+		const isCurrent = () => !this.closed && generation === this.loadGeneration;
 		const { toPng } = require('html-to-image');
 		const { requestUrl } = require('obsidian');
 
@@ -468,9 +495,10 @@ export class WereadReadingStatsView extends ItemView {
 					const b64 = btoa(String.fromCharCode(...new Uint8Array(resp.arrayBuffer)));
 					this.imgCache.set(src, `data:${mime};base64,${b64}`);
 				}
-				img.src = this.imgCache.get(src)!;
+				if (isCurrent()) img.src = this.imgCache.get(src)!;
 			} catch { /* keep original */ }
 		}));
+		if (!isCurrent()) { loadingModal.close(); return; }
 
 		// Inline SVG fill/stroke from computed styles
 		type SvgRestore = { el: SVGElement; fill: string | null; stroke: string | null; style: string };
@@ -530,25 +558,28 @@ export class WereadReadingStatsView extends ItemView {
 				},
 			});
 			loadingModal.close();
-			new ExportPreviewModal(this.app, dataUrl, this.exportFilename(), this.app.vault).open();
+			if (isCurrent()) new ExportPreviewModal(this.app, dataUrl, this.exportFilename(), this.app.vault).open();
 		} catch (e) {
 			loadingModal.close();
+			if (!isCurrent()) return;
 			console.error('导出图片失败', e);
 			new Notice('❌ 导出图片失败：' + e.message);
 		} finally {
-			if (exportBtn) exportBtn.style.display = '';
-			imgs.forEach((img, i) => { img.src = origSrcs[i]; });
-			svgRestores.forEach(({ el, fill, stroke, style }) => {
-				if (fill === null) el.removeAttribute('fill'); else el.setAttribute('fill', fill);
-				if (stroke === null) el.removeAttribute('stroke'); else el.setAttribute('stroke', stroke);
-				if (style === '') el.removeAttribute('style'); else el.setAttribute('style', style);
-			});
-			scrollParents.forEach(({ el, left, top }) => {
-				(el as HTMLElement).scrollLeft = left;
-				(el as HTMLElement).scrollTop = top;
-			});
-			scrollEl.style.overflow = origOverflow;
-			scrollEl.style.height = origHeight;
+			if (!this.closed) {
+				if (exportBtn) exportBtn.style.display = '';
+				imgs.forEach((img, i) => { img.src = origSrcs[i]; });
+				svgRestores.forEach(({ el, fill, stroke, style }) => {
+					if (fill === null) el.removeAttribute('fill'); else el.setAttribute('fill', fill);
+					if (stroke === null) el.removeAttribute('stroke'); else el.setAttribute('stroke', stroke);
+					if (style === '') el.removeAttribute('style'); else el.setAttribute('style', style);
+				});
+				scrollParents.forEach(({ el, left, top }) => {
+					(el as HTMLElement).scrollLeft = left;
+					(el as HTMLElement).scrollTop = top;
+				});
+				scrollEl.style.overflow = origOverflow;
+				scrollEl.style.height = origHeight;
+			}
 		}
 	}
 
@@ -572,7 +603,8 @@ export class WereadReadingStatsView extends ItemView {
 		for (const tab of tabs) {
 			const btn = bar.createEl('button', {
 				text: tab.label,
-				cls: 'weread-stats-tab' + (this.currentMode === tab.mode ? ' is-active' : '')
+				cls: 'weread-stats-tab' + (this.currentMode === tab.mode ? ' is-active' : ''),
+				attr: { 'aria-label': `${tab.label}阅读统计`, 'aria-pressed': String(this.currentMode === tab.mode) }
 			});
 			btn.addEventListener('click', () => {
 				if (this.currentMode === tab.mode) return;
@@ -588,10 +620,12 @@ export class WereadReadingStatsView extends ItemView {
 			const timePicker = nav.createDiv({ cls: 'weread-stats-timepicker' });
 			const prevBtn = timePicker.createEl('button', { cls: 'weread-stats-timepicker-btn' });
 			setIcon(prevBtn, 'chevron-left');
+			prevBtn.setAttribute('aria-label', '上一时段');
 			prevBtn.addEventListener('click', () => { this.currentOffset--; this.data = null; this.render(); this.loadData(); });
 			timePicker.createSpan({ cls: 'weread-stats-timepicker-label', text: periodLabel(this.currentMode, this.currentOffset) });
 			const nextBtn = timePicker.createEl('button', { cls: 'weread-stats-timepicker-btn' + (this.currentOffset >= 0 ? ' is-disabled' : '') });
 			setIcon(nextBtn, 'chevron-right');
+			nextBtn.setAttribute('aria-label', '下一时段');
 			if (this.currentOffset >= 0) nextBtn.setAttribute('disabled', 'true');
 			nextBtn.addEventListener('click', () => { if (this.currentOffset >= 0) return; this.currentOffset++; this.data = null; this.render(); this.loadData(); });
 		}
@@ -600,6 +634,7 @@ export class WereadReadingStatsView extends ItemView {
 	// ── Hero 阅读时长 ──────────────────────────────────────────────────
 	private renderReadingTimeHero(el: HTMLElement, data: ReadingStatsResponse) {
 		const hero = el.createDiv({ cls: 'weread-stats-hero' });
+		hero.createSpan({ cls: 'weread-stats-hero-label', text: '阅读时长' });
 
 		// 大数字：X小时 Y分钟，分别用不同字号
 		const h = Math.floor(data.totalReadTime / 3600);
@@ -616,7 +651,9 @@ export class WereadReadingStatsView extends ItemView {
 
 		// 副标题：不同模式展示不同信息
 		// overall 模式 API 不返回 dayAverageReadTime，自己算
-		const avgReadTime = data.dayAverageReadTime || (data.readDays > 0 ? Math.round(data.totalReadTime / data.readDays) : 0);
+		const avgReadTime = this.currentMode !== 'overall' && Number.isFinite(data.dayAverageReadTime)
+			? data.dayAverageReadTime
+			: (data.readDays > 0 ? Math.round(data.totalReadTime / data.readDays) : 0);
 		const subtitleParts: string[] = [];
 		if (this.currentMode === 'overall' && data.registTime) {
 			subtitleParts.push(fmtTs(data.registTime) + '至今');
@@ -694,11 +731,35 @@ export class WereadReadingStatsView extends ItemView {
 		}
 	}
 
+	private renderRhythm(el: HTMLElement, data: ReadingStatsResponse) {
+		if (this.currentMode !== 'weekly' && this.currentMode !== 'monthly') return;
+		const insights = getDailyReadingInsights(data.readTimes, this.currentMode,
+			calcBaseTime(this.currentMode, this.currentOffset)!);
+		const section = el.createDiv({ cls: 'weread-stats-section weread-stats-rhythm' });
+		section.createEl('h3', { cls: 'weread-stats-section-title', text: '阅读节奏' });
+		if (!insights.hasData) {
+			section.createDiv({ cls: 'weread-stats-empty-text', text: '这个时段暂无每日阅读记录' });
+			return;
+		}
+		const grid = section.createDiv({ cls: 'weread-stats-rhythm-grid' });
+		const metric = (label: string, value: string, caption: string) => {
+			const item = grid.createDiv({ cls: 'weread-stats-rhythm-item' });
+			item.createSpan({ text: label });
+			item.createEl('strong', { text: value });
+			item.createEl('small', { text: caption });
+		};
+		metric('最长连续阅读', `${insights.longestStreak} 天`, '所选时段内，连续有阅读时长的天数');
+		const peak = insights.peakDay;
+		metric('阅读最多的一天', peak ? `${peak.date.getMonth() + 1}月${peak.date.getDate()}日` : '—',
+			peak ? fmtDuration(peak.seconds) : '暂无阅读时长');
+		metric('有阅读记录的天数', `${insights.activeDays} / ${insights.elapsedDays} 天`, this.currentOffset === 0 ? '按每日记录统计，截至今天' : '按每日记录统计，覆盖完整时段');
+	}
+
 	// ── Time Series ───────────────────────────────────────────────────
 	private renderTimeSeries(el: HTMLElement, data: ReadingStatsResponse) {
 		if (!data.readTimes || Object.keys(data.readTimes).length === 0) return;
 
-		const section = el.createDiv({ cls: 'weread-stats-section' });
+		const section = el.createDiv({ cls: 'weread-stats-section weread-stats-trend' });
 
 		// Section title row with view toggle buttons
 		const titleRow = section.createDiv({ cls: 'weread-stats-section-title-row' });
@@ -721,7 +782,7 @@ export class WereadReadingStatsView extends ItemView {
 			for (const v of availableViews) {
 				const btn = toggleGroup.createEl('button', {
 					cls: 'weread-stats-view-toggle-btn' + (currentView === v ? ' is-active' : ''),
-					attr: { title: viewTitles[v] }
+					attr: { title: viewTitles[v], 'aria-label': viewTitles[v], 'aria-pressed': String(currentView === v) }
 				});
 				setIcon(btn, viewIcons[v]);
 				btn.addEventListener('click', () => {
@@ -743,42 +804,20 @@ export class WereadReadingStatsView extends ItemView {
 			// bar chart
 			let values: number[];
 			let labels: string[];
-			if (this.currentMode === 'weekly') {
-				const baseTime = calcBaseTime('weekly', this.currentOffset);
-				const built = buildWeekValues(data.readTimes, baseTime);
-				values = built.values;
-				labels = built.labels;
+			if (this.currentMode === 'weekly' || this.currentMode === 'monthly') {
+				const insights = getDailyReadingInsights(data.readTimes, this.currentMode,
+					calcBaseTime(this.currentMode, this.currentOffset)!);
+				values = insights.days.map(day => day.seconds);
+				labels = insights.days.map(day => `${day.date.getMonth() + 1}月${day.date.getDate()}日`);
 			} else {
-				if (this.currentMode === 'monthly') {
-					// Build full month: all days including future/unread ones
-					const baseTime = calcBaseTime('monthly', this.currentOffset);
-					const refDate = baseTime ? new Date(baseTime * 1000) : new Date();
-					const year = refDate.getFullYear();
-					const month = refDate.getMonth();
-					const daysInMonth = new Date(year, month + 1, 0).getDate();
-					const dayMap: Record<number, number> = {};
-					for (const [ts, secs] of Object.entries(data.readTimes)) {
-						const d = new Date(Number(ts) * 1000);
-						if (d.getFullYear() === year && d.getMonth() === month) {
-							dayMap[d.getDate()] = secs as number;
-						}
-					}
-					values = [];
-					labels = [];
-					for (let day = 1; day <= daysInMonth; day++) {
-						values.push(dayMap[day] ?? 0);
-						labels.push(String(day));
-					}
-				} else {
-					const entries = Object.entries(data.readTimes).sort(([a], [b]) => Number(a) - Number(b));
-					values = entries.map(([, v]) => v as number);
-					labels = entries.map(([ts]) => {
-						const d = new Date(Number(ts) * 1000);
-						if (this.currentMode === 'overall') return `${d.getFullYear()}`;
-						if (this.currentMode === 'annually') return `${d.getMonth() + 1}月`;
-						return `${d.getDate()}`;
-					});
-				}
+				const entries = Object.entries(data.readTimes)
+					.filter(([ts, value]) => Number.isFinite(Number(ts)) && Number.isFinite(new Date(Number(ts) * 1000).getTime()) && Number.isFinite(value) && value >= 0)
+					.sort(([a], [b]) => Number(a) - Number(b));
+				values = entries.map(([, value]) => value);
+				labels = entries.map(([ts]) => {
+					const date = new Date(Number(ts) * 1000);
+					return this.currentMode === 'overall' ? `${date.getFullYear()}年` : `${date.getMonth() + 1}月`;
+				});
 			}
 			this.renderBarChart(chartArea, values, labels);
 		}
@@ -806,14 +845,10 @@ export class WereadReadingStatsView extends ItemView {
 		const year = refDate.getFullYear();
 		const month = refDate.getMonth(); // 0-indexed
 
-		// Build a map: day (1-31) -> seconds
+		// Reuse validated, summed daily buckets so calendar and rhythm agree.
 		const dayMap: Record<number, number> = {};
-		for (const [ts, secs] of Object.entries(readTimes)) {
-			const d = new Date(Number(ts) * 1000);
-			if (d.getFullYear() === year && d.getMonth() === month) {
-				dayMap[d.getDate()] = secs as number;
-			}
-		}
+		const insights = getDailyReadingInsights(readTimes, 'monthly', baseTime!);
+		for (const day of insights.days) dayMap[day.date.getDate()] = day.seconds;
 		const dayValues = Object.values(dayMap).filter(v => v > 0);
 		const maxVal = percentile(dayValues, 95);
 
@@ -884,12 +919,15 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	private async loadAnnualDailyData(data: ReadingStatsResponse) {
+		const generation = this.loadGeneration;
+		if (!this.isCurrentData(data, generation)) return;
 		const baseTime = calcBaseTime('annually', this.currentOffset);
 		const refDate = baseTime ? new Date(baseTime * 1000) : new Date();
 		const year = refDate.getFullYear();
 		const today = new Date();
 
 		const cache = await loadDailyCache(this.app.vault);
+		if (!this.isCurrentData(data, generation)) return;
 		let dirty = false;
 		const BATCH = 6;
 
@@ -923,6 +961,7 @@ export class WereadReadingStatsView extends ItemView {
 			const results = await Promise.all(
 				toFetch.slice(i, i + BATCH).map(ts => this.apiManager.getReadingStats('monthly', ts))
 			);
+			if (!this.isCurrentData(data, generation)) return;
 			for (let j = 0; j < results.length; j++) {
 				const res = results[j];
 				const ts = toFetch[i + j];
@@ -946,6 +985,7 @@ export class WereadReadingStatsView extends ItemView {
 		}
 
 		if (dirty) await saveDailyCache(this.app.vault, cache);
+		if (!this.isCurrentData(data, generation)) return;
 
 		// Build dailyMap from cache for this year
 		const dailyMap: Record<string, number> = {};
@@ -969,6 +1009,8 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	private async loadOverallDailyData(data: ReadingStatsResponse) {
+		const generation = this.loadGeneration;
+		if (!this.isCurrentData(data, generation)) return;
 		const today = new Date();
 		const endYear = today.getFullYear();
 		const settings = get(settingsStore);
@@ -987,6 +1029,7 @@ export class WereadReadingStatsView extends ItemView {
 		}
 
 		const cache = await loadDailyCache(this.app.vault);
+		if (!this.isCurrentData(data, generation)) return;
 		let dirty = false;
 		const BATCH = 6;
 
@@ -1021,6 +1064,7 @@ export class WereadReadingStatsView extends ItemView {
 			const results = await Promise.all(
 				toFetch.slice(i, i + BATCH).map(ts => this.apiManager.getReadingStats('monthly', ts))
 			);
+			if (!this.isCurrentData(data, generation)) return;
 			for (let j = 0; j < results.length; j++) {
 				const res = results[j];
 				const ts = toFetch[i + j];
@@ -1039,10 +1083,12 @@ export class WereadReadingStatsView extends ItemView {
 			}
 			if (i + BATCH < toFetch.length) {
 				await new Promise(r => setTimeout(r, 200));
+				if (!this.isCurrentData(data, generation)) return;
 			}
 		}
 
 		if (dirty) await saveDailyCache(this.app.vault, cache);
+		if (!this.isCurrentData(data, generation)) return;
 
 		(data as any)._allDailyReadTimes = cache.data;
 		(data as any)._statsStartYear = startYear;
@@ -1143,7 +1189,7 @@ export class WereadReadingStatsView extends ItemView {
 		const monthRow = rightCol.createDiv({ cls: 'weread-ghmap-months' });
 		for (let w = 0; w < totalWeeks; w++) {
 			const mo = Object.entries(monthWeek).find(([, wk]) => wk === w);
-			monthRow.createDiv({ cls: 'weread-ghmap-monthlabel', text: mo ? `${Number(mo[0]) + 1}月` : '' });
+			monthRow.createDiv({ cls: 'weread-ghmap-monthlabel', text: mo ? String(Number(mo[0]) + 1) : '' });
 		}
 
 		// Cell grid
@@ -1222,9 +1268,10 @@ export class WereadReadingStatsView extends ItemView {
 		const wrapper = parent.createDiv({ cls: 'weread-stats-chart-wrapper' });
 
 		const n = values.length;
-		const barAreaW = 600;
-		const barW = Math.max(8, Math.floor(barAreaW / n) - gap);
-		const totalViewW = scaleW + barAreaW;
+		const initialWidth = Math.max(wrapper.clientWidth || 600, 240);
+		const barAreaW = initialWidth - scaleW;
+		const barW = Math.min(28, Math.max(2, Math.floor(barAreaW / Math.max(n, 1)) - gap));
+		const totalViewW = initialWidth;
 		const totalViewH = topPad + chartH + labelH;
 
 		const svg = wrapper.createSvg('svg', {
@@ -1233,18 +1280,33 @@ export class WereadReadingStatsView extends ItemView {
 				width: '100%',
 				height: totalViewH,
 				class: 'weread-stats-bar-chart',
-				preserveAspectRatio: 'xMidYMid meet'
+				preserveAspectRatio: 'xMidYMid meet',
+				role: 'group',
+				'aria-label': '阅读时长图表，使用左右方向键选择时段'
 			}
 		});
+		const detail = parent.createDiv({ cls: 'weread-stats-chart-detail' });
+		detail.setAttribute('aria-live', 'polite');
+		const bars: SVGElement[] = [];
+		const barLabels: SVGElement[] = [];
+		const gridLines: SVGElement[] = [];
+		const selectBar = (index: number) => {
+			detail.setText(`${labels[index]} · ${fmtDuration(values[index])}`);
+			bars.forEach((bar, i) => {
+				bar.classList.toggle('is-selected', i === index);
+				bar.setAttribute('tabindex', i === index ? '0' : '-1');
+				bar.setAttribute('aria-pressed', String(i === index));
+			});
+		};
 
 		// Y-axis: 0, 50%, 100% — offset down by topPad
 		const tickFractions = [0, 0.5, 1];
 		for (const frac of tickFractions) {
 			const tickVal = maxVal * frac;
 			const yPos = topPad + chartH - frac * chartH;
-			svg.createSvg('line', {
+			gridLines.push(svg.createSvg('line', {
 				attr: { x1: String(scaleW), y1: String(yPos), x2: String(totalViewW), y2: String(yPos), class: 'weread-stats-scale-line' }
-			});
+			}));
 			const lbl = svg.createSvg('text', {
 				attr: { x: String(scaleW - 4), y: String(yPos + 4), 'text-anchor': 'end', class: 'weread-stats-scale-label' }
 			});
@@ -1256,25 +1318,74 @@ export class WereadReadingStatsView extends ItemView {
 			const barH = Math.max((v / maxVal) * chartH, v > 0 ? 4 : 0);
 			const slotW = barAreaW / n;
 			const x = scaleW + i * slotW + (slotW - barW) / 2;
-			const y = topPad + chartH - barH;
+			const y = topPad + chartH - Math.max(barH, 3);
 
 			const rect = svg.createSvg('rect', {
-				attr: { x: String(x), y: String(y), width: String(barW), height: String(barH), rx: '4', class: 'weread-stats-bar' + (v === rawMax && v > 0 ? ' is-max' : '') }
+				attr: { x: String(x), y: String(y), width: String(barW), height: String(Math.max(barH, 3)), rx: '4', role: 'button', tabindex: '-1', 'aria-label': `${labels[i]}：${fmtDuration(v)}`, class: 'weread-stats-bar' + (v === 0 ? ' is-empty' : '') + (v === rawMax && v > 0 ? ' is-max' : '') }
 			});
 			rect.createSvg('title').textContent = `${labels[i]}: ${fmtDuration(v)}`;
+			bars.push(rect);
+			for (const event of ['mouseenter', 'pointerdown', 'focus', 'click']) {
+				rect.addEventListener(event, () => selectBar(i));
+			}
+			rect.addEventListener('keydown', event => {
+				const key = (event as KeyboardEvent).key;
+				let next = i;
+				if (key === 'ArrowRight') next = Math.min(n - 1, i + 1);
+				else if (key === 'ArrowLeft') next = Math.max(0, i - 1);
+				else if (key === 'Home') next = 0;
+				else if (key === 'End') next = n - 1;
+				else if (key !== 'Enter' && key !== ' ') return;
+				event.preventDefault();
+				selectBar(next);
+				bars[next].focus();
+			});
 
 			const text = svg.createSvg('text', {
 				attr: { x: String(x + barW / 2), y: String(topPad + chartH + labelH - 2), 'text-anchor': 'middle', class: 'weread-stats-bar-label' }
 			});
-			text.textContent = labels[i];
+			barLabels.push(text);
 		});
+		if (n > 0) selectBar(Math.max(0, values.indexOf(Math.max(...values))));
+		let lastWidth = 0;
+		const resizeChart = () => {
+			if (this.closed) return;
+			const width = Math.max(wrapper.clientWidth || 600, 240);
+			if (width === lastWidth) return;
+			lastWidth = width;
+			const area = width - scaleW;
+			const slot = area / Math.max(n, 1);
+			const resizedBarWidth = Math.min(28, Math.max(2, slot - gap));
+			const labelCapacity = Math.max(2, Math.floor(area / 50));
+			const labelStep = Math.max(1, Math.ceil(n / labelCapacity));
+			svg.setAttribute('viewBox', `0 0 ${width} ${totalViewH}`);
+			gridLines.forEach(line => line.setAttribute('x2', String(width)));
+			bars.forEach((bar, index) => {
+				const center = scaleW + (index + 0.5) * slot;
+				bar.setAttribute('x', String(center - resizedBarWidth / 2));
+				bar.setAttribute('width', String(resizedBarWidth));
+				const label = barLabels[index];
+				label.setAttribute('x', String(center));
+				const isLast = index === n - 1;
+				label.setAttribute('text-anchor', isLast ? 'end' : 'middle');
+				const showRegular = index % labelStep === 0 &&
+					(!isLast && (n - 1 - index) * slot >= 50);
+				label.textContent = isLast || showRegular ? labels[index] : '';
+			});
+		};
+		resizeChart();
+		if (typeof ResizeObserver !== 'undefined') {
+			this.disconnectChartResize();
+			this.chartResizeObserver = new ResizeObserver(resizeChart);
+			this.chartResizeObserver.observe(wrapper);
+		}
 	}
 
 	// ── Top Books ─────────────────────────────────────────────────────
 	private renderTopBooks(el: HTMLElement, data: ReadingStatsResponse) {
 		if (!data.readLongest?.length) return;
 
-		const section = el.createDiv({ cls: 'weread-stats-section' });
+		const section = el.createDiv({ cls: 'weread-stats-section weread-stats-ranking' });
 		section.createEl('h3', { text: `阅读时长 Top ${data.readLongest.length}`, cls: 'weread-stats-section-title' });
 
 		const maxTime = Math.max(...data.readLongest.map(b => b.readTime), 1);
@@ -1313,11 +1424,21 @@ export class WereadReadingStatsView extends ItemView {
 
 			if (bookId) {
 				row.addClass('weread-stats-book-row-clickable');
-				row.addEventListener('click', async () => {
+				row.setAttribute('role', 'button');
+				row.setAttribute('tabindex', '0');
+				row.setAttribute('aria-label', `打开《${title}》的本地笔记`);
+				const openLocalBook = async () => {
 					const map = await this.fileManager.getNotebookFilesByBookId();
 					const f = map.get(bookId);
 					if (f?.file instanceof TFile) {
 						await this.app.workspace.getLeaf(false).openFile(f.file);
+					}
+				};
+				row.addEventListener('click', openLocalBook);
+				row.addEventListener('keydown', event => {
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault();
+						void openLocalBook();
 					}
 				});
 			}
@@ -1348,9 +1469,9 @@ export class WereadReadingStatsView extends ItemView {
 			this.renderHourBarChart(timeCard, data.preferTime!);
 		}
 
-		// ── 分类偏好（饼图）+ 出版方（标签云）并排
+		// ── 分类偏好（占比条形图）+ 出版方（标签云）并排
 		if (hasCat || hasPublisher) {
-			// 分类饼图
+			// 分类占比
 			if (hasCat) {
 				const cats = data.preferCategory.filter(c => c.readingTime > 0);
 				const catCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
@@ -1360,7 +1481,7 @@ export class WereadReadingStatsView extends ItemView {
 				if (data.preferCategoryWord) {
 					catCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferCategoryWord });
 				}
-				this.renderPieChart(catCard, cats.slice(0, 8).map(c => ({ label: c.categoryTitle, value: c.readingTime })));
+				this.renderCategoryBars(catCard, cats.map(c => ({ label: c.categoryTitle, value: c.readingTime })));
 			}
 
 			// 出版方标签云（与分类同行，非全宽）
@@ -1449,82 +1570,28 @@ export class WereadReadingStatsView extends ItemView {
 		});
 	}
 
-	/** SVG 雷达图（蜘蛛网图），带渐变填充 */
-	private renderPieChart(parent: HTMLElement, items: { label: string; value: number }[]) {
-		if (items.length < 3) return;
-		const n = items.length;
-		const size = 160;
-		const cx = size / 2, cy = size / 2;
-		const maxR = size / 2 - 28; // 留出边距给标签
-		const maxVal = Math.max(...items.map(i => i.value), 1);
-
-		const svg = parent.createSvg('svg', {
-			attr: { width: '100%', viewBox: `0 0 ${size} ${size}`, class: 'weread-stats-radar-svg', preserveAspectRatio: 'xMidYMid meet', style: 'background:transparent' }
-		});
-
-		// 定义渐变
-		const defs = svg.createSvg('defs');
-		const grad = defs.createSvg('radialGradient');
-		grad.setAttribute('id', 'radarGrad');
-		grad.setAttribute('cx', '50%'); grad.setAttribute('cy', '50%'); grad.setAttribute('r', '50%');
-		const stop1 = grad.createSvg('stop');
-		stop1.setAttribute('offset', '0%'); stop1.setAttribute('stop-color', '#90c8f8'); stop1.setAttribute('stop-opacity', '0.9');
-		const stop2 = grad.createSvg('stop');
-		stop2.setAttribute('offset', '100%'); stop2.setAttribute('stop-color', '#c8e6fc'); stop2.setAttribute('stop-opacity', '0.4');
-
-		// 坐标计算（从顶部开始，顺时针）
-		const angle = (i: number) => (2 * Math.PI * i) / n - Math.PI / 2;
-		const pt = (i: number, r: number) => ({
-			x: cx + r * Math.cos(angle(i)),
-			y: cy + r * Math.sin(angle(i))
-		});
-
-		// 背景网格圆（3 圈）
-		for (let ring = 1; ring <= 3; ring++) {
-			const r = (maxR * ring) / 3;
-			const pts = Array.from({ length: n }, (_, i) => pt(i, r));
-			const poly = svg.createSvg('polygon');
-			poly.setAttribute('points', pts.map(p => `${p.x},${p.y}`).join(' '));
-			poly.setAttribute('class', 'weread-stats-radar-ring');
+	/** Category shares use all positive category time, including the grouped remainder. */
+	private renderCategoryBars(parent: HTMLElement, items: { label: string; value: number }[]) {
+		const sorted = items.filter(item => Number.isFinite(item.value) && item.value > 0)
+			.sort((a, b) => b.value - a.value);
+		const total = sorted.reduce((sum, item) => sum + item.value, 0);
+		if (!total || !Number.isFinite(total)) return;
+		const displayed = sorted.slice(0, 6);
+		if (sorted.length > 6) {
+			displayed.push({ label: '其他', value: sorted.slice(6).reduce((sum, item) => sum + item.value, 0) });
 		}
-
-		// 轴线
-		for (let i = 0; i < n; i++) {
-			const end = pt(i, maxR);
-			const line = svg.createSvg('line');
-			line.setAttribute('x1', String(cx)); line.setAttribute('y1', String(cy));
-			line.setAttribute('x2', String(end.x)); line.setAttribute('y2', String(end.y));
-			line.setAttribute('class', 'weread-stats-radar-axis');
+		const list = parent.createDiv({ cls: 'weread-stats-category-list' });
+		for (const item of displayed) {
+			const percent = item.value / total * 100;
+			const row = list.createDiv({ cls: 'weread-stats-category-row' });
+			row.createSpan({ cls: 'weread-stats-category-label', text: item.label });
+			row.createEl('small', {
+				cls: 'weread-stats-category-meta',
+				text: `${fmtDuration(item.value)} · ${percent.toFixed(1)}%`
+			});
+			const track = row.createDiv({ cls: 'weread-stats-category-track' });
+			track.createDiv({ cls: 'weread-stats-category-fill' }).style.width = `${percent}%`;
 		}
-
-		// 数据多边形
-		const dataPts = items.map((item, i) => pt(i, (item.value / maxVal) * maxR));
-		const poly = svg.createSvg('polygon');
-		poly.setAttribute('points', dataPts.map(p => `${p.x},${p.y}`).join(' '));
-		poly.setAttribute('class', 'weread-stats-radar-area');
-		poly.setAttribute('fill', 'url(#radarGrad)');
-
-		// 数据点
-		dataPts.forEach((p, i) => {
-			const circle = svg.createSvg('circle');
-			circle.setAttribute('cx', String(p.x)); circle.setAttribute('cy', String(p.y));
-			circle.setAttribute('r', '3'); circle.setAttribute('class', 'weread-stats-radar-dot');
-			circle.createSvg('title').textContent = `${items[i].label}: ${fmtDuration(items[i].value)}`;
-		});
-
-		// 轴标签（大值加粗）
-		const sortedVals = items.map(i => i.value).sort((a, b) => b - a);
-		const top2 = new Set(sortedVals.slice(0, 2));
-		items.forEach((item, i) => {
-			const labelR = maxR + 14;
-			const p = pt(i, labelR);
-			const text = svg.createSvg('text');
-			text.setAttribute('x', String(p.x)); text.setAttribute('y', String(p.y));
-			text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle');
-			const isTop = top2.has(item.value);
-			text.setAttribute('class', isTop ? 'weread-stats-radar-label is-top' : 'weread-stats-radar-label');
-			text.textContent = item.label;
-		});
 	}
 
 	/** 出版方标签云 */
@@ -1544,6 +1611,7 @@ export class WereadReadingStatsView extends ItemView {
 
 	// ── Empty states ──────────────────────────────────────────────────
 	private renderLoading() {
+		this.disconnectChartResize();
 		this.statsEl.empty();
 		const wrap = this.statsEl.createDiv({ cls: 'weread-stats-empty' });
 		wrap.createDiv({ cls: 'weread-stats-spinner' });
@@ -1551,6 +1619,7 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	private renderNoApiKey() {
+		this.disconnectChartResize();
 		this.statsEl.empty();
 		const wrap = this.statsEl.createDiv({ cls: 'weread-stats-empty' });
 		setIcon(wrap.createDiv({ cls: 'weread-stats-empty-icon' }), 'key');
@@ -1559,6 +1628,7 @@ export class WereadReadingStatsView extends ItemView {
 	}
 
 	private renderError() {
+		this.disconnectChartResize();
 		this.statsEl.empty();
 		const wrap = this.statsEl.createDiv({ cls: 'weread-stats-empty' });
 		setIcon(wrap.createDiv({ cls: 'weread-stats-empty-icon' }), 'alert-circle');

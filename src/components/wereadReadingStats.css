@@ -1,0 +1,666 @@
+/* Reading statistics share the journal's serif type and quiet theme-aware surfaces. */
+.weread-stats-view {
+	--weread-stats-serif: ui-serif, 'Songti SC', 'Noto Serif CJK SC', serif;
+	container: weread-stats / inline-size;
+	color: var(--text-normal);
+	font-family: var(--font-interface);
+	font-size: 14px;
+}
+.weread-stats-view *,
+.weread-stats-view *::before,
+.weread-stats-view *::after {
+	box-sizing: border-box;
+}
+.weread-stats-view .weread-stats-container {
+	width: 100%;
+	max-width: 1180px;
+	min-width: 0;
+	margin: 0 auto;
+	padding: clamp(20px, 4vw, 48px);
+}
+.weread-stats-view button {
+	height: auto;
+	min-height: 0;
+	padding: 7px 11px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 7px;
+	background: transparent;
+	color: var(--text-normal);
+	box-shadow: none;
+	font-family: var(--font-interface);
+	font-size: 12px;
+	line-height: 1.4;
+	cursor: pointer;
+}
+.weread-stats-view button:hover:not(:disabled) {
+	border-color: var(--text-muted);
+	background: var(--background-modifier-hover);
+	box-shadow: none;
+}
+.weread-stats-view :is(button, [tabindex]):focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 3px;
+}
+.weread-stats-view button:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+.weread-stats-view .weread-stats-header {
+	margin-bottom: 28px;
+}
+.weread-stats-view .weread-stats-eyebrow {
+	margin: 0 0 8px;
+	font-size: 11px;
+	letter-spacing: 0.14em;
+	color: var(--text-muted);
+}
+.weread-stats-view .weread-stats-heading {
+	margin: 0 0 18px;
+	font-family: var(--weread-stats-serif);
+	font-size: clamp(26px, 3vw, 36px);
+	font-weight: 500;
+	line-height: 1.5;
+	letter-spacing: 0.035em;
+}
+.weread-stats-view .weread-stats-header-row {
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+.weread-stats-view .weread-stats-user-left {
+	min-width: 0;
+	gap: 10px;
+}
+.weread-stats-view .weread-stats-user-avatar {
+	width: 32px;
+	height: 32px;
+	border-width: 1px;
+}
+.weread-stats-view .weread-stats-user-name {
+	font-size: 12px;
+	font-weight: 500;
+}
+.weread-stats-view .weread-stats-user-sub {
+	max-width: 560px;
+	font-size: 11px;
+	line-height: 1.7;
+	overflow-wrap: anywhere;
+}
+.weread-stats-view .weread-stats-export-btn {
+	flex: none;
+	align-self: flex-start;
+	white-space: nowrap;
+}
+.weread-stats-view .weread-stats-export-btn svg {
+	width: 14px;
+	height: 14px;
+}
+.weread-stats-view .weread-stats-nav {
+	gap: 14px;
+	margin-bottom: 24px;
+}
+.weread-stats-view .weread-stats-tabbar {
+	gap: 4px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+}
+.weread-stats-view .weread-stats-tab {
+	width: auto;
+	min-width: 44px;
+	padding: 7px 12px;
+	border-color: transparent;
+	color: var(--text-muted);
+}
+.weread-stats-view .weread-stats-tab.is-active {
+	border-color: var(--background-modifier-border);
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-weight: 600;
+	box-shadow: none;
+}
+.weread-stats-view .weread-stats-timepicker {
+	padding: 0;
+	gap: 4px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+.weread-stats-view .weread-stats-timepicker-btn {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+}
+.weread-stats-view .weread-stats-timepicker-label {
+	min-width: 90px;
+	padding: 0 6px;
+	font-size: 12px;
+}
+.weread-stats-view .weread-stats-overview {
+	display: grid;
+	grid-template-columns: minmax(220px, 0.9fr) minmax(0, 2fr);
+	gap: 32px;
+	padding: 26px 0;
+	border-block: 1px solid var(--background-modifier-border);
+	margin-bottom: 28px;
+}
+.weread-stats-view .weread-stats-hero {
+	min-width: 0;
+	padding: 0;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+}
+.weread-stats-view .weread-stats-hero-label {
+	display: block;
+	margin-bottom: 12px;
+	color: var(--text-muted);
+	font-size: 12px;
+}
+.weread-stats-view .weread-stats-hero-num {
+	gap: 3px;
+	line-height: 1.4;
+}
+.weread-stats-view .weread-stats-hero-big {
+	font-family: var(--weread-stats-serif);
+	font-size: clamp(30px, 3.6vw, 44px);
+	font-weight: 400;
+	letter-spacing: 0;
+}
+.weread-stats-view .weread-stats-hero-unit {
+	margin-right: 6px;
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--text-muted);
+}
+.weread-stats-view .weread-stats-hero-sub {
+	margin-top: 10px;
+	font-size: 11px;
+	line-height: 1.8;
+}
+.weread-stats-view .weread-stats-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+	align-content: center;
+	gap: 20px 14px;
+	margin: 0;
+}
+.weread-stats-view .weread-stats-kpi-card {
+	display: block;
+	min-width: 0;
+	padding: 0 0 0 14px;
+	border: 0;
+	border-left: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	background: none;
+}
+.weread-stats-view .weread-stats-kpi-icon {
+	display: none;
+}
+.weread-stats-view .weread-stats-kpi-value {
+	flex-wrap: wrap;
+	gap: 3px;
+	font-weight: 400;
+	line-height: 1.5;
+}
+.weread-stats-view .weread-stats-kpi-number {
+	font-family: var(--weread-stats-serif);
+	font-size: 28px;
+	font-weight: 400;
+	line-height: 1.4;
+}
+.weread-stats-view .weread-stats-kpi-unit {
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 400;
+}
+.weread-stats-view .weread-stats-kpi-label-row {
+	flex-wrap: wrap;
+	gap: 5px;
+	margin-top: 5px;
+}
+.weread-stats-view .weread-stats-kpi-label {
+	font-size: 11px;
+}
+.weread-stats-view .weread-stats-compare-badge {
+	padding: 0;
+	background: none;
+	color: var(--text-muted);
+	font-size: 10px;
+	font-weight: 400;
+}
+.weread-stats-view .weread-stats-rhythm {
+	margin: 0 0 28px;
+}
+.weread-stats-view .weread-stats-rhythm-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 20px;
+	padding: 18px 20px;
+	border-radius: 10px;
+	background: var(--background-secondary);
+}
+.weread-stats-view .weread-stats-rhythm-item {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 7px;
+}
+.weread-stats-view .weread-stats-rhythm-item > span {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+.weread-stats-view .weread-stats-rhythm-item strong {
+	font-family: var(--weread-stats-serif);
+	font-size: 22px;
+	font-weight: 500;
+	line-height: 1.5;
+}
+.weread-stats-view .weread-stats-rhythm-item small {
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.6;
+}
+.weread-stats-view .weread-stats-content-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.7fr) minmax(250px, 1fr);
+	gap: 24px;
+	align-items: start;
+	margin-bottom: 28px;
+}
+.weread-stats-view .weread-stats-content-grid:has(> :only-child) {
+	grid-template-columns: minmax(0, 1fr);
+}
+.weread-stats-view .weread-stats-section {
+	min-width: 0;
+	margin-bottom: 28px;
+}
+.weread-stats-view .weread-stats-content-grid > .weread-stats-section {
+	margin: 0;
+	padding: 20px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+}
+.weread-stats-view .weread-stats-section-title {
+	margin: 0 0 16px;
+	color: var(--text-normal);
+	font-family: var(--weread-stats-serif);
+	font-size: 17px;
+	font-weight: 500;
+	line-height: 1.5;
+	text-transform: none;
+	letter-spacing: 0.02em;
+}
+.weread-stats-view .weread-stats-section-title-row {
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
+}
+.weread-stats-view .weread-stats-section-title-row .weread-stats-section-title {
+	margin-bottom: 0;
+}
+.weread-stats-view .weread-stats-view-toggle {
+	flex: none;
+	gap: 2px;
+	padding: 2px;
+	border-radius: 7px;
+	background: transparent;
+}
+.weread-stats-view .weread-stats-view-toggle-btn {
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border-color: transparent;
+}
+.weread-stats-view .weread-stats-view-toggle-btn svg {
+	width: 14px;
+	height: 14px;
+}
+.weread-stats-view .weread-stats-view-toggle-btn.is-active {
+	border-color: var(--background-modifier-border);
+	color: var(--text-normal);
+	background: var(--background-secondary);
+}
+.weread-stats-view .weread-stats-chart-area {
+	min-width: 0;
+}
+.weread-stats-view .weread-stats-chart-wrapper {
+	min-width: 0;
+	max-width: 100%;
+	overflow-x: auto;
+	padding-bottom: 8px;
+}
+.weread-stats-view .weread-stats-trend .weread-stats-bar-chart {
+	min-width: 0;
+}
+.weread-stats-view .weread-stats-scale-line {
+	stroke: var(--background-modifier-border);
+	stroke-dasharray: 3 5;
+}
+.weread-stats-view .weread-stats-scale-label,
+.weread-stats-view .weread-stats-bar-label {
+	fill: var(--text-muted);
+	font-size: 12px;
+}
+.weread-stats-view .weread-stats-bar {
+	fill: var(--interactive-accent);
+	opacity: 0.45;
+}
+.weread-stats-view .weread-stats-bar.is-max {
+	opacity: 0.9;
+}
+.weread-stats-view .weread-stats-bar.is-empty {
+	fill: var(--text-muted);
+	opacity: 0.22;
+}
+.weread-stats-view .weread-stats-bar.is-selected,
+.weread-stats-view .weread-stats-bar:hover,
+.weread-stats-view .weread-stats-bar:focus {
+	opacity: 1;
+	outline: none;
+	stroke: var(--text-normal);
+	stroke-width: 1;
+}
+.weread-stats-view .weread-stats-chart-detail {
+	min-height: 38px;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.8;
+}
+.weread-stats-view .weread-stats-chart-detail strong {
+	color: var(--text-normal);
+	font-weight: 500;
+}
+.weread-stats-view .weread-stats-book-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+.weread-stats-view .weread-stats-book-row {
+	display: grid;
+	grid-template-columns: 18px 36px minmax(0, 1fr) auto;
+	gap: 10px;
+	align-items: center;
+	min-width: 0;
+	padding: 12px 0;
+	border: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	background: transparent;
+}
+.weread-stats-view .weread-stats-book-row:last-child {
+	border-bottom: 0;
+	padding-bottom: 0;
+}
+.weread-stats-view .weread-stats-book-row:hover {
+	background: transparent;
+}
+.weread-stats-view .weread-stats-book-rank {
+	width: auto;
+	height: auto;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	color: var(--text-muted);
+	font-family: var(--weread-stats-serif);
+	font-size: 16px;
+}
+.weread-stats-view .weread-stats-book-cover {
+	width: 36px;
+	height: 50px;
+	border-radius: 3px;
+}
+.weread-stats-view .weread-stats-book-info {
+	min-width: 0;
+}
+.weread-stats-view .weread-stats-book-title {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.6;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.weread-stats-view .weread-stats-book-author {
+	margin-top: 3px;
+	font-size: 11px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.weread-stats-view .weread-stats-book-right {
+	min-width: 0;
+	width: auto;
+	max-width: 76px;
+	align-self: center;
+}
+.weread-stats-view .weread-stats-book-duration {
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+	color: var(--text-normal);
+}
+.weread-stats-view .weread-stats-mini-bar-track {
+	height: 2px;
+	width: 100%;
+	min-width: 38px;
+	margin-top: 7px;
+}
+.weread-stats-view .weread-stats-book-tags {
+	margin-top: 4px;
+}
+.weread-stats-view .weread-stats-tag {
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	color: var(--text-muted);
+	font-size: 10px;
+}
+.weread-stats-view .weread-stats-pref-grid {
+	display: grid;
+	align-items: start;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 18px;
+}
+.weread-stats-view .weread-stats-pref-card {
+	min-width: 0;
+	padding: 20px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: transparent;
+}
+.weread-stats-view .weread-stats-pref-card-header {
+	gap: 8px;
+	color: var(--text-normal);
+	font-size: 13px;
+	font-weight: 500;
+}
+.weread-stats-view .weread-stats-pref-card-header svg {
+	width: 15px;
+	height: 15px;
+	color: var(--text-muted);
+}
+.weread-stats-view .weread-stats-pref-subtitle {
+	margin: 8px 0 18px;
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.7;
+}
+.weread-stats-view .weread-stats-pref-name,
+.weread-stats-view .weread-stats-pref-meta {
+	font-size: 12px;
+}
+.weread-stats-view .weread-ghmap-wrap,
+.weread-stats-view .weread-allheatmap-wrap {
+	max-width: 100%;
+	overflow-x: auto;
+	padding: 8px 0;
+}
+.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) > .weread-stats-section {
+	grid-column: 1 / -1;
+}
+.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) .weread-stats-book-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+	gap: 12px 24px;
+}
+.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) .weread-stats-book-row {
+	border-bottom: 0;
+	padding: 8px 0;
+}
+.weread-stats-view .weread-ghmap-inner {
+	--weread-stats-heat-cell: 12px;
+	width: max-content;
+	min-width: 0;
+}
+.weread-stats-view .weread-ghmap-right {
+	flex: none;
+}
+.weread-stats-view .weread-ghmap-grid {
+	width: max-content;
+}
+.weread-stats-view .weread-ghmap-col {
+	flex: 0 0 var(--weread-stats-heat-cell);
+	width: var(--weread-stats-heat-cell);
+}
+.weread-stats-view .weread-ghmap-col .weread-ghmap-cell {
+	width: var(--weread-stats-heat-cell);
+	height: var(--weread-stats-heat-cell);
+}
+.weread-stats-view .weread-ghmap-daylabel {
+	height: var(--weread-stats-heat-cell);
+	line-height: var(--weread-stats-heat-cell);
+}
+.weread-stats-view .weread-ghmap-monthlabel {
+	min-width: 0;
+	overflow: visible;
+	font-size: 11px;
+}
+
+.weread-stats-view .weread-calendar-cell {
+	min-height: 46px;
+	border-radius: 6px;
+}
+.weread-stats-view .weread-calendar-duration {
+	font-size: 10px;
+}
+.weread-stats-view .weread-heatmap-summary {
+	font-size: 11px;
+	line-height: 1.7;
+}
+.weread-stats-view .weread-stats-category-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	margin-top: 18px;
+}
+.weread-stats-view .weread-stats-category-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 7px 12px;
+	align-items: baseline;
+	min-width: 0;
+	font-size: 12px;
+}
+.weread-stats-view .weread-stats-category-row > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.weread-stats-view .weread-stats-category-row small {
+	color: var(--text-muted);
+	font-size: 11px;
+	text-align: right;
+}
+.weread-stats-view .weread-stats-category-track {
+	grid-column: 1 / -1;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 2px;
+	background: var(--background-modifier-border);
+}
+.weread-stats-view .weread-stats-category-fill {
+	height: 100%;
+	border-radius: inherit;
+	background: var(--interactive-accent);
+	opacity: 0.65;
+}
+@container weread-stats (max-width: 900px) {
+	.weread-stats-view .weread-stats-overview {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 22px;
+	}
+	.weread-stats-view .weread-stats-kpi-grid {
+		grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+	}
+}
+@container weread-stats (max-width: 800px) {
+	.weread-stats-view .weread-stats-content-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+@container weread-stats (max-width: 560px) {
+	.weread-stats-view .weread-stats-container {
+		padding: 20px;
+	}
+	.weread-stats-view .weread-stats-header-row {
+		flex-wrap: wrap;
+	}
+	.weread-stats-view .weread-stats-user-left {
+		flex-basis: 100%;
+	}
+	.weread-stats-view .weread-stats-export-btn {
+		margin-left: 0;
+	}
+	.weread-stats-view .weread-stats-nav {
+		gap: 12px;
+	}
+	.weread-stats-view .weread-stats-timepicker {
+		margin-left: 0;
+	}
+	.weread-stats-view .weread-stats-kpi-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.weread-stats-view .weread-stats-rhythm-grid {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 16px;
+		padding: 18px;
+	}
+	.weread-stats-view .weread-stats-rhythm-item {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: baseline;
+		gap: 4px 12px;
+	}
+	.weread-stats-view .weread-stats-rhythm-item small {
+		grid-column: 1 / -1;
+	}
+	.weread-stats-view .weread-stats-rhythm-item strong {
+		font-size: 19px;
+	}
+	.weread-stats-view .weread-stats-content-grid > .weread-stats-section,
+	.weread-stats-view .weread-stats-pref-card {
+		padding: 16px;
+	}
+	.weread-stats-view .weread-stats-pref-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.weread-stats-view .weread-stats-book-row {
+		grid-template-columns: 18px 36px minmax(0, 1fr) auto;
+		gap: 9px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.weread-stats-view * {
+		transition: none;
+	}
+}

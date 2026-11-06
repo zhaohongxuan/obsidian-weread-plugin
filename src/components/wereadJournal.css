@@ -1,0 +1,670 @@
+/* Quiet journal layouts inherit Obsidian's light and dark theme colors. */
+.weread-journal-view {
+	--weread-journal-serif: ui-serif, 'Songti SC', 'Noto Serif CJK SC', serif;
+	--weread-journal-paper: var(--background-secondary);
+	container: weread-journal / inline-size;
+	box-sizing: border-box;
+	min-width: 0;
+	overflow-y: auto;
+	padding: clamp(16px, 4vw, 48px);
+	color: var(--text-normal);
+	font-family: var(--font-interface);
+	overflow-wrap: anywhere;
+}
+
+.weread-journal-view *,
+.weread-journal-view *::before,
+.weread-journal-view *::after {
+	box-sizing: border-box;
+}
+
+.weread-journal-view > div {
+	max-width: 1080px;
+	margin-inline: auto;
+	min-width: 0;
+}
+
+.weread-journal-view button,
+.weread-journal-view select,
+.weread-journal-view input {
+	max-width: 100%;
+	color: var(--text-normal);
+	font-family: var(--font-interface);
+	font-size: 12px;
+}
+
+.weread-journal-view button {
+	height: auto;
+	padding: 7px 11px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 7px;
+	background: transparent;
+	box-shadow: none;
+	line-height: 1.4;
+	cursor: pointer;
+}
+
+.weread-journal-view button:hover:not(:disabled) {
+	border-color: var(--text-muted);
+	background: var(--background-modifier-hover);
+	box-shadow: none;
+}
+
+.weread-journal-view button:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+.weread-journal-view :is(button, a, input, select):focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 3px;
+}
+
+.weread-journal-nav,
+.weread-journal-actions,
+.weread-journal-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 20px;
+	min-width: 0;
+}
+
+.weread-journal-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.weread-journal-view h1,
+.weread-journal-view h2,
+.weread-journal-summary strong {
+	font-family: var(--weread-journal-serif);
+}
+
+.weread-journal-heading h1 {
+	margin: 8px 0 14px;
+	font-size: clamp(24px, 3vw, 36px);
+	font-weight: 500;
+	line-height: 1.5;
+	letter-spacing: 0.035em;
+}
+
+.weread-journal-view h2 {
+	margin: 24px 0 16px;
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1.6;
+	letter-spacing: 0.02em;
+}
+
+.weread-journal-heading h2 {
+	margin: 0;
+}
+
+.weread-journal-status,
+.weread-journal-muted,
+.weread-journal-note small {
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.7;
+}
+
+.weread-journal-status {
+	padding: 12px 0;
+	overflow-wrap: anywhere;
+}
+
+.weread-journal-summary {
+	display: grid;
+	grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+	gap: 20px;
+	margin: 24px 0 32px;
+	padding: 0;
+}
+
+.weread-journal-summary > div {
+	min-width: 0;
+	padding: 20px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	background: var(--background-primary);
+}
+.weread-journal-summary .weread-journal-summary-title {
+	margin: 0 0 18px;
+	font-size: 16px;
+	font-weight: 500;
+	line-height: 1.5;
+}
+
+.weread-journal-summary span {
+	display: block;
+	margin-bottom: 9px;
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+.weread-journal-summary strong {
+	font-size: clamp(18px, 2.7vw, 27px);
+	font-weight: 500;
+	line-height: 1.5;
+}
+
+.weread-journal-today-metrics-grid {
+	display: grid;
+	grid-template-columns: 1.8fr 0.8fr 0.8fr;
+	gap: 14px;
+	width: 100%;
+	align-content: start;
+}
+.weread-journal-today-metrics-grid > div {
+	min-width: 0;
+}
+.weread-journal-today-book-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+	min-width: 0;
+	gap: 8px;
+}
+.weread-journal-today-book-list .weread-journal-note {
+	width: auto;
+	max-width: 100%;
+	gap: 12px;
+	padding: 0;
+	border: 0;
+	align-items: stretch;
+}
+.weread-journal-today-book-list .weread-journal-note > div {
+	display: flex;
+	flex-direction: column;
+}
+.weread-journal-today-book-list .weread-journal-note-cover {
+	width: 64px;
+	height: 90px;
+}
+.weread-journal-view .weread-journal-today-book-list .weread-journal-source {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	max-width: 100%;
+	font-size: 14px;
+	white-space: normal;
+	overflow: hidden;
+}
+.weread-journal-today-book-list small {
+	display: block;
+	font-size: 12px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.weread-journal-today-book-list .weread-journal-original {
+	margin-top: auto;
+	padding-top: 4px;
+	font-size: 12px;
+	white-space: nowrap;
+}
+.weread-journal-today-book-list > p {
+	grid-column: 1 / -1;
+	margin: 0;
+}
+@container weread-journal (max-width: 860px) {
+	.weread-journal-today-metrics-grid {
+		max-width: 400px;
+	}
+	.weread-journal-summary {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+.weread-journal-quote {
+	margin: 24px 0 32px;
+	padding: 24px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	background: var(--weread-journal-paper);
+	min-width: 0;
+}
+
+.weread-journal-quote .weread-journal-actions {
+	margin-bottom: 0;
+}
+
+.weread-journal-note {
+	display: flex;
+	align-items: flex-start;
+	gap: 18px;
+	min-width: 0;
+	margin: 0;
+	padding: 20px 0;
+	border: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	background: transparent;
+}
+
+.weread-journal-note > div {
+	flex: 1;
+	min-width: 0;
+}
+
+.weread-journal-note-cover {
+	display: block;
+	flex: none;
+	width: 52px;
+	height: 74px;
+	max-width: 100%;
+	object-fit: cover;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 3px;
+	background: var(--weread-journal-paper);
+}
+
+.weread-journal-note-meta {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+.weread-journal-note-meta > small {
+	margin-right: 4px;
+}
+.weread-journal-view .weread-journal-note-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	min-height: 0;
+	padding: 4px;
+	margin: 0;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	box-shadow: none;
+	text-decoration: none;
+	cursor: pointer;
+}
+.weread-journal-view .weread-journal-note-action svg {
+	width: 16px;
+	height: 16px;
+}
+.weread-journal-view .weread-journal-note-action:hover {
+	border: 0;
+	background: var(--background-modifier-hover);
+	color: var(--text-accent);
+	box-shadow: none;
+	text-decoration: none;
+}
+.weread-journal-view .weread-journal-note-action:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+.weread-journal-note-text {
+	margin: 12px 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-family: var(--weread-journal-serif);
+	font-size: 15px;
+	line-height: 1.95;
+}
+
+.weread-journal-today-notes .weread-journal-note {
+	gap: 24px;
+	padding: 24px 0;
+}
+.weread-journal-today-notes .weread-journal-note-cover {
+	width: 96px;
+	height: 132px;
+	border-radius: 5px;
+}
+.weread-journal-today-notes .weread-journal-note-text {
+	font-size: 18px;
+	line-height: 1.95;
+}
+.weread-journal-view .weread-journal-today-notes .weread-journal-source {
+	font-size: 15px;
+}
+.weread-journal-today-notes small,
+.weread-journal-today-notes .weread-journal-original {
+	font-size: 14px;
+}
+.weread-journal-quote .weread-journal-note {
+	gap: 28px;
+	padding: 20px 0 0;
+	border: 0;
+}
+
+.weread-journal-view.is-review .weread-journal-note-cover {
+	width: 96px;
+	height: 132px;
+	border-radius: 5px;
+}
+
+.weread-journal-view .weread-journal-quote .weread-journal-note-cover {
+	width: 128px;
+	height: 176px;
+	border-radius: 5px;
+}
+
+.weread-journal-quote .weread-journal-note-text {
+	font-size: clamp(17px, 2cqi, 22px);
+	line-height: 2;
+	letter-spacing: 0.035em;
+}
+
+/* Book titles are text links, including under themes that decorate buttons. */
+.weread-journal-view .weread-journal-source {
+	display: block;
+	width: fit-content;
+	min-width: 0;
+	min-height: 0;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-normal);
+	font-size: 13px;
+	line-height: 1.7;
+	text-align: left;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.weread-journal-view .weread-journal-source:hover:not(:disabled) {
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-accent);
+	text-decoration: underline;
+	text-underline-offset: 4px;
+}
+
+.weread-journal-original {
+	display: block;
+	width: fit-content;
+	margin-top: 8px;
+	color: var(--text-accent);
+	font-size: 12px;
+	line-height: 1.7;
+}
+
+.weread-journal-controls {
+	gap: 12px;
+	margin-block: 24px;
+}
+
+.weread-journal-controls input {
+	flex: 1 1 180px;
+	min-width: 0;
+	height: auto;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 7px;
+	background: var(--background-primary);
+	box-shadow: none;
+	line-height: 1.5;
+}
+
+.weread-journal-controls select {
+	flex: 0 1 auto;
+	min-width: 0;
+	height: auto;
+	padding-block: 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 7px;
+	box-shadow: none;
+	line-height: 1.5;
+}
+
+.weread-journal-retro-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+	align-items: start;
+	gap: 24px;
+	min-width: 0;
+}
+
+.weread-journal-calendar {
+	justify-self: start;
+	width: 100%;
+	max-width: 260px;
+	min-width: 0;
+	margin: 0;
+	padding: 10px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+}
+
+.weread-journal-month {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.weread-journal-month strong {
+	min-width: 0;
+	font-family: var(--font-interface);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.weread-journal-view .weread-journal-month-nav {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 28px;
+	min-width: 0;
+	height: 28px;
+	padding: 0;
+	font-size: 20px;
+	line-height: 1;
+}
+
+.weread-journal-month-jump {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	min-width: 0;
+	margin-bottom: 8px;
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+.weread-journal-month-jump input {
+	min-width: 0;
+	max-width: 138px;
+	height: auto;
+	padding: 6px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-primary);
+	box-shadow: none;
+}
+
+.weread-journal-calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 2px;
+}
+
+.weread-journal-calendar-grid > span {
+	padding: 2px 0 4px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.weread-journal-view .weread-journal-day {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 1px;
+	width: 100%;
+	min-width: 0;
+	height: 32px;
+	min-height: 32px;
+	padding: 2px 1px;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--text-normal);
+	box-shadow: none;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.weread-journal-day small {
+	color: var(--text-muted);
+	font-size: 9px;
+	line-height: 1;
+}
+
+.weread-journal-view .weread-journal-day.has-notes {
+	background: var(--weread-journal-paper);
+}
+
+.weread-journal-view .weread-journal-day[aria-current='date'] > span {
+	font-weight: 700;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.weread-journal-view .weread-journal-day:is(.is-selected, [aria-pressed='true']) {
+	border-color: var(--text-normal);
+}
+
+.weread-journal-view .weread-journal-day:hover:not(:disabled) {
+	border-color: var(--text-muted);
+	background: var(--background-modifier-hover);
+}
+
+.weread-journal-calendar-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.weread-journal-view .weread-journal-today,
+.weread-journal-view .weread-journal-latest {
+	padding: 5px 8px;
+	font-size: 11px;
+}
+
+.weread-journal-calendar-caption {
+	margin: 8px 0 0;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.7;
+}
+
+.weread-journal-day-notes {
+	min-width: 0;
+	margin-top: 0;
+}
+
+.weread-journal-day-notes > h2:first-child {
+	margin-top: 0;
+}
+
+.weread-journal-anniversaries {
+	margin-top: 28px;
+}
+
+@container weread-journal (max-width: 720px) {
+	.weread-journal-retro-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.weread-journal-summary {
+		gap: 14px;
+	}
+}
+
+@container weread-journal (max-width: 560px) {
+	.weread-journal-today-book-list .weread-journal-note-cover {
+		width: 52px;
+		height: 74px;
+	}
+	.weread-journal-today-notes .weread-journal-note {
+		gap: 16px;
+	}
+	.weread-journal-today-notes .weread-journal-note-cover {
+		width: 72px;
+		height: 100px;
+	}
+	.weread-journal-today-notes .weread-journal-note-text {
+		font-size: 17px;
+	}
+	.weread-journal-view.is-review .weread-journal-note-cover {
+		width: 72px;
+		height: 100px;
+	}
+
+	.weread-journal-note {
+		gap: 14px;
+	}
+
+	.weread-journal-quote {
+		padding: 18px;
+	}
+
+	.weread-journal-quote .weread-journal-note {
+		gap: 18px;
+	}
+
+	.weread-journal-view .weread-journal-quote .weread-journal-note-cover {
+		width: 88px;
+		height: 122px;
+	}
+}
+
+@container weread-journal (max-width: 420px) {
+	.weread-journal-heading h1 {
+		font-size: 23px;
+	}
+
+	.weread-journal-summary {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.weread-journal-summary > div:first-child {
+		grid-column: 1 / -1;
+	}
+
+	.weread-journal-controls input {
+		flex-basis: 100%;
+	}
+}
+
+@container weread-journal (max-width: 320px) {
+	.weread-journal-quote {
+		padding: 14px;
+	}
+
+	.weread-journal-quote .weread-journal-note {
+		gap: 12px;
+	}
+
+	.weread-journal-view .weread-journal-quote .weread-journal-note-cover {
+		width: 64px;
+		height: 88px;
+	}
+}
