@@ -16,6 +16,15 @@ import CookieCloudManager from './cookieCloud';
 export default class ApiManager {
 	readonly baseUrl: string = 'https://weread.qq.com';
 
+	private isErrorResponse(json: unknown): boolean {
+		if (!json || typeof json !== 'object') {
+			return false;
+		}
+		const payload = json as { errCode?: number; errcode?: number };
+		const code = payload.errCode ?? payload.errcode;
+		return code !== undefined && code !== 0;
+	}
+
 	private getHeaders() {
 		let cookieString = getCookieString(get(settingsStore).cookies);
 
@@ -305,6 +314,10 @@ export default class ApiManager {
 				headers: this.getHeaders()
 			};
 			const resp = await requestUrl(req);
+			if (this.isErrorResponse(resp.json) || !Array.isArray(resp.json?.updated)) {
+				console.warn('[weread plugin] V1 bookmarklist 无效响应', bookId, resp.json);
+				return undefined;
+			}
 			return resp.json;
 		} catch (e) {
 			console.error('get book highlight error' + bookId, e);

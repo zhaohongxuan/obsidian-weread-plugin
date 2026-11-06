@@ -61,7 +61,9 @@ class ApiRouter {
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getNotebookHighlights(bookId);
-				if (result) return result as HighlightResponse;
+				if (result && Array.isArray(result.updated)) {
+					return result as HighlightResponse;
+				}
 			} catch (e) {
 				console.warn('V2 getNotebookHighlights 调用失败，回退到 V1', e);
 			}

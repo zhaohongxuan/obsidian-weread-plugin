@@ -1,8 +1,13 @@
 import { ItemView, WorkspaceLeaf, setIcon, Notice, TFile } from 'obsidian';
+import {
+	parseLocalPopularHighlights,
+	parseLocalUserHighlights
+} from '../utils/localHighlightParser';
 import { get } from 'svelte/store';
 import ApiRouter from '../api-router';
 import { settingsStore } from '../settings';
 import { getPcUrl } from '../parser/parseResponse';
+import { openWereadHighlightLocation } from '../utils/openWereadUrl';
 import type {
 	BookDetailResponse,
 	BookProgressResponse,
@@ -48,6 +53,8 @@ export class WereadBookDetailView extends ItemView {
 	private loading = false;
 	private error: string | null = null;
 	private requestBookId = '';
+	private usingLocalHighlights = false;
+	private usingLocalPopular = false;
 
 	private headerEl!: HTMLElement;
 	private tabBarEl!: HTMLElement;
@@ -175,10 +182,45 @@ export class WereadBookDetailView extends ItemView {
 			publicReviews.status === 'fulfilled' ? publicReviews.value : undefined;
 
 		if (!this.detail && !this.highlightResp && !this.reviewResp) {
-			this.error = '加载失败，请检查网络或 API Key';
+			this.error = '远程加载失败，请检查 API Key 或重新登录微信读书';
 		}
 
+		await this.applyLocalHighlightFallback();
+
 		this.loading = false;
+	}
+
+	private async applyLocalHighlightFallback(): Promise<void> {
+		this.usingLocalHighlights = false;
+		this.usingLocalPopular = false;
+		if (!this.localFilePath) {
+			return;
+		}
+
+		const file = this.app.vault.getAbstractFileByPath(this.localFilePath);
+		if (!(file instanceof TFile)) {
+			return;
+		}
+
+		const content = await this.app.vault.read(file);
+		const hasRemoteHighlights = (this.highlightResp?.updated?.length ?? 0) > 0;
+		const hasRemotePopular = (this.popularResp?.items?.length ?? 0) > 0;
+
+		if (!hasRemoteHighlights) {
+			const localHighlights = parseLocalUserHighlights(content, this.bookId);
+			if (localHighlights.updated.length > 0) {
+				this.highlightResp = localHighlights;
+				this.usingLocalHighlights = true;
+			}
+		}
+
+		if (!hasRemotePopular) {
+			const localPopular = parseLocalPopularHighlights(content, this.bookId);
+			if (localPopular.items.length > 0) {
+				this.popularResp = localPopular;
+				this.usingLocalPopular = true;
+			}
+		}
 	}
 
 	// ── 主渲染方法 ──────────────────────────────────────────────
@@ -438,12 +480,16 @@ export class WereadBookDetailView extends ItemView {
 		const readBtn = bar.createEl('button', { cls: 'weread-book-detail-tab-action' });
 		setIcon(readBtn, 'book-open');
 		readBtn.setAttr('title', '在微信读书中打开');
-		readBtn.addEventListener('click', () => {
+		readBtn.addEventListener('click', async () => {
 			const settings = get(settingsStore);
 			const url = settings.bookOpenMode === 'app'
 				? `weread://reading?bId=${this.bookId}`
 				: getPcUrl(this.bookId);
-			window.open(url);
+			if (settings.bookOpenMode === 'app') {
+				window.open(url);
+			} else {
+				await this.plugin.openPreferredReadingView(url);
+			}
 		});
 		const refreshBtn = bar.createEl('button', { cls: 'weread-book-detail-tab-action' });
 			refreshBtn.style.marginLeft = '4px';
@@ -488,10 +534,18 @@ export class WereadBookDetailView extends ItemView {
 		const highlights = this.highlightResp?.updated || [];
 		const chapters = this.highlightResp?.chapters || [];
 
+		if (this.usingLocalHighlights) {
+			container.createDiv({
+				cls: 'weread-book-detail-local-banner',
+				text: '远程划线加载失败，当前显示本地已同步笔记'
+			});
+		}
 
 		if (highlights.length === 0) {
 			container.createDiv({
-				text: '暂无划线',
+				text: this.localFilePath
+					? '暂无划线。若此前已同步过笔记，请尝试刷新；或在设置中更新 API Key / 重新登录'
+					: '暂无划线',
 				cls: 'weread-book-detail-empty'
 			});
 			return;
@@ -582,7 +636,7 @@ export class WereadBookDetailView extends ItemView {
 
 				// 操作按钮（inline 在 meta 行右侧）
 				const actions = meta.createDiv({ cls: 'weread-book-detail-hl-actions' });
-				this.createDeepLinkButton(actions, this.buildDeepLink(h.chapterUid, h.range));
+				this.createDeepLinkButton(actions, h.chapterUid, h.range, chapterTitle, h.markText);
 				this.createCopyButton(actions, h.markText);
 			}
 		}
@@ -674,6 +728,13 @@ export class WereadBookDetailView extends ItemView {
 		const items = this.popularResp?.items || [];
 		const chapters = this.popularResp?.chapters || [];
 
+		if (this.usingLocalPopular) {
+			container.createDiv({
+				cls: 'weread-book-detail-local-banner',
+				text: '远程热门划线加载失败，当前显示本地已同步笔记'
+			});
+		}
+
 		if (items.length === 0) {
 			container.createDiv({
 				text: '暂无热门划线',
@@ -757,7 +818,7 @@ export class WereadBookDetailView extends ItemView {
 
 				// 操作按钮（inline 在 meta 行右侧）
 				const actions = meta.createDiv({ cls: 'weread-book-detail-hl-actions' });
-				this.createDeepLinkButton(actions, this.buildDeepLink(h.chapterUid, h.range));
+				this.createDeepLinkButton(actions, h.chapterUid, h.range, chapterTitle, h.markText);
 				this.createCopyButton(actions, h.markText);
 			}
 		}
@@ -876,11 +937,6 @@ export class WereadBookDetailView extends ItemView {
 
 	// ── 辅助方法 ────────────────────────────────────────────────
 
-	private buildDeepLink(chapterUid: number, range: string): string {
-		const [start, end] = range.split('-');
-		return `weread://bestbookmark?bookId=${this.bookId}&chapterUid=${chapterUid}&rangeStart=${start}&rangeEnd=${end || start}`;
-	}
-
 	private renderTextWithBreaks(container: HTMLElement, text: string, cls: string): void {
 		const el = container.createDiv({ cls });
 		const lines = text.split('\n');
@@ -902,13 +958,22 @@ export class WereadBookDetailView extends ItemView {
 		});
 	}
 
-	private createDeepLinkButton(container: HTMLElement, deepLink: string): void {
+	private createDeepLinkButton(
+		container: HTMLElement,
+		chapterUid: number,
+		range: string,
+		chapterTitle?: string,
+		markText?: string
+	): void {
 		const btn = container.createEl('button', { cls: 'weread-book-detail-action-btn' });
 		setIcon(btn, 'external-link');
 		btn.setAttr('title', '跳转到微信读书');
 		btn.addEventListener('click', (e) => {
 			e.stopPropagation();
-			window.open(deepLink, '_blank');
+			void openWereadHighlightLocation(this.plugin, this.bookId, chapterUid, range, {
+				chapterTitle,
+				markText
+			});
 		});
 	}
 
