@@ -1,6 +1,7 @@
 import { Notice, requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
+import { WEREAD_SKILL_VERSION, assertWereadProtocol, WereadUpgradeRequiredError } from './wereadProtocol';
 import { getCookieString } from './utils/cookiesUtil';
 import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
 import {
@@ -190,7 +191,9 @@ export default class ApiManager {
 	}
 
 	async getNotebooks() {
-		let noteBooks = [];
+		// Only a successful response may supply an empty list: cache consumers use
+		// [] to remove books that no longer exist on the account.
+		let noteBooks: [] | undefined;
 		const req: RequestUrlParam = {
 			url: `${this.baseUrl}/api/user/notebook`,
 			method: 'GET',
@@ -238,6 +241,8 @@ export default class ApiManager {
 			if (e.status == 401) {
 				console.log(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
 				await this.refreshCookie();
+			} else {
+				throw e;
 			}
 		}
 
@@ -460,9 +465,9 @@ export default class ApiManager {
 		}
 		try {
 			const body = {
+				...params,
 				api_name: apiName,
-				skill_version: '1.0.3',
-				...params
+				skill_version: WEREAD_SKILL_VERSION
 			};
 			const req: RequestUrlParam = {
 				url: 'https://i.weread.qq.com/api/agent/gateway',
@@ -474,12 +479,14 @@ export default class ApiManager {
 				body: JSON.stringify(body)
 			};
 			const resp = await requestUrl(req);
+			assertWereadProtocol(resp.json);
 			if (resp.json?.errcode && resp.json.errcode !== 0) {
 				console.error(`[weread plugin] Agent API error: ${resp.json.errmsg}`);
 				return undefined;
 			}
 			return resp.json as T;
 		} catch (e) {
+			if (e instanceof WereadUpgradeRequiredError) throw e;
 			console.error(`[weread plugin] Agent API call failed: ${apiName}`, e);
 			return undefined;
 		}

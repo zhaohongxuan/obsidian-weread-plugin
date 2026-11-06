@@ -1,14 +1,22 @@
 import { requestUrl, RequestUrlParam } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
+import { WEREAD_SKILL_VERSION, assertWereadProtocol, WereadUpgradeRequiredError } from './wereadProtocol';
+
+import type { ShelfSyncResponse } from './bookshelf';
 
 class ApiV2Manager {
 	private readonly gatewayUrl: string = 'https://i.weread.qq.com/api/agent/gateway';
 
-	private async callAgent<T>(apiName: string, params: Record<string, unknown> = {}): Promise<T | undefined> {
+	private async callAgent<T>(
+		apiName: string,
+		params: Record<string, unknown> = {},
+		strict = false
+	): Promise<T | undefined> {
 		const settings = get(settingsStore);
 
 		if (!settings.wereadApiKey) {
+			if (strict) throw new Error('API Key 未配置，请在设置中填写。');
 			console.error('API Key 未配置，请在设置中填写。');
 			return undefined;
 		}
@@ -18,26 +26,35 @@ class ApiV2Manager {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${settings.wereadApiKey}`
+				Authorization: `Bearer ${settings.wereadApiKey}`
 			},
 			body: JSON.stringify({
+				...params,
 				api_name: apiName,
-				skill_version: '1.0.3',
-				...params
+				skill_version: WEREAD_SKILL_VERSION
 			})
 		};
 
 		try {
 			const resp = await requestUrl(req);
-			if (resp.json?.errcode && resp.json.errcode !== 0) {
-				console.error(`Agent API 错误: ${resp.json.errmsg}`);
-				return undefined;
+			assertWereadProtocol(resp.json);
+			if (resp.json?.errcode && Number(resp.json.errcode) !== 0) {
+				throw new Error(resp.json.errmsg || `微信读书接口错误 (${resp.json.errcode})`);
 			}
 			return resp.json as T;
 		} catch (e) {
+			if (strict || e instanceof WereadUpgradeRequiredError) throw e;
 			console.error(`Agent API 调用失败: ${apiName}`, e);
 			return undefined;
 		}
+	}
+
+	async getShelf(): Promise<ShelfSyncResponse> {
+		const shelf = await this.callAgent<ShelfSyncResponse>('/shelf/sync', {}, true);
+		if (!shelf || !Array.isArray(shelf.books)) {
+			throw new Error('书架数据格式异常，请稍后刷新重试');
+		}
+		return shelf;
 	}
 
 	async getBook(bookId: string) {
@@ -45,11 +62,11 @@ class ApiV2Manager {
 	}
 
 	async getNotebookHighlights(bookId: string) {
-		return this.callAgent('/book/bookmarklist', { bookId });
+		return this.callAgent('/book/bookmarklist', { bookId }, true);
 	}
 
 	async getProgress(bookId: string) {
-		return this.callAgent('/book/getprogress', { bookId });
+		return this.callAgent('/book/getprogress', { bookId }, true);
 	}
 
 	async getReadingStats(mode: string, baseTime?: number) {
@@ -70,19 +87,49 @@ class ApiV2Manager {
 
 		// V2 返回 { chapters: [] }，转换为 V1 格式 { data: [{ updated: [] }] }
 		return {
-			data: [{
-				bookId: result.bookId,
-				chapterUpdateTime: result.chapterUpdateTime,
-				updated: result.chapters
-			}]
+			data: [
+				{
+					bookId: result.bookId,
+					chapterUpdateTime: result.chapterUpdateTime,
+					updated: result.chapters
+				}
+			]
 		};
 	}
 
 	async getNotebookReviews(bookId: string) {
-		return this.callAgent('/review/list/mine', {
-			bookid: bookId,
-			synckey: 0
-		});
+		const reviews = new Map<string, any>();
+		const cursors = new Set<number>();
+		let synckey = 0;
+		for (let pageIndex = 0; pageIndex < 1000; pageIndex++) {
+			cursors.add(synckey);
+			const page = await this.callAgent<{
+				reviews: any[];
+				hasMore?: number | string | boolean;
+				synckey?: number | string;
+				totalCount?: number;
+			}>('/review/list/mine', { bookid: bookId, synckey, count: 100 }, true);
+			if (!page || !Array.isArray(page.reviews))
+				throw new Error('想法列表加载失败，未返回完整数据');
+			for (const item of page.reviews) {
+				const id = item?.review?.reviewId ?? item?.reviewId;
+				if (id === undefined || id === null || String(id) === '')
+					throw new Error('想法列表缺少唯一标识');
+				reviews.set(String(id), item);
+			}
+			if (Number(page.hasMore) !== 1) {
+				if (Number(page.totalCount) > reviews.size)
+					throw new Error('想法列表不完整，请稍后重试');
+				return { ...page, reviews: Array.from(reviews.values()), hasMore: 0 };
+			}
+			const next =
+				page.synckey === undefined || page.synckey === null ? NaN : Number(page.synckey);
+			if (!page.reviews.length || !Number.isFinite(next) || cursors.has(next)) {
+				throw new Error('想法分页游标异常，已停止加载以避免遗漏');
+			}
+			synckey = next;
+		}
+		throw new Error('想法分页过多，请稍后重试');
 	}
 
 	async getBestBookmarks(bookId: string, chapterUid = 0) {
@@ -159,31 +206,34 @@ class ApiV2Manager {
 	 * 自动处理分页，每页 300 本
 	 */
 	async getNotebooks() {
-		const PAGE_SIZE = 300;
-		let allBooks: any[] = [];
+		const books = new Map<string, any>();
+		const cursors = new Set<number>();
 		let lastSort: number | undefined;
-
-		do {
-			const params: Record<string, unknown> = { count: PAGE_SIZE };
+		for (let pageIndex = 0; pageIndex < 1000; pageIndex++) {
+			const params: Record<string, unknown> = { count: 300 };
 			if (lastSort !== undefined) params.lastSort = lastSort;
-
 			const page = await this.callAgent<{
 				books: any[];
-				hasMore: number;
-			}>('/user/notebooks', params);
-
-			if (!page?.books) break;
-
-			allBooks = allBooks.concat(page.books);
-
-			if (page.hasMore !== 1) break;
-
-			// 取本页最后一条的 sort 作为下一页的游标
-			const lastBook = page.books[page.books.length - 1];
-			lastSort = lastBook?.sort;
-		} while (lastSort !== undefined);
-
-		return { books: allBooks };
+				hasMore?: number | string | boolean;
+			}>('/user/notebooks', params, true);
+			if (!page || !Array.isArray(page.books))
+				throw new Error('笔记本列表加载失败，未返回完整数据');
+			for (const item of page.books) {
+				const id = item?.bookId ?? item?.book?.bookId;
+				if (id === undefined || id === null || String(id) === '')
+					throw new Error('笔记本列表缺少书籍标识');
+				books.set(String(id), item);
+			}
+			if (Number(page.hasMore) !== 1) return { books: Array.from(books.values()) };
+			const rawCursor = page.books[page.books.length - 1]?.sort;
+			const next = rawCursor === undefined || rawCursor === null ? NaN : Number(rawCursor);
+			if (!page.books.length || !Number.isFinite(next) || cursors.has(next)) {
+				throw new Error('笔记本分页游标异常，已停止加载以避免遗漏');
+			}
+			cursors.add(next);
+			lastSort = next;
+		}
+		throw new Error('笔记本分页过多，请稍后重试');
 	}
 }
 

@@ -47,9 +47,9 @@ All commands are from `package.json`.
 - Dev build + sync helper: `npm run deploy`
 
 Tests:
-- No test runner is configured in this repo.
-- There is no single-test command available.
-- If you add tests, also document how to run a single test.
+- Run `npm test` for cache, parser, bookshelf and pagination regression tests. Tests mock network/settings and do not require an Obsidian runtime or credentials.
+- Run a single test with `node --test --test-name-pattern='partial failures' tests/journal.mjs`.
+- Journal cache code lives in `src/journal.ts` / `src/journalHelpers.ts`; it persists JSON under the plugin directory and must never rewrite synced Markdown or persist credentials.
 
 ## Tooling configuration
 - TypeScript: `tsconfig.json` (ESNext modules, ES6 target, `noImplicitAny: true`).

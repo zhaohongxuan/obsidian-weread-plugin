@@ -1,7 +1,11 @@
+import { Platform, requestUrl } from 'obsidian';
+import { getCookieString } from './utils/cookiesUtil';
+import type { ShelfSyncResponse } from './bookshelf';
 import ApiManager from './api';
 import ApiV2Manager from './api-v2';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
+import { WereadUpgradeRequiredError } from './wereadProtocol';
 import type {
 	HighlightResponse,
 	BookReviewResponse,
@@ -20,6 +24,83 @@ class ApiRouter {
 	constructor() {
 		this.v1Manager = new ApiManager();
 		this.v2Manager = new ApiV2Manager();
+	}
+
+	private shelfCache?: { key: string; expiresAt: number; shelf: ShelfSyncResponse };
+	private shelfRequest?: { key: string; promise: Promise<ShelfSyncResponse> };
+
+	async getShelf(force = false): Promise<ShelfSyncResponse> {
+		const settings = get(settingsStore);
+		const key = JSON.stringify([
+			settings.wereadApiKey,
+			settings.cookies,
+			settings.isCookieValid
+		]);
+		if (this.shelfCache?.key !== key) this.shelfCache = undefined;
+		if (!force && this.shelfCache && this.shelfCache.expiresAt > Date.now()) {
+			return this.shelfCache.shelf;
+		}
+		if (this.shelfRequest?.key === key) return this.shelfRequest.promise;
+		const promise = (async () => {
+			// An explicitly configured API key is authoritative; do not silently show
+			// another Cookie account's shelf after an API key authentication failure.
+			const shelf = settings.wereadApiKey
+				? await this.v2Manager.getShelf()
+				: await this.getCookieShelf();
+			const current = get(settingsStore);
+			if (
+				key ===
+				JSON.stringify([current.wereadApiKey, current.cookies, current.isCookieValid])
+			) {
+				this.shelfCache = { key, expiresAt: Date.now() + 60_000, shelf };
+			}
+			return shelf;
+		})();
+		this.shelfRequest = { key, promise };
+		try {
+			return await promise;
+		} finally {
+			if (this.shelfRequest?.promise === promise) this.shelfRequest = undefined;
+		}
+	}
+
+	private async getCookieShelf(): Promise<ShelfSyncResponse> {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const settings = get(settingsStore);
+			if (!settings.cookies.length) throw new Error('请先配置 API Key 或登录微信读书');
+			const cookie = Platform.isDesktopApp
+				? getCookieString(settings.cookies)
+				: settings.cookies
+						.map((item) => `${item.name}=${encodeURIComponent(item.value)}`)
+						.join(';');
+			const userVid =
+				settings.userVid || settings.cookies.find((item) => item.name === 'wr_vid')?.value;
+			const resp = await requestUrl({
+				url: `https://i.weread.qq.com/shelf/sync?userVid=${encodeURIComponent(userVid || '')}&synckey=0&lectureSynckey=0`,
+				method: 'GET',
+				throw: false,
+				headers: {
+					Cookie: cookie,
+					Referer: 'https://weread.qq.com/',
+					'User-Agent': 'Mozilla/5.0',
+					Accept: 'application/json'
+				}
+			});
+			const data = resp.json;
+			if (resp.status === 401 || Number(data?.errcode) === -2012) {
+				if (attempt === 0 && (await this.v1Manager.refreshCookie())) continue;
+				throw new Error('Cookie 已失效，请重新登录或配置 API Key');
+			}
+			if (resp.status >= 400 || (data?.errcode && Number(data.errcode) !== 0)) {
+				throw new Error(
+					data?.errmsg || `书架请求失败 (${resp.status})，可尝试配置 API Key`
+				);
+			}
+			if (!Array.isArray(data?.books))
+				throw new Error('Cookie 书架接口未返回完整数据，请配置 API Key 后重试');
+			return data as ShelfSyncResponse;
+		}
+		throw new Error('书架加载失败，请稍后重试');
 	}
 
 	private useV2(): boolean {
@@ -45,13 +126,17 @@ class ApiRouter {
 				const result = await this.v2Manager.getBook(bookId);
 				if (result) return result as BookDetailResponse;
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getBook 调用失败，回退到 V1', e);
 			}
 		}
 		return this.v1Manager.getBook(bookId);
 	}
 
-	async getNotebookHighlights(bookId: string, isArticle = false): Promise<HighlightResponse | undefined> {
+	async getNotebookHighlights(
+		bookId: string,
+		isArticle = false
+	): Promise<HighlightResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
 			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取划线');
@@ -59,19 +144,24 @@ class ApiRouter {
 		}
 
 		if (this.useV2()) {
-			try {
-				const result = await this.v2Manager.getNotebookHighlights(bookId);
-				if (result && Array.isArray(result.updated)) {
-					return result as HighlightResponse;
-				}
-			} catch (e) {
-				console.warn('V2 getNotebookHighlights 调用失败，回退到 V1', e);
+			const result = await this.v2Manager.getNotebookHighlights(bookId);
+			if (
+				!result ||
+				typeof result !== 'object' ||
+				!('updated' in result) ||
+				!Array.isArray(result.updated)
+			) {
+				throw new Error('微信读书划线数据不完整，请刷新重试');
 			}
+			return result as HighlightResponse;
 		}
 		return this.v1Manager.getNotebookHighlights(bookId);
 	}
 
-	async getNotebookReviews(bookId: string, isArticle = false): Promise<BookReviewResponse | undefined> {
+	async getNotebookReviews(
+		bookId: string,
+		isArticle = false
+	): Promise<BookReviewResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
 			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取笔记');
@@ -79,12 +169,7 @@ class ApiRouter {
 		}
 
 		if (this.useV2()) {
-			try {
-				const result = await this.v2Manager.getNotebookReviews(bookId);
-				if (result) return result as BookReviewResponse;
-			} catch (e) {
-				console.warn('V2 getNotebookReviews 调用失败，回退到 V1', e);
-			}
+			return (await this.v2Manager.getNotebookReviews(bookId)) as BookReviewResponse;
 		}
 		return this.v1Manager.getNotebookReviews(bookId);
 	}
@@ -101,6 +186,7 @@ class ApiRouter {
 				const result = await this.v2Manager.getChapters(bookId);
 				if (result) return result as ChapterResponse;
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getChapters 调用失败，回退到 V1', e);
 			}
 		}
@@ -109,12 +195,7 @@ class ApiRouter {
 
 	async getProgress(bookId: string): Promise<BookProgressResponse | undefined> {
 		if (this.useV2()) {
-			try {
-				const result = await this.v2Manager.getProgress(bookId);
-				if (result) return result as BookProgressResponse;
-			} catch (e) {
-				console.warn('V2 getProgress 调用失败，回退到 V1', e);
-			}
+			return (await this.v2Manager.getProgress(bookId)) as BookProgressResponse;
 		}
 		return this.v1Manager.getProgress(bookId);
 	}
@@ -124,12 +205,16 @@ class ApiRouter {
 		return this.v1Manager.getBookReadInfo(bookId);
 	}
 
-	async getReadingStats(mode: ReadingStatsMode, baseTime?: number): Promise<ReadingStatsResponse | undefined> {
+	async getReadingStats(
+		mode: ReadingStatsMode,
+		baseTime?: number
+	): Promise<ReadingStatsResponse | undefined> {
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getReadingStats(mode, baseTime);
 				if (result) return result as ReadingStatsResponse;
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getReadingStats 调用失败，回退到 V1', e);
 			}
 		}
@@ -142,6 +227,7 @@ class ApiRouter {
 				const result = await this.v2Manager.getUserInfo(userVid);
 				if (result) return result as Record<string, unknown>;
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getUserInfo 调用失败，回退到 V1', e);
 			}
 		}
@@ -157,6 +243,7 @@ class ApiRouter {
 				const result = await this.v2Manager.getCurrentUser();
 				if (result) return result as Record<string, unknown>;
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getCurrentUser 调用失败', e);
 			}
 		}
@@ -168,6 +255,7 @@ class ApiRouter {
 			try {
 				return await this.v2Manager.getBestBookmarks(bookId, chapterUid);
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getBestBookmarks 调用失败', e);
 			}
 		}
@@ -184,8 +272,13 @@ class ApiRouter {
 		bookId: string,
 		chapterUids: number[],
 		batchSize = 5
-	): Promise<Map<number, { bookmarkId: string; range: string; markText: string; totalCount: number }[]>> {
-		const results = new Map<number, { bookmarkId: string; range: string; markText: string; totalCount: number }[]>();
+	): Promise<
+		Map<number, { bookmarkId: string; range: string; markText: string; totalCount: number }[]>
+	> {
+		const results = new Map<
+			number,
+			{ bookmarkId: string; range: string; markText: string; totalCount: number }[]
+		>();
 
 		for (let i = 0; i < chapterUids.length; i += batchSize) {
 			const batch = chapterUids.slice(i, i + batchSize);
@@ -194,6 +287,7 @@ class ApiRouter {
 					const resp = await this.getBestBookmarks(bookId, chapterUid);
 					return { chapterUid, items: resp?.items ?? [] };
 				} catch (e) {
+					if (e instanceof WereadUpgradeRequiredError) throw e;
 					throw { chapterUid, error: e };
 				}
 			});
@@ -204,7 +298,10 @@ class ApiRouter {
 					results.set(result.value.chapterUid, result.value.items);
 				} else {
 					const { chapterUid } = result.reason as { chapterUid: number; error: unknown };
-					console.warn(`[weread plugin] 获取章节热门划线失败: chapterUid=${chapterUid}`, result.reason);
+					console.warn(
+						`[weread plugin] 获取章节热门划线失败: chapterUid=${chapterUid}`,
+						result.reason
+					);
 				}
 			}
 		}
@@ -218,6 +315,7 @@ class ApiRouter {
 				const result = await this.v2Manager.getPublicReviews(bookId);
 				if (result) return result as BookReviewResponse;
 			} catch (e) {
+				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getPublicReviews 调用失败，回退到 V1', e);
 			}
 		}
@@ -225,26 +323,12 @@ class ApiRouter {
 	}
 
 	async getNotebooks() {
-		if (this.useV2()) {
-			try {
-				const result = await this.v2Manager.getNotebooks();
-				if (result?.books) return result.books;
-			} catch (e) {
-				console.warn('V2 getNotebooks 调用失败，回退到 V1', e);
-			}
-		}
+		if (this.useV2()) return (await this.v2Manager.getNotebooks()).books;
 		return this.v1Manager.getNotebooks();
 	}
 
 	async getNotebooksWithRetry() {
-		if (this.useV2()) {
-			try {
-				const books = await this.v2Manager.getNotebooks();
-				if (books?.books) return books.books;
-			} catch (e) {
-				console.warn('V2 getNotebooksWithRetry 调用失败，回退到 V1', e);
-			}
-		}
+		if (this.useV2()) return (await this.v2Manager.getNotebooks()).books;
 		return this.v1Manager.getNotebooksWithRetry();
 	}
 
@@ -258,14 +342,26 @@ class ApiRouter {
 	/**
 	 * 扫码登录后获取 API Key（需要 Cookie，仅 V1 支持）
 	 */
-	async fetchApiKey(): Promise<{ apikey: string; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number } | null> {
+	async fetchApiKey(): Promise<{
+		apikey: string;
+		expireTime?: number;
+		lastUsedTime?: number;
+		createdAt?: number;
+		lastUsedAt?: number;
+	} | null> {
 		return this.v1Manager.fetchAndSaveApiKey();
 	}
 
 	/**
 	 * 校验 API Key 有效性
 	 */
-	async validateApiKey(): Promise<{ valid: boolean; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number }> {
+	async validateApiKey(): Promise<{
+		valid: boolean;
+		expireTime?: number;
+		lastUsedTime?: number;
+		createdAt?: number;
+		lastUsedAt?: number;
+	}> {
 		if (this.useV2()) {
 			const result = await this.v2Manager.validateApiKey();
 			return result;
@@ -285,7 +381,10 @@ class ApiRouter {
 	/**
 	 * 通过 Agent API Gateway 直接调用（V1 中的 callAgentGateway）
 	 */
-	async callAgentGateway<T = unknown>(apiName: string, params: Record<string, unknown> = {}): Promise<T | undefined> {
+	async callAgentGateway<T = unknown>(
+		apiName: string,
+		params: Record<string, unknown> = {}
+	): Promise<T | undefined> {
 		return this.v1Manager.callAgentGateway<T>(apiName, params) as Promise<T | undefined>;
 	}
 }

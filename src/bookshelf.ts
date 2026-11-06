@@ -7,6 +7,9 @@ import { settingsStore } from './settings';
 import { createSyncFilterContext, evaluateMetadataSyncFilter } from './syncFilter';
 import { formatTimestampToDate } from './utils/dateUtil';
 
+import type { BookshelfSourceMode, BookshelfCollection, ShelfBook } from './models';
+export type { BookshelfSourceMode, ShelfSyncResponse, BookshelfFolder, BookshelfAlbum, ShelfBook, BookshelfCollection } from './models';
+
 const PROGRESS_CONCURRENCY = 4;
 const PROGRESS_TEXT_PATTERN = /^(\d+(?:\.\d+)?)%?$/;
 
@@ -17,9 +20,127 @@ const IDLE_PROGRESS: BookshelfProgress = {
 export default class WereadBookshelfService {
 	private progressCache = new Map<string, BookshelfProgress>();
 
-	constructor(private fileManager: FileManager, private apiManager: ApiRouter) {}
+	constructor(
+		private fileManager: FileManager,
+		private apiManager: ApiRouter
+	) {}
+
+	private credentialKey = '';
+
+	private checkCredentials(): string {
+		const settings = get(settingsStore);
+		const key = JSON.stringify([
+			settings.wereadApiKey,
+			settings.cookies,
+			settings.isCookieValid
+		]);
+		if (key !== this.credentialKey) {
+			this.progressCache.clear();
+			this.credentialKey = key;
+		}
+		return key;
+	}
+
+	async getCollection(source: BookshelfSourceMode, force = false): Promise<BookshelfCollection> {
+		this.checkCredentials();
+		if (source === 'notebooks') {
+			const books = await this.getBookshelfBooks();
+			return {
+				books,
+				folders: [],
+				albums: [],
+				hasArticleCollection: false,
+				remoteEntryCount: books.filter((book) => book.remoteExists).length
+			};
+		}
+		const [shelf, localFiles] = await Promise.all([
+			this.apiManager.getShelf(force),
+			this.fileManager.getNotebookFilesByBookId()
+		]);
+		const remoteIds = new Set(shelf.books.map((book) => String(book.bookId)));
+		const books: ShelfBook[] = shelf.books
+			.map((raw) => {
+				const bookId = String(raw.bookId ?? '');
+				const localFile = localFiles.get(bookId);
+				return {
+					bookId,
+					title: String(raw.title || '未命名书籍'),
+					author: String(raw.author || '未知作者'),
+					cover:
+						typeof raw.cover === 'string'
+							? raw.cover.replace('/s_', '/t7_')
+							: undefined,
+					noteCount: localFile?.noteCount ?? 0,
+					reviewCount: localFile?.reviewCount ?? 0,
+					countsKnown: Boolean(localFile),
+					lastReadDate:
+						Number(raw.readUpdateTime) > 0
+							? formatTimestampToDate(Number(raw.readUpdateTime))
+							: undefined,
+					isArticle: Number(raw.type ?? raw.bookType) === 3,
+					finished:
+						raw.finishReading === undefined
+							? undefined
+							: Number(raw.finishReading) === 1,
+					hasLocalFile: Boolean(localFile),
+					localFile,
+					remoteExists: true,
+					isLocalOnly: false,
+					progress: this.getProgress(bookId, this.getLocalFallbackProgress(localFile))
+				};
+			})
+			.filter((book) => book.bookId !== '');
+		for (const file of localFiles.values()) {
+			if (file.bookId !== undefined && !remoteIds.has(file.bookId)) {
+				books.push(this.buildLocalOnlyBook(file as AnnotationFile & { bookId: string }));
+			}
+		}
+		const folders = (Array.isArray(shelf.archive) ? shelf.archive : []).map(
+			(folder, index) => ({
+				id: `folder-${index}`,
+				name: String(folder.name || `书单 ${index + 1}`),
+				bookIds: Array.from(
+					new Set((Array.isArray(folder.bookIds) ? folder.bookIds : []).map(String))
+				)
+			})
+		);
+		const rawAlbums = Array.isArray(shelf.albums) ? shelf.albums : [];
+		const albums = rawAlbums.map((entry, index) => {
+			const info = entry.albumInfo ?? {};
+			return {
+				id: String(info.albumId ?? `album-${index}`),
+				title: String(info.name || '未命名有声书'),
+				author: String(info.authorName || '未知作者'),
+				cover: info.cover,
+				trackCount: Number.isFinite(Number(info.trackCount))
+					? Number(info.trackCount)
+					: undefined
+			};
+		});
+		const hasArticleCollection =
+			Boolean(shelf.mp) &&
+			(typeof shelf.mp !== 'object' || Object.keys(shelf.mp as object).length > 0);
+		return {
+			books,
+			folders,
+			albums,
+			hasArticleCollection,
+			remoteEntryCount: shelf.books.length + rawAlbums.length + (hasArticleCollection ? 1 : 0)
+		};
+	}
+
+	async getLocalCollection(): Promise<BookshelfCollection> {
+		const files = await this.fileManager.getNotebookFilesByBookId();
+		const books = Array.from(files.values())
+			.filter(
+				(file): file is AnnotationFile & { bookId: string } => file.bookId !== undefined
+			)
+			.map((file) => this.buildLocalOnlyBook(file));
+		return { books, folders: [], albums: [], hasArticleCollection: false, remoteEntryCount: 0 };
+	}
 
 	async getBookshelfBooks(): Promise<BookshelfBook[]> {
+		this.checkCredentials();
 		const [notebookResp, localFilesByBookId] = await Promise.all([
 			this.apiManager.getNotebooksWithRetry(),
 			this.fileManager.getNotebookFilesByBookId()
@@ -44,6 +165,7 @@ export default class WereadBookshelfService {
 		bookIds: string[],
 		onUpdate?: (bookId: string, progress: BookshelfProgress) => void
 	): Promise<void> {
+		const credentialKey = this.checkCredentials();
 		const idsToLoad = Array.from(new Set(bookIds)).filter((bookId) => {
 			const progress = this.progressCache.get(bookId);
 			return (
@@ -52,6 +174,7 @@ export default class WereadBookshelfService {
 		});
 
 		for (let index = 0; index < idsToLoad.length; index += PROGRESS_CONCURRENCY) {
+			if (credentialKey !== this.checkCredentials()) return;
 			const chunk = idsToLoad.slice(index, index + PROGRESS_CONCURRENCY);
 			await Promise.all(
 				chunk.map(async (bookId) => {
@@ -61,6 +184,7 @@ export default class WereadBookshelfService {
 
 					try {
 						const progressResp = await this.apiManager.getProgress(bookId);
+						if (credentialKey !== this.checkCredentials()) return;
 						if (!progressResp?.book) {
 							const errorState: BookshelfProgress = {
 								state: 'error',
@@ -73,8 +197,11 @@ export default class WereadBookshelfService {
 
 						const loadedState: BookshelfProgress = {
 							state: 'loaded',
-							readingProgress: progressResp.book.progress,
-							readingProgressText: `${progressResp.book.progress}%`,
+							readingProgress: this.parseProgressValue(progressResp.book.progress),
+							readingProgressText:
+								this.parseProgressValue(progressResp.book.progress) === undefined
+									? undefined
+									: `${progressResp.book.progress}%`,
 							readingDate: progressResp.book.startReadingTime,
 							readingDateText: progressResp.book.startReadingTime
 								? formatTimestampToDate(progressResp.book.startReadingTime)
@@ -88,6 +215,7 @@ export default class WereadBookshelfService {
 						this.progressCache.set(bookId, loadedState);
 						onUpdate?.(bookId, loadedState);
 					} catch (error: unknown) {
+						if (credentialKey !== this.checkCredentials()) return;
 						const errorState: BookshelfProgress = {
 							state: 'error',
 							error: error instanceof Error ? error.message : '读取进度失败'
@@ -101,6 +229,7 @@ export default class WereadBookshelfService {
 	}
 
 	getProgress(bookId: string, fallback?: BookshelfProgress): BookshelfProgress {
+		this.checkCredentials();
 		return this.progressCache.get(bookId) ?? fallback ?? IDLE_PROGRESS;
 	}
 
@@ -181,13 +310,17 @@ export default class WereadBookshelfService {
 			return undefined;
 		}
 		if (typeof progress === 'number') {
-			return Number.isNaN(progress) ? undefined : progress;
+			return Number.isFinite(progress) && progress >= 0 && progress <= 100
+				? progress
+				: undefined;
 		}
 		const progressMatch = progress.trim().match(PROGRESS_TEXT_PATTERN);
 		if (!progressMatch) {
 			return undefined;
 		}
 		const progressValue = Number.parseFloat(progressMatch[1]);
-		return Number.isNaN(progressValue) ? undefined : progressValue;
+		return Number.isFinite(progressValue) && progressValue >= 0 && progressValue <= 100
+			? progressValue
+			: undefined;
 	}
 }

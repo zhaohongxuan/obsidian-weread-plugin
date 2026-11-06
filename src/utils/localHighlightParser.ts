@@ -3,8 +3,37 @@ import type { HighlightResponse } from '../models';
 const DEEPLINK_RE =
 	/weread:\/\/bestbookmark\?bookId=([^&]+)&chapterUid=(\d+)&rangeStart=(\d+)&rangeEnd=(\d+)/;
 
+const POPULAR_COUNT_RE = /(?:📊|🔥)\s*(\d+)\s*人共读/;
+const HIGHLIGHT_START_RE = /^>\s*(?:📌(?:🔥)?|🔥)?\s*\[/;
+
+function getHighlightBlocks(content: string) {
+	const lines = content.replace(/\r\n/g, '\n').split('\n');
+	const blocks: { line: string; nextLine: string; chapterTitle: string }[] = [];
+	let chapterTitle = '未知章节';
+
+	for (let i = 0; i < lines.length; i++) {
+		const chapterMatch = lines[i].match(/^#{2,4}\s+(.+)$/);
+		if (chapterMatch) {
+			chapterTitle = chapterMatch[1].trim();
+			continue;
+		}
+		if (!HIGHLIGHT_START_RE.test(lines[i])) continue;
+
+		let line = lines[i];
+		while (!line.includes('](<weread://bestbookmark?') && i + 1 < lines.length) {
+			const nextLine = lines[i + 1];
+			if (/^#{1,6}\s/.test(nextLine) || HIGHLIGHT_START_RE.test(nextLine)) break;
+			line += '\n' + nextLine.replace(/^ {3}/, '');
+			i++;
+		}
+		blocks.push({ line, nextLine: lines[i + 1] ?? '', chapterTitle });
+	}
+	return blocks;
+}
+
 function parseHighlightLine(
 	line: string,
+	nextLine: string,
 	bookId: string,
 	chapterTitle: string,
 	chapters: HighlightResponse['chapters'],
@@ -12,17 +41,19 @@ function parseHighlightLine(
 	includeUser: boolean,
 	includePopular: boolean
 ): HighlightResponse['updated'][number] | null {
-	const isUser = line.includes('📌');
-	const isPopular = line.includes('🔥');
+	const textMatch = line.match(/^>\s*(📌(?:🔥)?|🔥)?\s*\[([\s\S]+)\]\(<([^>]+)>\)/);
+	if (!textMatch) return null;
+
+	const marker = textMatch[1] ?? '';
+	// The official theme omits markers; its count is on the following line.
+	const isPopular = marker.includes('🔥') || POPULAR_COUNT_RE.test(nextLine);
+	const isUser = marker.includes('📌') || (!marker && !isPopular);
 	if (includeUser && !isUser) return null;
 	if (includePopular && !isPopular) return null;
 	if (!includeUser && !includePopular) return null;
 
-	const textMatch = line.match(/^>\s*(?:📌(?:🔥)?|🔥)\s*\[(.+)\]\(<([^>]+)>\)/);
-	if (!textMatch) return null;
-
-	const markText = textMatch[1].trim();
-	const deeplink = textMatch[2];
+	const markText = textMatch[2].trim();
+	const deeplink = textMatch[3];
 	const linkMatch = deeplink.match(DEEPLINK_RE);
 	if (!linkMatch || linkMatch[1] !== bookId) return null;
 
@@ -62,21 +93,12 @@ export function parseLocalUserHighlights(content: string, bookId: string): Highl
 	const chapters: HighlightResponse['chapters'] = [];
 	const updated: HighlightResponse['updated'] = [];
 	const chapterMap = new Map<number, { title: string; chapterIdx: number }>();
-	let currentChapter = '未知章节';
-	const lines = content.split('\n');
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const chapterMatch = line.match(/^#{2,4}\s+(.+)$/);
-		if (chapterMatch) {
-			currentChapter = chapterMatch[1].trim();
-			continue;
-		}
-
+	for (const { line, nextLine, chapterTitle } of getHighlightBlocks(content)) {
 		const highlight = parseHighlightLine(
 			line,
+			nextLine,
 			bookId,
-			currentChapter,
+			chapterTitle,
 			chapters,
 			chapterMap,
 			true,
@@ -84,7 +106,6 @@ export function parseLocalUserHighlights(content: string, bookId: string): Highl
 		);
 		if (!highlight) continue;
 
-		const nextLine = lines[i + 1] ?? '';
 		highlight.createTime = parseTimestampLine(nextLine);
 		updated.push(highlight);
 	}
@@ -121,22 +142,12 @@ export function parseLocalPopularHighlights(
 	const chapters: any[] = [];
 	const items: any[] = [];
 	const chapterMap = new Map<number, { title: string; chapterIdx: number }>();
-	let currentChapter = '未知章节';
-	const lines = content.split('\n');
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i];
-		const chapterMatch = line.match(/^#{2,4}\s+(.+)$/);
-		if (chapterMatch) {
-			currentChapter = chapterMatch[1].trim();
-			continue;
-		}
-
-		if (!line.includes('🔥')) continue;
+	for (const { line, nextLine, chapterTitle } of getHighlightBlocks(content)) {
 		const highlight = parseHighlightLine(
 			line,
+			nextLine,
 			bookId,
-			currentChapter,
+			chapterTitle,
 			chapters as HighlightResponse['chapters'],
 			chapterMap,
 			false,
@@ -144,7 +155,7 @@ export function parseLocalPopularHighlights(
 		);
 		if (!highlight) continue;
 
-		const countMatch = lines[i + 1]?.match(/(?:📊|🔥)\s*(\d+)\s*人共读/);
+		const countMatch = nextLine.match(POPULAR_COUNT_RE);
 		items.push({
 			bookId,
 			bookmarkId: highlight.bookmarkId,

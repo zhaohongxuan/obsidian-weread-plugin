@@ -230,6 +230,22 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 	private bookshelfSettings(): void {
 		new Setting(this.containerEl).setName('书架设置').setHeading();
+		new Setting(this.containerEl)
+			.setName('书架展示模式')
+			.setDesc('默认使用书架模式，展示我的书架中的书籍和文件夹；笔记本模式展示有笔记的书籍及本地笔记。切换后书架页面自动更新。')
+			.addDropdown((dropdown) => dropdown
+				.addOption('bookshelf', '书架模式（默认）')
+				.addOption('notebooks', '笔记本模式')
+				.setValue(get(settingsStore).bookshelfSourceMode ?? 'bookshelf')
+				.onChange((value) => settingsStore.actions.setBookshelfSourceMode(value as 'bookshelf' | 'notebooks')));
+		new Setting(this.containerEl)
+			.setName('今日与回顾更新频率')
+			.setDesc('首次整理后复用本地缓存；按划线和想法数量校验，仅更新有变化的书。可在页面手动刷新。')
+			.addDropdown((dropdown) => dropdown
+				.addOption('24', '每天一次')
+				.addOption('12', '每天两次')
+				.setValue(String(get(settingsStore).journalRefreshHours))
+				.onChange((value) => settingsStore.actions.setJournalRefreshHours(Number(value))));
 			this.readingOpenModeSetting();
 			this.bookOpenModeSetting();
 
