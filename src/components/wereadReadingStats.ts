@@ -88,6 +88,11 @@ function calcBaseTime(mode: ReadingStatsMode, offset: number): number | undefine
 	return undefined;
 }
 
+/** 判断某个「月初时间戳」对应的月份是否已经完全过完（今天已进入下一月） */
+function isMonthOver(monthStart: Date, now: Date): boolean {
+	return new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59, 999) < now;
+}
+
 function periodLabel(mode: ReadingStatsMode, offset: number): string {
 	if (mode === 'overall') return '全部';
 	const now = new Date();
@@ -146,6 +151,7 @@ function buildWeekValues(
 
 const CACHE_DIR = '.weread-cache';
 const CACHE_FILE = `${CACHE_DIR}/daily-stats.json`;
+const CACHE_VERSION = 2;
 
 interface DailyStatsCache {
 	version: number;
@@ -160,10 +166,40 @@ async function loadDailyCache(vault: Vault): Promise<DailyStatsCache> {
 		const exists = await vault.adapter.exists(CACHE_FILE);
 		if (exists) {
 			const raw = await vault.adapter.read(CACHE_FILE);
-			return JSON.parse(raw) as DailyStatsCache;
+			const cache = JSON.parse(raw) as DailyStatsCache;
+			if (cache.version !== CACHE_VERSION) migrateDailyCache(cache);
+			return cache;
 		}
 	} catch (_) { /* ignore */ }
-	return { version: 1, data: {}, fetchedMonths: [] };
+	return { version: CACHE_VERSION, data: {}, fetchedMonths: [] };
+}
+
+/**
+ * v1 → v2 迁移：v1 会把「抓取时尚未结束的当月」也标记为已抓取，而当前月只能拿到
+ * 截至当天的数据，跨月后该月不再被补抓，热力图于是留下固定缺口。
+ * 这里按「该月数据是否覆盖到月末」找出不完整的月份，剔除其标记让它们重抓一次。
+ */
+function migrateDailyCache(cache: DailyStatsCache): void {
+	const incomplete = new Set<string>();
+	const monthsWithData = new Set<string>();
+	const lastDay: Record<string, number> = {};
+	for (const key of Object.keys(cache.data)) {
+		const [y, m, d] = key.split('-').map(Number);
+		const month = `${y}-${m}`;
+		monthsWithData.add(month);
+		lastDay[month] = Math.max(lastDay[month] ?? 0, d);
+	}
+	// 数据没有盖到月末（含抓取当天就断掉的月份）
+	for (const [month, maxDay] of Object.entries(lastDay)) {
+		const [y, m] = month.split('-').map(Number);
+		if (maxDay < new Date(y, m + 1, 0).getDate()) incomplete.add(month);
+	}
+	// 有标记却一天数据都没有的月份（空响应被误标）
+	for (const key of cache.fetchedMonths) {
+		if (!monthsWithData.has(key)) incomplete.add(key);
+	}
+	cache.fetchedMonths = cache.fetchedMonths.filter(k => !incomplete.has(k));
+	cache.version = CACHE_VERSION;
 }
 
 async function saveDailyCache(vault: Vault, cache: DailyStatsCache): Promise<void> {
@@ -897,10 +933,15 @@ export class WereadReadingStatsView extends ItemView {
 					const dd = new Date(Number(dayTs) * 1000);
 					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
 				}
-				if (!cache.fetchedMonths.includes(monthKey)) {
+				// 已过完的月份才算抓全：当前月只能拿到「截至今天」的数据，
+				// 此时打标记会让该月跨月后永不补全
+				if (isMonthOver(d, today) && !cache.fetchedMonths.includes(monthKey)) {
 					cache.fetchedMonths.push(monthKey);
 				}
 				dirty = true;
+			}
+			if (i + BATCH < toFetch.length) {
+				await new Promise(r => setTimeout(r, 200));
 			}
 		}
 
@@ -990,7 +1031,8 @@ export class WereadReadingStatsView extends ItemView {
 					const dd = new Date(Number(dayTs) * 1000);
 					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
 				}
-				if (!cache.fetchedMonths.includes(monthKey)) {
+				// 同 loadAnnualDailyData：未过完的当月不打标记，避免跨月后无法补全
+				if (isMonthOver(d, today) && !cache.fetchedMonths.includes(monthKey)) {
 					cache.fetchedMonths.push(monthKey);
 				}
 				dirty = true;
