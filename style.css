@@ -2754,6 +2754,7 @@
 
 .weread-ghmap-months {
 	display: flex;
+	gap: 3px; /* same as .weread-ghmap-grid so every label sits exactly above its week column */
 }
 
 .weread-ghmap-monthlabel {
@@ -2763,8 +2764,13 @@
 	height: 16px;
 	line-height: 16px;
 	white-space: nowrap;
-	overflow: hidden;
+	/* One week column wide, but the text may spill into the following (empty) columns:
+	   "10月/11月/12月" are wider than a single column and used to be cropped by
+	   `overflow: hidden`. min-width: 0 keeps every label box exactly one column wide
+	   so labels stay aligned with the grid. */
 	flex: 1;
+	min-width: 0;
+	overflow: visible;
 }
 
 .weread-ghmap-grid {
