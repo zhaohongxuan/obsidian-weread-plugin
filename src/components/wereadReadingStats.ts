@@ -1469,34 +1469,33 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			this.renderHourBarChart(timeCard, data.preferTime!);
 		}
 
-		// ── 分类偏好（占比条形图）+ 出版方（标签云）并排
-		if (hasCat || hasPublisher) {
-			// 分类占比
-			if (hasCat) {
-				const cats = data.preferCategory.filter(c => c.readingTime > 0);
-				const catCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
-				const catHeader = catCard.createDiv({ cls: 'weread-stats-pref-card-header' });
-				setIcon(catHeader.createSpan(), 'tag');
-				catHeader.createSpan({ text: '分类偏好' });
-				if (data.preferCategoryWord) {
-					catCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferCategoryWord });
-				}
-				this.renderCategoryBars(catCard, cats.map(c => ({ label: c.categoryTitle, value: c.readingTime })));
+		// 分类在左，出版方与作者在右侧纵向排列。
+		if (hasCat) {
+			const cats = data.preferCategory.filter(c => c.readingTime > 0);
+			const catCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
+			const catHeader = catCard.createDiv({ cls: 'weread-stats-pref-card-header' });
+			setIcon(catHeader.createSpan(), 'tag');
+			catHeader.createSpan({ text: '分类偏好' });
+			if (data.preferCategoryWord) {
+				catCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferCategoryWord });
 			}
-
-			// 出版方标签云（与分类同行，非全宽）
-			if (hasPublisher) {
-				const pubCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
-				const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });
-				setIcon(pubHeader.createSpan(), 'building-2');
-				pubHeader.createSpan({ text: '偏好出版方' });
-				this.renderTagCloud(pubCard, data.preferPublisher!.slice(0, 20));
-			}
+			this.renderCategoryBars(catCard, cats.map(c => ({ label: c.categoryTitle, value: c.readingTime })));
+		}
+		const secondary = hasPublisher || hasAuthor
+			? prefGrid.createDiv({ cls: 'weread-stats-pref-secondary' })
+			: prefGrid;
+		if (!hasCat && (hasPublisher || hasAuthor)) secondary.style.gridColumn = '1 / -1';
+		if (hasPublisher) {
+			const pubCard = secondary.createDiv({ cls: 'weread-stats-pref-card' });
+			const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });
+			setIcon(pubHeader.createSpan(), 'building-2');
+			pubHeader.createSpan({ text: '偏好出版方' });
+			this.renderTagCloud(pubCard, data.preferPublisher!.slice(0, 20));
 		}
 
 		// ── 偏好作者（进度条）
 		if (hasAuthor) {
-			const authorCard = prefGrid.createDiv({ cls: 'weread-stats-pref-card' });
+			const authorCard = secondary.createDiv({ cls: 'weread-stats-pref-card' });
 			const authorHeader = authorCard.createDiv({ cls: 'weread-stats-pref-card-header' });
 			setIcon(authorHeader.createSpan(), 'user');
 			authorHeader.createSpan({ text: '偏好作者' });
