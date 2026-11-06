@@ -175,9 +175,12 @@ export class WereadReadingView extends ItemView {
 			return;
 		}
 
-		this.bookmarkNavigationTimer = window.setTimeout(() => {
-			void this.applyBookmarkNavigation(this.pendingBookmark!);
-		}, retry === 0 ? 2500 : 1000);
+		this.bookmarkNavigationTimer = window.setTimeout(
+			() => {
+				void this.applyBookmarkNavigation(this.pendingBookmark!);
+			},
+			retry === 0 ? 2500 : 1000
+		);
 	}
 
 	private async applyBookmarkNavigation(bookmark: WereadBookmarkLocation): Promise<void> {
@@ -191,7 +194,9 @@ export class WereadReadingView extends ItemView {
 			);
 			console.debug('[weread plugin] bookmark navigation result', result);
 			this.pendingBookmark = null;
-			if (result?.mode === 'note-panel' || result?.mode === 'find' || result?.mode === 'canvas-scroll') {
+			const mode =
+				result && typeof result === 'object' && 'mode' in result ? result.mode : undefined;
+			if (mode === 'note-panel' || mode === 'find' || mode === 'canvas-scroll') {
 				return;
 			}
 			if (bookmark.markText) {

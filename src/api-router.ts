@@ -145,7 +145,12 @@ class ApiRouter {
 
 		if (this.useV2()) {
 			const result = await this.v2Manager.getNotebookHighlights(bookId);
-			if (!result || !Array.isArray(result.updated)) {
+			if (
+				!result ||
+				typeof result !== 'object' ||
+				!('updated' in result) ||
+				!Array.isArray(result.updated)
+			) {
 				throw new Error('微信读书划线数据不完整，请刷新重试');
 			}
 			return result as HighlightResponse;
@@ -282,7 +287,7 @@ class ApiRouter {
 					const resp = await this.getBestBookmarks(bookId, chapterUid);
 					return { chapterUid, items: resp?.items ?? [] };
 				} catch (e) {
-				if (e instanceof WereadUpgradeRequiredError) throw e;
+					if (e instanceof WereadUpgradeRequiredError) throw e;
 					throw { chapterUid, error: e };
 				}
 			});

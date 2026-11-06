@@ -181,11 +181,16 @@ export class WereadBookDetailView extends ItemView {
 		this.publicReviewResp =
 			publicReviews.status === 'fulfilled' ? publicReviews.value : undefined;
 
-		if (!this.detail && !this.highlightResp && !this.reviewResp) {
+		await this.applyLocalHighlightFallback();
+
+		if (
+			!this.detail &&
+			!this.highlightResp &&
+			!this.reviewResp &&
+			!this.popularResp?.items?.length
+		) {
 			this.error = '远程加载失败，请检查 API Key 或重新登录微信读书';
 		}
-
-		await this.applyLocalHighlightFallback();
 
 		this.loading = false;
 	}
@@ -243,7 +248,13 @@ export class WereadBookDetailView extends ItemView {
 			return;
 		}
 
-		if (this.error && !this.detail && !this.highlightResp && !this.reviewResp) {
+		if (
+			this.error &&
+			!this.detail &&
+			!this.highlightResp &&
+			!this.reviewResp &&
+			!this.popularResp?.items?.length
+		) {
 			this.renderErrorState();
 			return;
 		}

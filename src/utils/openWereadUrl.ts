@@ -22,7 +22,9 @@ export async function openWereadDeepLink(url: string): Promise<boolean> {
 
 	if (Platform.isDesktopApp) {
 		try {
-			const { shell } = require('electron') as typeof import('electron');
+			const { shell } = require('electron') as {
+				shell: { openExternal(url: string): Promise<void> };
+			};
 			await shell.openExternal(url);
 			return true;
 		} catch (error) {
