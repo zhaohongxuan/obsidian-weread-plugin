@@ -1,11 +1,19 @@
 import type { DataAdapter } from 'obsidian';
 import type { FavoriteEntry } from './models';
 import type { JournalNote } from './journalHelpers';
+import {
+	parseFavoritesCanvas,
+	serializeFavoritesCanvas,
+	hasMissingFavoriteCovers
+} from './favoritesCanvas';
 
 export const FAVORITES_DIRECTORY = 'WereadData/favorites';
-export const FAVORITES_PATH = `${FAVORITES_DIRECTORY}/favorites.json`;
-export const FAVORITES_BACKUP_PATH = `${FAVORITES_DIRECTORY}/favorites.previous.json`;
-export const FAVORITES_STAGING_PATH = `${FAVORITES_DIRECTORY}/favorites.staging.json`;
+export const FAVORITES_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas`;
+export const FAVORITES_BACKUP_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas.previous.json`;
+export const FAVORITES_STAGING_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas.staging.json`;
+export const LEGACY_FAVORITES_PATH = `${FAVORITES_DIRECTORY}/favorites.json`;
+export const LEGACY_FAVORITES_BACKUP_PATH = `${FAVORITES_DIRECTORY}/favorites.previous.json`;
+export const LEGACY_FAVORITES_STAGING_PATH = `${FAVORITES_DIRECTORY}/favorites.staging.json`;
 
 export interface FavoritesDocument {
 	schemaVersion: 1;
@@ -15,7 +23,8 @@ export interface FavoritesDocument {
 
 export class FavoritesStorageError extends Error {}
 export class FavoritesConflictError extends FavoritesStorageError {}
-class FutureSchemaError extends FavoritesStorageError {}
+export class FutureSchemaError extends FavoritesStorageError {}
+export class FavoritesCanvasMetadataError extends FavoritesStorageError {}
 
 export function copyFavorite(entry: FavoriteEntry): FavoriteEntry {
 	return { ...entry, note: { ...entry.note } };
@@ -106,6 +115,10 @@ export function validateFavorite(value: unknown): FavoriteEntry {
 }
 
 export function parseFavorites(raw: string): FavoritesDocument {
+	return parseFavoritesCanvas(raw);
+}
+
+export function parseLegacyFavorites(raw: string): FavoritesDocument {
 	let value: Record<string, unknown>;
 	try {
 		value = object(JSON.parse(raw));
@@ -168,7 +181,8 @@ export class FavoritesRepository {
 			if (raw === null) throw new FavoritesStorageError('收藏主文件不存在');
 			document = parseFavorites(raw);
 		} catch (error) {
-			if (error instanceof FutureSchemaError) throw error;
+			if (error instanceof FutureSchemaError || error instanceof FavoritesCanvasMetadataError)
+				throw error;
 			const backup = await this.read(FAVORITES_BACKUP_PATH);
 			if (backup !== null) {
 				document = parseFavorites(backup);
@@ -187,8 +201,10 @@ export class FavoritesRepository {
 				warning = '已从上一份有效备份恢复收藏；原损坏文件已保留（如存在）';
 				this.expected = backup;
 			} else if (raw === null && (await this.read(FAVORITES_STAGING_PATH)) === null) {
-				document = { schemaVersion: 1, revision: 0, records: [] };
-				this.expected = null;
+				const migrated = await this.migrateLegacy();
+				document = migrated?.document ?? { schemaVersion: 1, revision: 0, records: [] };
+				this.expected = migrated?.raw ?? null;
+				if (migrated) warning = '已将旧收藏转换为 Canvas；原 JSON 文件已原样保留';
 			} else {
 				throw new FavoritesStorageError(
 					'收藏文件损坏或仅有未完成写入；已保护原文件，禁止写入'
@@ -202,6 +218,62 @@ export class FavoritesRepository {
 		return { document, warning };
 	}
 
+	private async migrateLegacy(): Promise<{ document: FavoritesDocument; raw: string } | null> {
+		const original = await this.read(LEGACY_FAVORITES_PATH);
+		const backup = await this.read(LEGACY_FAVORITES_BACKUP_PATH);
+		if (original === null && backup === null) {
+			if ((await this.read(LEGACY_FAVORITES_STAGING_PATH)) !== null) {
+				throw new FavoritesStorageError('旧收藏仅有未完成写入；已保护原文件，禁止写入');
+			}
+			return null;
+		}
+		let document: FavoritesDocument;
+		try {
+			if (original === null) throw new FavoritesStorageError('旧收藏主文件不存在');
+			document = parseLegacyFavorites(original);
+		} catch (error) {
+			if (error instanceof FutureSchemaError || backup === null) throw error;
+			document = parseLegacyFavorites(backup);
+		}
+		const raw = serializeFavoritesCanvas(document);
+		const check = async (): Promise<void> => {
+			if (
+				(await this.read(FAVORITES_PATH)) !== null ||
+				(await this.read(LEGACY_FAVORITES_PATH)) !== original ||
+				(await this.read(LEGACY_FAVORITES_BACKUP_PATH)) !== backup
+			) {
+				throw new FavoritesConflictError('迁移期间收藏文件发生变化；未覆盖');
+			}
+		};
+		await this.directories();
+		await check();
+		if (
+			(await this.read(FAVORITES_BACKUP_PATH)) !== null ||
+			(await this.read(FAVORITES_STAGING_PATH)) !== null
+		) {
+			throw new FavoritesConflictError('迁移期间出现 Canvas 恢复文件；未覆盖');
+		}
+		await this.verifiedWrite(FAVORITES_STAGING_PATH, raw);
+		await check();
+		if ((await this.read(FAVORITES_BACKUP_PATH)) !== null) {
+			throw new FavoritesConflictError('迁移期间出现 Canvas 备份；未覆盖');
+		}
+		await this.verifiedWrite(FAVORITES_BACKUP_PATH, raw);
+		await check();
+		await this.verifiedWrite(FAVORITES_PATH, raw);
+		return { document, raw };
+	}
+
+	needsPresentationUpdate(): boolean {
+		return (
+			this.initialized && this.expected !== null && hasMissingFavoriteCovers(this.expected)
+		);
+	}
+
+	async hasPrimary(): Promise<boolean> {
+		return this.adapter.exists(FAVORITES_PATH);
+	}
+
 	async verifyCurrent(): Promise<void> {
 		if (!this.initialized) throw new FavoritesStorageError('收藏尚未安全加载，禁止写入');
 		await this.checkExpected();
@@ -209,14 +281,15 @@ export class FavoritesRepository {
 
 	async save(document: FavoritesDocument): Promise<void> {
 		if (!this.initialized) throw new FavoritesStorageError('收藏尚未安全加载，禁止写入');
-		const raw = JSON.stringify(document, null, 2);
+		const raw = serializeFavoritesCanvas(document, this.expected);
 		parseFavorites(raw);
 		await this.checkExpected();
 		await this.directories();
 		await this.verifiedWrite(FAVORITES_STAGING_PATH, raw);
 		await this.checkExpected();
 		const previous =
-			this.expected ?? JSON.stringify({ schemaVersion: 1, revision: 0, records: [] });
+			this.expected ??
+			serializeFavoritesCanvas({ schemaVersion: 1, revision: 0, records: [] });
 		if (document.revision !== parseFavorites(previous).revision + 1) {
 			throw new FavoritesStorageError('收藏版本必须严格递增');
 		}
@@ -229,14 +302,8 @@ export class FavoritesRepository {
 	private async uniquePath(prefix: string): Promise<string> {
 		let path: string;
 		do {
-			path = `${FAVORITES_DIRECTORY}/${prefix}.${Date.now()}.${this.unique++}.json`;
+			path = `${FAVORITES_DIRECTORY}/${prefix}.${Date.now()}.${this.unique++}.canvas`;
 		} while (await this.adapter.exists(path));
-		return path;
-	}
-	async exportBackup(document: FavoritesDocument): Promise<string> {
-		await this.directories();
-		const path = await this.uniquePath('favorites.export');
-		await this.verifiedWrite(path, JSON.stringify(document, null, 2));
 		return path;
 	}
 }

@@ -91,12 +91,18 @@ const favoriteListeners = new Set();
 let favoriteWriteGate;
 let favoriteWriteFails = false;
 let favoriteWrites = 0;
+let canvasEnsureGate;
+let canvasEnsureFails = false;
+let canvasEnsureCalls = 0;
+let canvasOpenFails = false;
+const canvasOpens = [];
+const favoriteLoads = [];
 let journalLoads = 0;
 const favorites = {
   getSnapshot: () => favoriteState,
   subscribe(listener) { favoriteListeners.add(listener); listener(favoriteState); return () => favoriteListeners.delete(listener); },
   publish(patch = {}) { favoriteState = {...favoriteState, ...patch}; for (const listener of favoriteListeners) listener(favoriteState); },
-  async load() { return favoriteState; },
+  async load(force) { favoriteLoads.push(force); return favoriteState; },
   isFavorite(id) { return favoriteState.favorites.some(entry => entry.id === id); },
   async write(id, change) {
     favoriteWrites++; this.publish({pendingIds: [id]});
@@ -111,11 +117,20 @@ const favorites = {
   },
   async remove(id) { await this.write(id, () => { favoriteState.favorites = favoriteState.favorites.filter(entry => entry.id !== id); }); },
   async restore(entry) { await this.write(entry.id, () => { favoriteState.favorites = [...favoriteState.favorites.filter(current => current.id !== entry.id), {...entry, note: {...entry.note}}]; }); },
-  async exportBackup() { return 'local-fixture/favorites-backup.json'; }
+  async ensureCanvas() {
+    canvasEnsureCalls++;
+    if (canvasEnsureGate) await canvasEnsureGate.promise;
+    if (canvasEnsureFails) throw new Error('CANVAS ENSURE FAILED FIXTURE');
+    return 'WereadData/favorites/favorites.canvas';
+  }
 };
 const settings = (key) => ({ wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, favoritesViewMode: 'cards' });
 settingsStore.set(settings('account-a'));
 const plugin = {
+  app: {workspace: {async openLinkText(...args) {
+    if (canvasOpenFails) throw new Error('CANVAS OPEN FAILED FIXTURE');
+    canvasOpens.push(args);
+  }}},
   favoritesService: favorites,
   async activateJournalView() {}, async activateBookshelfView() {}, async activateReadingStatsView() {},
   async activateBookDetailView() {}
@@ -322,20 +337,40 @@ window.smoke = {
     const writes = favoriteWrites; staleUndo.click(); await tick();
     check(favoriteWrites === writes, 'Detached earlier undo cannot restore the wrong later removal');
     click('撤销', host); await tick();
-    click('导出收藏备份', host); await tick();
-    check(window.journalNotices.at(-1).includes('local-fixture/favorites-backup.json'), 'Backup reports the vault-relative export path');
+    const canvasButton = () => host.querySelector('button[aria-label="在Canvas中打开收藏"]');
+    check(canvasButton() && host.querySelector('.weread-favorites-muted').textContent === '收藏保存在当前笔记库的Canvas，可直接打开整理卡片。', 'Favorites explain Canvas storage and offer an accessible native Canvas action');
+    check(favoriteLoads.at(-1) === true, 'Opening the panel rereads serialized Canvas data');
+    const canvasPending = gate(); canvasEnsureGate = canvasPending;
+    const ensureCalls = canvasEnsureCalls, opensBefore = canvasOpens.length;
+    click('在Canvas中打开', host); await tick();
+    canvasButton().click(); await tick();
+    check(canvasButton().disabled && canvasEnsureCalls === ensureCalls + 1 && canvasOpens.length === opensBefore, 'Canvas opening stays pending without duplicate ensures or opening before file acknowledgement');
+    canvasPending.resolve(); await tick(); canvasEnsureGate = undefined;
+    check(JSON.stringify(canvasOpens.at(-1)) === JSON.stringify(['WereadData/favorites/favorites.canvas', '', true]) && !canvasButton().disabled, 'Canvas action opens the vault-relative native Canvas in a new leaf through the public workspace API');
+    canvasEnsureFails = true; click('在Canvas中打开', host); await tick(); canvasEnsureFails = false;
+    check(window.journalNotices.at(-1) === 'CANVAS ENSURE FAILED FIXTURE' && canvasOpens.length === opensBefore + 1 && !canvasButton().disabled, 'Canvas file failure reports an error and permits retry without opening');
+    canvasOpenFails = true; click('在Canvas中打开', host); await tick(); canvasOpenFails = false;
+    check(window.journalNotices.at(-1) === 'CANVAS OPEN FAILED FIXTURE' && !canvasButton().disabled, 'Workspace Canvas opening failure reports an error and resets pending state');
     favorites.publish({writable: false, warning: 'RECOVERY WARNING FIXTURE', error: 'READ ONLY FIXTURE'});
     check(host.querySelectorAll('article').length === 3 && host.querySelector('button[aria-label="取消收藏"]').disabled && host.textContent.includes('RECOVERY WARNING FIXTURE') && host.textContent.includes('只读'), 'Read-only mode preserves records and explains recovery warnings');
+    check(canvasButton().disabled && canvasButton().title === 'READ ONLY FIXTURE', 'Read-only favorites disable native Canvas opening and explain why');
     favorites.publish({writable: true, warning: '', error: '', favorites: []});
     check(host.textContent.includes('还没有收藏'), 'Empty collection explains where to add favorites');
+    click('在Canvas中打开', host); await tick();
+    check(canvasOpens.length === opensBefore + 2, 'Loaded writable empty favorites can open their native Canvas');
     const longNote = {...baseNotes[0], text: '<img src=x onerror=alert(1)> ' + '长句'.repeat(300)};
     favorites.publish({favorites: Array.from({length: 35}, (_, index) => ({id: 'page:' + index, note: {...longNote, id: 'page:' + index}, favoritedAt: NOW + index, updatedAt: NOW}))});
     click('卡片', host);
     check(host.querySelectorAll('article').length === 30 && !host.querySelector('.weread-favorites-text img'), 'Favorites page size is 30 and note text cannot inject HTML');
     click('再看 5 条', host); check(host.querySelectorAll('article').length === 35, 'Load more reveals remaining local favorites');
     check(document.documentElement.scrollWidth <= innerWidth, 'Favorites fit the mobile viewport without horizontal overflow');
+    const lateCanvas = gate(); canvasEnsureGate = lateCanvas;
+    click('在Canvas中打开', host); await tick();
+    const opensAtClose = canvasOpens.length, noticesAtClose = window.journalNotices.length;
     await panel.onClose();
     const closed = host.innerHTML; favorites.publish({favorites: []});
+    lateCanvas.resolve(); await tick(); canvasEnsureGate = undefined;
+    check(canvasOpens.length === opensAtClose && window.journalNotices.length === noticesAtClose && host.innerHTML === closed, 'Closing while Canvas ensure is pending prevents late workspace opening, notices and DOM writes');
     check(favoriteListeners.size === 0 && host.innerHTML === closed && !host.querySelector('.weread-favorites-undo'), 'Panel close removes its subscription and prevents later DOM writes');
     panel = new WereadFavoritesPanel(host, plugin, favorites); await panel.onOpen();
     check(host.querySelector('button[aria-pressed="true"]').textContent === '卡片', 'Panel reopens using saved view preference');
@@ -346,7 +381,7 @@ window.smoke = {
     const loadingFavorites = {...favorites, load: () => hydration.promise};
     panel = new WereadFavoritesPanel(host, plugin, loadingFavorites);
     const opening = panel.onOpen(); await tick();
-    check(host.textContent.includes('正在读取本地收藏') && host.querySelector('button').disabled, 'Hydration shows loading and disables backup until records are loaded');
+    check(host.textContent.includes('正在读取本地收藏') && host.querySelector('button').disabled, 'Hydration shows loading and disables Canvas opening until records are loaded');
     await panel.onClose(); const closedLoading = host.innerHTML;
     favorites.publish({loaded: true, loading: false, error: 'HYDRATION FAILED FIXTURE', writable: false});
     hydration.resolve(favoriteState); await opening;
@@ -354,8 +389,18 @@ window.smoke = {
     panel = new WereadFavoritesPanel(host, plugin, favorites); await panel.onOpen();
     check(host.textContent.includes('HYDRATION FAILED FIXTURE') && host.textContent.includes('只读'), 'Hydration error is visible with meaningful read-only recovery state');
     click('重新读取收藏', host);
+    check(favoriteLoads.at(-1) === true, 'Read-only recovery forces a fresh read of serialized Canvas data');
     favorites.publish({favorites: favoriteEntries, writable: true, error: ''});
     check(host.querySelectorAll('article').length === 3 && !host.textContent.includes('HYDRATION FAILED FIXTURE'), 'Recovery publishes usable records and clears hydration error');
+    await mount('review');
+    const liveSearch = view.contentEl.querySelector('input[type=search]');
+    liveSearch.value = '昨日句子'; liveSearch.dispatchEvent(new Event('input'));
+    const nativeDeletedStars = () => [...view.contentEl.querySelectorAll('.weread-journal-favorite')].filter(star => star.dataset.favoriteId === baseNotes[2].id);
+    check(nativeDeletedStars().length === 2 && nativeDeletedStars().every(star => star.getAttribute('aria-pressed') === 'true'), 'Live Canvas reload fixture starts with the native-deleted record starred in both journal copies');
+    const nativeEditedText = 'CANVAS LIVE EDIT: 整理卡片后的新正文';
+    favorites.publish({favorites: favoriteEntries.filter(entry => entry.id !== baseNotes[2].id).map(entry => entry.id === baseNotes[0].id ? {...entry, note: {...entry.note, text: nativeEditedText}} : entry)});
+    check(host.querySelectorAll('article').length === 2 && host.querySelector('.is-cards') && host.textContent.includes(nativeEditedText) && !host.querySelector('article[data-favorite-id="' + baseNotes[2].id + '"]'), 'Live native Canvas publish refreshes the favorites layout with edited note text and removes the native-deleted record');
+    check(nativeDeletedStars().every(star => star.getAttribute('aria-pressed') === 'false' && !star.disabled), 'Live native Canvas deletion refreshes all journal stars without remounting');
     await panel.onClose(); host.remove();
     const service = plugin.favoritesService; delete plugin.favoritesService;
     await mount('review'); check(!document.querySelector('.weread-journal-favorite'), 'Legacy plugin fixtures work without favorites service');

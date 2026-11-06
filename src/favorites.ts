@@ -1,8 +1,9 @@
-import type { Plugin } from 'obsidian';
+import type { DataAdapter, Plugin, TFile, TextFileView } from 'obsidian';
 import type { JournalNote } from './journalHelpers';
 import type { FavoriteEntry, FavoritesState } from './models';
 import {
 	copyFavorite,
+	FAVORITES_PATH,
 	FavoritesConflictError,
 	FavoritesRepository,
 	validateFavorite,
@@ -32,9 +33,63 @@ export class WereadFavoritesService {
 	private activeIds = new Set<string>();
 	private pending = new Map<string, number>();
 	private disposed = false;
+	private writingCanvas = 0;
+	private reloadTimer?: ReturnType<typeof setTimeout>;
+	private eventDisposers: (() => void)[] = [];
 
-	constructor(plugin: Plugin) {
-		this.repository = new FavoritesRepository(plugin.app.vault.adapter);
+	constructor(private plugin: Plugin) {
+		const vault = plugin.app.vault;
+		const adapter = vault.adapter;
+		// Vault writes publish changes to open native Canvas views and index newly created files.
+		const wrapped = new Proxy(adapter, {
+			get: (target, key) => {
+				if (key === 'write')
+					return async (path: string, raw: string) => {
+						if (path !== FAVORITES_PATH || typeof vault.create !== 'function') {
+							return adapter.write(path, raw);
+						}
+						this.writingCanvas += 1;
+						try {
+							const file = vault.getAbstractFileByPath(path);
+							if (file && 'extension' in file) await vault.modify(file as TFile, raw);
+							else if (!file) await vault.create(path, raw);
+							else throw new Error('收藏画布路径被目录占用');
+						} finally {
+							this.writingCanvas -= 1;
+						}
+					};
+				if (key === 'mkdir' && typeof vault.createFolder === 'function') {
+					return async (path: string) => {
+						await vault.createFolder(path);
+					};
+				}
+				const value = Reflect.get(target, key);
+				return typeof value === 'function' ? value.bind(target) : value;
+			}
+		}) as DataAdapter;
+		this.repository = new FavoritesRepository(wrapped);
+		if (typeof vault.on === 'function' && typeof vault.offref === 'function') {
+			const changed = (file: { path: string }) => {
+				if (
+					file.path !== FAVORITES_PATH ||
+					this.writingCanvas ||
+					this.disposed ||
+					(!this.state.loaded && !this.hydration)
+				)
+					return;
+				if (this.reloadTimer) clearTimeout(this.reloadTimer);
+				this.reloadTimer = setTimeout(() => {
+					this.reloadTimer = undefined;
+					void this.load(true).catch((): void => undefined);
+				}, 80);
+			};
+			const modified = vault.on('modify', changed);
+			const created = vault.on('create', changed);
+			this.eventDisposers.push(
+				() => vault.offref(modified),
+				() => vault.offref(created)
+			);
+		}
 	}
 
 	getSnapshot(): FavoritesState {
@@ -54,8 +109,19 @@ export class WereadFavoritesService {
 		return this.activeIds.has(id);
 	}
 
-	async load(): Promise<FavoritesState> {
+	async load(force = false): Promise<FavoritesState> {
 		if (this.disposed) throw this.failure('收藏服务已关闭');
+		if (force) {
+			const refresh = this.tail.then(async () => {
+				// A native edit must not reset a repository while hydration or an accepted write is active.
+				if (this.hydration) await this.hydration;
+				this.hydration = undefined;
+				await this.hydrate();
+				return this.getSnapshot();
+			});
+			this.tail = refresh.catch((): void => undefined);
+			return refresh;
+		}
 		await this.hydrate();
 		return this.getSnapshot();
 	}
@@ -131,9 +197,31 @@ export class WereadFavoritesService {
 		const now = Math.max(Date.now(), entry.updatedAt + 1);
 		return { ...copyFavorite(entry), updatedAt: now, deletedAt: now };
 	}
+	private async prepareWrite(): Promise<void> {
+		await this.repository.verifyCurrent();
+		const workspace = this.plugin.app.workspace;
+		let flushed = false;
+		if (typeof workspace?.getLeavesOfType === 'function') {
+			for (const leaf of workspace.getLeavesOfType('canvas')) {
+				const view = leaf.view as Partial<TextFileView>;
+				if (view.file?.path === FAVORITES_PATH && typeof view.save === 'function') {
+					await view.save();
+					flushed = true;
+				}
+			}
+		}
+		if (flushed) {
+			// Canvas autosaves are debounced; merge the just-saved editor draft before our mutation.
+			this.hydration = undefined;
+			await this.hydrate();
+			if (!this.state.writable) throw new Error(this.state.error || '收藏画布为只读');
+		}
+		await this.repository.verifyCurrent();
+	}
+
 	private mutate(id: string, operation: () => FavoriteEntry | undefined): Promise<void> {
 		return this.enqueue(id, async () => {
-			await this.repository.verifyCurrent();
+			await this.prepareWrite();
 			if (typeof id !== 'string' || !/^.+:highlight:\S.*$/.test(id)) {
 				throw new Error('收藏来源 ID 无效');
 			}
@@ -153,10 +241,23 @@ export class WereadFavoritesService {
 		});
 	}
 
-	exportBackup(): Promise<string> {
+	ensureCanvas(): Promise<string> {
 		return this.enqueue('', async () => {
-			await this.repository.verifyCurrent();
-			return this.repository.exportBackup(this.document);
+			await this.prepareWrite();
+			if (
+				!(await this.repository.hasPrimary()) ||
+				this.repository.needsPresentationUpdate()
+			) {
+				const next: FavoritesDocument = {
+					...this.document,
+					revision: this.document.revision + 1,
+					records: this.document.records.map(copyFavorite)
+				};
+				await this.repository.save(next);
+				this.document = next;
+				this.refreshFavorites();
+			}
+			return FAVORITES_PATH;
 		});
 	}
 	private enqueue<T>(id: string, work: () => Promise<T>): Promise<T> {
@@ -195,6 +296,8 @@ export class WereadFavoritesService {
 
 	dispose(): void {
 		this.disposed = true;
+		if (this.reloadTimer) clearTimeout(this.reloadTimer);
+		this.eventDisposers.splice(0).forEach((dispose) => dispose());
 		this.listeners.clear();
 		// Accepted operations retain their queue and complete persistence consistently.
 	}

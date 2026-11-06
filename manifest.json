@@ -2,7 +2,7 @@
 	"id": "obsidian-weread-plugin",
 	"name": "Weread",
 	"version": "3.1.0",
-	"minAppVersion": "0.14.0",
+	"minAppVersion": "1.1.9",
 	"description": "Sync Tencent Weread highlights and annotations.",
 	"author": "hankzhao",
 	"requestUrl": true,

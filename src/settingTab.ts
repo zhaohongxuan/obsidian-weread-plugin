@@ -240,7 +240,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.onChange((value) => settingsStore.actions.setBookshelfSourceMode(value as 'bookshelf' | 'notebooks')));
 		new Setting(this.containerEl)
 			.setName('收藏默认视图')
-			.setDesc('收藏保存在笔记库 WereadData/favorites 下的独立 JSON 中，跨登录保留，不随笔记缓存清理。多设备并发写入不提供自动合并保证。')
+			.setDesc('收藏保存在笔记库 WereadData/favorites/favorites.canvas，可在收藏页直接打开原生画布浏览；跨登录保留，不随笔记缓存清理。')
 			.addDropdown((dropdown) => dropdown
 				.addOption('cards', '卡片视图')
 				.addOption('list', '列表视图')

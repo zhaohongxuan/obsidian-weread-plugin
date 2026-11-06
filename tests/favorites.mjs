@@ -6,7 +6,7 @@ import { build } from 'esbuild';
 
 const compiled = await build({
 	stdin: {
-		contents: `export * from './src/favorites'; export * from './src/favoritesRepository';`,
+		contents: `export * from './src/favorites'; export * from './src/favoritesRepository'; export * from './src/favoritesCanvas';`,
 		resolveDir: process.cwd(),
 		loader: 'ts'
 	},
@@ -25,7 +25,11 @@ const {
 	WereadFavoritesService,
 	FAVORITES_PATH: MAIN,
 	FAVORITES_BACKUP_PATH: BACKUP,
-	FAVORITES_STAGING_PATH: STAGE
+	FAVORITES_STAGING_PATH: STAGE,
+	LEGACY_FAVORITES_PATH: LEGACY,
+	LEGACY_FAVORITES_BACKUP_PATH: LEGACY_BACKUP,
+	parseFavorites,
+	serializeFavoritesCanvas
 } = module.exports;
 const note = (source = 'one', extra = {}) => ({
 	id: `book:highlight:${source}`,
@@ -46,8 +50,36 @@ const record = (extra = {}) => ({
 	updatedAt: 1700000000001,
 	...extra
 });
-const document = (records = [record()], revision = 1, schemaVersion = 1) =>
-	JSON.stringify({ schemaVersion, revision, records });
+const document = (records = [record()], revision = 1, schemaVersion = 1) => {
+	const marker = (kind, value) => `<!-- ${kind}:${encodeURIComponent(JSON.stringify(value))} -->`;
+	const nodes = [
+		{
+			id: 'header',
+			type: 'text',
+			x: 0,
+			y: 0,
+			width: 400,
+			height: 200,
+			text: marker('weread-favorites', {
+				schemaVersion,
+				revision,
+				tombstones: records.filter((entry) => entry.deletedAt !== undefined)
+			})
+		}
+	];
+	for (const [i, entry] of records.filter((entry) => entry.deletedAt === undefined).entries()) {
+		nodes.push({
+			id: `card-${i}`,
+			type: 'text',
+			x: 0,
+			y: 250 + i * 350,
+			width: 400,
+			height: 300,
+			text: `${entry.note.text}\n\n<!-- weread-favorite-footer -->\n\nSource\n\n${marker('weread-favorite', { schemaVersion: 1, record: entry })}`
+		});
+	}
+	return JSON.stringify({ nodes, edges: [] });
+};
 function fixture(t, initial = []) {
 	const files = new Map(initial);
 	const operations = [];
@@ -105,7 +137,7 @@ test('hydrate before mutation; frozen snapshots survive restart, source deletion
 	const restarted = f.restart();
 	await restarted.setFavorite(note('two'), true);
 	assert.equal(restarted.getSnapshot().favorites.length, 2);
-	assert.equal(JSON.parse(f.files.get(MAIN)).revision, 2);
+	assert.equal(parseFavorites(f.files.get(MAIN)).revision, 2);
 	const last = await f.restart().load();
 	assert.equal(last.loaded, true);
 	assert.equal(last.writable, true);
@@ -121,10 +153,10 @@ test('hydrate before mutation; frozen snapshots survive restart, source deletion
 test('rapid duplicate adds are idempotent; remove, repeat removal and restore persist tombstones and original snapshots', async (t) => {
 	const f = fixture(t);
 	await Promise.all(Array.from({ length: 15 }, () => f.service.setFavorite(note(), true)));
-	assert.equal(JSON.parse(f.files.get(MAIN)).revision, 1);
+	assert.equal(parseFavorites(f.files.get(MAIN)).revision, 1);
 	const original = f.service.getSnapshot().favorites[0];
 	await Promise.all([f.service.remove(original.id), f.service.remove(original.id)]);
-	let disk = JSON.parse(f.files.get(MAIN));
+	let disk = parseFavorites(f.files.get(MAIN));
 	assert.equal(disk.revision, 2);
 	assert(disk.records[0].deletedAt > original.updatedAt);
 	assert.equal(f.service.isFavorite(original.id), false);
@@ -133,7 +165,7 @@ test('rapid duplicate adds are idempotent; remove, repeat removal and restore pe
 	assert.deepEqual(f.service.getSnapshot().favorites[0].note, original.note);
 	await f.service.setFavorite(note(), false);
 	await f.service.restore(original);
-	disk = JSON.parse(f.files.get(MAIN));
+	disk = parseFavorites(f.files.get(MAIN));
 	assert.equal(disk.records.length, 1);
 	assert.equal(disk.records[0].deletedAt, undefined);
 	assert.equal(disk.records[0].favoritedAt, original.favoritedAt);
@@ -160,7 +192,7 @@ test('subscriber snapshots are isolated and throwing/reentrant subscribers canno
 	assert(
 		f.service.getSnapshot().favorites.every((entry) => entry.note.text === 'Frozen highlight')
 	);
-	assert.equal(JSON.parse(f.files.get(MAIN)).revision, 2);
+	assert.equal(parseFavorites(f.files.get(MAIN)).revision, 2);
 });
 
 test('valid previous backup recovers corruption only after preserving original exact bytes', async (t) => {
@@ -181,7 +213,7 @@ test('valid previous backup recovers corruption only after preserving original e
 			f.operations.findIndex(([kind, path]) => kind === 'write' && path === MAIN)
 	);
 	await f.service.setFavorite(note('two'), true);
-	assert.equal(JSON.parse(f.files.get(MAIN)).revision, 2);
+	assert.equal(parseFavorites(f.files.get(MAIN)).revision, 2);
 });
 
 test('future schema stays read-only despite valid older backup and is never changed', async (t) => {
@@ -331,7 +363,7 @@ test('external valid edit and external future-schema edit are rejected without c
 		if (!future) {
 			assert.equal(f.service.isFavorite(note('external').id), true);
 			await f.service.setFavorite(note('two'), true);
-			assert.equal(JSON.parse(f.files.get(MAIN)).revision, 6);
+			assert.equal(parseFavorites(f.files.get(MAIN)).revision, 6);
 		}
 	}
 });
@@ -349,17 +381,13 @@ test('external edit during staging is detected before backup or main overwrite',
 	assert(!f.files.has(BACKUP));
 });
 
-test('exports are distinct verified JSON copies and the automatic previous backup stays bounded', async (t) => {
+test('automatic previous backup stays bounded and export API is absent', async (t) => {
 	const f = fixture(t);
+	assert.equal(f.service.exportBackup, undefined);
 	await f.service.setFavorite(note(), true);
-	const first = await f.service.exportBackup();
-	const second = await f.service.exportBackup();
-	assert.notEqual(first, second);
-	assert(first.startsWith('WereadData/favorites/favorites.export.'));
-	assert.deepEqual(JSON.parse(f.files.get(first)), JSON.parse(f.files.get(MAIN)));
 	for (let i = 0; i < 10; i++) await f.service.setFavorite(note(String(i)), true);
 	assert.equal([...f.files.keys()].filter((path) => path.includes('previous')).length, 1);
-	assert.equal(JSON.parse(f.files.get(BACKUP)).revision, 10);
+	assert.equal(parseFavorites(f.files.get(BACKUP)).revision, 10);
 });
 
 test('first-save partial main write recovers the valid empty predecessor, then retries successfully', async (t) => {
@@ -371,12 +399,12 @@ test('first-save partial main write recovers the valid empty predecessor, then r
 	await assert.rejects(f.service.setFavorite(note(), true));
 	assert.equal(f.service.isFavorite(note().id), false);
 	assert.equal(f.service.getSnapshot().favorites.length, 0);
-	assert.equal(JSON.parse(f.files.get(BACKUP)).revision, 0);
+	assert.equal(parseFavorites(f.files.get(BACKUP)).revision, 0);
 	fail = false;
 	await f.service.setFavorite(note('two'), true);
 	assert.equal(f.service.isFavorite(note().id), false);
 	assert.equal(f.service.isFavorite(note('two').id), true);
-	assert.equal(JSON.parse(f.files.get(MAIN)).revision, 1);
+	assert.equal(parseFavorites(f.files.get(MAIN)).revision, 1);
 });
 
 test('no-op duplicate mutation still detects and reloads an external edit', async (t) => {
@@ -386,7 +414,7 @@ test('no-op duplicate mutation still detects and reloads an external edit', asyn
 	await assert.rejects(f.service.setFavorite(note(), true), /外部修改/);
 	assert.equal(f.service.isFavorite(note().id), false);
 	assert.equal(f.service.getSnapshot().favorites.length, 0);
-	assert.equal(JSON.parse(f.files.get(MAIN)).revision, 2);
+	assert.equal(parseFavorites(f.files.get(MAIN)).revision, 2);
 });
 
 test('hydration reentry shares one load and always publishes isolated active state', async (t) => {
@@ -429,8 +457,7 @@ test('dispose blocks new work while all accepted writes finish consistently', as
 	f.service.dispose();
 	await assert.rejects(f.service.setFavorite(note('three'), true), /关闭/);
 	await assert.rejects(f.service.load(), /关闭/);
-	await assert.rejects(f.service.exportBackup(), /关闭/);
 	await Promise.all(accepted);
-	assert.equal(JSON.parse(f.files.get(MAIN)).records.length, 2);
+	assert.equal(parseFavorites(f.files.get(MAIN)).records.length, 2);
 	assert.equal((await f.restart().load()).favorites.length, 2);
 });

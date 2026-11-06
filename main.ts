@@ -56,6 +56,18 @@ export default class WereadPlugin extends Plugin {
 			name: '打开微信读书收藏',
 			callback: () => { void this.activateLibraryTab('favorites'); }
 		});
+		this.addCommand({
+			id: 'open-weread-favorites-canvas',
+			name: '打开微信读书收藏画布',
+			callback: async () => {
+				try {
+					const path = await this.favoritesService.ensureCanvas();
+					await this.app.workspace.openLinkText(path, '', true);
+				} catch (error) {
+					new Notice(error instanceof Error ? error.message : '收藏画布打开失败，请重试');
+				}
+			}
+		});
 		for (const [type, tab] of [
 			[WEREAD_LIBRARY_VIEW_ID, 'today'],
 			[WEREAD_TODAY_VIEW_ID, 'today'],

@@ -84,8 +84,8 @@ export class WereadFavoritesPanel extends WereadPanel {
 	private limit = 30;
 	private expanded = new Set<string>();
 	private modeButtons = new Map<string, HTMLButtonElement>();
-	private exportButton: HTMLButtonElement;
-	private exporting = false;
+	private canvasButton: HTMLButtonElement;
+	private openingCanvas = false;
 	constructor(
 		contentEl: HTMLElement,
 		private plugin: WereadPlugin,
@@ -102,10 +102,13 @@ export class WereadFavoritesPanel extends WereadPanel {
 		this.contentEl.addClass('weread-favorites-view');
 		const heading = this.contentEl.createDiv({ cls: 'weread-favorites-heading' });
 		heading.createEl('h1', { text: '把心动的句子，留在身边。' });
-		this.exportButton = heading.createEl('button', { text: '导出收藏备份' });
-		this.exportButton.onclick = () => void this.exportBackup();
+		this.canvasButton = heading.createEl('button', {
+			text: '在Canvas中打开',
+			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }
+		});
+		this.canvasButton.onclick = () => void this.openCanvas();
 		this.contentEl.createEl('p', {
-			text: '收藏保存在当前仓库，退出登录后仍会保留；可离线阅读。',
+			text: '收藏保存在当前笔记库的Canvas，可直接打开整理卡片。',
 			cls: 'weread-favorites-muted'
 		});
 		const controls = this.contentEl.createDiv({ cls: 'weread-favorites-controls' });
@@ -154,7 +157,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 		});
 		this.render();
 		try {
-			await this.favorites.load();
+			await this.favorites.load(true);
 		} catch (error) {
 			if (this.active) new Notice(error instanceof Error ? error.message : '收藏加载失败');
 		}
@@ -162,14 +165,14 @@ export class WereadFavoritesPanel extends WereadPanel {
 	async onClose(): Promise<void> {
 		this.active = false;
 		this.generation += 1;
-		this.exporting = false;
+		this.openingCanvas = false;
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.undo.clear();
 	}
-	private async exportBackup(): Promise<void> {
+	private async openCanvas(): Promise<void> {
 		if (
-			this.exporting ||
+			this.openingCanvas ||
 			!this.active ||
 			!this.state.loaded ||
 			this.state.loading ||
@@ -177,18 +180,18 @@ export class WereadFavoritesPanel extends WereadPanel {
 		)
 			return;
 		const generation = this.generation;
-		this.exporting = true;
+		this.openingCanvas = true;
 		this.render();
 		try {
-			const path = await this.favorites.exportBackup();
-			if (this.active && generation === this.generation)
-				new Notice(`收藏备份已保存：${path}`);
+			const path = await this.favorites.ensureCanvas();
+			if (!this.active || generation !== this.generation) return;
+			await this.plugin.app.workspace.openLinkText(path, '', true);
 		} catch (error) {
 			if (this.active && generation === this.generation)
-				new Notice(error instanceof Error ? error.message : '导出失败，请重试');
+				new Notice(error instanceof Error ? error.message : '打开Canvas失败，请重试');
 		} finally {
 			if (generation === this.generation) {
-				this.exporting = false;
+				this.openingCanvas = false;
 				if (this.active) this.render();
 			}
 		}
@@ -198,13 +201,13 @@ export class WereadFavoritesPanel extends WereadPanel {
 		const state = this.state;
 		for (const [mode, button] of this.modeButtons)
 			button.setAttribute('aria-pressed', String(mode === this.mode));
-		this.exportButton.disabled =
-			this.exporting || !state.loaded || state.loading || !state.writable;
-		this.exportButton.title = !state.writable
-			? state.error || state.warning || '收藏当前为只读，请重新读取后导出'
-			: this.exporting
-				? '正在导出收藏备份…'
-				: '将收藏备份保存到当前仓库';
+		this.canvasButton.disabled =
+			this.openingCanvas || !state.loaded || state.loading || !state.writable;
+		this.canvasButton.title = !state.writable
+			? state.error || state.warning || '收藏当前为只读，请重新读取后打开Canvas'
+			: this.openingCanvas
+				? '正在打开Canvas…'
+				: '在新的Canvas标签页中打开收藏';
 		this.status.empty();
 		if (state.loading || !state.loaded)
 			this.status.createEl('p', { text: '正在读取本地收藏…' });
@@ -212,7 +215,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			this.status.createEl('p', { text: state.error, cls: 'weread-favorites-error' });
 			this.status.createEl('button', { text: '重新读取收藏' }).onclick = async () => {
 				try {
-					await this.favorites.load();
+					await this.favorites.load(true);
 				} catch (error) {
 					if (this.active)
 						new Notice(error instanceof Error ? error.message : '收藏加载失败');
