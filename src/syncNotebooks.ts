@@ -39,15 +39,19 @@ export default class SyncNotebooks {
 	async syncNotebook(noteFile: AnnotationFile) {
 		const metaDataArr: Metadata[] = await this.getALlMetadata();
 		const currentBookMeta = metaDataArr.find((metaData) => metaData.bookId === noteFile.bookId);
+		if (!currentBookMeta) {
+			throw new Error(
+				`《${noteFile.title}》 (${noteFile.bookId}) metadata: 未找到远程书籍元数据`
+			);
+		}
 		noteFile.new = true;
 		currentBookMeta.file = noteFile;
-		if (currentBookMeta) {
-			const notebook = await this.convertToNotebook(currentBookMeta);
-			await this.saveNotebook(notebook);
-			new Notice(`当前笔记 《${currentBookMeta.title}》 同步成功!`);
-		} else {
-			new Notice(`当前笔记元数据缺少，同步失败!`);
-		}
+		const savedPath = await this.syncMetadata(currentBookMeta);
+		new Notice(
+			savedPath
+				? `当前笔记 《${currentBookMeta.title}》 同步成功!`
+				: `《${currentBookMeta.title}》无需更新`
+		);
 	}
 
 	async syncBookById(bookId: string) {
@@ -57,8 +61,7 @@ export default class SyncNotebooks {
 		const currentBookMeta = metaDataArr.find((metaData) => metaData.bookId === bookId);
 
 		if (!currentBookMeta) {
-			new Notice('未在远程书架中找到该书籍');
-			return;
+			throw new Error(`(${bookId}) metadata: 未在远程书架中找到该书籍`);
 		}
 
 		currentBookMeta.file = await this.getLocalNotebookFile(currentBookMeta, localFiles, true);
@@ -66,9 +69,12 @@ export default class SyncNotebooks {
 			currentBookMeta.duplicate = true;
 		}
 
-		const notebook = await this.convertToNotebook(currentBookMeta);
-		await this.saveNotebook(notebook);
-		new Notice(`《${currentBookMeta.title}》已同步到本地`);
+		const savedPath = await this.syncMetadata(currentBookMeta);
+		new Notice(
+			savedPath
+				? `《${currentBookMeta.title}》已同步到本地`
+				: `《${currentBookMeta.title}》无需更新`
+		);
 	}
 	async syncNotebooks(
 		force = false,
@@ -79,7 +85,7 @@ export default class SyncNotebooks {
 		const metaDataArr = await this.getALlMetadata();
 		const filterMetaArr = await this.filterNoteMetas(force, metaDataArr);
 		let syncedNotebooks = 0;
-		let failedNotebooks = 0;
+		const failures: NonNullable<SyncLogEntry['failures']> = [];
 		const total = filterMetaArr.length;
 		const progressNotice = new Notice('', 0);
 		const syncedNotes: SyncedNote[] = [];
@@ -109,14 +115,13 @@ export default class SyncNotebooks {
 				const meta = filterMetaArr[i];
 				const next = filterMetaArr[i + 1];
 				// 提前显示下一本书名，让用户感知当前在处理哪本
-				updateProgress(syncedNotebooks, meta.title);
+				updateProgress(i, meta.title);
 				try {
-					const notebook = await this.convertToNotebook(meta);
-					const savedFilePath = await this.saveNotebook(notebook);
-					syncedNotebooks++;
+					const savedFilePath = await this.syncMetadata(meta);
 
 					// Track synced note for the log
 					if (savedFilePath) {
+						syncedNotebooks++;
 						syncedNotes.push({
 							bookId: meta.bookId,
 							title: meta.title,
@@ -124,19 +129,33 @@ export default class SyncNotebooks {
 						});
 					}
 				} catch (e) {
-					failedNotebooks++;
 					lastError = e instanceof Error ? e.message : String(e);
+					failures.push({
+						bookId: meta.bookId,
+						title: meta.title,
+						stage: (e as { stage?: string })?.stage ?? 'sync',
+						errorMessage: lastError
+					});
 					console.error(`[weread plugin] 同步书籍 ${meta.title} 失败`, e);
 				}
-				updateProgress(syncedNotebooks, next?.title);
+				updateProgress(i + 1, next?.title);
 			}
 		} catch (e) {
 			progressNotice.hide();
 			throw e;
 		}
 
-		const wasCancelled = signal?.cancelled ?? false;
-		this.saveToJounal(journalDate, metaDataArr);
+		let wasCancelled = signal?.cancelled ?? false;
+		if (!wasCancelled) {
+			try {
+				await this.saveToJounal(journalDate, metaDataArr, signal);
+			} catch (error) {
+				const journalError = `Daily Notes: ${error instanceof Error ? error.message : String(error)}`;
+				lastError = lastError ? `${lastError}; ${journalError}` : journalError;
+				console.error('[weread plugin] Daily Notes 同步失败', error);
+			}
+		}
+		wasCancelled = signal?.cancelled ?? false;
 		const syncEndTime = new Date().getTime();
 		const syncTimeInMilliseconds = syncEndTime - syncStartTime;
 		const syncTimeInSeconds = syncTimeInMilliseconds / 1000;
@@ -147,23 +166,27 @@ export default class SyncNotebooks {
 			timestamp: syncStartTime,
 			totalBooks: metaDataArr.length,
 			syncedBooks: syncedNotebooks,
-			skippedBooks: filterMetaArr.length - syncedNotebooks,
+			skippedBooks: filterMetaArr.length - syncedNotebooks - failures.length,
+			failedBooks: failures.length,
+			failures,
+			cancelled: wasCancelled,
 			duration: syncTimeInSeconds,
 			notes: syncedNotes,
-			success: !lastError,
+			success: !lastError && !wasCancelled,
 			errorMessage: lastError
 		};
 		settingsStore.actions.addSyncLog(syncLog);
 
 		// 复用进度 notice 的 DOM 骨架，切换为完成状态，10 秒后关闭
-		const icon = wasCancelled ? '🚫' : '✅';
-		const verb = wasCancelled ? '已取消，已更新' : '完成！更新';
+		const icon = wasCancelled ? '🚫' : lastError ? '⚠️' : '✅';
+		const verb = wasCancelled ? '已取消，已更新' : lastError ? '结束，更新' : '完成！更新';
 		headerEl.setText(`${icon} 同步${verb} ${syncedNotebooks} 本书`);
 		barFill.style.width = '100%';
 		if (wasCancelled) barFill.style.background = 'var(--text-muted)';
 		const summaryParts = [
 			`📚 书架共 ${metaDataArr.length} 本 · 本次处理 ${total} 本`,
-			failedNotebooks > 0 ? `⚠️ ${failedNotebooks} 本同步失败` : '',
+			failures.length > 0 ? `⚠️ ${failures.length} 本同步失败` : '',
+			lastError ?? '',
 			`⏱ 耗时 ${syncTimeInSeconds.toFixed(1)} 秒`
 		].filter(Boolean);
 		titleEl.setText(summaryParts.join(' · '));
@@ -173,7 +196,7 @@ export default class SyncNotebooks {
 
 	public async syncNotesToJounal(journalDate: string) {
 		const metaDataArr = await this.getALlMetadata();
-		this.saveToJounal(journalDate, metaDataArr);
+		await this.saveToJounal(journalDate, metaDataArr);
 	}
 
 	private async convertToNotebook(metaData: Metadata): Promise<Notebook> {
@@ -221,7 +244,7 @@ export default class SyncNotebooks {
 		} else {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
-		const bookReview = parseChapterReviews(reviewResp);
+		const bookReview = parseChapterReviews(reviewResp, chapters);
 
 		let popularHighlights: PopularChapterHighlight[] = [];
 
@@ -424,18 +447,24 @@ export default class SyncNotebooks {
 		return metaDataArr;
 	}
 
-	private async saveToJounal(journalDate: string, metaDataArr: Metadata[]) {
+	private async saveToJounal(
+		journalDate: string,
+		metaDataArr: Metadata[],
+		signal?: { cancelled: boolean }
+	) {
+		if (!get(settingsStore).dailyNotesToggle) return;
 		const metaDataArrInDate = this.filterMetasByCurrentSettings(metaDataArr).filter(
 			(meta) => meta.lastReadDate === journalDate
 		);
 
 		const notebooksInDate = [];
 		for (const meta of metaDataArrInDate) {
+			if (signal?.cancelled) return;
 			const notebook = await this.convertToNotebook(meta);
 			notebooksInDate.push(notebook);
 		}
 
-		if (get(settingsStore).dailyNotesToggle) {
+		if (!signal?.cancelled && get(settingsStore).dailyNotesToggle) {
 			const dailyNoteRefereneces = parseDailyNoteReferences(notebooksInDate);
 			const dailyNotePath = this.fileManager.getDailyNotePath(window.moment());
 			console.log(
@@ -444,7 +473,7 @@ export default class SyncNotebooks {
 				' size:',
 				dailyNoteRefereneces.length
 			);
-			this.fileManager.saveDailyNotes(dailyNotePath, dailyNoteRefereneces);
+			await this.fileManager.saveDailyNotes(dailyNotePath, dailyNoteRefereneces);
 		}
 	}
 
@@ -482,12 +511,22 @@ export default class SyncNotebooks {
 		return null;
 	}
 
-	private async saveNotebook(notebook: Notebook): Promise<string | null> {
+	private async syncMetadata(meta: Metadata): Promise<string | null> {
+		let stage = 'fetch/parse';
 		try {
+			const notebook = await this.convertToNotebook(meta);
+			stage = 'save';
 			return await this.fileManager.saveNotebook(notebook);
-		} catch (e) {
-			console.log('[weread plugin] sync note book error', notebook.metaData.title, e);
-			return null;
+		} catch (cause) {
+			stage = (cause as { stage?: string })?.stage ?? stage;
+			const message = cause instanceof Error ? cause.message : String(cause);
+			throw Object.assign(
+				new Error(`《${meta.title}》 (${meta.bookId}) ${stage}: ${message}`),
+				{
+					stage,
+					cause
+				}
+			);
 		}
 	}
 }

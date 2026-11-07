@@ -27,7 +27,7 @@ export default class FileManager {
 			const dailyNoteFile = await this.getFileByPath(dailyNotePath);
 			const existFileContent = await this.vault.cachedRead(dailyNoteFile);
 			const freshContext = await this.insertAfter(existFileContent, toInsertContent);
-			this.vault.modify(dailyNoteFile, freshContext);
+			await this.vault.modify(dailyNoteFile, freshContext);
 		} else {
 			new Notice('没有找到Daily Note，请先创建' + dailyNotePath);
 			return;
@@ -125,24 +125,30 @@ export default class FileManager {
 
 	public async saveNotebook(notebook: Notebook): Promise<string | null> {
 		const localFile = notebook.metaData.file;
-		if (localFile) {
-			if (localFile.new) {
-				const existingFile = localFile.file;
-				console.log(`Updating ${existingFile.path}`);
-				const freshContent = this.renderer.render(notebook);
-				const fileContent = buildFrontMatter(freshContent, notebook, existingFile, this.app);
+		if (localFile && !localFile.new) return null;
+
+		let stage = 'path';
+		try {
+			const existingFile = localFile?.file;
+			if (localFile && !existingFile) throw new Error('Existing notebook file is missing');
+			const filePath = existingFile?.path ?? (await this.getNewNotebookFilePath(notebook));
+			stage = 'render';
+			const markdownContent = this.renderer.render(notebook);
+			stage = 'frontmatter';
+			const fileContent = buildFrontMatter(markdownContent, notebook, existingFile, this.app);
+			stage = existingFile ? 'modify' : 'create';
+			if (existingFile) {
 				await this.vault.modify(existingFile, fileContent);
 				return existingFile.path;
 			}
-		} else {
-			const newFilePath = await this.getNewNotebookFilePath(notebook);
-			console.log(`Creating ${newFilePath}`);
-			const markdownContent = this.renderer.render(notebook);
-			const fileContent = buildFrontMatter(markdownContent, notebook, undefined, this.app);
-			const newFile = await this.vault.create(newFilePath, fileContent);
+			const newFile = await this.vault.create(filePath, fileContent);
 			return newFile.path;
+		} catch (error) {
+			throw Object.assign(new Error(error instanceof Error ? error.message : String(error)), {
+				stage,
+				cause: error
+			});
 		}
-		return null;
 	}
 
 	public getWereadNoteAnnotationFile = (file: TFile): AnnotationFile | null => {
