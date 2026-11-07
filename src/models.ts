@@ -581,6 +581,9 @@ export type SyncLogEntry = {
 	notes: SyncedNote[];
 	success: boolean;
 	errorMessage?: string;
+	failedBooks?: number;
+	cancelled?: boolean;
+	failures?: { bookId: string; title: string; stage: string; errorMessage: string }[];
 };
 
 export type RecentBook = {
