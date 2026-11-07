@@ -84,7 +84,7 @@ export const parseMetadata = (noteBook: any): Metadata => {
 };
 
 const convertTagToBiLink = (review: string) => {
-	return review.replace(/(?<=^|\s)#([^\s]+)/g, '[[$1]]');
+	return review.replace(/(^|\s)#([^\s]+)/g, '$1[[$2]]');
 };
 
 export const parseHighlights = (
