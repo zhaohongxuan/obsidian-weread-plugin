@@ -168,6 +168,27 @@ export default class WereadPlugin extends Plugin {
 		);
 
 		this.addCommand({
+			id: 'open-weread-book-detail',
+			name: '打开当前书籍详情',
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!(file instanceof TFile)) return false;
+				const annotation = fileManager.getWereadNoteAnnotationFile(file);
+				if (!annotation?.bookId) return false;
+				if (!checking) {
+					void this.activateBookDetailView(
+						annotation.bookId,
+						annotation.title,
+						annotation.cover,
+						file.path,
+						true
+					);
+				}
+				return true;
+			}
+		});
+
+		this.addCommand({
 			id: 'open-weread-reading-view-tab',
 			name: '在新标签页打开微信读书',
 			callback: () => {
@@ -366,32 +387,35 @@ export default class WereadPlugin extends Plugin {
 	async activateBookshelfView() { await this.activateLibraryTab('bookshelf'); }
 	async activateReadingStatsView() { await this.activateLibraryTab('stats'); }
 
-	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string, replaceCurrentLeaf = false) {
-		const { workspace } = this.app;
-
-		let leaf: WorkspaceLeaf | null = null;
-
-		if (replaceCurrentLeaf) {
-			// 使用 getLeaf(false) 获取当前活跃的 leaf，不创建新 leaf
-			leaf = workspace.getLeaf(false);
-		} else {
-			// 原有逻辑：优先复用已有 detail leaf，否则新建一个 tab
-			const existingLeaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
-			if (existingLeaves.length > 0) {
-				leaf = existingLeaves[0];
+	async activateBookDetailView(
+		bookId: string,
+		bookTitle?: string,
+		bookCover?: string,
+		localFilePath?: string,
+		replaceCurrentLeaf = false
+	): Promise<void> {
+		this.libraryNavigation = this.libraryNavigation.catch((): void => undefined).then(async () => {
+			const { workspace } = this.app;
+			const selection = { bookId, bookTitle, bookCover, localFilePath };
+			const active = workspace.getActiveViewOfType(WereadLibraryView);
+			const existing = [WEREAD_LIBRARY_VIEW_ID, WEREAD_TODAY_VIEW_ID, WEREAD_REVIEW_VIEW_ID, WEREAD_BOOKSHELF_VIEW_ID, WEREAD_READING_STATS_VIEW_ID]
+				.flatMap((type) => workspace.getLeavesOfType(type))
+				.find((candidate) => candidate.view instanceof WereadLibraryView);
+			const leaf = replaceCurrentLeaf
+				? workspace.getLeaf(false)
+				: active?.leaf ?? existing ?? workspace.getLeaf(false);
+			if (leaf.view instanceof WereadLibraryView) {
+				await leaf.view.openBookDetail(selection);
 			} else {
-				leaf = workspace.getLeaf('tab');
+				await leaf.setViewState({
+					type: WEREAD_LIBRARY_VIEW_ID,
+					active: true,
+					state: { tab: 'bookshelf', bookDetail: selection, originTab: 'bookshelf' }
+				});
 			}
-		}
-
-		if (leaf) {
-			await leaf.setViewState({
-				type: WEREAD_BOOK_DETAIL_VIEW_ID,
-				active: true,
-				state: { bookId, bookTitle, bookCover, localFilePath }
-			});
-			workspace.revealLeaf(leaf);
-		}
+			await workspace.revealLeaf(leaf);
+		});
+		return this.libraryNavigation;
 	}
 
 	private async syncCookiesToPartition(): Promise<void> {

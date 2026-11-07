@@ -39,6 +39,7 @@ class Element {
 	constructor(tag = 'div', owner = { activeElement: null }) {
 		this.tag = tag;
 		this.owner = owner;
+		this.ownerDocument = owner;
 		this.children = [];
 		this.attributes = {};
 		this.hidden = false;
@@ -76,6 +77,9 @@ class Element {
 	}
 	remove() {
 		this.parent.children = this.parent.children.filter((child) => child !== this);
+	}
+	contains(element) {
+		return this === element || this.children.some((child) => child.contains(element));
 	}
 	focus() {
 		this.owner.activeElement = this;
@@ -157,9 +161,10 @@ function fixture({ initialTab = 'today', viewType, gates = {} } = {}) {
 		}
 	}
 	class BookshelfPanel extends Panel {
-		constructor(element, plugin, bookshelf, navigate) {
+		constructor(element, plugin, bookshelf, navigate, openBook) {
 			super(element, plugin.app, 'bookshelf');
 			this.navigate = navigate;
+			this.openBook = openBook;
 		}
 	}
 	class StatsPanel extends Panel {
@@ -172,12 +177,43 @@ function fixture({ initialTab = 'today', viewType, gates = {} } = {}) {
 			super(element, plugin.app, 'favorites');
 		}
 	}
+	class DetailPanel extends Panel {
+		constructor(element, api, plugin, options) {
+			super(element, plugin.app, 'detail');
+			this.options = options;
+			this.state = {};
+			this.generation = 0;
+		}
+		async onOpen() {
+			this.opens++;
+			this.back = this.contentEl.createEl('button', { text: this.options.breadcrumbLabel });
+			this.back.onclick = this.options.onBack;
+			if (gates.detailOpen) await gates.detailOpen.promise;
+		}
+		getState() {
+			return this.state;
+		}
+		async setState(state) {
+			this.state = { ...state };
+			const generation = ++this.generation;
+			if (gates[state.bookId]) await gates[state.bookId].promise;
+			if (this.closes || generation !== this.generation) return;
+			this.contentEl.createEl('p', { text: state.bookId });
+		}
+		async onClose() {
+			this.closes++;
+			this.generation++;
+			this.contentEl.empty();
+		}
+	}
 	const { WereadLibraryView } = load('src/components/wereadLibrary.ts', {
 		obsidian,
+		'../journalHelpers': load('src/journalHelpers.ts', {}),
 		'./wereadJournal': { WereadJournalPanel: JournalPanel },
 		'./wereadBookshelf': { WereadBookshelfPanel: BookshelfPanel },
 		'./wereadReadingStats': { WereadReadingStatsPanel: StatsPanel },
 		'./wereadFavorites': { WereadFavoritesPanel: FavoritesPanel },
+		'./wereadBookDetailPanel': { WereadBookDetailPanel: DetailPanel },
 		'./wereadLibrary.css': {}
 	});
 	const app = {
@@ -375,4 +411,232 @@ test('closing unloads every visited child exactly once, including a pending pane
 	assert.equal(f.contentEl.children.length, 0);
 	assert.equal(f.calls.getLeaf, 0);
 	assert.equal(f.calls.setViewState, 0);
+});
+
+test('cold workspace restore normalizes numeric YAML book IDs before mounting details', async () => {
+	const f = fixture();
+	await f.view.setState({
+		tab: 'bookshelf',
+		originTab: 'bookshelf',
+		bookDetail: { bookId: 12345, bookTitle: 'Numeric metadata book' }
+	}, {});
+	assert.equal(f.created.size, 0);
+	assert.deepEqual(f.view.getState().bookDetail, {
+		bookId: '12345',
+		bookTitle: 'Numeric metadata book'
+	});
+	await f.view.onOpen();
+	await tick();
+	assert.equal(f.panel('detail').getState().bookId, '12345');
+	assert.deepEqual(f.visible(), [f.panel('detail').contentEl]);
+	assert.equal(f.calls.getLeaf, 0);
+	assert.equal(f.calls.setViewState, 0);
+});
+
+test('warm detail navigation normalizes numeric IDs while preserving exact string IDs', async () => {
+	const f = fixture({ initialTab: 'bookshelf' });
+	await f.view.onOpen();
+	await f.view.openBookDetail({ bookId: 'previous-book' });
+	await tick();
+	let previous = f.panel('detail');
+	for (const bookId of [12345, 0, '0012345', 'isbn:custom-book', ' 12345 ']) {
+		await f.view.openBookDetail({ bookId });
+		await tick();
+		const latest = f.created.get('detail').at(-1);
+		assert.equal(previous.closes, 1);
+		assert.equal(f.view.getState().bookDetail.bookId, String(bookId));
+		assert.equal(latest.getState().bookId, String(bookId));
+		assert.deepEqual(f.visible(), [latest.contentEl]);
+		previous = latest;
+	}
+	assert.equal(f.created.get('bookshelf').length, 1);
+	assert.equal(f.calls.getLeaf, 0);
+	assert.equal(f.calls.setViewState, 0);
+});
+
+test('empty, nonfinite and object IDs cannot replace a valid route or restore a detail', async () => {
+	const f = fixture({ initialTab: 'bookshelf' });
+	await f.view.onOpen();
+	await f.view.openBookDetail({ bookId: 'keep-current' });
+	await tick();
+	const detail = f.panel('detail');
+	for (const bookId of ['', '  ', NaN, Infinity, -Infinity, {}, [], null, undefined, true]) {
+		await f.view.openBookDetail({ bookId });
+		assert.equal(f.view.getState().bookDetail.bookId, 'keep-current');
+		assert.equal(f.created.get('detail').length, 1);
+		assert.equal(detail.closes, 0);
+		const cold = fixture();
+		await cold.view.setState({ tab: 'bookshelf', bookDetail: { bookId } }, {});
+		await cold.view.onOpen();
+		assert.equal(cold.created.has('detail'), false);
+		cold.assertSelected('bookshelf');
+	}
+});
+
+test('detail routes retain each originating tab and top-tab navigation retains other contexts', async () => {
+	for (const origin of ['today', 'review', 'favorites']) {
+		const f = fixture({ initialTab: origin });
+		await f.view.onOpen();
+		const original = f.panel(origin);
+		original.filter.value = `${origin} filter`;
+		original.contentEl.scrollTop = 250;
+		await f.view.openBookDetail({ bookId: origin });
+		await tick();
+		const detail = f.panel('detail');
+		assert.equal(f.view.getState().originTab, origin);
+		f.button('stats').click();
+		await tick();
+		assert.equal(detail.contentEl.hidden, true);
+		assert.deepEqual(f.visible(), [f.panel('stats').contentEl]);
+		const menu = {};
+		f.view.onMoreOptionsMenu(menu);
+		assert.equal(f.panel('stats').menu, menu);
+		f.button(origin).click();
+		await tick();
+		assert.deepEqual(f.visible(), [detail.contentEl]);
+		assert.equal(detail.opens, 1);
+		detail.back.click();
+		await tick();
+		f.assertSelected(origin);
+		assert.equal(original.filter.value, `${origin} filter`);
+		assert.equal(original.contentEl.scrollTop, 250);
+		assert.equal(f.contentEl.owner.activeElement, f.button(origin));
+		assert.equal(f.created.get(origin).length, 1);
+		await f.view.onClose();
+	}
+});
+
+test('detail state restores before open, preserves hidden origin and serializes selection only', async () => {
+	const f = fixture();
+	const selection = {
+		bookId: 'persisted',
+		bookTitle: 'Saved title',
+		bookCover: 'cover',
+		localFilePath: 'books/saved.md',
+		currentTab: 'reviews'
+	};
+	await f.view.setState({
+		tab: 'stats',
+		originTab: 'review',
+		bookDetail: { ...selection, apiPayload: { secret: 'never persisted' } }
+	}, {});
+	assert.equal(f.created.size, 0);
+	assert.deepEqual(f.view.getState(), { tab: 'stats', originTab: 'review', bookDetail: selection });
+	await f.view.onOpen();
+	await tick();
+	const detail = f.panel('detail');
+	assert.equal(detail.contentEl.hidden, true);
+	assert.deepEqual(detail.getState(), selection);
+	detail.state = { ...selection, currentTab: 'highlights', highlights: ['not navigation'] };
+	assert.deepEqual(f.view.getState().bookDetail, { ...selection, currentTab: 'highlights' });
+	await f.view.selectTab('review');
+	assert.deepEqual(f.visible(), [detail.contentEl]);
+	detail.back.click();
+	await tick();
+	f.assertSelected('review');
+	await f.view.setState({ tab: 'bookshelf', bookDetail: { bookId: 'restored-after-open' } }, {});
+	await tick();
+	assert.equal(f.created.get('detail').length, 2);
+	assert.equal(f.view.getState().bookDetail.bookId, 'restored-after-open');
+	await f.view.setState({ tab: 'today' }, {});
+	f.assertSelected('today');
+	assert.equal(f.created.get('detail')[1].closes, 1);
+});
+
+test('replacing A with B and closing pending details unload each child exactly once', async () => {
+	const a = deferred();
+	const b = deferred();
+	const f = fixture({ initialTab: 'bookshelf', gates: { a, b } });
+	await f.view.onOpen();
+	await f.view.openBookDetail({ bookId: 'a' });
+	await tick();
+	const first = f.panel('detail');
+	await f.view.openBookDetail({ bookId: 'b' });
+	await tick();
+	const second = f.created.get('detail')[1];
+	assert.equal(first.closes, 1);
+	assert.equal(f.contentEl.contains(first.contentEl), false);
+	first.options.onBack();
+	assert.equal(f.view.getState().bookDetail.bookId, 'b', 'stale breadcrumb cannot clear newer route');
+	a.resolve();
+	await tick();
+	assert.equal(first.contentEl.children.length, 0);
+	assert.deepEqual(f.visible(), [second.contentEl]);
+	await f.view.onClose();
+	await f.view.onClose();
+	b.resolve();
+	await tick();
+	assert.equal(second.closes, 1);
+	assert.equal(second.contentEl.children.length, 0);
+	assert.equal(f.contentEl.children.length, 0);
+	assert.equal(f.view.children.length, 0);
+	assert.equal(f.calls.removeChild, 3);
+});
+
+test('closing a detail while its lifecycle opens prevents starting its obsolete selection', async () => {
+	const gate = deferred();
+	const f = fixture({ gates: { detailOpen: gate } });
+	await f.view.onOpen();
+	await f.view.openBookDetail({ bookId: 'never-started' });
+	const detail = f.panel('detail');
+	assert.deepEqual(detail.getState(), {});
+	detail.back.click();
+	await f.view.onClose();
+	gate.resolve();
+	await tick();
+	assert.deepEqual(detail.getState(), {});
+	assert.equal(detail.closes, 1);
+	assert.equal(f.contentEl.children.length, 0);
+});
+
+test('bookshelf callbacks belong to their own library instance', async () => {
+	const first = fixture({ initialTab: 'bookshelf' });
+	const second = fixture({ initialTab: 'bookshelf' });
+	await first.view.onOpen();
+	await second.view.onOpen();
+	await first.panel('bookshelf').openBook({ bookId: 'first-library' });
+	await tick();
+	assert.equal(first.view.getState().bookDetail.bookId, 'first-library');
+	second.assertSelected('bookshelf');
+	assert.equal(second.created.has('detail'), false);
+});
+
+test('bookshelf detail and breadcrumb preserve the owning leaf, DOM, filter, scroll and focus', async () => {
+	const f = fixture({ initialTab: 'bookshelf' });
+	await f.view.onOpen();
+	const shelf = f.panel('bookshelf');
+	const input = shelf.filter;
+	input.value = 'retained shelf filter';
+	shelf.contentEl.scrollTop = 489;
+	input.focus();
+	const nav = f.tabbar()[0];
+	await shelf.openBook({ bookId: 'book-a', bookTitle: 'Book A' });
+	await tick();
+	const detail = f.panel('detail');
+	assert.deepEqual(f.visible(), [detail.contentEl]);
+	assert.equal(detail.options.breadcrumbLabel, '书架');
+	assert.equal(shelf.closes, 0);
+	assert.deepEqual(f.tabbar(), [nav]);
+	assert.equal(f.button('bookshelf').getAttribute('aria-selected'), 'true');
+	assert.equal(f.button('bookshelf').getAttribute('aria-controls'), detail.contentEl.getAttribute('id'));
+	const menu = {};
+	f.view.onMoreOptionsMenu(menu);
+	assert.equal(detail.menu, menu);
+	const saves = f.calls.save;
+	detail.back.click();
+	await tick();
+	f.assertSelected('bookshelf');
+	assert.equal(f.panel('bookshelf'), shelf);
+	assert.equal(shelf.filter, input);
+	assert.equal(input.value, 'retained shelf filter');
+	assert.equal(shelf.contentEl.scrollTop, 489);
+	assert.equal(f.contentEl.owner.activeElement, input);
+	assert.equal(f.created.get('bookshelf').length, 1);
+	assert.equal(detail.closes, 1);
+	assert.equal(f.contentEl.contains(detail.contentEl), false);
+	assert.ok(f.calls.save > saves);
+	assert.equal(f.calls.getLeaf, 0);
+	assert.equal(f.calls.setViewState, 0);
+	await f.view.onClose();
+	assert.equal(detail.closes, 1);
 });
