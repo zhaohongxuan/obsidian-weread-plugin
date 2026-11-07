@@ -36,6 +36,10 @@ export default class WereadPlugin extends Plugin {
 	private scheduledSyncTimer: number | null = null;
 	private libraryNavigation: Promise<void> = Promise.resolve();
 
+	public getJournalService(): WereadJournalService {
+		return this.journalService;
+	}
+
 	onload() {
 		console.log('load weread plugin');
 		settingsStore.initialise(this).then(() => {

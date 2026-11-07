@@ -1,0 +1,44 @@
+.weread-reencounter-books input[type='search'] {
+	width: 100%;
+	margin-bottom: 12px;
+}
+.weread-reencounter-books-toolbar,
+.weread-reencounter-books-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 12px 0;
+}
+.weread-reencounter-books-list {
+	max-height: min(50vh, 420px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+.weread-reencounter-books-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 4px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+}
+.weread-reencounter-books-row[hidden] {
+	display: none;
+}
+.weread-reencounter-books-row > span {
+	min-width: 0;
+}
+.weread-reencounter-books-title,
+.weread-reencounter-books-author {
+	display: block;
+	overflow-wrap: anywhere;
+}
+.weread-reencounter-books-author,
+.weread-reencounter-books-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+.weread-reencounter-books-footer {
+	justify-content: flex-end;
+}

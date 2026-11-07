@@ -124,7 +124,7 @@ const favorites = {
     return 'WereadData/favorites/favorites.canvas';
   }
 };
-const settings = (key) => ({ wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, favoritesViewMode: 'cards' });
+const settings = (key) => ({ wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, journalExcludedBookIds: [], favoritesViewMode: 'cards' });
 settingsStore.set(settings('account-a'));
 const plugin = {
   app: {workspace: {async openLinkText(...args) {
@@ -421,6 +421,80 @@ window.smoke = {
     await view.onClose(); view.contentEl.remove(); view = undefined;
     return assertions;
   },
+  async exclusions() {
+    const extended = [...baseNotes,
+      note('other-two', 'b', 'highlight', '城市第二句', '2026-11-03T02:00:00Z'),
+      note('third-book', 'c', 'highlight', '第三本旧句', '2026-11-02T02:00:00Z')
+    ];
+    for (const mode of ['today', 'review']) {
+      journal.publish({...state, notes: extended});
+      settingsStore.actions.setJournalExcludedBookIds(['b', 'c']);
+      await mount(mode);
+      const quote = () => view.contentEl.querySelector('.weread-journal-quote');
+      const quoteId = () => quote().querySelector('.weread-journal-favorite')?.dataset.favoriteId;
+      const button = label => [...quote().querySelectorAll('button')].find(node => node.textContent === label);
+      check(quoteId()?.startsWith('a:'), mode + ': initial quote respects existing excluded books');
+      const ordinary = view.contentEl.querySelector(mode === 'today' ? '.weread-journal-today-notes' : '.weread-journal-day-notes');
+      const calendar = view.contentEl.querySelector('.weread-journal-calendar');
+      let search, filter, month, selectedDay, calendarHtml;
+      if (mode === 'review') {
+        month = view.contentEl.querySelector('input[type=month]'); month.value = '2026-10'; month.dispatchEvent(new Event('change'));
+        view.contentEl.querySelector('button[aria-label^="2026-10-05，"]').click();
+        search = view.contentEl.querySelector('input[type=search]'); search.value = '昨日句子'; search.dispatchEvent(new Event('input'));
+        filter = view.contentEl.querySelector('select'); filter.value = 'highlight'; filter.dispatchEvent(new Event('change'));
+        month = view.contentEl.querySelector('input[type=month]');
+        selectedDay = view.contentEl.querySelector('.weread-journal-day.is-selected');
+        calendarHtml = view.contentEl.querySelector('.weread-journal-calendar').innerHTML;
+        filter.focus();
+      }
+      const retainedResults = view.contentEl.querySelector(mode === 'today' ? '.weread-journal-today-notes' : '.weread-journal-day-notes');
+      const notesHtml = retainedResults.innerHTML;
+      const loadsBefore = journalLoads, callsBefore = apiCalls, writesBefore = favoriteWrites;
+      settingsStore.actions.setJournalExcludedBookIds(['a']);
+      await tick();
+      check(quoteId()?.startsWith('b:'), mode + ': excluding selected book immediately replaces its quote');
+      check(retainedResults.isConnected && retainedResults.innerHTML === notesHtml, mode + ': ordinary notes from excluded books remain visible and retain DOM');
+      if (mode === 'today') {
+        check(quote().nextElementSibling === ordinary, 'Today: quote replacement keeps its position before today notes');
+        check(ordinary.textContent.includes('晨光穿过树叶'), 'Today: exclusion does not hide ordinary today highlights');
+      } else {
+        check(search.isConnected && search.value === '昨日句子' && filter.isConnected && filter.value === 'highlight' && document.activeElement === filter, 'Review: exclusion preserves search, kind and focused control');
+        check(month.isConnected && month.value === '2026-10' && selectedDay.isConnected && selectedDay.classList.contains('is-selected') && calendarHtml === view.contentEl.querySelector('.weread-journal-calendar').innerHTML, 'Review: exclusion preserves visible month, selected date and calendar DOM');
+        check(retainedResults.textContent.includes('昨日句子'), 'Review: excluded book remains searchable');
+        search.focus(); settingsStore.actions.setJournalExcludedBookIds(['a', 'a']);
+        check(document.activeElement === search && search.isConnected, 'Review: equivalent IDs preserve focused search');
+      }
+      const beforeChange = quoteId(); click('换一句', quote());
+      check(quoteId()?.startsWith('b:') && quoteId() !== beforeChange, mode + ': change quote uses eligible same-book highlights');
+      click('换一本', quote());
+      check(quoteId()?.startsWith('c:'), mode + ': change book never selects the excluded book');
+      click('换一本', quote());
+      check(quoteId()?.startsWith('b:'), mode + ': repeated change book stays eligible');
+      check(journalLoads === loadsBefore && apiCalls === callsBefore && favoriteWrites === writesBefore, mode + ': preferences and quote changes trigger no journal reload, API call or favorite write');
+      journal.publish({...state, notes: [...extended], syncing: true}); await tick();
+      journal.publish({...state, notes: [...extended], syncing: false}); await tick();
+      check(!quoteId()?.startsWith('a:'), mode + ': async cache publications never reintroduce excluded quotes');
+      click('刷新笔记', view.contentEl); await tick();
+      check(!quoteId()?.startsWith('a:'), mode + ': explicit refresh never reintroduces excluded quotes');
+      const loadsAfterRefresh = journalLoads, callsAfterRefresh = apiCalls;
+      settingsStore.actions.setJournalExcludedBookIds(['a', 'b', 'c']);
+      check(!quote().querySelector('article') && quote().textContent.includes('设置') && button('换一句').disabled && button('换一本').disabled, mode + ': all excluded shows helpful settings hint and disables both change buttons');
+      journal.publish({...state, notes: extended}); await tick();
+      check(!quote().querySelector('article'), mode + ': all-excluded cache publication cannot fall back to excluded notes');
+      settingsStore.actions.setJournalExcludedBookIds(['b', 'c']);
+      check(quoteId()?.startsWith('a:') && !button('换一句').disabled && button('换一本').disabled, mode + ': including a book restores eligibility and correct change controls');
+      settingsStore.actions.setJournalExcludedBookIds([]);
+      check(!button('换一本').disabled, mode + ': empty exclusions restore other-book selection');
+      check(journalLoads === loadsAfterRefresh && apiCalls === callsAfterRefresh, mode + ': exclusion and inclusion updates never reset network data');
+      for (const malformed of [undefined, null, 'a', {}, [null, {}, true]]) {
+        settingsStore.set({...settingsStore.current(), journalExcludedBookIds: malformed});
+        check(!!quoteId(), mode + ': missing or malformed exclusion fixture remains backward compatible');
+      }
+      settingsStore.actions.setJournalExcludedBookIds([]);
+    }
+    journal.publish({...state, notes: baseNotes});
+    await view.onClose(); view.contentEl.remove(); view = undefined;
+  },
   async behavior() {
     const many = Array.from({length: 105}, (_, i) => note('page-' + i, 'a', 'thought', 'PAGE FIXTURE ' + i, '2026-11-06T03:00:00Z'));
     journal.publish({ ...state, notes: many, syncing: false });
@@ -476,7 +550,7 @@ async function browserBundle() {
 						contents:
 							name === 'obsidian'
 								? `export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
-								: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`
+								: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setJournalExcludedBookIds(ids) { set({...value, journalExcludedBookIds: ids}); }, setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`
 					}));
 					builder.onLoad({ filter: /\.css$/ }, async ({ path: filename }) => ({
 						contents: `const style = document.createElement('style'); style.textContent = ${JSON.stringify(await readFile(filename, 'utf8'))}; document.head.append(style);`,
@@ -686,6 +760,7 @@ test(
 		);
 		await evaluate('smoke.review()');
 		await evaluate('smoke.behavior()');
+		await evaluate('smoke.exclusions()');
 		const assertions = await evaluate('smoke.favorites()');
 		assert(assertions.length >= 20);
 		await send('Emulation.setDeviceMetricsOverride', {

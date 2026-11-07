@@ -63,6 +63,12 @@ Obsidian 微信读书插件，同步微信读书的书籍元信息、高亮划�
 
 ![书籍详情、面包屑导航与个人划线收藏](./docs/screenshots/book-detail.webp)
 
+### 旧句重逢排除书籍
+
+在「设置 → Weread → 书架设置 → 旧句重逢排除书籍」点击「选择书籍」，按书名或作者搜索并勾选，保存后立即生效。
+
+排除规则同时用于今日和回顾的「旧句重逢」，包括「换一句」「换一本」。书籍仍保留在普通笔记浏览、日历和收藏中；取消勾选并保存后可重新参与重逢。
+
 ## 更新历史
 https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
 

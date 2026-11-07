@@ -79,6 +79,26 @@ export class WereadJournalPanel extends WereadPanel {
 	}
 	private credentialGeneration = 0;
 	private credentialKey = '';
+	private exclusionsKey = '';
+	private readExcludedBookIds(): Set<string> {
+		const value: unknown = get(settingsStore)?.journalExcludedBookIds;
+		return new Set(
+			Array.isArray(value)
+				? value
+						.map((id) =>
+							typeof id === 'string'
+								? id.trim()
+								: typeof id === 'number' && Number.isFinite(id)
+									? String(id)
+									: ''
+						)
+						.filter(Boolean)
+				: []
+		);
+	}
+	private readExclusionsKey(): string {
+		return JSON.stringify([...this.readExcludedBookIds()].sort());
+	}
 	private readCredentialKey(): string {
 		const settings = get(settingsStore);
 		return JSON.stringify([
@@ -203,9 +223,17 @@ export class WereadJournalPanel extends WereadPanel {
 			if (this.active) this.render();
 		});
 		this.credentialKey = this.readCredentialKey();
+		this.exclusionsKey = this.readExclusionsKey();
 		this.unsubscribeSettings = settingsStore.subscribe(() => {
 			const key = this.readCredentialKey();
-			if (key === this.credentialKey) return;
+			const exclusionsKey = this.readExclusionsKey();
+			const exclusionsChanged = exclusionsKey !== this.exclusionsKey;
+			this.exclusionsKey = exclusionsKey;
+			if (key === this.credentialKey) {
+				// Only replace the quote: Review controls, focus and scroll stay intact.
+				if (exclusionsChanged && this.active) this.renderQuote();
+				return;
+			}
 			this.credentialKey = key;
 			this.credentialGeneration += 1;
 			this.todayBooks = [];
@@ -421,8 +449,13 @@ export class WereadJournalPanel extends WereadPanel {
 	}
 	private renderQuote(): void {
 		const today = this.date;
+		const excluded = this.readExcludedBookIds();
 		const highlights = this.state.notes.filter(
-			(note) => note.kind === 'highlight' && note.text.trim() && noteDay(note) < today
+			(note) =>
+				note.kind === 'highlight' &&
+				note.text.trim() &&
+				noteDay(note) < today &&
+				!excluded.has(note.bookId)
 		);
 		const candidates = highlights;
 		if (
@@ -433,7 +466,9 @@ export class WereadJournalPanel extends WereadPanel {
 		)
 			this.quote = undefined;
 		if (!this.quote) this.quote = this.randomQuote(candidates);
+		const previous = this.body.querySelector('.weread-journal-quote');
 		const section = this.body.createDiv({ cls: 'weread-journal-quote' });
+		previous?.replaceWith(section);
 		const header = section.createDiv({ cls: 'weread-journal-heading' });
 		header.createEl('h2', { text: '旧句重逢' });
 		const actions = header.createDiv({ cls: 'weread-journal-actions' });
@@ -454,7 +489,12 @@ export class WereadJournalPanel extends WereadPanel {
 			this.render();
 		};
 		if (this.quote) this.renderNote(section, this.quote);
-		else section.createEl('p', { text: '暂时没有可回顾的往日划线。' });
+		else
+			section.createEl('p', {
+				text: excluded.size
+					? '当前没有可重逢的往日划线，可在设置中的「旧句重逢排除书籍」重新包含书籍。'
+					: '暂时没有可回顾的往日划线。'
+			});
 	}
 	private randomQuote(notes: readonly JournalNote[]): JournalNote | undefined {
 		const ids = [...new Set(notes.map((note) => note.bookId))];

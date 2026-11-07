@@ -19,6 +19,7 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { ThemeManagerModal } from './components/themeManagerModal';
+import { WereadReencounterBooksModal } from './components/wereadReencounterBooksModal';
 
 import ApiRouter from './api-router';
 import { parseBookIdList } from './utils/bookIdUtils';
@@ -254,6 +255,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.addOption('12', '每天两次')
 				.setValue(String(get(settingsStore).journalRefreshHours))
 				.onChange((value) => settingsStore.actions.setJournalRefreshHours(Number(value))));
+		new Setting(this.containerEl)
+			.setName('旧句重逢排除书籍')
+			.setDesc('选中的书籍将从「今日」与「回顾」的旧句重逢中排除，仅影响旧句推荐。')
+			.addButton((button) => {
+				const updateText = (ids: string[]) => button.setButtonText(`选择书籍（已排除 ${ids.length} 本）`);
+				updateText(get(settingsStore).journalExcludedBookIds);
+				button.onClick(() => new WereadReencounterBooksModal(this.plugin, updateText).open());
+			});
 			this.readingOpenModeSetting();
 			this.bookOpenModeSetting();
 
