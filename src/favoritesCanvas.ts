@@ -7,6 +7,9 @@ import {
 	parseLegacyFavorites
 } from './favoritesRepository';
 import type { FavoritesDocument } from './favoritesRepository';
+import { isFavoriteBookPath } from './favoriteBookFiles';
+
+export type FavoriteBookFiles = Readonly<Record<string, string>>;
 
 type CanvasObject = Record<string, any>;
 const HEADER = '<!-- weread-favorites:';
@@ -74,8 +77,8 @@ function canvas(raw: string): CanvasObject {
 			!isObject(edge) ||
 			!string(edge.id) ||
 			edgeIds.has(edge.id) ||
-			!ids.has(edge.fromNode) ||
-			!ids.has(edge.toNode) ||
+			!string(edge.fromNode) ||
+			!string(edge.toNode) ||
 			!color(edge.color) ||
 			['fromSide', 'toSide'].some(
 				(key) =>
@@ -105,9 +108,11 @@ function marker(text: string, prefix: string): { value: CanvasObject; before: st
 		return fail();
 	}
 	if (!isObject(value)) return fail();
-	if (typeof value.schemaVersion === 'number' && value.schemaVersion > 1)
+	const latest = prefix === HEADER ? 2 : 1;
+	if (typeof value.schemaVersion === 'number' && value.schemaVersion > latest)
 		throw new FutureSchemaError('收藏文件来自更新版本，请升级插件；当前为只读');
-	if (value.schemaVersion !== 1) return fail();
+	if (value.schemaVersion !== 1 && !(prefix === HEADER && value.schemaVersion === 2))
+		return fail();
 	return { value, before: text.slice(0, at) };
 }
 function active(node: CanvasObject): FavoriteEntry | undefined {
@@ -146,26 +151,91 @@ export function parseFavoritesCanvas(raw: string): FavoritesDocument {
 	}
 }
 
-function parseManaged(root: CanvasObject): FavoritesDocument {
-	let revision = 0;
-	let header = false;
-	const records: FavoriteEntry[] = [];
+function headerMetadata(node: CanvasObject): ReturnType<typeof marker> {
+	return node.type === 'text' && node.text.lastIndexOf(HEADER) > node.text.lastIndexOf(CARD)
+		? marker(node.text, HEADER)
+		: undefined;
+}
+
+function graphMetadata(root: CanvasObject): {
+	header?: CanvasObject;
+	bookNodes: Record<string, string>;
+	managedEdges: string[];
+} {
+	const result: {
+		header?: CanvasObject;
+		bookNodes: Record<string, string>;
+		managedEdges: string[];
+	} = {
+		bookNodes: Object.create(null),
+		managedEdges: []
+	};
 	for (const node of root.nodes) {
-		if (node.type !== 'text') continue;
-		const metadata =
-			node.text.lastIndexOf(HEADER) > node.text.lastIndexOf(CARD)
-				? marker(node.text, HEADER)
-				: undefined;
-		if (metadata) {
+		const metadata = headerMetadata(node);
+		if (!metadata) continue;
+		if (result.header) fail();
+		result.header = node;
+		const value = metadata.value;
+		const allowed =
+			value.schemaVersion === 2
+				? ['schemaVersion', 'revision', 'tombstones', 'bookNodes', 'managedEdges']
+				: ['schemaVersion', 'revision', 'tombstones'];
+		if (node.text.includes(CARD) || Object.keys(value).some((key) => !allowed.includes(key)))
+			fail();
+		if (value.schemaVersion === 1) continue;
+		if (!isObject(value.bookNodes) || !Array.isArray(value.managedEdges)) fail();
+		const references = new Set<string>();
+		for (const [bookId, nodeId] of Object.entries(value.bookNodes)) {
+			if (!/^\S+$/.test(bookId) || !string(nodeId) || references.has(nodeId)) return fail();
+			references.add(nodeId);
+			const book = root.nodes.find((candidate: CanvasObject) => candidate.id === nodeId);
 			if (
-				header ||
-				node.text.includes(CARD) ||
-				Object.keys(metadata.value).some(
-					(key) => !['schemaVersion', 'revision', 'tombstones'].includes(key)
-				)
+				book &&
+				(book.id === node.id ||
+					!['file', 'text'].includes(book.type) ||
+					(book.type === 'file' && !localMarkdown(book.file)) ||
+					(book.type === 'text' &&
+						(book.text.includes(CARD) || book.text.includes(HEADER))))
 			)
 				fail();
-			header = true;
+			result.bookNodes[bookId] = nodeId;
+		}
+		const edgeIds = new Set<string>();
+		for (const id of value.managedEdges) {
+			if (!string(id) || edgeIds.has(id)) fail();
+			edgeIds.add(id);
+			result.managedEdges.push(id);
+		}
+	}
+	const ids = new Set(root.nodes.map((node: CanvasObject) => node.id));
+	const derived = new Set(Object.values(result.bookNodes));
+	for (const edge of root.edges) {
+		const managed = result.managedEdges.includes(edge.id);
+		if (
+			(!ids.has(edge.fromNode) && !derived.has(edge.fromNode)) ||
+			(!ids.has(edge.toNode) && !derived.has(edge.toNode) && !managed)
+		)
+			fail();
+		if (managed) {
+			if (edge.fromNode === result.header?.id) {
+				if (!derived.has(edge.toNode)) fail();
+			} else {
+				if (!derived.has(edge.fromNode)) fail();
+				const target = root.nodes.find((node: CanvasObject) => node.id === edge.toNode);
+				if (target && !active(target)) fail();
+			}
+		}
+	}
+	return result;
+}
+
+function parseManaged(root: CanvasObject): FavoritesDocument {
+	const graph = graphMetadata(root);
+	let revision = 0;
+	const records: FavoriteEntry[] = [];
+	for (const node of root.nodes) {
+		if (node.id === graph.header?.id) {
+			const metadata = headerMetadata(node)!;
 			const doc = parseLegacyFavorites(
 				JSON.stringify({
 					schemaVersion: 1,
@@ -182,6 +252,18 @@ function parseManaged(root: CanvasObject): FavoritesDocument {
 		}
 	}
 	return parseLegacyFavorites(JSON.stringify({ schemaVersion: 1, revision, records }));
+}
+
+function localMarkdown(path: unknown): path is string {
+	return string(path) && isFavoriteBookPath(path);
+}
+
+function validateBookFiles(bookFiles?: FavoriteBookFiles): void {
+	if (bookFiles === undefined) return;
+	if (!isObject(bookFiles)) fail();
+	for (const [id, path] of Object.entries(bookFiles)) {
+		if (!string(id) || !localMarkdown(path)) fail();
+	}
 }
 
 function coverUrl(value: string | undefined): string | undefined {
@@ -202,47 +284,40 @@ function coverUrl(value: string | undefined): string | undefined {
 		return undefined;
 	}
 }
-const coverPrefix = (url: string): string =>
-	`${COVER_START}\n\n![封面|80](<${url}>)\n\n${COVER_END}\n\n`;
-
-function needsCover(node: CanvasObject, entry: FavoriteEntry): boolean {
-	return !!coverUrl(entry.note.cover) && marker(node.text, CARD)?.value.cover !== true;
-}
-
-/** Presentation-only upgrade; quote snapshots and native layout remain untouched. */
-export function hasMissingFavoriteCovers(raw: string): boolean {
-	parseFavoritesCanvas(raw);
-	return canvas(raw).nodes.some((node: CanvasObject) => {
-		const entry = active(node);
-		return entry !== undefined && needsCover(node, entry);
-	});
-}
 
 const comment = (prefix: string, value: unknown): string =>
 	`${prefix}${encodeURIComponent(JSON.stringify(value))} -->`;
+const safeText = (text: string): string => text.replace(/<!--/g, '&lt;!--');
 function cardText(entry: FavoriteEntry): string {
-	const cover = coverUrl(entry.note.cover);
-	const footer = [`《${entry.note.bookTitle}》`, entry.note.author, entry.note.chapterTitle]
+	const footer = [
+		entry.note.bookTitle && `《${entry.note.bookTitle}》`,
+		entry.note.author,
+		entry.note.chapterTitle
+	]
 		.filter(Boolean)
-		.join(' · ')
-		.replace(/<!--/g, '&lt;!--');
-	return `${cover ? coverPrefix(cover) : ''}${entry.note.text}\n\n${FOOTER}\n\n${footer}\n\n${comment(CARD, { schemaVersion: 1, record: entry, ...(cover ? { cover: true } : {}) })}`;
+		.join(' · ');
+	return `${entry.note.text}\n\n${FOOTER}\n\n${safeText(footer)}\n\n${comment(CARD, { schemaVersion: 1, record: entry })}`;
 }
 
-function retrofitCover(node: CanvasObject, entry: FavoriteEntry): CanvasObject {
-	const cover = coverUrl(entry.note.cover);
-	if (!cover || !needsCover(node, entry)) return node;
+/** Remove only a positively identified legacy owned cover, retaining native edits and footer. */
+function updateCard(node: CanvasObject, old: FavoriteEntry, next: FavoriteEntry): CanvasObject {
 	const metadata = marker(node.text, CARD)!;
-	return {
-		...node,
-		text: `${coverPrefix(cover)}${metadata.before}${comment(CARD, {
-			...metadata.value,
-			cover: true
-		})}${node.text.slice(node.text.trimEnd().length)}`
-	};
+	let before = metadata.before;
+	if (metadata.value.cover === true) {
+		const end = before.indexOf(`\n\n${COVER_END}\n\n`, COVER_START.length + 2);
+		before = before.slice(end + `\n\n${COVER_END}\n\n`.length);
+	}
+	if (old.note.text !== next.note.text) {
+		const footer = before.lastIndexOf(`\n\n${FOOTER}\n\n`);
+		before = next.note.text + before.slice(footer);
+	}
+	// Existing metadata can intentionally contain an older text snapshot after a native edit.
+	// Leave it byte-identical unless record data changed or an owned cover was removed.
+	if (metadata.value.cover !== true && JSON.stringify(old) === JSON.stringify(next)) return node;
+	const text = `${before}${comment(CARD, { schemaVersion: 1, record: next })}${node.text.slice(node.text.trimEnd().length)}`;
+	return text === node.text ? node : { ...node, text };
 }
 function stableId(id: string): string {
-	// Unicode code-point hex is deterministic and collision-free, using ordinary Canvas ID characters.
 	return (
 		'weread-' +
 		Array.from(id)
@@ -250,66 +325,75 @@ function stableId(id: string): string {
 			.join('-')
 	);
 }
+function bookLink(path: string): string {
+	// Full vault-relative paths resolve through Obsidian's internal Markdown-link resolver.
+	// Encode each segment so literal fragments, queries and Markdown punctuation stay filenames.
+	const target = path
+		.split('/')
+		.map((part) =>
+			encodeURIComponent(part).replace(
+				/[!'()*]/g,
+				(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`
+			)
+		)
+		.join('/');
+	return `[打开本地笔记](<${target}>)`;
+}
+function bookText(entry: FavoriteEntry, local?: string): string {
+	const cover = coverUrl(entry.note.cover);
+	return [
+		cover ? `![封面|80](<${cover}>)` : '',
+		`## ${safeText(entry.note.bookTitle)}`,
+		safeText(entry.note.author || ''),
+		local ? bookLink(local) : ''
+	]
+		.filter(Boolean)
+		.join('\n\n');
+}
 
-/** Preserve native layout, free cards, groups, edges and unknown standard-extension properties. */
+function quoteHeight(text: string): number {
+	const lines = text.split(/\r?\n/).reduce((count, line) => {
+		const width = line.replace(/[^\u0000-\u00ff]/g, 'xx').length;
+		return count + Math.max(1, Math.ceil(width / 38));
+	}, 0);
+	return Math.min(280, Math.max(160, lines * 22 + 88));
+}
+
+/** Preserve native layout, free cards, groups, custom edges and extension properties. */
 export function serializeFavoritesCanvas(
 	document: FavoritesDocument,
-	previousRaw?: string | null
+	previousRaw?: string | null,
+	bookFiles?: FavoriteBookFiles
 ): string {
+	validateBookFiles(bookFiles);
 	const valid = parseLegacyFavorites(JSON.stringify(document));
 	const root = previousRaw == null ? { nodes: [], edges: [] } : canvas(previousRaw);
 	if (previousRaw != null) parseFavoritesCanvas(previousRaw);
+	const graph = graphMetadata(root);
 	const remaining = new Map(
 		valid.records
 			.filter((entry) => entry.deletedAt === undefined)
 			.map((entry) => [entry.id, entry])
 	);
+	const books = new Map<string, FavoriteEntry>();
+	for (const entry of remaining.values())
+		if (!books.has(entry.note.bookId)) books.set(entry.note.bookId, entry);
+	const nodes: CanvasObject[] = [];
+	const quotes = new Map<string, CanvasObject>();
+	const oldBooks = new Set(Object.values(graph.bookNodes));
 	const removed = new Set<string>();
-	let hasHeader = false;
-	const ids = new Set<string>(root.nodes.map((node: CanvasObject) => node.id));
-	const bottom = root.nodes.reduce(
-		(max: number, node: CanvasObject) => Math.max(max, node.y + node.height),
-		-40
-	);
-	let placed = 0;
+	const ids = new Set<string>([
+		...root.nodes.map((node: CanvasObject) => node.id),
+		...root.edges.map((edge: CanvasObject) => edge.id)
+	]);
 	const allocate = (preferred: string): string => {
 		let id = preferred;
 		for (let suffix = 1; ids.has(id); suffix++) id = `${preferred}-${suffix}`;
 		ids.add(id);
 		return id;
 	};
-	const place = (id: string, text: string): CanvasObject => {
-		const node = {
-			id: allocate(id),
-			type: 'text',
-			x: (placed % 2) * 480,
-			y: bottom + 40 + Math.floor(placed / 2) * 440,
-			width: 440,
-			height: 400,
-			text
-		};
-		placed++;
-		return node;
-	};
-	const headerText = `# 我的收藏\n\n可在画布中移动、连接和编辑收藏卡片。删除卡片即取消收藏。\n\n${comment(
-		HEADER,
-		{
-			schemaVersion: 1,
-			revision: valid.revision,
-			tombstones: valid.records.filter((entry) => entry.deletedAt !== undefined)
-		}
-	)}`;
-	const nodes: CanvasObject[] = [];
 	for (const node of root.nodes) {
-		if (
-			node.type === 'text' &&
-			node.text.lastIndexOf(HEADER) > node.text.lastIndexOf(CARD) &&
-			marker(node.text, HEADER)
-		) {
-			hasHeader = true;
-			nodes.push(node.text === headerText ? node : { ...node, text: headerText });
-			continue;
-		}
+		if (node.id === graph.header?.id || oldBooks.has(node.id)) continue;
 		const old = active(node);
 		if (!old) {
 			nodes.push(node);
@@ -321,25 +405,173 @@ export function serializeFavoritesCanvas(
 			continue;
 		}
 		remaining.delete(old.id);
-		nodes.push(
-			JSON.stringify(old) === JSON.stringify(next)
-				? retrofitCover(node, next)
-				: { ...node, text: cardText(next) }
-		);
+		const card = updateCard(node, old, next);
+		const updated =
+			node.width === 440 && node.height === 400
+				? { ...card, width: 360, height: quoteHeight(next.note.text) }
+				: card;
+		nodes.push(updated);
+		quotes.set(next.id, updated);
 	}
-	if (!hasHeader) nodes.push(place('weread-favorites-header', headerText));
-	for (const entry of remaining.values()) nodes.push(place(stableId(entry.id), cardText(entry)));
-	const raw = JSON.stringify(
-		{
-			...root,
-			nodes,
-			edges: root.edges.filter(
-				(edge: CanvasObject) => !removed.has(edge.fromNode) && !removed.has(edge.toNode)
-			)
-		},
-		null,
-		2
+	const overlaps = (a: CanvasObject, b: CanvasObject): boolean =>
+		a.x < b.x + b.width + 40 &&
+		a.x + a.width + 40 > b.x &&
+		a.y < b.y + b.height + 40 &&
+		a.y + a.height + 40 > b.y;
+	const collides = (node: CanvasObject): boolean =>
+		nodes.some((other) => overlaps(node, other)) ||
+		!!(graph.header && overlaps(node, graph.header));
+	const anchor = (
+		id: string,
+		x: number,
+		y: number,
+		width: number,
+		height: number
+	): CanvasObject => {
+		const node = { id, type: 'text', x, y, width, height };
+		while (collides(node)) node.y -= height + 80;
+		return node;
+	};
+	const bookNodes: Record<string, string> = Object.create(null);
+	const bookObjects = new Map<string, CanvasObject>();
+	let column = 0;
+	for (const [bookId, entry] of books) {
+		const oldId = graph.bookNodes[bookId];
+		const existing = root.nodes.find((node: CanvasObject) => node.id === oldId);
+		const local =
+			bookFiles === undefined
+				? existing?.type === 'file'
+					? existing.file
+					: undefined
+				: Object.prototype.hasOwnProperty.call(bookFiles, bookId)
+					? bookFiles[bookId]
+					: undefined;
+		const cluster = valid.records
+			.filter((record) => record.deletedAt === undefined && record.note.bookId === bookId)
+			.map((record) => quotes.get(record.id))
+			.filter((node): node is CanvasObject => !!node);
+		const x = cluster.length ? Math.min(...cluster.map((node) => node.x)) : column * 520;
+		const y = cluster.length ? Math.min(...cluster.map((node) => node.y)) - 380 : 240;
+		const node = existing || anchor(allocate(stableId(`book:${bookId}`)), x, y, 440, 300);
+		const { file: _file, subpath: _subpath, ...rest } = node;
+		const text =
+			bookFiles === undefined && existing?.type === 'text'
+				? existing.text
+				: bookText(entry, local);
+		const updated = { ...rest, type: 'text', text };
+		nodes.push(updated);
+		bookNodes[bookId] = updated.id;
+		bookObjects.set(bookId, updated);
+		column++;
+	}
+	for (const id of oldBooks) if (!Object.values(bookNodes).includes(id)) removed.add(id);
+	for (const entry of remaining.values()) {
+		const book = bookObjects.get(entry.note.bookId)!;
+		const node: CanvasObject = {
+			id: allocate(stableId(entry.id)),
+			type: 'text',
+			x: book.x,
+			y: book.y + book.height + 80,
+			width: 360,
+			height: quoteHeight(entry.note.text),
+			text: cardText(entry)
+		};
+		while (collides(node)) node.y += node.height + 80;
+		nodes.push(node);
+		quotes.set(entry.id, node);
+	}
+	const headerNode =
+		graph.header ||
+		anchor(
+			allocate('weread-favorites-header'),
+			bookObjects.size
+				? Math.min(...Array.from(bookObjects.values()).map((node) => node.x))
+				: 0,
+			bookObjects.size
+				? Math.min(...Array.from(bookObjects.values()).map((node) => node.y)) - 220
+				: 0,
+			440,
+			140
+		);
+	const present = new Set(nodes.map((node) => node.id));
+	present.add(headerNode.id);
+	const oldManaged = new Set(graph.managedEdges);
+	const edges: CanvasObject[] = root.edges.filter(
+		(edge: CanvasObject) =>
+			!oldManaged.has(edge.id) &&
+			!removed.has(edge.fromNode) &&
+			!removed.has(edge.toNode) &&
+			present.has(edge.fromNode) &&
+			present.has(edge.toNode)
 	);
+	const managedEdges: string[] = [];
+	const connect = (fromNode: string, toNode: string): void => {
+		const previous = root.edges.find(
+			(edge: CanvasObject) =>
+				oldManaged.has(edge.id) && edge.fromNode === fromNode && edge.toNode === toNode
+		);
+		const edge = previous || {
+			id: allocate(stableId(`edge:${fromNode}:${toNode}`)),
+			fromNode,
+			toNode,
+			fromSide: 'bottom',
+			toSide: 'top',
+			toEnd: 'arrow'
+		};
+		edges.push(edge);
+		managedEdges.push(edge.id);
+	};
+	for (const [bookId, book] of bookObjects) {
+		for (const entry of valid.records) {
+			if (entry.deletedAt === undefined && entry.note.bookId === bookId)
+				connect(book.id, quotes.get(entry.id)!.id);
+		}
+	}
+	const headerText = `# 我的收藏\n\n删除摘录卡片即取消收藏；书籍卡片用于组织收藏。\n\n${comment(
+		HEADER,
+		{
+			schemaVersion: 2,
+			revision: valid.revision,
+			tombstones: valid.records.filter((entry) => entry.deletedAt !== undefined),
+			bookNodes,
+			managedEdges
+		}
+	)}`;
+	nodes.push({ ...headerNode, text: headerText });
+	const originalOrder = new Map<string, number>(
+		root.nodes.map((node: CanvasObject, index: number) => [node.id, index])
+	);
+	nodes.sort(
+		(a, b) => (originalOrder.get(a.id) ?? Infinity) - (originalOrder.get(b.id) ?? Infinity)
+	);
+	const edgeOrder = new Map<string, number>(
+		root.edges.map((edge: CanvasObject, index: number) => [edge.id, index])
+	);
+	edges.sort((a, b) => (edgeOrder.get(a.id) ?? Infinity) - (edgeOrder.get(b.id) ?? Infinity));
+	const raw = JSON.stringify({ ...root, nodes, edges }, null, 2);
 	parseFavoritesCanvas(raw);
 	return raw;
+}
+
+/** Detect derived graph changes without writing or changing native favorite identity. */
+export function needsFavoriteGraphUpdate(raw: string, bookFiles?: FavoriteBookFiles): boolean {
+	const document = parseFavoritesCanvas(raw);
+	const root = canvas(raw);
+	validateBookFiles(bookFiles);
+	// A native empty Canvas stays untouched until an explicit save.
+	if (!root.nodes.length && !root.edges.length) return false;
+	if (
+		!graphMetadata(root).header &&
+		!document.records.some((entry) => entry.deletedAt === undefined)
+	)
+		return false;
+	const next = JSON.parse(serializeFavoritesCanvas(document, raw, bookFiles));
+	return JSON.stringify(root) !== JSON.stringify(next);
+}
+
+/** Identify validated pre-book-graph Canvas bytes for an immutable migration archive. */
+export function isLegacyFavoritesCanvas(raw: string): boolean {
+	parseFavoritesCanvas(raw);
+	const header = graphMetadata(canvas(raw)).header;
+	return !header || headerMetadata(header)!.value.schemaVersion !== 2;
 }

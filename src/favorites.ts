@@ -10,6 +10,7 @@ import {
 	validateFavoriteNote
 } from './favoritesRepository';
 import type { FavoritesDocument } from './favoritesRepository';
+import { resolveFavoriteBookFiles } from './favoriteBookFiles';
 
 export type { FavoriteEntry, FavoritesState } from './models';
 type Listener = (state: FavoritesState) => void;
@@ -251,7 +252,12 @@ export class WereadFavoritesService {
 					.map(copyFavorite)
 					.concat(entry)
 			};
-			await this.repository.save(next);
+			const bookFiles = resolveFavoriteBookFiles(
+				next.records,
+				this.plugin.app.vault,
+				this.plugin.app.metadataCache
+			);
+			await this.repository.save(next, bookFiles);
 			this.document = next;
 			this.refreshFavorites();
 		});
@@ -260,16 +266,21 @@ export class WereadFavoritesService {
 	ensureCanvas(): Promise<string> {
 		return this.enqueue('', async () => {
 			await this.prepareWrite();
+			const bookFiles = resolveFavoriteBookFiles(
+				this.document.records,
+				this.plugin.app.vault,
+				this.plugin.app.metadataCache
+			);
 			if (
 				!(await this.repository.hasPrimary()) ||
-				this.repository.needsPresentationUpdate()
+				this.repository.needsPresentationUpdate(bookFiles)
 			) {
 				const next: FavoritesDocument = {
 					...this.document,
 					revision: this.document.revision + 1,
 					records: this.document.records.map(copyFavorite)
 				};
-				await this.repository.save(next);
+				await this.repository.save(next, bookFiles);
 				this.document = next;
 				this.refreshFavorites();
 			}
