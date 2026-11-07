@@ -123,7 +123,7 @@ window.smoke = {
   check(document.querySelector('.weread-stats-overview .weread-stats-hero') && document.querySelector('.weread-stats-overview .weread-stats-kpi-grid'), 'Overview groups hero and KPIs');
   check(document.querySelector('.weread-stats-rhythm-grid'), 'Monthly renders daily rhythm');
   check(document.querySelectorAll('.weread-stats-trend .weread-stats-bar').length === 6, 'Current month shows elapsed six days only');
-  check(getComputedStyle(document.querySelector('h1')).fontFamily.includes('Songti SC'), 'Heading inherits reference serif environment');
+  check(getComputedStyle(document.querySelector('.weread-stats-section-title')).fontFamily.includes('Songti SC'), 'Section headings retain reference serif environment');
   const categories = [...document.querySelectorAll('.weread-stats-category-row')];
   check(categories.length === 3 && categories.every(row => row.textContent.includes('%') && row.textContent.includes('分钟')), 'Category rows expose duration and share');
   check(categories.find(row => row.textContent.includes('文学'))?.textContent.includes('30分钟'), 'Literature category shows its actual 30-minute fixture');
@@ -168,20 +168,46 @@ window.smoke = {
   check(document.querySelector('.weread-stats-chart-detail').textContent.includes('16分钟'), 'Select 16-minute bar before resizing');
   return assertions;
  },
- async heatmap(mobile = false) {
+ async heatmap(mobile = false, annual = false) {
    const daily = {};
    for (const date = new RealDate(2024, 0, 1); date <= new RealDate(NOW); date.setDate(date.getDate() + 1)) {
     daily[date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate()] = date.getDay() < 5 ? (date.getDate() % 4 + 1) * 600 : 0;
    }
-   panel.currentMode = 'overall'; panel.chartView.overall = 'heatmap';
-   panel.data = {...common, readTimes, _allDailyReadTimes: daily, _statsStartYear: 2024};
+   panel.currentMode = annual ? 'annually' : 'overall'; panel.chartView[panel.currentMode] = 'heatmap';
+   panel.data = {...common, readTimes, _allDailyReadTimes: daily, _dailyReadTimes: daily, _statsStartYear: 2024};
    panel.render(); await settle();
    const labels = [...document.querySelectorAll('.weread-ghmap-monthlabel')].map(node => node.textContent).filter(Boolean);
-   check(labels.length === 36 && labels.every((label, i) => label === String(i % 12 + 1)), 'Every year shows complete numeric month labels without clipped suffixes');
-   check(document.querySelector('.weread-ghmap-col .weread-ghmap-cell:not(.is-empty)').getBoundingClientRect().width > 10, 'Heatmap cells remain comfortably sized');
+   check(labels.length === (annual ? 12 : 36) && labels.every((label, i) => label === String(i % 12 + 1)), 'Every year shows complete numeric month labels without clipped suffixes');
+   check(document.querySelector('.weread-ghmap-col .weread-ghmap-cell:not(.is-empty)').getBoundingClientRect().width === 8, 'Heatmap uses compact fixed 8px cells');
    check(document.documentElement.scrollWidth <= innerWidth, 'Heatmap never overflows the page');
-   const inner = document.querySelector('.weread-ghmap-inner').getBoundingClientRect(), wrap = document.querySelector('.weread-allheatmap-wrap').getBoundingClientRect();
+   const inner = document.querySelector('.weread-ghmap-inner').getBoundingClientRect(), wrap = document.querySelector(annual ? '.weread-ghmap-wrap' : '.weread-allheatmap-wrap').getBoundingClientRect();
    check(mobile ? inner.width > wrap.width : inner.right <= wrap.right + 1, mobile ? 'Narrow heatmap scrolls inside its own card' : 'Wide heatmap shows the complete year');
+   const grid = document.querySelector('.weread-ghmap-grid');
+   check(getComputedStyle(grid).gap === '2px' && getComputedStyle(grid.firstElementChild).gap === '2px', 'Heatmap uses compact 2px gaps on both axes');
+   const monthNodes = [...document.querySelectorAll('.weread-ghmap-monthlabel')].filter(node => node.textContent);
+   check(monthNodes.every(label => getComputedStyle(label).fontSize === '11px' && getComputedStyle(label).overflow === 'visible'), 'Month text stays readable and unclipped');
+   check(monthNodes.every(label => {
+    const week = [...label.parentElement.children].indexOf(label);
+    const column = label.parentElement.nextElementSibling.children[week];
+    return Math.abs(label.getBoundingClientRect().left - column.getBoundingClientRect().left) < 1;
+   }), 'Month labels align with corresponding week columns');
+   check(monthNodes.every((label, index) => {
+    if (!index || index % 12 === 0) return true;
+    const range = document.createRange(); range.selectNodeContents(monthNodes[index - 1]);
+    return range.getBoundingClientRect().right < label.getBoundingClientRect().left;
+   }), 'Month text never overlaps the following month');
+   const weekdays = [...document.querySelectorAll('.weread-ghmap-daylabel')].filter(label => label.textContent);
+   check(weekdays.every(label => {
+    const row = [...label.parentElement.children].indexOf(label);
+    const firstColumn = label.parentElement.nextElementSibling.querySelector('.weread-ghmap-col');
+    return Math.abs(label.getBoundingClientRect().top - firstColumn.children[row].getBoundingClientRect().top) < 1;
+   }), 'Weekday labels align with matching cell rows');
+   check(document.querySelector('.weread-ghmap-cell[title="1月1日：20分钟"]'), 'Heatmap retains exact daily duration tooltips');
+   const trend = document.querySelector('.weread-stats-trend').getBoundingClientRect();
+   const ranking = document.querySelector('.weread-stats-ranking').getBoundingClientRect();
+   check(mobile ? ranking.top >= trend.bottom - 1 : ranking.left >= trend.right - 1 && Math.abs(ranking.top - trend.top) < 2, mobile ? 'Narrow heatmap stacks above duration ranking' : 'Wide heatmap and duration ranking sit side by side');
+   check(mobile || trend.width < 700 && ranking.width < 500, 'Wide duration components remain compact');
+   check(document.querySelectorAll('.weread-stats-book-row').length === 5, 'Heatmap layout preserves all ranked books');
    check(cacheAccesses === 0, 'Cached heatmap fixtures do not fetch or rescan daily records');
    return assertions;
   },
@@ -392,6 +418,12 @@ test(
 					'; document.head.append(style); })()'
 			);
 		await appendCss(hostCss);
+		// Disabling the old plugin can retain its style-loader tag during native hot reload.
+		await appendCss(`
+.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) > .weread-stats-section {
+ grid-column: 1 / -1;
+}
+`);
 		await evaluate(bundle);
 		// Main imports legacy style.css after the Stats module; verify that cascade too.
 		await appendCss(await readFile('style.css', 'utf8'));
@@ -419,11 +451,13 @@ test(
 		await evaluate('document.body.className = "theme-light"');
 		await evaluate('smoke.heatmap()');
 		await screenshot('/tmp/obsidian-weread-heatmap.png');
+		await evaluate('smoke.heatmap(false, true)');
 		await resize(390, 844, true);
 		await evaluate('smoke.heatmap(true)');
 		await screenshot('/tmp/obsidian-weread-heatmap-mobile.png');
+		await evaluate('smoke.heatmap(true, true)');
 		const assertions = await evaluate('smoke.close()');
-		assert(assertions.length >= 30);
+		assert(assertions.length >= 64);
 		t.diagnostic(
 			assertions.length +
 				' browser assertions passed; desktop, mobile and dark screenshots saved in /tmp. Export button checked; image export not invoked.'

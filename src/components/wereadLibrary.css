@@ -5,16 +5,71 @@
 	overflow: hidden;
 	padding: 0;
 }
+/* Host themes may add bottom padding to every view; our inner panel owns scrolling. */
+.view-content.weread-library-view {
+	padding: 0 !important;
+	overflow: hidden !important;
+}
 .weread-library-tabs {
 	display: flex;
 	flex: 0 0 auto;
-	gap: 8px;
-	padding: 16px 24px;
+	gap: 26px;
+	padding: 0 24px;
 	border-bottom: 1px solid var(--background-modifier-border);
 	background: var(--background-primary);
 }
-.weread-library-tabs [role='tab'] {
+.weread-library-view .weread-library-tabs [role='tab'] {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
 	flex-shrink: 0;
+	min-height: 46px;
+	margin: 0;
+	padding: 14px 0 12px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	font-size: var(--font-ui-medium, 14px);
+	font-weight: 500;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+.weread-library-tab-icon {
+	display: inline-flex;
+	align-items: center;
+	order: -1;
+	color: inherit;
+}
+.weread-library-tab-icon svg {
+	width: 14px;
+	height: 14px;
+}
+.weread-library-view .weread-library-tabs [role='tab']:hover {
+	color: var(--text-normal);
+	background: transparent;
+	box-shadow: none;
+}
+.weread-library-view .weread-library-tabs [role='tab'][aria-selected='true'] {
+	color: var(--interactive-accent);
+	font-weight: 600;
+}
+.weread-library-view .weread-library-tabs [role='tab'][aria-selected='true']::after {
+	content: '';
+	position: absolute;
+	right: 0;
+	bottom: -1px;
+	left: 0;
+	height: 2px;
+	border-radius: 1px;
+	background: currentColor;
+}
+.weread-library-view .weread-library-tabs [role='tab']:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 3px;
 }
 .weread-library-panels {
 	flex: 1 1 auto;
@@ -31,7 +86,17 @@
 }
 @media (max-width: 560px) {
 	.weread-library-tabs {
-		padding: 12px 16px;
-		gap: 6px;
+		padding: 0 16px;
+		gap: 16px;
+	}
+	.weread-library-view .weread-library-tabs [role='tab'] {
+		min-height: 44px;
+		padding: 12px 0 10px;
+	}
+}
+@media (max-width: 360px) {
+	.weread-library-tabs {
+		gap: 12px;
+		padding: 0 12px;
 	}
 }

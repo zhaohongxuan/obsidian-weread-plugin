@@ -45,50 +45,19 @@
 	opacity: 0.35;
 	cursor: default;
 }
-.weread-stats-view .weread-stats-header {
-	margin-bottom: 28px;
-}
-.weread-stats-view .weread-stats-eyebrow {
-	margin: 0 0 8px;
-	font-size: 11px;
-	letter-spacing: 0.14em;
-	color: var(--text-muted);
-}
-.weread-stats-view .weread-stats-heading {
-	margin: 0 0 18px;
-	font-family: var(--weread-stats-serif);
-	font-size: clamp(26px, 3vw, 36px);
-	font-weight: 500;
-	line-height: 1.5;
-	letter-spacing: 0.035em;
-}
-.weread-stats-view .weread-stats-header-row {
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 16px;
-}
-.weread-stats-view .weread-stats-user-left {
+.weread-stats-view .weread-stats-period-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
 	min-width: 0;
-	gap: 10px;
-}
-.weread-stats-view .weread-stats-user-avatar {
-	width: 32px;
-	height: 32px;
-	border-width: 1px;
-}
-.weread-stats-view .weread-stats-user-name {
-	font-size: 12px;
-	font-weight: 500;
-}
-.weread-stats-view .weread-stats-user-sub {
-	max-width: 560px;
-	font-size: 11px;
-	line-height: 1.7;
-	overflow-wrap: anywhere;
+	max-width: 100%;
+	margin-left: auto;
 }
 .weread-stats-view .weread-stats-export-btn {
 	flex: none;
-	align-self: flex-start;
+	margin-left: 0;
+	align-self: center;
 	white-space: nowrap;
 }
 .weread-stats-view .weread-stats-export-btn svg {
@@ -96,6 +65,9 @@
 	height: 14px;
 }
 .weread-stats-view .weread-stats-nav {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
 	gap: 14px;
 	margin-bottom: 24px;
 }
@@ -121,6 +93,7 @@
 	box-shadow: none;
 }
 .weread-stats-view .weread-stats-timepicker {
+	margin-left: 0;
 	padding: 0;
 	gap: 4px;
 	border: 0;
@@ -512,21 +485,19 @@
 	padding: 8px 0;
 }
 .weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) > .weread-stats-section {
-	grid-column: 1 / -1;
-}
-.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) .weread-stats-book-list {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-	gap: 12px 24px;
-}
-.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) .weread-stats-book-row {
-	border-bottom: 0;
-	padding: 8px 0;
+	grid-column: auto;
 }
 .weread-stats-view .weread-ghmap-inner {
-	--weread-stats-heat-cell: 12px;
+	--weread-stats-heat-cell: 8px;
+	--weread-stats-heat-gap: 2px;
 	width: max-content;
 	min-width: 0;
+}
+.weread-stats-view .weread-ghmap-months,
+.weread-stats-view .weread-ghmap-grid,
+.weread-stats-view .weread-ghmap-col,
+.weread-stats-view .weread-ghmap-daylabels {
+	gap: var(--weread-stats-heat-gap);
 }
 .weread-stats-view .weread-ghmap-right {
 	flex: none;
@@ -608,7 +579,7 @@
 		grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
 	}
 }
-@container weread-stats (max-width: 800px) {
+@container weread-stats (max-width: 1000px) {
 	.weread-stats-view .weread-stats-content-grid {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -617,13 +588,7 @@
 	.weread-stats-view .weread-stats-container {
 		padding: 20px;
 	}
-	.weread-stats-view .weread-stats-header-row {
-		flex-wrap: wrap;
-	}
-	.weread-stats-view .weread-stats-user-left {
-		flex-basis: 100%;
-	}
-	.weread-stats-view .weread-stats-export-btn {
+	.weread-stats-view .weread-stats-period-controls {
 		margin-left: 0;
 	}
 	.weread-stats-view .weread-stats-nav {

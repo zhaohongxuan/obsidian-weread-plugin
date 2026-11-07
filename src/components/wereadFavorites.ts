@@ -6,6 +6,9 @@ import type { WereadFavoritesService } from '../favorites';
 import type { FavoriteEntry, FavoritesState } from '../models';
 import { settingsStore } from '../settings';
 import { WereadPanel } from './wereadPanel';
+import { getPcUrl } from '../parser/parseResponse';
+import { getJournalNoteBookmark, openJournalNoteOriginal } from '../utils/openWereadUrl';
+import { setOriginalReadingIcon } from '../utils/readingActionIcon';
 
 /** A single five-second undo opportunity, owned by the currently open panel. */
 export class FavoritesUndoToast {
@@ -79,13 +82,17 @@ export class WereadFavoritesPanel extends WereadPanel {
 	private results: HTMLElement;
 	private undo: FavoritesUndoToast;
 	private query = '';
-	private sort: 'favorited' | 'created' = 'favorited';
+	private sortAscending = false;
+	private sortButton: HTMLButtonElement;
 	private mode: 'cards' | 'list' = 'cards';
 	private limit = 30;
 	private expanded = new Set<string>();
 	private modeButtons = new Map<string, HTMLButtonElement>();
 	private canvasButton: HTMLButtonElement;
 	private openingCanvas = false;
+	private masonryObserver?: ResizeObserver;
+	private masonryFrame: number | null = null;
+	private masonryWindow?: Window;
 	constructor(
 		contentEl: HTMLElement,
 		private plugin: WereadPlugin,
@@ -100,17 +107,6 @@ export class WereadFavoritesPanel extends WereadPanel {
 		this.mode = get(settingsStore).favoritesViewMode === 'list' ? 'list' : 'cards';
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-favorites-view');
-		const heading = this.contentEl.createDiv({ cls: 'weread-favorites-heading' });
-		heading.createEl('h1', { text: '把心动的句子，留在身边。' });
-		this.canvasButton = heading.createEl('button', {
-			text: '在Canvas中打开',
-			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }
-		});
-		this.canvasButton.onclick = () => void this.openCanvas();
-		this.contentEl.createEl('p', {
-			text: '收藏保存在当前笔记库的Canvas，可直接打开整理卡片。',
-			cls: 'weread-favorites-muted'
-		});
 		const controls = this.contentEl.createDiv({ cls: 'weread-favorites-controls' });
 		const search = controls.createEl('input', {
 			type: 'search',
@@ -122,21 +118,26 @@ export class WereadFavoritesPanel extends WereadPanel {
 			this.limit = 30;
 			this.render();
 		};
-		const sort = controls.createEl('select', { attr: { 'aria-label': '收藏排序' } });
-		sort.createEl('option', { value: 'favorited', text: '最近收藏' });
-		sort.createEl('option', { value: 'created', text: '笔记创建时间' });
-		sort.value = this.sort;
-		sort.onchange = () => {
-			this.sort = sort.value === 'created' ? 'created' : 'favorited';
+		const actions = controls.createDiv({ cls: 'weread-favorites-toolbar-actions' });
+		this.sortButton = actions.createEl('button', {
+			cls: 'weread-favorites-sort',
+			attr: { type: 'button' }
+		});
+		this.sortButton.onclick = () => {
+			this.sortAscending = !this.sortAscending;
 			this.limit = 30;
 			this.render();
 		};
 		this.modeButtons.clear();
-		for (const [mode, label] of [
-			['cards', '卡片'],
-			['list', '列表']
+		for (const [mode, label, icon] of [
+			['cards', '卡片视图', 'layout-grid'],
+			['list', '列表视图', 'list']
 		] as const) {
-			const button = controls.createEl('button', { text: label, attr: { type: 'button' } });
+			const button = actions.createEl('button', {
+				cls: 'weread-favorites-toolbar-icon',
+				attr: { type: 'button', 'aria-label': label, title: label }
+			});
+			setIcon(button, icon);
 			this.modeButtons.set(mode, button);
 			button.onclick = () => {
 				this.mode = mode;
@@ -144,6 +145,12 @@ export class WereadFavoritesPanel extends WereadPanel {
 				this.render();
 			};
 		}
+		this.canvasButton = actions.createEl('button', {
+			cls: 'weread-favorites-toolbar-icon',
+			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }
+		});
+		setIcon(this.canvasButton, 'layout-dashboard');
+		this.canvasButton.onclick = () => void this.openCanvas();
 		this.status = this.contentEl.createDiv({
 			cls: 'weread-favorites-status',
 			attr: { 'aria-live': 'polite' }
@@ -164,6 +171,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 	}
 	async onClose(): Promise<void> {
 		this.active = false;
+		this.stopMasonry();
 		this.generation += 1;
 		this.openingCanvas = false;
 		this.unsubscribe?.();
@@ -196,9 +204,59 @@ export class WereadFavoritesPanel extends WereadPanel {
 			}
 		}
 	}
+	private stopMasonry(): void {
+		this.masonryObserver?.disconnect();
+		this.masonryObserver = undefined;
+		if (this.masonryFrame !== null) this.masonryWindow?.cancelAnimationFrame(this.masonryFrame);
+		this.masonryFrame = null;
+		this.masonryWindow = undefined;
+	}
+	private startMasonry(): void {
+		const view = this.results.ownerDocument.defaultView;
+		if (this.mode !== 'cards' || !view?.ResizeObserver) return;
+		this.masonryWindow = view;
+		this.results.addClass('is-masonry');
+		const layout = (): void => {
+			if (!this.active || this.masonryObserver !== observer || !this.results.clientWidth)
+				return;
+			// Electron zoom can resolve a 1px track to e.g. 0.992747px.
+			const tracks = view.getComputedStyle(this.results);
+			const rowHeight =
+				parseFloat(tracks.gridTemplateRows) || parseFloat(tracks.gridAutoRows) || 1;
+			for (const item of Array.from(this.results.children) as HTMLElement[]) {
+				const style = view.getComputedStyle(item);
+				const height = parseFloat(style.height) || item.offsetHeight;
+				if (!height) continue;
+				const outerHeight =
+					height +
+					(parseFloat(style.marginTop) || 0) +
+					(parseFloat(style.marginBottom) || 0);
+				const span = `span ${Math.ceil(outerHeight / rowHeight)}`;
+				if (item.style.gridRowEnd !== span) item.style.gridRowEnd = span;
+			}
+		};
+		const observer = new view.ResizeObserver(() => {
+			if (!this.active || this.masonryObserver !== observer || this.masonryFrame !== null)
+				return;
+			this.masonryFrame = view.requestAnimationFrame(() => {
+				this.masonryFrame = null;
+				layout();
+			});
+		});
+		this.masonryObserver = observer;
+		for (const item of Array.from(this.results.children)) observer.observe(item);
+		layout();
+	}
 	private render(): void {
 		if (!this.active || !this.results) return;
+		this.stopMasonry();
 		const state = this.state;
+		const direction = this.sortAscending ? '从旧到新' : '从新到旧';
+		this.sortButton.setAttribute('aria-label', `按收藏时间${direction}排序`);
+		this.sortButton.title = `收藏时间${direction}；点击切换为${this.sortAscending ? '从新到旧' : '从旧到新'}`;
+		this.sortButton.empty();
+		this.sortButton.createSpan({ text: '收藏时间' });
+		setIcon(this.sortButton.createSpan(), this.sortAscending ? 'arrow-up' : 'arrow-down');
 		for (const [mode, button] of this.modeButtons)
 			button.setAttribute('aria-pressed', String(mode === this.mode));
 		this.canvasButton.disabled =
@@ -207,7 +265,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			? state.error || state.warning || '收藏当前为只读，请重新读取后打开Canvas'
 			: this.openingCanvas
 				? '正在打开Canvas…'
-				: '在新的Canvas标签页中打开收藏';
+				: '在新的Canvas标签页中打开收藏；收藏保存在当前笔记库的Canvas，可直接打开整理卡片。';
 		this.status.empty();
 		if (state.loading || !state.loaded)
 			this.status.createEl('p', { text: '正在读取本地收藏…' });
@@ -236,14 +294,25 @@ export class WereadFavoritesPanel extends WereadPanel {
 			)
 			.sort(
 				(a, b) =>
-					(this.sort === 'created'
-						? b.note.createTime - a.note.createTime
+					(this.sortAscending
+						? a.favoritedAt - b.favoritedAt
 						: b.favoritedAt - a.favoritedAt) || a.id.localeCompare(b.id)
 			);
-		if (state.loaded)
-			this.status.createEl('p', {
-				text: `${entries.length} 条收藏${query ? ` · 共 ${state.favorites.length} 条` : ''}`
-			});
+		if (state.loaded) {
+			const counts = this.status.createEl('p', { cls: 'weread-favorites-counts' });
+			const bookCount = new Set(
+				entries.map(({ note }) => String(note.bookId ?? '').trim()).filter(Boolean)
+			).size;
+			for (const [icon, text] of [
+				['star', `${entries.length} 条收藏`],
+				['book-open', `${bookCount} 本书`]
+			]) {
+				const count = counts.createSpan({ cls: 'weread-favorites-count' });
+				setIcon(count.createSpan({ attr: { 'aria-hidden': 'true' } }), icon);
+				count.createSpan({ text });
+			}
+			if (query) counts.createSpan({ text: `共 ${state.favorites.length} 条收藏` });
+		}
 		this.results.empty();
 		this.results.className = `weread-favorites-results is-${this.mode}`;
 		if (!entries.length && state.loaded)
@@ -265,11 +334,21 @@ export class WereadFavoritesPanel extends WereadPanel {
 				this.limit += 30;
 				this.render();
 			};
+		this.startMasonry();
 	}
 	private renderEntry(entry: FavoriteEntry): void {
 		const note = entry.note;
 		const card = this.results.createEl('article', { cls: 'weread-favorites-entry' });
 		card.dataset.favoriteId = entry.id;
+		if (this.mode === 'cards') {
+			// Stable per favorite: filtering and sorting must not make colors jump.
+			let hue = 2166136261;
+			for (let index = 0; index < entry.id.length; index++) {
+				hue = Math.imul(hue ^ entry.id.charCodeAt(index), 16777619);
+			}
+			hue ^= hue >>> 16;
+			card.style.setProperty('--weread-favorite-hue', String((hue >>> 0) % 360));
+		}
 		if (this.mode === 'cards' && note.cover && /^https?:\/\//.test(note.cover)) {
 			const cover = card.createEl('img', {
 				cls: 'weread-favorites-cover',
@@ -282,18 +361,21 @@ export class WereadFavoritesPanel extends WereadPanel {
 		metadata.createEl('small', {
 			text: `收藏于 ${new Date(entry.favoritedAt).toLocaleDateString('zh-CN')} · 划线于 ${new Date(note.createTime).toLocaleDateString('zh-CN')}`
 		});
-		const href =
-			note.sourceUrl && /^weread:\/\/(bestbookmark|reading)\?/.test(note.sourceUrl)
-				? note.sourceUrl
-				: `weread://reading?bId=${encodeURIComponent(note.bookId)}`;
-		const label = href.includes('bestbookmark?') ? '回到原文' : '打开书籍';
-		const original = metadata.createEl('a', {
-			href,
+		const actions = metadata.createDiv({ cls: 'weread-favorites-note-actions' });
+		const label = getJournalNoteBookmark(note) ? '回到原文' : '打开书籍';
+		const original = actions.createEl('a', {
+			href: getPcUrl(note.bookId),
 			cls: 'weread-favorites-action',
 			attr: { 'aria-label': label, title: label }
 		});
-		setIcon(original, 'external-link');
-		const copy = metadata.createEl('button', {
+		setOriginalReadingIcon(original);
+		original.onclick = (event) => {
+			event.preventDefault();
+			void openJournalNoteOriginal(this.plugin, note).catch(() => {
+				if (this.active) new Notice('打开原文失败，请重试');
+			});
+		};
+		const copy = actions.createEl('button', {
 			cls: 'weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '复制正文', title: '复制正文' }
 		});
@@ -306,7 +388,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 				if (this.active) new Notice('复制失败，请重试');
 			}
 		};
-		const remove = metadata.createEl('button', {
+		const remove = actions.createEl('button', {
 			cls: 'weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '取消收藏', title: '取消收藏' }
 		});

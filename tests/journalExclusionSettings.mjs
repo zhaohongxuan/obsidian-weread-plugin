@@ -77,6 +77,7 @@ test('settings load and action normalize IDs and persist through the existing pi
 	assert.equal(saved.at(-1).noteLocation, 'Synthetic');
 	assert.deepEqual(saved.at(-1).customData, { retained: true });
 	settingsStore.actions.setJournalExcludedBookIds({ malformed: true });
+	await new Promise(setImmediate);
 	assert.deepEqual(saved.at(-1).journalExcludedBookIds, []);
 });
 

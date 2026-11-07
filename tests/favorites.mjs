@@ -144,7 +144,7 @@ test('hydrate before mutation; frozen snapshots survive restart, source deletion
 	assert.equal(last.favorites.length, 2);
 	assert(
 		f.operations.every(
-			([, path]) => path === 'WereadData' || path.startsWith('WereadData/favorites')
+			([, path]) => path.startsWith('favorites.') || path.startsWith('WereadData/favorites')
 		)
 	);
 	assert(![...f.files.values()].join('').includes('cookies'));

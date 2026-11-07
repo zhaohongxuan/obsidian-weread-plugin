@@ -1,5 +1,12 @@
 /** One Obsidian leaf owns five lazily mounted panels and a persistent tab bar. */
-import { ItemView, Notice, type Menu, type ViewStateResult, type WorkspaceLeaf } from 'obsidian';
+import {
+	ItemView,
+	Notice,
+	setIcon,
+	type Menu,
+	type ViewStateResult,
+	type WorkspaceLeaf
+} from 'obsidian';
 import type WereadPlugin from '../../main';
 import type ApiRouter from '../api-router';
 import type WereadBookshelfService from '../bookshelf';
@@ -22,6 +29,13 @@ const TABS: readonly [WereadTab, string][] = [
 	['favorites', '收藏'],
 	['stats', '统计']
 ];
+const TAB_ICONS: Readonly<Record<WereadTab, string>> = {
+	today: 'sun',
+	bookshelf: 'library',
+	review: 'history',
+	favorites: 'star',
+	stats: 'bar-chart-3'
+};
 const isTab = (value: unknown): value is WereadTab => TABS.some(([tab]) => tab === value);
 let instanceCount = 0;
 
@@ -141,6 +155,11 @@ export class WereadLibraryView extends ItemView {
 					'aria-controls': `${this.instanceId}-panel-${tab}`
 				}
 			});
+			const icon = button.createEl('span', {
+				cls: 'weread-library-tab-icon',
+				attr: { 'aria-hidden': 'true' }
+			});
+			setIcon(icon, TAB_ICONS[tab]);
 			button.onclick = () => {
 				void this.selectTab(tab);
 			};

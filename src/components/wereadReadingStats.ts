@@ -418,7 +418,6 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (this.loading) { this.renderLoading(); return; }
 		if (!this.data) return;
 
-		this.renderHeader(el);
 		this.renderTabBar(el);
 		const overview = el.createDiv({ cls: 'weread-stats-overview' });
 		this.renderReadingTimeHero(overview, this.data);
@@ -430,34 +429,9 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		this.renderPreferences(el, this.data);
 	}
 
-	// ── Header ────────────────────────────────────────────────────────
-	private renderHeader(el: HTMLElement) {
-		const header = el.createDiv({ cls: 'weread-stats-header' });
-		header.createDiv({ cls: 'weread-stats-eyebrow', text: '阅读手记 · 统计' });
-		header.createEl('h1', { cls: 'weread-stats-heading', text: '阅读统计' });
-		const headerRow = header.createDiv({ cls: 'weread-stats-header-row' });
-
-		// Left: avatar + name + signature
-		const settings = get(settingsStore);
-		const userName = settings.user;
-		const userAvatar = settings.userAvatar;
-		const userSignature = settings.userSignature;
-
-		const userLeft = headerRow.createDiv({ cls: 'weread-stats-user-left' });
-		if (userAvatar) {
-			const avatarImg = userLeft.createEl('img', { cls: 'weread-stats-user-avatar' });
-			avatarImg.src = userAvatar;
-			avatarImg.alt = userName || '用户头像';
-		}
-		const userTextWrap = userLeft.createDiv({ cls: 'weread-stats-user-text' });
-		userTextWrap.createSpan({ cls: 'weread-stats-user-name', text: userName || '微信读书用户' });
-		if (userSignature) {
-			userTextWrap.createSpan({ cls: 'weread-stats-user-sub', text: userSignature });
-		}
-
-		// Right: export button
+	private renderExportButton(el: HTMLElement) {
 		if (this.currentMode === 'overall' || this.currentMode === 'annually' || this.currentMode === 'monthly') {
-			const exportBtn = headerRow.createEl('button', {
+			const exportBtn = el.createEl('button', {
 				cls: 'weread-stats-btn weread-stats-export-btn',
 				attr: { title: '导出为图片', 'aria-label': '导出阅读统计图片' }
 			});
@@ -616,8 +590,9 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			});
 		}
 
+		const periodControls = nav.createDiv({ cls: 'weread-stats-period-controls' });
 		if (this.currentMode !== 'overall') {
-			const timePicker = nav.createDiv({ cls: 'weread-stats-timepicker' });
+			const timePicker = periodControls.createDiv({ cls: 'weread-stats-timepicker' });
 			const prevBtn = timePicker.createEl('button', { cls: 'weread-stats-timepicker-btn' });
 			setIcon(prevBtn, 'chevron-left');
 			prevBtn.setAttribute('aria-label', '上一时段');
@@ -629,6 +604,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (this.currentOffset >= 0) nextBtn.setAttribute('disabled', 'true');
 			nextBtn.addEventListener('click', () => { if (this.currentOffset >= 0) return; this.currentOffset++; this.data = null; this.render(); this.loadData(); });
 		}
+		this.renderExportButton(periodControls);
 	}
 
 	// ── Hero 阅读时长 ──────────────────────────────────────────────────

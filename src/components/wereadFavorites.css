@@ -19,7 +19,6 @@
 	margin-inline: auto;
 	min-width: 0;
 }
-.weread-favorites-heading,
 .weread-favorites-controls,
 .weread-favorites-meta,
 .weread-favorites-undo {
@@ -28,15 +27,6 @@
 	flex-wrap: wrap;
 	gap: 8px;
 	min-width: 0;
-}
-.weread-favorites-heading {
-	justify-content: space-between;
-}
-.weread-favorites-heading h1 {
-	font-family: var(--weread-favorites-serif);
-	font-size: clamp(24px, 3vw, 36px);
-	font-weight: 500;
-	line-height: 1.5;
 }
 .weread-favorites-view button,
 .weread-favorites-view input,
@@ -76,13 +66,83 @@
 	line-height: 1.7;
 }
 .weread-favorites-controls {
-	margin-block: 24px 12px;
+	justify-content: space-between;
+	margin-block: 0 8px;
 }
 .weread-favorites-controls input {
-	flex: 1 1 200px;
+	flex: 1 1 280px;
+	width: 380px;
+	max-width: 420px;
+}
+.weread-favorites-toolbar-actions {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 4px;
+	margin-left: auto;
+}
+.weread-favorites-view .weread-favorites-sort,
+.weread-favorites-view .weread-favorites-toolbar-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 30px;
+	padding: 5px;
+	background: transparent;
+}
+.weread-favorites-view .weread-favorites-sort {
+	gap: 5px;
+	padding-inline: 7px;
+	border-color: transparent;
+	white-space: nowrap;
+}
+.weread-favorites-view .weread-favorites-toolbar-icon {
+	width: 30px;
+	border-color: transparent;
+}
+.weread-favorites-toolbar-actions svg {
+	width: 16px;
+	height: 16px;
+}
+.weread-favorites-sort > span {
+	display: inline-flex;
+}
+.weread-favorites-view .weread-favorites-toolbar-icon[aria-pressed='true'] {
+	border-color: var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+.weread-favorites-view .weread-favorites-toolbar-actions button:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+}
+@container weread-favorites (max-width: 360px) {
+	.weread-favorites-controls input {
+		flex-basis: 100%;
+	}
+	.weread-favorites-toolbar-actions {
+		flex-basis: 100%;
+		justify-content: flex-end;
+	}
 }
 .weread-favorites-status p {
 	margin-block: 6px;
+}
+.weread-favorites-counts {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+}
+.weread-favorites-count {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+.weread-favorites-count > span:first-child {
+	display: inline-flex;
+}
+.weread-favorites-count svg {
+	width: 14px;
+	height: 14px;
 }
 .weread-favorites-error {
 	color: var(--text-error);
@@ -96,6 +156,17 @@
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
 	align-items: start;
 }
+/* One-pixel tracks let each card use its own height without changing DOM order. */
+.weread-favorites-results.is-cards.is-masonry {
+	--weread-favorites-card-gap: 20px;
+	grid-auto-rows: 1px;
+	row-gap: 0;
+	column-gap: var(--weread-favorites-card-gap);
+}
+.weread-favorites-results.is-cards.is-masonry > * {
+	align-self: start;
+	margin: 0 0 var(--weread-favorites-card-gap);
+}
 .weread-favorites-entry {
 	display: flex;
 	align-items: flex-start;
@@ -105,6 +176,16 @@
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-primary);
+}
+.weread-favorites-results.is-cards .weread-favorites-entry {
+	background:
+		linear-gradient(
+			135deg,
+			hsla(var(--weread-favorite-hue, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.03),
+			hsla(var(--weread-favorite-hue, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.006)
+		),
+		var(--background-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.035);
 }
 .weread-favorites-content {
 	flex: 1;
@@ -121,7 +202,17 @@
 	gap: 4px;
 }
 .weread-favorites-meta small {
-	flex: 1 1 100%;
+	flex: 1 1 180px;
+	min-width: 0;
+}
+.weread-favorites-note-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
+	gap: 4px;
+	margin-left: auto;
 }
 .weread-favorites-text {
 	white-space: pre-wrap;

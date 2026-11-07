@@ -65,6 +65,25 @@
 	align-items: start;
 	margin-bottom: 40px;
 }
+.weread-detail-panel .weread-detail-cover-column {
+	min-width: 0;
+}
+.weread-detail-panel .weread-detail-counts {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 2px 10px;
+	margin-top: 12px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.8;
+}
+.weread-detail-panel .weread-detail-counts:empty {
+	display: none;
+}
+.weread-detail-panel .weread-detail-counts > span {
+	white-space: nowrap;
+}
 .weread-detail-panel .weread-detail-jacket {
 	width: 142px;
 	min-height: 192px;
@@ -122,8 +141,7 @@
 	overflow: hidden;
 	white-space: pre-wrap;
 }
-.weread-detail-panel .weread-detail-facts,
-.weread-detail-panel .weread-detail-counts {
+.weread-detail-panel .weread-detail-facts {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 6px 18px;
@@ -131,17 +149,32 @@
 	font-size: 11px;
 	line-height: 1.8;
 }
+.weread-detail-panel .weread-detail-reading-stats {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px 16px;
+	min-width: 0;
+	margin-bottom: 10px;
+}
+.weread-detail-panel .weread-detail-reading-stats > .weread-detail-facts {
+	min-width: 0;
+}
 .weread-detail-panel .weread-detail-progress {
 	display: flex;
 	align-items: center;
-	gap: 14px;
-	margin: 10px 0;
+	flex-wrap: wrap;
+	gap: 8px;
+	min-width: 0;
+	max-width: 100%;
 	color: var(--text-muted);
 	font-size: 11px;
+	line-height: 1.8;
 }
 .weread-detail-panel .weread-detail-progress progress {
 	appearance: none;
 	width: 110px;
+	max-width: 100%;
 	height: 3px;
 	accent-color: var(--text-muted);
 	border: 0;
@@ -164,6 +197,20 @@
 	flex-wrap: wrap;
 	gap: 6px 22px;
 	margin-top: 17px;
+}
+.weread-detail-panel .weread-detail-header-actions > button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	white-space: nowrap;
+}
+.weread-detail-panel .weread-detail-action-icon {
+	display: inline-flex;
+	flex: 0 0 15px;
+}
+.weread-detail-panel .weread-detail-action-icon svg {
+	width: 15px;
+	height: 15px;
 }
 .weread-detail-panel .weread-detail-tabs {
 	display: flex;
@@ -246,11 +293,44 @@
 	margin-left: auto;
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
+	justify-content: flex-end;
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
 	gap: 16px;
+}
+.weread-detail-panel .weread-detail-review > .weread-detail-entry-actions {
+	margin-top: 8px;
 }
 .weread-detail-panel .weread-detail-entry-actions button {
 	font-size: 11px;
+}
+.weread-detail-panel button.weread-detail-note-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	min-height: 0;
+	padding: 4px;
+	margin: 0;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	box-shadow: none;
+	text-decoration: none;
+}
+.weread-detail-panel button.weread-detail-note-action:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	color: var(--text-accent);
+	text-decoration: none;
+}
+.weread-detail-panel .weread-detail-note-action svg {
+	width: 16px;
+	height: 16px;
+}
+.weread-detail-panel button.weread-detail-note-action:focus-visible {
+	outline-offset: 2px;
 }
 .weread-detail-panel button.weread-detail-favorite {
 	display: inline-flex;

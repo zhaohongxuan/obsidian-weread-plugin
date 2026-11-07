@@ -19,6 +19,8 @@ import {
 	parseLocalUserHighlights
 } from '../utils/localHighlightParser';
 import { openWereadHighlightLocation } from '../utils/openWereadUrl';
+import { setOriginalReadingIcon } from '../utils/readingActionIcon';
+import { formatNoteTimestamp } from '../utils/noteTime';
 import { WereadPanel } from './wereadPanel';
 import { FavoritesUndoToast } from './wereadFavorites';
 
@@ -298,11 +300,28 @@ export class WereadBookDetailPanel extends WereadPanel {
 			TABS.find(([tab]) => tab === this.currentTab)?.[1] || '划线'
 		);
 	}
+	private headerButton(
+		parent: HTMLElement,
+		text: string,
+		icon: string,
+		action: () => void
+	): HTMLButtonElement {
+		const button = this.button(parent, '', action);
+		const glyph = button.createSpan({
+			cls: 'weread-detail-action-icon',
+			attr: { 'aria-hidden': 'true' }
+		});
+		if (icon === 'reading') setOriginalReadingIcon(glyph);
+		else setIcon(glyph, icon);
+		button.createSpan({ text });
+		return button;
+	}
 	private renderHeader(): void {
 		const title =
 			this.detail?.title || this.highlightResp?.book?.title || this.bookTitle || '书籍详情';
 		const cover = this.detail?.cover || this.highlightResp?.book?.cover || this.bookCover;
-		const jacket = this.header.createDiv({ cls: 'weread-detail-jacket' });
+		const coverColumn = this.header.createDiv({ cls: 'weread-detail-cover-column' });
+		const jacket = coverColumn.createDiv({ cls: 'weread-detail-jacket' });
 		if (cover && /^https?:\/\//.test(cover)) {
 			const image = jacket.createEl('img', {
 				cls: 'weread-detail-cover',
@@ -322,7 +341,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 		});
 		if (this.detail?.intro)
 			info.createEl('p', { text: this.detail.intro, cls: 'weread-detail-intro' });
-		const facts = info.createDiv({ cls: 'weread-detail-facts' });
+		const stats = info.createDiv({ cls: 'weread-detail-reading-stats' });
+		const facts = stats.createDiv({ cls: 'weread-detail-facts' });
 		const reading = this.progress?.book;
 		if (reading?.finishTime || this.detail?.finishReading) facts.createSpan({ text: '已读完' });
 		else if (reading?.progress) facts.createSpan({ text: '阅读中' });
@@ -339,13 +359,13 @@ export class WereadBookDetailPanel extends WereadPanel {
 			facts.createSpan({ text: `读完于 ${this.date(reading.finishTime)}` });
 		if (typeof reading?.progress === 'number' && Number.isFinite(reading.progress)) {
 			const percent = Math.max(0, Math.min(100, reading.progress));
-			const progress = info.createDiv({ cls: 'weread-detail-progress' });
+			const progress = stats.createDiv({ cls: 'weread-detail-progress' });
 			progress.createSpan({ text: `阅读进度 ${percent}%` });
 			progress.createEl('progress', {
 				attr: { max: '100', value: String(percent), 'aria-label': '阅读进度' }
 			});
 		}
-		const counts = info.createDiv({ cls: 'weread-detail-counts' });
+		const counts = coverColumn.createDiv({ cls: 'weread-detail-counts' });
 		if (this.highlightResp)
 			counts.createSpan({ text: `${this.personalHighlights().length} 条划线` });
 		if (this.reviewResp)
@@ -353,18 +373,21 @@ export class WereadBookDetailPanel extends WereadPanel {
 				text: `${this.reviewResp.reviews?.filter((row) => row.review?.type !== 4).length || 0} 条笔记`
 			});
 		const actions = info.createDiv({ cls: 'weread-detail-header-actions' });
-		this.button(actions, '在微信读书中打开', () => void this.openBook());
-		if (this.localFilePath) this.button(actions, '打开本地笔记', () => void this.openLocal());
-		const refresh = this.button(
+		this.headerButton(actions, '去阅读', 'reading', () => void this.openBook());
+		if (this.localFilePath)
+			this.headerButton(actions, '本地笔记', 'file-text', () => void this.openLocal());
+		const refresh = this.headerButton(
 			actions,
 			this.loading ? '正在刷新…' : '刷新',
+			'refresh-cw',
 			() => void this.loadData()
 		);
 		refresh.disabled = this.loading || this.syncing || !this.bookId;
 		if (typeof this.plugin.syncBookById === 'function') {
-			const sync = this.button(
+			const sync = this.headerButton(
 				actions,
 				this.syncing ? '同步中…' : '同步笔记',
+				'cloud-download',
 				() => void this.syncNotes()
 			);
 			sync.classList.add('weread-detail-sync');
@@ -513,7 +536,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 						}
 					});
 				}
-				if (h.createTime) meta.createSpan({ text: this.date(h.createTime) });
+				if (h.createTime) meta.createSpan({ text: formatNoteTimestamp(Number(h.createTime) * 1000) });
 				if (h.range) meta.createSpan({ text: `位置 ${String(h.range).split('-')[0]}` });
 				if (!personal && h.totalCount) meta.createSpan({ text: `${h.totalCount} 人划线` });
 				const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
@@ -543,7 +566,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 					?.title ||
 				'';
 			if (chapter) meta.createSpan({ text: chapter });
-			if (r?.createTime) meta.createSpan({ text: this.date(r.createTime) });
+			if (r?.createTime) meta.createSpan({ text: formatNoteTimestamp(Number(r.createTime) * 1000) });
 			const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
 			this.sourceAndCopy(actions, r?.chapterUid, r?.range, chapter, r?.content || '');
 			if (this.localFilePath) this.button(actions, '本地笔记', () => void this.openLocal());
@@ -567,12 +590,15 @@ export class WereadBookDetailPanel extends WereadPanel {
 				const r = (wrapper.review as any)?.review || wrapper.review || wrapper;
 				const card = section.createEl('article', { cls: 'weread-detail-review' });
 				card.createEl('p', {
-					text: `${r.author?.name || (label === '我的书评' ? '我' : '读者')}${r.createTime ? ` · ${this.date(r.createTime)}` : ''}`,
+					text: `${r.author?.name || (label === '我的书评' ? '我' : '读者')}${r.createTime ? ` · ${formatNoteTimestamp(Number(r.createTime) * 1000)}` : ''}`,
 					cls: 'weread-detail-muted'
 				});
 				if (r.title) card.createEl('h3', { text: r.title });
 				card.createEl('p', { text: r.content || '', cls: 'weread-detail-note-text' });
-				if (r.content) this.copyButton(card, r.content);
+				if (r.content) {
+					const actions = card.createDiv({ cls: 'weread-detail-entry-actions' });
+					this.copyButton(actions, r.content);
+				}
 			}
 		}
 	}
@@ -585,31 +611,48 @@ export class WereadBookDetailPanel extends WereadPanel {
 	): void {
 		const bookId = this.bookId;
 		const generation = this.generation;
-		if (chapterUid !== undefined && range)
-			this.button(parent, '回到原文', () => {
-				if (!this.valid(generation, bookId)) return;
-				void openWereadHighlightLocation(this.plugin, bookId, chapterUid, range, {
-					chapterTitle,
-					markText: text
-				}).catch(() => {
-					if (this.valid(generation, bookId)) new Notice('打开原文失败，请重试');
-				});
-			});
+		if (chapterUid !== undefined && range) {
+			const original = this.button(
+				parent,
+				'',
+				() => {
+					if (!this.valid(generation, bookId)) return;
+					void openWereadHighlightLocation(this.plugin, bookId, chapterUid, range, {
+						chapterTitle,
+						markText: text
+					}).catch(() => {
+						if (this.valid(generation, bookId)) new Notice('打开原文失败，请重试');
+					});
+				},
+				'weread-detail-action weread-detail-note-action'
+			);
+			original.title = '回到原文';
+			original.setAttribute('aria-label', '回到原文');
+			setOriginalReadingIcon(original);
+		}
 		this.copyButton(parent, text);
 	}
 	private copyButton(parent: HTMLElement, text: string): void {
 		const bookId = this.bookId,
 			generation = this.generation;
-		this.button(parent, '复制', () => {
-			void navigator.clipboard
-				.writeText(text)
-				.then(() => {
-					if (this.valid(generation, bookId)) new Notice('已复制');
-				})
-				.catch(() => {
-					if (this.valid(generation, bookId)) new Notice('复制失败，请重试');
-				});
-		});
+		const copy = this.button(
+			parent,
+			'',
+			() => {
+				void navigator.clipboard
+					.writeText(text)
+					.then(() => {
+						if (this.valid(generation, bookId)) new Notice('已复制');
+					})
+					.catch(() => {
+						if (this.valid(generation, bookId)) new Notice('复制失败，请重试');
+					});
+			},
+			'weread-detail-action weread-detail-note-action'
+		);
+		copy.title = '复制正文';
+		copy.setAttribute('aria-label', '复制正文');
+		setIcon(copy, 'copy');
 	}
 	private date(seconds: number): string {
 		const date = new Date(Number(seconds) * 1000);
