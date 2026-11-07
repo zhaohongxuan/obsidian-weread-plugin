@@ -197,7 +197,7 @@ class ApiV2Manager {
 	 */
 	async validateApiKey(): Promise<{ valid: boolean }> {
 		const result = await this.callAgent<{ errcode?: number }>('/_list');
-		return { valid: result?.errcode === undefined || result?.errcode === 0 };
+		return { valid: result != null && (result.errcode === undefined || result.errcode === 0) };
 	}
 
 	/**
