@@ -19,7 +19,6 @@
 	margin-inline: auto;
 	min-width: 0;
 }
-.weread-favorites-heading,
 .weread-favorites-controls,
 .weread-favorites-meta,
 .weread-favorites-undo {
@@ -28,9 +27,6 @@
 	flex-wrap: wrap;
 	gap: 8px;
 	min-width: 0;
-}
-.weread-favorites-heading {
-	justify-content: flex-end;
 }
 .weread-favorites-view button,
 .weread-favorites-view input,
@@ -70,10 +66,62 @@
 	line-height: 1.7;
 }
 .weread-favorites-controls {
-	margin-block: 12px;
+	justify-content: space-between;
+	margin-block: 0 8px;
 }
 .weread-favorites-controls input {
-	flex: 1 1 200px;
+	flex: 0 1 250px;
+	width: 250px;
+	max-width: 250px;
+}
+.weread-favorites-toolbar-actions {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	gap: 4px;
+	margin-left: auto;
+}
+.weread-favorites-view .weread-favorites-sort,
+.weread-favorites-view .weread-favorites-toolbar-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 30px;
+	padding: 5px;
+	background: transparent;
+}
+.weread-favorites-view .weread-favorites-sort {
+	gap: 5px;
+	padding-inline: 7px;
+	border-color: transparent;
+	white-space: nowrap;
+}
+.weread-favorites-view .weread-favorites-toolbar-icon {
+	width: 30px;
+	border-color: transparent;
+}
+.weread-favorites-toolbar-actions svg {
+	width: 16px;
+	height: 16px;
+}
+.weread-favorites-sort > span {
+	display: inline-flex;
+}
+.weread-favorites-view .weread-favorites-toolbar-icon[aria-pressed='true'] {
+	border-color: var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+.weread-favorites-view .weread-favorites-toolbar-actions button:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+}
+@container weread-favorites (max-width: 360px) {
+	.weread-favorites-controls input {
+		flex-basis: 100%;
+	}
+	.weread-favorites-toolbar-actions {
+		flex-basis: 100%;
+		justify-content: flex-end;
+	}
 }
 .weread-favorites-status p {
 	margin-block: 6px;
@@ -99,6 +147,14 @@
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-primary);
+}
+.weread-favorites-results.is-cards .weread-favorites-entry {
+	background: linear-gradient(
+		135deg,
+		hsla(var(--accent-h, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.05),
+		hsla(var(--accent-h, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.015)
+	), var(--background-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.035);
 }
 .weread-favorites-content {
 	flex: 1;

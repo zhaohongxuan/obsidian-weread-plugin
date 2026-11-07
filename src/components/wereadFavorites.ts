@@ -82,7 +82,8 @@ export class WereadFavoritesPanel extends WereadPanel {
 	private results: HTMLElement;
 	private undo: FavoritesUndoToast;
 	private query = '';
-	private sort: 'favorited' | 'created' = 'favorited';
+	private sortAscending = false;
+	private sortButton: HTMLButtonElement;
 	private mode: 'cards' | 'list' = 'cards';
 	private limit = 30;
 	private expanded = new Set<string>();
@@ -103,16 +104,6 @@ export class WereadFavoritesPanel extends WereadPanel {
 		this.mode = get(settingsStore).favoritesViewMode === 'list' ? 'list' : 'cards';
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-favorites-view');
-		const heading = this.contentEl.createDiv({ cls: 'weread-favorites-heading' });
-		this.canvasButton = heading.createEl('button', {
-			text: '在Canvas中打开',
-			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }
-		});
-		this.canvasButton.onclick = () => void this.openCanvas();
-		this.contentEl.createEl('p', {
-			text: '收藏保存在当前笔记库的Canvas，可直接打开整理卡片。',
-			cls: 'weread-favorites-muted'
-		});
 		const controls = this.contentEl.createDiv({ cls: 'weread-favorites-controls' });
 		const search = controls.createEl('input', {
 			type: 'search',
@@ -124,21 +115,26 @@ export class WereadFavoritesPanel extends WereadPanel {
 			this.limit = 30;
 			this.render();
 		};
-		const sort = controls.createEl('select', { attr: { 'aria-label': '收藏排序' } });
-		sort.createEl('option', { value: 'favorited', text: '最近收藏' });
-		sort.createEl('option', { value: 'created', text: '笔记创建时间' });
-		sort.value = this.sort;
-		sort.onchange = () => {
-			this.sort = sort.value === 'created' ? 'created' : 'favorited';
+		const actions = controls.createDiv({ cls: 'weread-favorites-toolbar-actions' });
+		this.sortButton = actions.createEl('button', {
+			cls: 'weread-favorites-sort',
+			attr: { type: 'button' }
+		});
+		this.sortButton.onclick = () => {
+			this.sortAscending = !this.sortAscending;
 			this.limit = 30;
 			this.render();
 		};
 		this.modeButtons.clear();
-		for (const [mode, label] of [
-			['cards', '卡片'],
-			['list', '列表']
+		for (const [mode, label, icon] of [
+			['cards', '卡片视图', 'layout-grid'],
+			['list', '列表视图', 'list']
 		] as const) {
-			const button = controls.createEl('button', { text: label, attr: { type: 'button' } });
+			const button = actions.createEl('button', {
+				cls: 'weread-favorites-toolbar-icon',
+				attr: { type: 'button', 'aria-label': label, title: label }
+			});
+			setIcon(button, icon);
 			this.modeButtons.set(mode, button);
 			button.onclick = () => {
 				this.mode = mode;
@@ -146,6 +142,12 @@ export class WereadFavoritesPanel extends WereadPanel {
 				this.render();
 			};
 		}
+		this.canvasButton = actions.createEl('button', {
+			cls: 'weread-favorites-toolbar-icon',
+			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }
+		});
+		setIcon(this.canvasButton, 'layout-dashboard');
+		this.canvasButton.onclick = () => void this.openCanvas();
 		this.status = this.contentEl.createDiv({
 			cls: 'weread-favorites-status',
 			attr: { 'aria-live': 'polite' }
@@ -201,6 +203,12 @@ export class WereadFavoritesPanel extends WereadPanel {
 	private render(): void {
 		if (!this.active || !this.results) return;
 		const state = this.state;
+		const direction = this.sortAscending ? '从旧到新' : '从新到旧';
+		this.sortButton.setAttribute('aria-label', `按收藏时间${direction}排序`);
+		this.sortButton.title = `收藏时间${direction}；点击切换为${this.sortAscending ? '从新到旧' : '从旧到新'}`;
+		this.sortButton.empty();
+		this.sortButton.createSpan({ text: '收藏时间' });
+		setIcon(this.sortButton.createSpan(), this.sortAscending ? 'arrow-up' : 'arrow-down');
 		for (const [mode, button] of this.modeButtons)
 			button.setAttribute('aria-pressed', String(mode === this.mode));
 		this.canvasButton.disabled =
@@ -209,7 +217,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			? state.error || state.warning || '收藏当前为只读，请重新读取后打开Canvas'
 			: this.openingCanvas
 				? '正在打开Canvas…'
-				: '在新的Canvas标签页中打开收藏';
+				: '在新的Canvas标签页中打开收藏；收藏保存在当前笔记库的Canvas，可直接打开整理卡片。';
 		this.status.empty();
 		if (state.loading || !state.loaded)
 			this.status.createEl('p', { text: '正在读取本地收藏…' });
@@ -238,9 +246,8 @@ export class WereadFavoritesPanel extends WereadPanel {
 			)
 			.sort(
 				(a, b) =>
-					(this.sort === 'created'
-						? b.note.createTime - a.note.createTime
-						: b.favoritedAt - a.favoritedAt) || a.id.localeCompare(b.id)
+					(this.sortAscending ? a.favoritedAt - b.favoritedAt : b.favoritedAt - a.favoritedAt) ||
+					a.id.localeCompare(b.id)
 			);
 		if (state.loaded)
 			this.status.createEl('p', {
