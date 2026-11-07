@@ -37,7 +37,7 @@ window.prepareBookmarkReader = ({ noteButton = false, find = true, nativeJump, r
   }
   document.body.append(main);
   const sidebar = document.createElement('aside');
-  sidebar.className = 'wr_reader_note_panel';
+  sidebar.className = 'readerNotePanel wr_reader_note_panel';
   const wrapper = document.createElement('div');
   wrapper.className = 'wr_reader_note_panel_item_cell_wrapper';
   const text = document.createElement('span');
@@ -56,7 +56,25 @@ window.prepareBookmarkReader = ({ noteButton = false, find = true, nativeJump, r
     wrong.addEventListener('click', () => { window.wrongNoteClicks++; });
     sidebar.prepend(wrong);
   }
-  document.body.append(sidebar);
+  const noteDialog = document.createElement('div');
+  const noteMask = document.createElement('div');
+  noteMask.className = 'wr_mask';
+  noteMask.style.cssText = 'position:fixed;inset:0';
+  window.noteCloseClicks = 0;
+  window.unrelatedMaskClicks = 0;
+  const unrelatedMask = document.createElement('div');
+  unrelatedMask.className = 'wr_mask';
+  unrelatedMask.addEventListener('click', () => {window.unrelatedMaskClicks++;});
+  document.body.prepend(unrelatedMask);
+  noteMask.addEventListener('click', () => {
+    window.noteCloseClicks++;
+    sidebar.style.display = 'none';
+    noteMask.style.display = 'none';
+  });
+  const doubleButtonDialog = document.createElement('div');
+  doubleButtonDialog.className = 'double_btn_dialog_container';
+  noteDialog.append(noteMask, sidebar, doubleButtonDialog);
+  main.append(noteDialog);
   window.noteWrapperClicks = 0;
   wrapper.addEventListener('click', () => {
     window.noteWrapperClicks++;
@@ -68,10 +86,16 @@ window.prepareBookmarkReader = ({ noteButton = false, find = true, nativeJump, r
       main.classList.add('isHorizontalReader');
     }
   });
+  window.noteButtonClicks = 0;
   if (noteButton) {
     const button = document.createElement('button');
     button.className = 'readerControls_item wr_note';
     button.textContent = 'Notes';
+    button.addEventListener('click', () => {
+      window.noteButtonClicks++;
+      sidebar.style.display = 'block';
+      noteMask.style.display = 'block';
+    });
     document.body.append(button);
   }
   window.getSelection().removeAllRanges();
@@ -90,7 +114,12 @@ window.bookmarkReaderState = () => {
     ? selection.anchorNode : selection.anchorNode?.parentElement;
   const bookQuote = document.querySelector('.renderTargetContent');
   const rect = bookQuote?.getBoundingClientRect();
+  const panel = document.querySelector('.wr_reader_note_panel');
   return {
+    notePanelVisible: !!panel && getComputedStyle(panel).display !== 'none' && panel.getBoundingClientRect().width > 0,
+    noteButtonClicks: window.noteButtonClicks,
+    noteCloseClicks: window.noteCloseClicks,
+    unrelatedMaskClicks: window.unrelatedMaskClicks,
     bookQuoteVisible: !!rect && rect.top >= 0 && rect.bottom <= window.innerHeight,
     wrongNoteClicks: window.wrongNoteClicks,
     selectionInPreRender: !!selectedElement?.closest('.preRenderContainer'),
@@ -417,16 +446,129 @@ test(
 		await browser.evaluate(`(() => {
     const panel = document.querySelector('.wr_reader_note_panel'); panel.style.display = 'none';
     window.noteButtonClicks = 0;
-    document.querySelector('.readerControls_item.wr_note').addEventListener('click', () => {window.noteButtonClicks++; panel.style.display = 'block';});
   })()`);
 		const result = await browser.evaluate('eval(bookmarkScript)');
 		const actual = await browser.evaluate('({noteButtonClicks, ...bookmarkReaderState()})');
 		assert.equal(
 			actual.noteButtonClicks,
 			1,
-			'Hidden note DOM must not prevent opening the panel'
+			'Open the hidden notes panel without using its open button to close it'
 		);
+		assert.equal(actual.noteCloseClicks, 1);
 		assert.equal(actual.bookQuoteVisible, true);
 		assert.equal(result.mode, 'note-panel');
+	}
+);
+
+for (const mode of ['note-panel', 'find', 'canvas-scroll', 'canvas-page']) {
+	test(
+		`successful ${mode} navigation closes the visible notes sidebar`,
+		{ skip: !chromeAvailable },
+		async (t) => {
+			const { browser, initial } = await reader(t, {
+				noteButton: true,
+				find: mode === 'find',
+				readerText: mode === 'find',
+				nativeJump: mode === 'note-panel' ? 'page' : undefined
+			});
+			if (mode.startsWith('canvas')) {
+				await browser.evaluate(`(() => {
+        document.querySelector('.wr_reader_note_panel_item_cell_content_text').textContent = 'An unrelated note';
+        installBookmarkCanvasCapture();
+        const canvas = document.querySelector('canvas'), ctx = canvas.getContext('2d');
+        canvas.width = 600; canvas.height = 400;
+        ctx.fillText(${JSON.stringify(mode === 'canvas-scroll' ? initial.quote : 'Opening page')},20,100);
+        if (${mode === 'canvas-page'}) {
+          const next = document.createElement('button'); next.className = 'renderTarget_pager_button_right'; document.querySelector('main').append(next);
+          next.addEventListener('click', () => {ctx.clearRect(0,0,600,400);ctx.fillText(${JSON.stringify(initial.quote)},20,100);});
+        }
+      })()`);
+			}
+			const result = await browser.evaluate('eval(bookmarkScript)');
+			const state = await browser.evaluate('bookmarkReaderState()');
+			t.diagnostic(JSON.stringify({ result, state }));
+			assert.equal(result.mode, mode);
+			assert.equal(
+				state.notePanelVisible,
+				false,
+				'A successful jump must close the notes sidebar'
+			);
+			assert.equal(
+				state.noteButtonClicks,
+				0,
+				'The open-only Notes button is not a close action'
+			);
+			assert.equal(
+				state.noteCloseClicks,
+				1,
+				'Close through the notes panel backdrop exactly once'
+			);
+			assert.equal(state.unrelatedMaskClicks, 0, 'Other dialog backdrops stay untouched');
+			if (!mode.startsWith('canvas')) assert.equal(state.bookQuoteVisible, true);
+		}
+	);
+}
+
+test(
+	'an unsuccessful jump leaves the notes sidebar available',
+	{ skip: !chromeAvailable },
+	async (t) => {
+		const { browser } = await reader(t, { noteButton: true, find: false });
+		const result = await browser.evaluate('eval(bookmarkScript)');
+		const state = await browser.evaluate('bookmarkReaderState()');
+		assert.equal(result.mode, 'chapter-only');
+		assert.equal(state.notePanelVisible, true);
+		assert.equal(state.noteButtonClicks, 0);
+	}
+);
+
+test(
+	'successful native navigation does not reopen an already closed notes sidebar',
+	{ skip: !chromeAvailable },
+	async (t) => {
+		const { browser } = await reader(t, { noteButton: true, find: false, nativeJump: 'page' });
+		await browser.evaluate(
+			`document.querySelector('.wr_reader_note_panel_item_cell_wrapper').addEventListener('click', () => {document.querySelector('.wr_reader_note_panel').style.display='none';})`
+		);
+		const result = await browser.evaluate('eval(bookmarkScript)');
+		const state = await browser.evaluate('bookmarkReaderState()');
+		assert.equal(result.mode, 'note-panel');
+		assert.equal(state.notePanelVisible, false);
+		assert.equal(state.noteButtonClicks, 0);
+		assert.equal(state.bookQuoteVisible, true);
+	}
+);
+
+test(
+	'a newer jump during sidebar collapse cancels the older success finalizer without extra toggles',
+	{ skip: !chromeAvailable },
+	async (t) => {
+		const { browser } = await reader(t, { noteButton: true, find: false, nativeJump: 'page' });
+		const results = await browser.evaluate(`(async () => {
+    let started = false;
+    document.querySelector('.readerNotePanel').parentElement.querySelector('.wr_mask').addEventListener('click', () => {
+      if (!started && getComputedStyle(document.querySelector('.wr_reader_note_panel')).display === 'none') {
+        started = true;
+        window.followupJump = Promise.resolve().then(() => eval(bookmarkScript));
+      }
+    });
+    const first = await eval(bookmarkScript);
+    const second = await window.followupJump;
+    return {first,second,state:bookmarkReaderState()};
+  })()`);
+		assert.equal(results.first.mode, 'cancelled');
+		assert.equal(results.second.mode, 'note-panel');
+		assert.equal(results.state.notePanelVisible, false);
+		assert.equal(
+			results.state.noteButtonClicks,
+			1,
+			'Only the newer request opens the notes panel'
+		);
+		assert.equal(
+			results.state.noteCloseClicks,
+			2,
+			'Each current request closes once; no stale extra close'
+		);
+		assert.equal(results.state.bookQuoteVisible, true);
 	}
 );

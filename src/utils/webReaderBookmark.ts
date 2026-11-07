@@ -152,8 +152,33 @@ export function buildBookmarkNavigationScript(bookmark: WereadBookmarkLocation):
 			previous.click();
 			return await waitForPaintChange(advanced) && active();
 		};
-		const notesVisible = () => Array.from(document.querySelectorAll('.wr_reader_note_panel_item_cell_content_text'))
+		const notesVisible = () => Array.from(document.querySelectorAll('.readerNotePanel, .wr_reader_note_panel, .wr_reader_note_panel_item_cell_content_text'))
 			.some(element => visibleRect(element.getBoundingClientRect(), element));
+		const visibleNotesPanel = () => {
+			const visible = Array.from(document.querySelectorAll('.readerNotePanel, .wr_reader_note_panel_item_cell_content_text'))
+				.find(element => visibleRect(element.getBoundingClientRect(), element));
+			return visible && (visible.matches('.readerNotePanel') ? visible : visible.closest('.readerNotePanel'));
+		};
+		const finishSuccess = async result => {
+			if (!active()) return stopped();
+			if (notesVisible()) {
+				const panel = visibleNotesPanel();
+				const mask = panel && panel.parentElement && Array.from(panel.parentElement.children)
+					.find(element => element.matches('.wr_mask'));
+				const button = mask ? (displayed(mask) ? mask : null) : document.querySelector('.readerControls_item.wr_note');
+				if (button instanceof HTMLElement) {
+					if (!active()) return stopped();
+					button.click();
+					for (let attempt = 0; attempt < 6; attempt++) {
+						await sleep(100);
+						if (!active()) return stopped();
+						if (!notesVisible()) break;
+					}
+					await sleep(150);
+				}
+			}
+			return active() ? result : stopped();
+		};
 		try {
 			if (needle.length < 4) return { mode: 'chapter-only' };
 			for (let attempt = 0; attempt < 60 && !document.querySelector('.readerChapterContent, .renderTargetContainer'); attempt++) {
@@ -181,7 +206,7 @@ export function buildBookmarkNavigationScript(bookmark: WereadBookmarkLocation):
 				match.click();
 				for (let attempt = 0; attempt < 12; attempt++) {
 					if (!active()) return stopped();
-					if (proof()) return { mode: 'note-panel', needle };
+					if (proof()) return await finishSuccess({ mode: 'note-panel', needle });
 					await sleep(100);
 				}
 			}
@@ -193,7 +218,7 @@ export function buildBookmarkNavigationScript(bookmark: WereadBookmarkLocation):
 					for (let attempt = 0; attempt < 8; attempt++) {
 						if (!active()) return stopped();
 						if (!window.find(snippet, false, false, true)) break;
-						if (validSelection()) return { mode: 'find', snippet, page };
+						if (validSelection()) return await finishSuccess({ mode: 'find', snippet, page });
 					}
 					window.getSelection()?.removeAllRanges();
 				}
@@ -208,7 +233,7 @@ export function buildBookmarkNavigationScript(bookmark: WereadBookmarkLocation):
 						await sleep(50);
 					}
 					if (!active()) return stopped();
-					if (canvasVisible(painted)) return { mode: page ? 'canvas-page' : 'canvas-scroll', page };
+					if (canvasVisible(painted)) return await finishSuccess({ mode: page ? 'canvas-page' : 'canvas-scroll', page });
 				}
 				if (!canvasEntries().some(([, data]) => data.runs && data.runs.length)) break;
 				const next = document.querySelector('.renderTarget_pager_button_right');
