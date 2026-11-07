@@ -441,11 +441,11 @@ test('plugin mutation flushes a pending native Canvas save before merging a new 
 	assert.equal(saves, 1);
 	const saved = JSON.parse(await f.adapter.read(FAVORITES_PATH));
 	assert.equal(saved.nodes.find((n) => n.id === card.id).x, -142);
-	assert.equal(
+	assertBookLink(
 		bookForQuote(
 			saved,
 			saved.nodes.find((n) => n.id === card.id)
-		).file,
+		),
 		'Newly synced book.md'
 	);
 	assert.equal(
@@ -525,6 +525,17 @@ test('opening an existing Canvas preserves graph, quote edits and layout without
 function quoteCard(canvas, text = note().text) {
 	return canvas.nodes.find((node) => node.type === 'text' && node.text.startsWith(text));
 }
+function assertBookLink(book, path) {
+	assert.equal(book.type, 'text', 'Managed books always use text cards');
+	assert(!('file' in book), 'Book cards never embed native Markdown file previews');
+	if (path) {
+		assert(book.text.includes('打开本地笔记'));
+		assert(decodeURIComponent(book.text).includes(path), `Local-note link resolves to ${path}`);
+	} else {
+		assert(!book.text.includes('打开本地笔记'), 'No local match omits the link entirely');
+	}
+}
+
 function bookForQuote(canvas, quote) {
 	const edge = canvas.edges.find((candidate) => candidate.toNode === quote.id);
 	assert(edge, 'Quote has a book parent');
@@ -537,7 +548,11 @@ test('cached local book references appear after sync and follow Markdown file an
 	await service.setFavorite({ ...note(), cover: 'https://covers.example/42.jpg' }, true);
 	let canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
 	const quote = quoteCard(canvas);
-	assert.equal(bookForQuote(canvas, quote).type, 'text', 'No local Markdown uses a placeholder');
+	const placeholder = bookForQuote(canvas, quote);
+	assertBookLink(placeholder);
+	assert(placeholder.text.includes('https://covers.example/42.jpg'));
+	assert(placeholder.text.includes(note().bookTitle));
+	assert(placeholder.text.includes(note().author));
 	assert(!quote.text.includes('<!-- weread-favorite-cover -->'));
 	const beforeSync = await f.adapter.read(FAVORITES_PATH);
 	await f.vault.createFolder('Books');
@@ -556,37 +571,36 @@ test('cached local book references appear after sync and follow Markdown file an
 	await service.ensureCanvas();
 	assert.equal(f.markdownScans(), scans + 1, 'One Markdown enumeration per transaction');
 	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, markdown.path);
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)), markdown.path);
 	assert.equal(await f.adapter.read(markdown.path), 'Synced note content must stay exact.');
 	const linkedRaw = await f.adapter.read(FAVORITES_PATH);
 	await service.ensureCanvas();
 	assert.equal(await f.adapter.read(FAVORITES_PATH), linkedRaw, 'Unchanged graph does not write');
+	const originalBookNodeId = bookForQuote(canvas, quoteCard(canvas)).id;
 	await f.vault.rename(markdown, 'Books/Renamed.md');
-	const nativeRenamed = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	const nativeBook = bookForQuote(nativeRenamed, quoteCard(nativeRenamed));
-	const originalBookNodeId = nativeBook.id;
-	nativeBook.file = markdown.path;
-	const nativeRaw = JSON.stringify(nativeRenamed);
-	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), nativeRaw);
-	await service.load(true);
-	await service.ensureCanvas();
 	assert.equal(
 		await f.adapter.read(FAVORITES_PATH),
-		nativeRaw,
-		'Native file-link rename preserves book identity without a rewrite'
+		linkedRaw,
+		'Markdown rename alone does not force a Canvas save'
 	);
+	await service.ensureCanvas();
 	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
 	assert.equal(bookForQuote(canvas, quoteCard(canvas)).id, originalBookNodeId);
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'Books/Renamed.md');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)), 'Books/Renamed.md');
+	assert(!bookForQuote(canvas, quoteCard(canvas)).text.includes('Shared%20title.md'));
 	await f.vault.rename(f.vault.getAbstractFileByPath('Books'), 'RenamedBooks');
 	await service.setFavorite(note('second'), true);
 	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'RenamedBooks/Renamed.md');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)), 'RenamedBooks/Renamed.md');
 	assert.equal(service.getSnapshot().favorites.length, 2);
 	await f.vault.delete(f.vault.getAbstractFileByPath('RenamedBooks'));
 	await service.ensureCanvas();
 	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).type, 'text');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)));
+	assert(bookForQuote(canvas, quoteCard(canvas)).text.includes('https://covers.example/42.jpg'));
+	assert(bookForQuote(canvas, quoteCard(canvas)).text.includes(note().bookTitle));
+	assert(bookForQuote(canvas, quoteCard(canvas)).text.includes(note().author));
+	assert.deepEqual(quoteCard(canvas), quote, 'Link changes never modify the existing quote node');
 	assert.equal(
 		service.getSnapshot().favorites.length,
 		2,
@@ -610,19 +624,19 @@ test('same titles do not conflate book IDs and ambiguous cached IDs fall back wi
 	};
 	await service.setFavorite(other, true);
 	let canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'One.md');
-	assert.equal(bookForQuote(canvas, quoteCard(canvas, other.text)).file, 'Two.md');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)), 'One.md');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas, other.text)), 'Two.md');
 	const duplicate = await f.vault.create('Duplicate.md', 'Conflicting cached identity');
 	f.setBookId(duplicate, '42');
 	await service.ensureCanvas();
 	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).type, 'text');
-	assert.equal(bookForQuote(canvas, quoteCard(canvas, other.text)).file, 'Two.md');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)));
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas, other.text)), 'Two.md');
 	assert.equal(service.getSnapshot().favorites.length, 2);
 	await f.vault.delete(duplicate);
 	await service.ensureCanvas();
 	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'One.md');
+	assertBookLink(bookForQuote(canvas, quoteCard(canvas)), 'One.md');
 });
 
 test('native book-card removal cannot cancel quotes and opening repairs only graph presentation', async (t) => {
@@ -644,10 +658,118 @@ test('native book-card removal cannot cancel quotes and opening repairs only gra
 	assert.equal(await f.adapter.read(FAVORITES_PATH), raw, 'Reload alone never forces a save');
 	await service.ensureCanvas();
 	const repaired = JSON.parse(await f.adapter.read(FAVORITES_PATH));
-	assert.equal(bookForQuote(repaired, quoteCard(repaired)).file, 'Book.md');
+	assertBookLink(bookForQuote(repaired, quoteCard(repaired)), 'Book.md');
 	assert.equal(service.getSnapshot().favorites.length, 1);
 	assert.equal(parseFavorites(await f.adapter.read(FAVORITES_PATH)).records[0].id, note().id);
 	assert.equal(await f.adapter.read('Book.md'), 'Unmodified synced content');
+});
+
+test('four existing native file book nodes become text cover cards without losing identity, layout or quotes', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	const notes = Array.from({ length: 4 }, (_, index) => {
+		const bookId = String(42 + index);
+		return {
+			...note(),
+			id: `${bookId}:highlight:one`,
+			bookId,
+			bookTitle: `Migration book ${index}`,
+			author: `Author ${index}`,
+			text: `Original quote ${index}`,
+			cover: `https://covers.example/${bookId}.jpg`
+		};
+	});
+	for (const source of notes) {
+		const markdown = await f.vault.create(
+			`Book ${source.bookId}.md`,
+			`Untouched note ${source.bookId}`
+		);
+		f.setBookId(markdown, Number(source.bookId));
+		await service.setFavorite(source, true);
+	}
+	const originalFavorites = service.getSnapshot().favorites;
+	const canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	const originals = notes.map((source, index) => {
+		const quote = quoteCard(canvas, source.text);
+		const book = bookForQuote(canvas, quote);
+		delete book.text;
+		Object.assign(book, {
+			type: 'file',
+			file: `Book ${source.bookId}.md`,
+			subpath: '#Old heading',
+			x: index * 600 - 900,
+			y: -200 - index * 100,
+			width: 350 + index,
+			height: 280 + index,
+			color: String(index + 1),
+			customProperty: `native-book-${index}`
+		});
+		return { book: { ...book }, quote: { ...quote } };
+	});
+	canvas.nodes.push({
+		id: 'free-migration-note',
+		type: 'text',
+		x: -1500,
+		y: 900,
+		width: 400,
+		height: 180,
+		text: 'Native free content must survive'
+	});
+	canvas.edges.push({
+		id: 'free-migration-edge',
+		fromNode: originals[0].book.id,
+		toNode: 'free-migration-note'
+	});
+	const originalRaw = JSON.stringify(canvas);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), originalRaw);
+	await service.load(true);
+	assert.equal(service.getSnapshot().writable, true);
+	assert.equal(
+		await f.adapter.read(FAVORITES_PATH),
+		originalRaw,
+		'Loading existing file cards does not rewrite data'
+	);
+	await service.ensureCanvas();
+	const migratedRaw = await f.adapter.read(FAVORITES_PATH);
+	const migrated = JSON.parse(migratedRaw);
+	assert.equal(migrated.nodes.filter((node) => node.type === 'file').length, 0);
+	for (const [index, source] of notes.entries()) {
+		const previous = originals[index];
+		const book = migrated.nodes.find((node) => node.id === previous.book.id);
+		assertBookLink(book, `Book ${source.bookId}.md`);
+		assert(book.text.includes(source.cover));
+		assert(book.text.includes(source.bookTitle));
+		assert(book.text.includes(source.author));
+		for (const key of ['x', 'y', 'width', 'height', 'color', 'customProperty']) {
+			assert.equal(book[key], previous.book[key], `${key} survives native-file migration`);
+		}
+		assert(!('subpath' in book));
+		assert.deepEqual(
+			migrated.nodes.find((node) => node.id === previous.quote.id),
+			previous.quote
+		);
+		assert.equal(bookForQuote(migrated, quoteCard(migrated, source.text)).id, previous.book.id);
+		assert.equal(
+			await f.adapter.read(`Book ${source.bookId}.md`),
+			`Untouched note ${source.bookId}`
+		);
+	}
+	assert.deepEqual(
+		[...migrated.edges].sort((a, b) => a.id.localeCompare(b.id)),
+		[...canvas.edges].sort((a, b) => a.id.localeCompare(b.id))
+	);
+	assert(
+		migrated.nodes.some(
+			(node) =>
+				node.id === 'free-migration-note' &&
+				node.text === 'Native free content must survive'
+		)
+	);
+	assert.deepEqual(service.getSnapshot().favorites, originalFavorites);
+	assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), originalRaw);
+	await service.ensureCanvas();
+	assert.equal(await f.adapter.read(FAVORITES_PATH), migratedRaw, 'Migrating again is a no-op');
+	assert.deepEqual((await f.restart().load()).favorites, originalFavorites);
 });
 
 function legacyCanvas(entry) {

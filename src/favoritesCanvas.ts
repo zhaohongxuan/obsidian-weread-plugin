@@ -325,12 +325,27 @@ function stableId(id: string): string {
 			.join('-')
 	);
 }
-function bookText(entry: FavoriteEntry): string {
+function bookLink(path: string): string {
+	// Full vault-relative paths resolve through Obsidian's internal Markdown-link resolver.
+	// Encode each segment so literal fragments, queries and Markdown punctuation stay filenames.
+	const target = path
+		.split('/')
+		.map((part) =>
+			encodeURIComponent(part).replace(
+				/[!'()*]/g,
+				(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`
+			)
+		)
+		.join('/');
+	return `[打开本地笔记](<${target}>)`;
+}
+function bookText(entry: FavoriteEntry, local?: string): string {
 	const cover = coverUrl(entry.note.cover);
 	return [
 		cover ? `![封面|80](<${cover}>)` : '',
 		`## ${safeText(entry.note.bookTitle)}`,
-		safeText(entry.note.author || '')
+		safeText(entry.note.author || ''),
+		local ? bookLink(local) : ''
 	]
 		.filter(Boolean)
 		.join('\n\n');
@@ -425,18 +440,16 @@ export function serializeFavoritesCanvas(
 			.filter((node): node is CanvasObject => !!node);
 		const x = cluster.length ? Math.min(...cluster.map((node) => node.x)) : column * 520;
 		const y = cluster.length ? Math.min(...cluster.map((node) => node.y)) - 380 : 240;
-		let node: CanvasObject =
-			existing || anchor(allocate(stableId(`book:${bookId}`)), x, y, 440, 300);
-		if (local) {
-			const { text: _text, ...rest } = node;
-			node = { ...rest, type: 'file', file: local };
-		} else {
-			const { file: _file, subpath: _subpath, ...rest } = node;
-			node = { ...rest, type: 'text', text: bookText(entry) };
-		}
-		nodes.push(node);
-		bookNodes[bookId] = node.id;
-		bookObjects.set(bookId, node);
+		const node = existing || anchor(allocate(stableId(`book:${bookId}`)), x, y, 440, 300);
+		const { file: _file, subpath: _subpath, ...rest } = node;
+		const text =
+			bookFiles === undefined && existing?.type === 'text'
+				? existing.text
+				: bookText(entry, local);
+		const updated = { ...rest, type: 'text', text };
+		nodes.push(updated);
+		bookNodes[bookId] = updated.id;
+		bookObjects.set(bookId, updated);
 		column++;
 	}
 	for (const id of oldBooks) if (!Object.values(bookNodes).includes(id)) removed.add(id);

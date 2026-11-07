@@ -57,6 +57,10 @@ const headerValue = (root) =>
 	);
 const book = (root, bookId = 'book') =>
 	root.nodes.find((node) => node.id === headerValue(root).bookNodes[bookId]);
+const bookPath = (root, bookId = 'book') => {
+	const target = book(root, bookId).text.match(/\[打开本地笔记\]\(<([^>]+)>\)/)?.[1];
+	return target === undefined ? undefined : decodeURIComponent(target);
+};
 const customEdges = (root) =>
 	root.edges.filter((edge) => !headerValue(root).managedEdges.includes(edge.id));
 const free = (id = 'free', type = 'text') => ({
@@ -605,7 +609,7 @@ const rewriteHeader = (root, change) => {
 const overlaps = (a, b) =>
 	a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 
-test('graph creates one book per bookId, separate duplicate titles, native file preview and readable hierarchy', () => {
+test('graph creates one book per bookId, separate duplicate titles, linked text cards and readable hierarchy', () => {
 	const records = [withCover(), entry('two'), otherBookEntry()];
 	const files = { book: 'Library/A book.md', other: 'Library/Duplicate title.md' };
 	const raw = encode(doc(records), undefined, files);
@@ -617,12 +621,13 @@ test('graph creates one book per bookId, separate duplicate titles, native file 
 	assert.equal(root.edges.length, 5);
 	for (const [bookId, path] of Object.entries(files)) {
 		const node = book(root, bookId);
-		assert.equal(node.type, 'file');
-		assert.equal(node.file, path);
+		assert.equal(node.type, 'text');
+		assert.equal(bookPath(root, bookId), path);
+		assert(!('file' in node));
 		assert.deepEqual(Object.keys(node).sort(), [
-			'file',
 			'height',
 			'id',
+			'text',
 			'type',
 			'width',
 			'x',
@@ -651,15 +656,18 @@ test('graph creates one book per bookId, separate duplicate titles, native file 
 
 test('file association survives omitted mapping, changes by bookId, and explicit missing mapping restores fallback cover', () => {
 	const raw = encode(doc([withCover()]), undefined, { book: 'Library/A.md' });
-	assert.equal(book(JSON.parse(encode(doc([withCover()]), raw))).file, 'Library/A.md');
+	assert.equal(bookPath(JSON.parse(encode(doc([withCover()]), raw))), 'Library/A.md');
+	assert.deepEqual(book(JSON.parse(encode(doc([withCover()]), raw))), book(JSON.parse(raw)));
 	assert.equal(needsFavoriteGraphUpdate(raw), false);
 	assert.equal(needsFavoriteGraphUpdate(raw, { book: 'Library/Renamed.md' }), true);
 	const renamed = encode(doc([withCover()]), raw, { book: 'Library/Renamed.md' });
-	assert.equal(book(JSON.parse(renamed)).file, 'Library/Renamed.md');
+	assert.equal(bookPath(JSON.parse(renamed)), 'Library/Renamed.md');
 	assert.equal(book(JSON.parse(renamed)).id, book(JSON.parse(raw)).id);
 	const deleted = encode(doc([withCover()]), renamed, {});
 	assert.equal(book(JSON.parse(deleted)).type, 'text');
 	assert(!('file' in book(JSON.parse(deleted))));
+	assert.equal(bookPath(JSON.parse(deleted)), undefined);
+	assert(!book(JSON.parse(deleted)).text.includes('打开本地笔记'));
 	assert(book(JSON.parse(deleted)).text.includes('![封面|80]'));
 	assert.equal(needsFavoriteGraphUpdate(deleted, {}), false);
 	assert.deepEqual(decode(deleted).records, [withCover()]);
@@ -768,7 +776,7 @@ test('book file map rejects external paths and traversal while native free file 
 	}
 	for (const path of ['读书/书名 #1.md', 'Library/C#?.MD', 'Library/A book.Md']) {
 		const mapped = encode(doc(), undefined, { book: path });
-		assert.equal(book(JSON.parse(mapped)).file, path);
+		assert.equal(bookPath(JSON.parse(mapped)), path);
 		assert.equal(needsFavoriteGraphUpdate(mapped, { book: path }), false);
 	}
 	const root = JSON.parse(encode(doc(), undefined, { book: '读书/书名 #1.md' }));
@@ -778,7 +786,7 @@ test('book file map rejects external paths and traversal while native free file 
 		JSON.parse(raw).nodes.find((node) => node.id === 'outside').file,
 		'/old/unmanaged.md'
 	);
-	assert.equal(book(JSON.parse(raw)).file, '读书/书名 #1.md');
+	assert.equal(bookPath(JSON.parse(raw)), '读书/书名 #1.md');
 });
 
 test('stable managed node and edge IDs avoid free IDs and remain idempotent after unrelated additions', () => {
@@ -904,4 +912,115 @@ test('legacy two-book anchors and new quotes reserve native header and free-card
 	for (const old of root.nodes) assert(!overlaps(newQuote, expanded(old)));
 	assert.equal(needsFavoriteGraphUpdate(raw), false);
 	assert.equal(encode(doc([...records, entry('new')], 2), raw), raw);
+});
+
+test('schema2 managed file books migrate in place to covered text cards without changing quotes or edges', () => {
+	for (const context of [undefined, { book: 'Library/A book.md' }, {}]) {
+		const root = JSON.parse(encode(doc([withCover(), entry('two')])));
+		const oldBook = book(root);
+		delete oldBook.text;
+		Object.assign(oldBook, {
+			type: 'file',
+			file: 'Library/A book.md',
+			subpath: '#old-preview',
+			x: -712,
+			y: 89,
+			width: 713,
+			height: 245,
+			color: '5',
+			extension: { retained: true }
+		});
+		card(root).text = card(root).text.replace(
+			'A quotation',
+			'**Native quote edit**\n![own](https://example.test/manual.png)'
+		);
+		root.nodes.push(free('unmanaged-file', 'file'));
+		root.edges.push({
+			id: 'manual-book-edge',
+			fromNode: oldBook.id,
+			toNode: 'unmanaged-file',
+			label: 'retain'
+		});
+		const quotes = root.nodes.filter((node) => node.text?.includes('<!-- weread-favorite:'));
+		const old = JSON.stringify(root);
+		const document = decode(old);
+		assert.equal(needsFavoriteGraphUpdate(old, context), true);
+		const saved = encode(document, old, context);
+		const next = JSON.parse(saved);
+		const newBook = book(next);
+		assert.equal(newBook.type, 'text');
+		assert(!('file' in newBook));
+		assert(!('subpath' in newBook));
+		assert(newBook.text.includes('![封面|80]'));
+		assert(newBook.text.includes('## A book\n\nAuthor'));
+		assert.equal(
+			bookPath(next),
+			context === undefined || context.book ? 'Library/A book.md' : undefined
+		);
+		for (const key of ['id', 'x', 'y', 'width', 'height', 'color', 'extension'])
+			assert.deepEqual(newBook[key], oldBook[key]);
+		for (const quote of quotes) {
+			assert.deepEqual(
+				next.nodes.find((node) => node.id === quote.id),
+				quote
+			);
+			assert(!quote.text.includes(COVER_START));
+		}
+		assert.deepEqual(next.edges, root.edges);
+		assert.deepEqual(
+			next.nodes.find((node) => node.id === 'unmanaged-file'),
+			free('unmanaged-file', 'file')
+		);
+		assert.deepEqual(decode(saved), document);
+		assert.equal(needsFavoriteGraphUpdate(saved, context), false);
+		assert.equal(encode(document, saved, context), saved);
+	}
+});
+
+test('book links encode literal punctuation and Unicode as vault-relative Markdown targets', () => {
+	const path = "读书/C#? [book](one) 100% 'quoted'.MD";
+	const raw = encode(doc([withCover()]), undefined, { book: path });
+	const root = JSON.parse(raw);
+	const text = book(root).text;
+	assert(
+		text.endsWith(
+			'[打开本地笔记](<%E8%AF%BB%E4%B9%A6/C%23%3F%20%5Bbook%5D%28one%29%20100%25%20%27quoted%27.MD>)'
+		)
+	);
+	assert.equal(bookPath(root), path);
+	assert(!text.includes('obsidian://'));
+	assert(!text.includes('file://'));
+	assert.equal(text.match(/\[打开本地笔记\]/g).length, 1);
+	assert.equal(text.match(/!\[封面\|80\]/g).length, 1);
+	assert(!card(root).text.includes('打开本地笔记'));
+	assert(!card(root).text.includes('![封面|80]'));
+	assert.equal(needsFavoriteGraphUpdate(raw, { book: path }), false);
+	assert.equal(encode(doc([withCover()]), raw), raw);
+});
+
+test('missing local notes omit the entire link and absent covers show only known title and author', () => {
+	const raw = encode(doc(), undefined, {});
+	const root = JSON.parse(raw);
+	assert.equal(book(root).type, 'text');
+	assert.equal(book(root).text, '## A book\n\nAuthor');
+	assert(!book(root).text.includes('打开本地笔记'));
+	assert.equal(bookPath(root), undefined);
+	const linked = encode(doc(), raw, { book: 'Library/A.md' });
+	assert.equal(bookPath(JSON.parse(linked)), 'Library/A.md');
+	const missing = encode(doc(), linked, {});
+	assert.equal(book(JSON.parse(missing)).text, '## A book\n\nAuthor');
+	assert.equal(needsFavoriteGraphUpdate(missing, {}), false);
+});
+
+test('omitted local context preserves existing text book link and native text exactly without duplicates', () => {
+	const root = JSON.parse(encode(doc([withCover()]), undefined, { book: 'Library/A.md' }));
+	book(root).text += '\n\nPersonal book annotation';
+	const old = JSON.stringify(root);
+	const saved = encode(doc([withCover()], 2), old);
+	assert.deepEqual(book(JSON.parse(saved)), book(root));
+	assert.equal(book(JSON.parse(saved)).text.match(/\[打开本地笔记\]/g).length, 1);
+	assert.equal(needsFavoriteGraphUpdate(saved), false);
+	const withoutLink = encode(doc([withCover()], 3), saved, {});
+	assert(!book(JSON.parse(withoutLink)).text.includes('打开本地笔记'));
+	assert(book(JSON.parse(withoutLink)).text.includes('![封面|80]'));
 });
