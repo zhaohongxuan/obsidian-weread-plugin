@@ -169,6 +169,15 @@
 .weread-journal-today-metrics-grid > div {
 	min-width: 0;
 }
+.weread-journal-metric-status {
+	display: block;
+	margin-top: 6px;
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
 .weread-journal-today-book-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));

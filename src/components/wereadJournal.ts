@@ -341,7 +341,12 @@ export class WereadJournalPanel extends WereadPanel {
 				? this.state.syncing
 					? '加载中…'
 					: '暂不可用'
-				: `${notes.filter((n) => n.kind === kind).length} 条${this.state.failedBooks || this.state.syncing ? ' · 已加载' : ''}`;
+				: `${notes.filter((n) => n.kind === kind).length} 条`;
+		const countStatus = this.state.syncing
+			? '统计中，当前为部分结果'
+			: this.state.failedBooks
+				? '部分书籍加载失败，当前为部分结果'
+				: '';
 		const metrics = summary.createDiv({ cls: 'weread-journal-today-metrics' });
 		metrics.createEl('h2', { text: '今日数据', cls: 'weread-journal-summary-title' });
 		const metricsGrid = metrics.createDiv({ cls: 'weread-journal-today-metrics-grid' });
@@ -353,6 +358,12 @@ export class WereadJournalPanel extends WereadPanel {
 			const card = metricsGrid.createDiv();
 			card.createEl('span', { text: label });
 			card.createEl('strong', { text: value });
+			if (label !== '阅读时长' && countStatus) {
+				card.createEl('small', {
+					text: countStatus,
+					cls: 'weread-journal-metric-status'
+				});
+			}
 		}
 		const booksSummary = summary.createDiv({ cls: 'weread-journal-today-books' });
 		booksSummary.createEl('h2', {
