@@ -127,12 +127,93 @@ test('fallback book owns one safe cover while quotes remain plaintext', () => {
 		assert(!node.text.includes(COVER_START));
 		assert(book(JSON.parse(raw)).text.startsWith('![封面|80](<http'));
 		assert.equal(book(JSON.parse(raw)).text.split('![封面|80]').length - 1, 1);
-		assert.equal(node.height, 400);
+		assert.equal(node.width, 360);
+		assert(node.height >= 160 && node.height <= 280);
 		assert.deepEqual(decode(raw), doc([record]));
 		assert.equal(needsFavoriteGraphUpdate(raw), false);
 		const saved = encode(doc([record], 2), raw);
 		assert.deepEqual(card(JSON.parse(saved)), node);
 		assert.equal(node.text.split('![封面|80]').length - 1, 0);
+	}
+});
+
+test('new quote cards use compact content-aware sizes without changing full text or book sizes', () => {
+	const texts = [
+		'Short quotation',
+		'A medium quotation wraps across lines. '.repeat(5),
+		'长篇摘录完整保留。\n'.repeat(100)
+	];
+	const heights = [];
+	for (const text of texts) {
+		const document = doc([entry('one', text)]);
+		const raw = encode(document);
+		const root = JSON.parse(raw);
+		const quote = card(root);
+		assert.equal(quote.width, 360);
+		assert(quote.height >= 160 && quote.height <= 280);
+		heights.push(quote.height);
+		assert.equal(quote.text.slice(0, text.length), text);
+		assert.deepEqual(decode(raw), document);
+		assert.equal(book(root).width, 440);
+		assert.equal(book(root).height, 300);
+		assert.equal(needsFavoriteGraphUpdate(raw), false);
+		assert.equal(encode(document, raw), raw);
+	}
+	assert.equal(heights[0], 160);
+	assert(heights[1] > heights[0]);
+	assert.equal(heights[2], 280);
+});
+
+test('legacy default quote size compacts once while preserving native text, position and book geometry', () => {
+	const root = JSON.parse(encode(doc([withCover()]), undefined, { book: 'Library/A.md' }));
+	Object.assign(card(root), {
+		x: -613,
+		y: 927,
+		width: 440,
+		height: 400,
+		color: '3',
+		custom: { retained: true }
+	});
+	card(root).text = card(root).text.replace('A quotation', '**Native quote body**');
+	Object.assign(book(root), { x: 710, y: -231, width: 501, height: 333, color: '5' });
+	const original = structuredClone(root);
+	const raw = JSON.stringify(root);
+	const document = decode(raw);
+	assert.equal(needsFavoriteGraphUpdate(raw), true);
+	const saved = encode(document, raw);
+	const next = JSON.parse(saved);
+	assert.equal(card(next).width, 360);
+	assert.equal(card(next).height, 160);
+	for (const key of ['id', 'x', 'y', 'color', 'text', 'custom'])
+		assert.deepEqual(card(next)[key], card(original)[key]);
+	assert.deepEqual(book(next), book(original));
+	assert.deepEqual(next.edges, original.edges);
+	assert.deepEqual(decode(saved), document);
+	assert.equal(needsFavoriteGraphUpdate(saved), false);
+	assert.equal(encode(document, saved), saved);
+});
+
+test('custom quote sizes remain native across saves, including partial matches of old default dimensions', () => {
+	for (const [width, height] of [
+		[501, 333],
+		[440, 333],
+		[501, 400]
+	]) {
+		const root = JSON.parse(encode(doc()));
+		Object.assign(card(root), {
+			x: -715,
+			y: 812,
+			width,
+			height,
+			color: '6',
+			custom: { untouched: true }
+		});
+		const raw = JSON.stringify(root);
+		assert.equal(needsFavoriteGraphUpdate(raw), false);
+		const saved = encode(decode(raw), raw);
+		assert.deepEqual(card(JSON.parse(saved)), card(root));
+		assert.deepEqual(book(JSON.parse(saved)), book(root));
+		assert.equal(encode(decode(saved), saved), saved);
 	}
 });
 
@@ -296,7 +377,7 @@ test('optional native nodes and edges normalize to empty arrays without relying 
 		saved.nodes.find((node) => node.id === ownNode.id),
 		ownNode
 	);
-	assert.equal(saved.edges.length, 2);
+	assert.equal(saved.edges.length, 1);
 	assert.equal(decode(JSON.stringify(saved)).records.length, 1);
 	for (const key of ['nodes', 'edges']) {
 		for (const value of [null, false, 0, '', {}, '[]']) {
@@ -618,7 +699,16 @@ test('graph creates one book per bookId, separate duplicate titles, linked text 
 	assert.equal(value.schemaVersion, 2);
 	assert.equal(Object.keys(value.bookNodes).length, 2);
 	assert.equal(root.nodes.length, 6);
-	assert.equal(root.edges.length, 5);
+	assert.equal(root.edges.length, records.length);
+	assert.deepEqual(
+		value.managedEdges,
+		root.edges.map((edge) => edge.id)
+	);
+	assert(
+		root.edges.every(
+			(edge) => edge.fromNode !== header(root).id && edge.toNode !== header(root).id
+		)
+	);
 	for (const [bookId, path] of Object.entries(files)) {
 		const node = book(root, bookId);
 		assert.equal(node.type, 'text');
@@ -634,9 +724,6 @@ test('graph creates one book per bookId, separate duplicate titles, linked text 
 			'y'
 		]);
 		assert(header(root).y + header(root).height <= node.y);
-		assert(
-			root.edges.some((edge) => edge.fromNode === header(root).id && edge.toNode === node.id)
-		);
 		for (const quote of root.nodes.filter((candidate) =>
 			candidate.text?.includes('<!-- weread-favorite:')
 		)) {
@@ -652,6 +739,97 @@ test('graph creates one book per bookId, separate duplicate titles, linked text 
 	for (const a of root.nodes) for (const b of root.nodes) if (a !== b) assert(!overlaps(a, b));
 	assert.equal(needsFavoriteGraphUpdate(raw, files), false);
 	assert.equal(encode(doc(records), raw, files), raw);
+});
+
+test('schema2 removes only managed root-to-book edges once while preserving native graph and snapshots', async () => {
+	for (const files of [{ book: 'Library/A book.md' }, {}]) {
+		const root = JSON.parse(encode(doc([withCover(), entry('two')]), undefined, files));
+		Object.assign(header(root), { x: -801, y: -390, width: 610, height: 190, color: '2' });
+		Object.assign(book(root), { x: -320, y: 17, width: 603, height: 277, color: '5' });
+		Object.assign(card(root), { x: 812, y: 390, width: 501, height: 233, color: '3' });
+		card(root).text = card(root).text.replace('A quotation', '**Native edited quote**');
+		for (const edge of root.edges)
+			Object.assign(edge, {
+				fromSide: 'right',
+				toSide: 'left',
+				fromEnd: 'arrow',
+				toEnd: 'none',
+				color: '#aabbcc',
+				label: 'Native book-to-quote style',
+				custom: { retained: true }
+			});
+		const oldRootEdge = {
+			id: 'previous-managed-root-book',
+			fromNode: header(root).id,
+			toNode: book(root).id,
+			fromSide: 'bottom',
+			toSide: 'top',
+			toEnd: 'arrow',
+			color: '4'
+		};
+		const customRootEdge = {
+			id: 'custom-root-book',
+			fromNode: header(root).id,
+			toNode: book(root).id,
+			fromSide: 'left',
+			toSide: 'right',
+			toEnd: 'none',
+			color: '6',
+			label: 'My relation',
+			custom: { keep: ['native', 'edge'] }
+		};
+		root.edges.unshift(oldRootEdge);
+		root.edges.push(customRootEdge);
+		const value = headerValue(root);
+		value.managedEdges.unshift(oldRootEdge.id);
+		header(root).text = header(root).text.replace(
+			/<!-- weread-favorites:.* -->$/,
+			metadata('weread-favorites', value)
+		);
+		const raw = JSON.stringify(root);
+		const document = decode(raw);
+		const markdown = 'Synced Markdown bytes stay unchanged.';
+		const f = fixture([
+			[MAIN, raw],
+			['Library/A book.md', markdown]
+		]);
+		const loaded = await f.repository.load();
+		assert.deepEqual(loaded.document, document);
+		assert.equal(f.writes.length, 0);
+		assert.equal(needsFavoriteGraphUpdate(raw, files), true);
+		assert.equal(f.repository.needsPresentationUpdate(files), true);
+		const nextDocument = { ...document, revision: document.revision + 1 };
+		await f.repository.save(nextDocument, files);
+		const saved = f.files.get(MAIN);
+		const next = JSON.parse(saved);
+		assert.deepEqual(
+			next.edges,
+			root.edges.filter((edge) => edge.id !== oldRootEdge.id)
+		);
+		assert.deepEqual(
+			headerValue(next).managedEdges,
+			value.managedEdges.filter((id) => id !== oldRootEdge.id)
+		);
+		for (const node of root.nodes.filter((node) => node.id !== header(root).id))
+			assert.deepEqual(
+				next.nodes.find((candidate) => candidate.id === node.id),
+				node
+			);
+		for (const key of ['id', 'x', 'y', 'width', 'height', 'color'])
+			assert.equal(header(next)[key], header(root)[key]);
+		assert.equal(bookPath(next), files.book);
+		assert(book(next).text.includes('![封面|80]'));
+		assert(!card(next).text.includes('![封面|80]'));
+		assert.deepEqual(decode(saved), nextDocument);
+		assert.equal(f.files.get(BACKUP), raw);
+		assert.equal(f.files.get('Library/A book.md'), markdown);
+		assert(!f.writes.some((path) => path.endsWith('.md')));
+		assert.equal(needsFavoriteGraphUpdate(saved, files), false);
+		assert.equal(f.repository.needsPresentationUpdate(files), false);
+		assert.equal(encode(nextDocument, saved, files), saved);
+		await f.repository.load();
+		assert.equal(f.repository.needsPresentationUpdate(files), false);
+	}
 });
 
 test('file association survives omitted mapping, changes by bookId, and explicit missing mapping restores fallback cover', () => {
@@ -886,8 +1064,8 @@ test('legacy two-book anchors and new quotes reserve native header and free-card
 		color: '2',
 		customRoot: true
 	});
-	Object.assign(quoteNodes[0], { x: 520, y: 480, width: 440, height: 400 });
-	Object.assign(quoteNodes[1], { x: 0, y: 480, width: 440, height: 400 });
+	Object.assign(quoteNodes[0], { x: 520, y: 480, width: 501, height: 333 });
+	Object.assign(quoteNodes[1], { x: 0, y: 480, width: 501, height: 333 });
 	const raw = encode(doc([...records, entry('new')], 2), JSON.stringify(root));
 	const result = JSON.parse(raw);
 	const expanded = (node) => ({

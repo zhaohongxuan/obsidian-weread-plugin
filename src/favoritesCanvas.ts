@@ -351,6 +351,14 @@ function bookText(entry: FavoriteEntry, local?: string): string {
 		.join('\n\n');
 }
 
+function quoteHeight(text: string): number {
+	const lines = text.split(/\r?\n/).reduce((count, line) => {
+		const width = line.replace(/[^\u0000-\u00ff]/g, 'xx').length;
+		return count + Math.max(1, Math.ceil(width / 38));
+	}, 0);
+	return Math.min(280, Math.max(160, lines * 22 + 88));
+}
+
 /** Preserve native layout, free cards, groups, custom edges and extension properties. */
 export function serializeFavoritesCanvas(
 	document: FavoritesDocument,
@@ -397,7 +405,11 @@ export function serializeFavoritesCanvas(
 			continue;
 		}
 		remaining.delete(old.id);
-		const updated = updateCard(node, old, next);
+		const card = updateCard(node, old, next);
+		const updated =
+			node.width === 440 && node.height === 400
+				? { ...card, width: 360, height: quoteHeight(next.note.text) }
+				: card;
 		nodes.push(updated);
 		quotes.set(next.id, updated);
 	}
@@ -460,11 +472,11 @@ export function serializeFavoritesCanvas(
 			type: 'text',
 			x: book.x,
 			y: book.y + book.height + 80,
-			width: 440,
-			height: 400,
+			width: 360,
+			height: quoteHeight(entry.note.text),
 			text: cardText(entry)
 		};
-		while (collides(node)) node.y += 480;
+		while (collides(node)) node.y += node.height + 80;
 		nodes.push(node);
 		quotes.set(entry.id, node);
 	}
@@ -510,7 +522,6 @@ export function serializeFavoritesCanvas(
 		managedEdges.push(edge.id);
 	};
 	for (const [bookId, book] of bookObjects) {
-		connect(headerNode.id, book.id);
 		for (const entry of valid.records) {
 			if (entry.deletedAt === undefined && entry.note.bookId === bookId)
 				connect(book.id, quotes.get(entry.id)!.id);

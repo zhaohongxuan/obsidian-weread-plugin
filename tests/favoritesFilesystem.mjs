@@ -505,7 +505,9 @@ test('opening an existing Canvas preserves graph, quote edits and layout without
 	const upgraded = JSON.parse(upgradedRaw).nodes.find((n) => n.id === card.id);
 	assert(!upgraded.text.includes('![封面]'));
 	assert(!upgraded.text.includes('<!-- weread-favorite-cover -->'));
-	assert(JSON.parse(upgradedRaw).edges.length >= 2, 'Root, book and quote remain connected');
+	const graph = JSON.parse(upgradedRaw);
+	assert.equal(graph.edges.length, 1, 'Only the book-to-quote edge is managed');
+	assert.equal(bookForQuote(graph, upgraded).id, bookForQuote(canvas, card).id);
 	assert(upgraded.text.includes('手动补充的来源说明'));
 	assert.equal(upgraded.x, 840);
 	assert.equal(upgraded.y, -170);
@@ -520,6 +522,78 @@ test('opening an existing Canvas preserves graph, quote edits and layout without
 		upgradedRaw,
 		'Reopening must not duplicate graph nodes or rewrite the file'
 	);
+});
+
+test('opening schema2 removes managed root links once and preserves custom root relations and Markdown', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	const markdown = await f.vault.create('Book.md', 'Exact synced Markdown bytes.\n');
+	f.setBookId(markdown, 42);
+	await service.setFavorite({ ...note(), cover: 'https://covers.example/42.jpg' }, true);
+	const favorites = service.getSnapshot().favorites;
+	const canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	const quote = quoteCard(canvas);
+	const book = bookForQuote(canvas, quote);
+	const header = canvas.nodes.find((node) => node.text?.includes('<!-- weread-favorites:'));
+	Object.assign(quote, { x: -456, y: 789, width: 501, height: 333, color: '4' });
+	Object.assign(book, { x: 901, y: -123, width: 591, height: 271, color: '2' });
+	Object.assign(canvas.edges[0], {
+		fromSide: 'left',
+		toSide: 'right',
+		toEnd: 'none',
+		color: '3',
+		label: 'Native quote edge'
+	});
+	const oldRootEdge = { id: 'old-managed-root', fromNode: header.id, toNode: book.id };
+	const customRootEdge = {
+		id: 'custom-root-relation',
+		fromNode: header.id,
+		toNode: book.id,
+		fromSide: 'right',
+		toSide: 'left',
+		color: '6',
+		label: 'My root relation'
+	};
+	canvas.edges.unshift(oldRootEdge);
+	canvas.edges.push(customRootEdge);
+	const prefix = '<!-- weread-favorites:';
+	const value = JSON.parse(decodeURIComponent(header.text.split(prefix).at(-1).split(' -->')[0]));
+	assert.equal(value.schemaVersion, 2);
+	value.managedEdges.unshift(oldRootEdge.id);
+	header.text =
+		header.text.slice(0, header.text.lastIndexOf(prefix)) +
+		`${prefix}${encodeURIComponent(JSON.stringify(value))} -->`;
+	const originalRaw = JSON.stringify(canvas);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), originalRaw);
+	await service.load(true);
+	assert.equal(await f.adapter.read(FAVORITES_PATH), originalRaw, 'Loading does not migrate');
+	await service.ensureCanvas();
+	const migratedRaw = await f.adapter.read(FAVORITES_PATH);
+	const migrated = JSON.parse(migratedRaw);
+	assert.deepEqual(
+		migrated.edges,
+		canvas.edges.filter((edge) => edge.id !== oldRootEdge.id)
+	);
+	assert.deepEqual(
+		migrated.nodes.find((node) => node.id === quote.id),
+		quote
+	);
+	assert.deepEqual(
+		migrated.nodes.find((node) => node.id === book.id),
+		book
+	);
+	assertBookLink(bookForQuote(migrated, quoteCard(migrated)), 'Book.md');
+	assert(book.text.includes('https://covers.example/42.jpg'));
+	assert.deepEqual(service.getSnapshot().favorites, favorites);
+	assert.equal(await f.adapter.read('Book.md'), 'Exact synced Markdown bytes.\n');
+	assert.equal(
+		await f.adapter.read('existing-book.md'),
+		'Original synced Markdown remains unchanged.'
+	);
+	assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), originalRaw);
+	await service.ensureCanvas();
+	assert.equal(await f.adapter.read(FAVORITES_PATH), migratedRaw, 'Cleanup runs only once');
+	assert.deepEqual((await f.restart().load()).favorites, favorites);
 });
 
 function quoteCard(canvas, text = note().text) {
