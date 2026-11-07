@@ -64,7 +64,16 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 	const emit = (event, ...args) => {
 		for (const callback of listeners.get(event) || []) callback(...args);
 	};
-	const vault = { adapter };
+	const metadata = new Map();
+	let markdownScans = 0;
+	const vault = {
+		adapter,
+		getMarkdownFiles() {
+			markdownScans += 1;
+			return [...files.values()].filter((file) => file.extension === 'md');
+		}
+	};
+	const metadataCache = { getFileCache: (file) => metadata.get(file) || null };
 	if (nativeVault)
 		Object.assign(vault, {
 			getAbstractFileByPath(p) {
@@ -76,7 +85,7 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 			},
 			async create(p, raw) {
 				await adapter.write(p, raw);
-				const file = { path: p, extension: 'canvas' };
+				const file = { path: p, extension: p.split('.').at(-1) };
 				files.set(p, file);
 				emit('create', file);
 				return file;
@@ -117,6 +126,7 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 		const service = new WereadFavoritesService({
 			app: {
 				vault,
+				metadataCache,
 				workspace: {
 					getLeavesOfType(type) {
 						assert.equal(type, 'canvas');
@@ -140,7 +150,18 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 		);
 		await fs.rm(root, { recursive: true });
 	});
-	return { root, path, restart, adapter, vault, listeners };
+	return {
+		root,
+		path,
+		restart,
+		adapter,
+		vault,
+		listeners,
+		setBookId(file, bookId) {
+			metadata.set(file, { frontmatter: { doc_type: 'weread-highlights-reviews', bookId } });
+		},
+		markdownScans: () => markdownScans
+	};
 }
 const note = (id = 'one') => ({
 	id: `42:highlight:${id}`,
@@ -214,8 +235,8 @@ test('real truncated file recovery preserves damaged bytes; a future schema is n
 		if (node.type === 'text' && node.text.includes('<!-- weread-favorites:')) {
 			const oldText = node.text;
 			node.text = node.text.replace(
-				encodeURIComponent('"schemaVersion":1'),
-				encodeURIComponent('"schemaVersion":2')
+				encodeURIComponent('"schemaVersion":2'),
+				encodeURIComponent('"schemaVersion":3')
 			);
 			changed ||= oldText !== node.text;
 		}
@@ -406,13 +427,32 @@ test('plugin mutation flushes a pending native Canvas save before merging a new 
 		file,
 		async save() {
 			saves += 1;
-			if (saves === 1) await f.vault.modify(file, JSON.stringify(draft));
+			if (saves === 1) {
+				await f.vault.modify(file, JSON.stringify(draft));
+				const markdown = await f.vault.create(
+					'Newly synced book.md',
+					'Synced during editor save'
+				);
+				f.setBookId(markdown, 42);
+			}
 		}
 	});
 	await service.setFavorite(note('new-favorite'), true);
 	assert.equal(saves, 1);
 	const saved = JSON.parse(await f.adapter.read(FAVORITES_PATH));
 	assert.equal(saved.nodes.find((n) => n.id === card.id).x, -142);
+	assert.equal(
+		bookForQuote(
+			saved,
+			saved.nodes.find((n) => n.id === card.id)
+		).file,
+		'Newly synced book.md'
+	);
+	assert.equal(
+		f.markdownScans(),
+		2,
+		'Each accepted write resolves once, after the native draft flush'
+	);
 	const records = parseFavorites(await f.adapter.read(FAVORITES_PATH)).records;
 	assert.equal(records.length, 2);
 	assert(records.find((e) => e.id === note().id).note.text.includes('尚未自动保存'));
@@ -442,7 +482,7 @@ test('external disk changes are checked before saving a pending native Canvas dr
 	assert.equal(await f.adapter.read(FAVORITES_PATH), raw);
 });
 
-test('opening an existing Canvas fills missing covers without moving cards or changing the quote', async (t) => {
+test('opening an existing Canvas preserves graph, quote edits and layout without automatic covers', async (t) => {
 	const f = await fixture(t, { nativeVault: true });
 	const service = f.restart();
 	const original = { ...note(), cover: 'https://covers.example/42.jpg' };
@@ -463,7 +503,9 @@ test('opening an existing Canvas fills missing covers without moving cards or ch
 	await service.ensureCanvas();
 	const upgradedRaw = await f.adapter.read(FAVORITES_PATH);
 	const upgraded = JSON.parse(upgradedRaw).nodes.find((n) => n.id === card.id);
-	assert(upgraded.text.includes('https://covers.example/42.jpg'));
+	assert(!upgraded.text.includes('![封面]'));
+	assert(!upgraded.text.includes('<!-- weread-favorite-cover -->'));
+	assert(JSON.parse(upgradedRaw).edges.length >= 2, 'Root, book and quote remain connected');
 	assert(upgraded.text.includes('手动补充的来源说明'));
 	assert.equal(upgraded.x, 840);
 	assert.equal(upgraded.y, -170);
@@ -476,6 +518,223 @@ test('opening an existing Canvas fills missing covers without moving cards or ch
 	assert.equal(
 		await f.adapter.read(FAVORITES_PATH),
 		upgradedRaw,
-		'Reopening must not duplicate covers or rewrite the file'
+		'Reopening must not duplicate graph nodes or rewrite the file'
 	);
+});
+
+function quoteCard(canvas, text = note().text) {
+	return canvas.nodes.find((node) => node.type === 'text' && node.text.startsWith(text));
+}
+function bookForQuote(canvas, quote) {
+	const edge = canvas.edges.find((candidate) => candidate.toNode === quote.id);
+	assert(edge, 'Quote has a book parent');
+	return canvas.nodes.find((node) => node.id === edge.fromNode);
+}
+
+test('cached local book references appear after sync and follow Markdown file and folder changes', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	await service.setFavorite({ ...note(), cover: 'https://covers.example/42.jpg' }, true);
+	let canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	const quote = quoteCard(canvas);
+	assert.equal(bookForQuote(canvas, quote).type, 'text', 'No local Markdown uses a placeholder');
+	assert(!quote.text.includes('<!-- weread-favorite-cover -->'));
+	const beforeSync = await f.adapter.read(FAVORITES_PATH);
+	await f.vault.createFolder('Books');
+	const markdown = await f.vault.create(
+		'Books/Shared title.md',
+		'Synced note content must stay exact.'
+	);
+	f.setBookId(markdown, 42);
+	assert.equal(
+		await f.adapter.read(FAVORITES_PATH),
+		beforeSync,
+		'File events do not rewrite favorites'
+	);
+	assert.equal(service.isFavorite(note().id), true);
+	const scans = f.markdownScans();
+	await service.ensureCanvas();
+	assert.equal(f.markdownScans(), scans + 1, 'One Markdown enumeration per transaction');
+	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, markdown.path);
+	assert.equal(await f.adapter.read(markdown.path), 'Synced note content must stay exact.');
+	const linkedRaw = await f.adapter.read(FAVORITES_PATH);
+	await service.ensureCanvas();
+	assert.equal(await f.adapter.read(FAVORITES_PATH), linkedRaw, 'Unchanged graph does not write');
+	await f.vault.rename(markdown, 'Books/Renamed.md');
+	const nativeRenamed = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	const nativeBook = bookForQuote(nativeRenamed, quoteCard(nativeRenamed));
+	const originalBookNodeId = nativeBook.id;
+	nativeBook.file = markdown.path;
+	const nativeRaw = JSON.stringify(nativeRenamed);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), nativeRaw);
+	await service.load(true);
+	await service.ensureCanvas();
+	assert.equal(
+		await f.adapter.read(FAVORITES_PATH),
+		nativeRaw,
+		'Native file-link rename preserves book identity without a rewrite'
+	);
+	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).id, originalBookNodeId);
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'Books/Renamed.md');
+	await f.vault.rename(f.vault.getAbstractFileByPath('Books'), 'RenamedBooks');
+	await service.setFavorite(note('second'), true);
+	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'RenamedBooks/Renamed.md');
+	assert.equal(service.getSnapshot().favorites.length, 2);
+	await f.vault.delete(f.vault.getAbstractFileByPath('RenamedBooks'));
+	await service.ensureCanvas();
+	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).type, 'text');
+	assert.equal(
+		service.getSnapshot().favorites.length,
+		2,
+		'Source folder deletion never cancels quotes'
+	);
+});
+
+test('same titles do not conflate book IDs and ambiguous cached IDs fall back without quote loss', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	const one = await f.vault.create('One.md', 'First synced note');
+	const two = await f.vault.create('Two.md', 'Second synced note');
+	f.setBookId(one, 42);
+	f.setBookId(two, '43');
+	await service.setFavorite(note(), true);
+	const other = {
+		...note('other'),
+		id: '43:highlight:other',
+		bookId: '43',
+		text: 'Other book quote'
+	};
+	await service.setFavorite(other, true);
+	let canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'One.md');
+	assert.equal(bookForQuote(canvas, quoteCard(canvas, other.text)).file, 'Two.md');
+	const duplicate = await f.vault.create('Duplicate.md', 'Conflicting cached identity');
+	f.setBookId(duplicate, '42');
+	await service.ensureCanvas();
+	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).type, 'text');
+	assert.equal(bookForQuote(canvas, quoteCard(canvas, other.text)).file, 'Two.md');
+	assert.equal(service.getSnapshot().favorites.length, 2);
+	await f.vault.delete(duplicate);
+	await service.ensureCanvas();
+	canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(canvas, quoteCard(canvas)).file, 'One.md');
+});
+
+test('native book-card removal cannot cancel quotes and opening repairs only graph presentation', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	const markdown = await f.vault.create('Book.md', 'Unmodified synced content');
+	f.setBookId(markdown, '42');
+	await service.setFavorite(note(), true);
+	const canvas = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	const book = bookForQuote(canvas, quoteCard(canvas));
+	canvas.nodes = canvas.nodes.filter((node) => node.id !== book.id);
+	canvas.edges = canvas.edges.filter(
+		(edge) => edge.fromNode !== book.id && edge.toNode !== book.id
+	);
+	const raw = JSON.stringify(canvas);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), raw);
+	await service.load(true);
+	assert.equal(service.isFavorite(note().id), true);
+	assert.equal(await f.adapter.read(FAVORITES_PATH), raw, 'Reload alone never forces a save');
+	await service.ensureCanvas();
+	const repaired = JSON.parse(await f.adapter.read(FAVORITES_PATH));
+	assert.equal(bookForQuote(repaired, quoteCard(repaired)).file, 'Book.md');
+	assert.equal(service.getSnapshot().favorites.length, 1);
+	assert.equal(parseFavorites(await f.adapter.read(FAVORITES_PATH)).records[0].id, note().id);
+	assert.equal(await f.adapter.read('Book.md'), 'Unmodified synced content');
+});
+
+function legacyCanvas(entry) {
+	const marker = (name, value) => `<!-- ${name}:${encodeURIComponent(JSON.stringify(value))} -->`;
+	return (
+		JSON.stringify(
+			{
+				nodes: [
+					{
+						id: 'old-root',
+						type: 'text',
+						x: -200,
+						y: 10,
+						width: 400,
+						height: 160,
+						text: `Original root notes\n\n${marker('weread-favorites', { schemaVersion: 1, revision: 1, tombstones: [] })}`
+					},
+					{
+						id: 'old-quote',
+						type: 'text',
+						x: 900,
+						y: -230,
+						width: 390,
+						height: 300,
+						text: `${entry.note.text}\n\n<!-- weread-favorite-footer -->\n\nOriginal custom source\n\n${marker('weread-favorite', { schemaVersion: 1, record: entry })}`
+					}
+				],
+				edges: []
+			},
+			null,
+			3
+		) + '\n'
+	);
+}
+
+test('format-one upgrade archives original exact bytes beyond rotating previous backups', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	await service.setFavorite(note(), true);
+	const original = legacyCanvas(service.getSnapshot().favorites[0]);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), original);
+	await service.load(true);
+	assert.equal(
+		await f.adapter.read(FAVORITES_PATH),
+		original,
+		'Loading legacy Canvas stays read-only'
+	);
+	await service.ensureCanvas();
+	const entries = await fs.readdir(f.path('WereadData/favorites'));
+	const archives = entries.filter((name) => name.startsWith('favorites.before-book-graph.'));
+	assert.equal(archives.length, 1);
+	const archive = 'WereadData/favorites/' + archives[0];
+	assert.equal(await f.adapter.read(archive), original);
+	const upgradedRaw = await f.adapter.read(FAVORITES_PATH);
+	const upgraded = JSON.parse(upgradedRaw);
+	const quote = upgraded.nodes.find((node) => node.id === 'old-quote');
+	assert.equal(quote.x, 900);
+	assert.equal(quote.y, -230);
+	assert(quote.text.includes('Original custom source'));
+	assert(bookForQuote(upgraded, quote));
+	await service.setFavorite(note('later'), true);
+	assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), upgradedRaw);
+	assert.equal(await f.adapter.read(archive), original);
+	assert.equal(
+		(await fs.readdir(f.path('WereadData/favorites'))).filter((name) =>
+			name.startsWith('favorites.before-book-graph.')
+		).length,
+		1
+	);
+});
+
+test('failed original-byte archive verification blocks legacy graph upgrade before primary or backup writes', async (t) => {
+	const f = await fixture(t, { nativeVault: true });
+	const service = f.restart();
+	await service.setFavorite(note(), true);
+	const original = legacyCanvas(service.getSnapshot().favorites[0]);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), original);
+	await service.load(true);
+	const backup = await f.adapter.read(FAVORITES_BACKUP_PATH);
+	const write = f.adapter.write;
+	f.adapter.write = async (path, raw) =>
+		write(path, path.includes('favorites.before-book-graph.') ? raw.slice(0, 10) : raw);
+	await assert.rejects(service.ensureCanvas(), /校验失败/);
+	assert.equal(await f.adapter.read(FAVORITES_PATH), original);
+	assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), backup);
+	assert.equal(service.isFavorite(note().id), true);
+	f.adapter.write = write;
+	await service.ensureCanvas();
+	assert.equal(parseFavorites(await f.adapter.read(FAVORITES_PATH)).records[0].id, note().id);
 });

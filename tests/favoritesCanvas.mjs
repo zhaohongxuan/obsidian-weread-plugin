@@ -23,7 +23,7 @@ new Function('require', 'module', 'exports', compiled.outputFiles[0].text)(
 const {
 	serializeFavoritesCanvas: encode,
 	parseFavorites: decode,
-	hasMissingFavoriteCovers,
+	needsFavoriteGraphUpdate,
 	parseLegacyFavorites,
 	FavoritesRepository,
 	FAVORITES_PATH: MAIN,
@@ -49,6 +49,16 @@ const entry = (id = 'one', text = 'A quotation') => ({
 const doc = (records = [entry()], revision = 1) => ({ schemaVersion: 1, revision, records });
 const card = (root) => root.nodes.find((node) => node.text?.includes('<!-- weread-favorite:'));
 const header = (root) => root.nodes.find((node) => node.text?.includes('<!-- weread-favorites:'));
+const headerValue = (root) =>
+	JSON.parse(
+		decodeURIComponent(
+			header(root).text.split('<!-- weread-favorites:').at(-1).split(' -->')[0]
+		)
+	);
+const book = (root, bookId = 'book') =>
+	root.nodes.find((node) => node.id === headerValue(root).bookNodes[bookId]);
+const customEdges = (root) =>
+	root.edges.filter((edge) => !headerValue(root).managedEdges.includes(edge.id));
 const free = (id = 'free', type = 'text') => ({
 	id,
 	type,
@@ -92,12 +102,16 @@ const withCover = (url = 'https://images.example.test/book.jpg', text = 'A quota
 function oldCoverCanvas(record) {
 	const withoutCover = { ...record, note: { ...record.note, cover: undefined } };
 	const root = JSON.parse(encode(doc([withoutCover])));
+	root.nodes = root.nodes.filter((node) => node === card(root) || node === header(root));
+	root.edges = [];
+	header(root).text =
+		`# 我的收藏\n\n${metadata('weread-favorites', { schemaVersion: 1, revision: 1, tombstones: [] })}`;
 	card(root).text =
 		`${record.note.text}\n\n<!-- weread-favorite-footer -->\n\nNative custom footer\n\n${metadata('weread-favorite', { schemaVersion: 1, record })}`;
 	return root;
 }
 
-test('native cover is bounded at card top and never enters exact quotation snapshots', () => {
+test('fallback book owns one safe cover while quotes remain plaintext', () => {
 	for (const url of [
 		'https://images.example.test/a.jpg?size=80',
 		'http://images.example.test/a.jpg',
@@ -106,13 +120,15 @@ test('native cover is bounded at card top and never enters exact quotation snaps
 		const record = withCover(url, '![own image](https://example.test/own.png)\n\nQuote body');
 		const raw = encode(doc([record]));
 		const node = card(JSON.parse(raw));
-		assert(node.text.startsWith(`${COVER_START}\n\n![封面|80](<http`));
+		assert(!node.text.includes(COVER_START));
+		assert(book(JSON.parse(raw)).text.startsWith('![封面|80](<http'));
+		assert.equal(book(JSON.parse(raw)).text.split('![封面|80]').length - 1, 1);
 		assert.equal(node.height, 400);
 		assert.deepEqual(decode(raw), doc([record]));
-		assert.equal(hasMissingFavoriteCovers(raw), false);
+		assert.equal(needsFavoriteGraphUpdate(raw), false);
 		const saved = encode(doc([record], 2), raw);
 		assert.deepEqual(card(JSON.parse(saved)), node);
-		assert.equal(node.text.split('![封面|80]').length - 1, 1);
+		assert.equal(node.text.split('![封面|80]').length - 1, 0);
 	}
 });
 
@@ -138,8 +154,9 @@ test('unsafe or absent cover URLs render no generated image and need no presenta
 		const raw = encode(doc([record]));
 		assert(!card(JSON.parse(raw)).text.includes(COVER_START));
 		assert.deepEqual(decode(raw), doc([record]));
-		assert.equal(hasMissingFavoriteCovers(raw), false);
-		assert.equal(hasMissingFavoriteCovers(JSON.stringify(oldCoverCanvas(record))), false);
+		assert.equal(needsFavoriteGraphUpdate(raw), false);
+		assert(!book(JSON.parse(raw)).text.includes('![封面|80]'));
+		assert.equal(needsFavoriteGraphUpdate(JSON.stringify(oldCoverCanvas(record))), true);
 	}
 });
 
@@ -163,7 +180,7 @@ test('old-card cover retrofit preserves native body/footer, geometry, color, fre
 	root.nodes.push(free());
 	root.edges.push({ id: 'own-edge', fromNode: card(root).id, toNode: 'free' });
 	const before = JSON.stringify(root);
-	assert.equal(hasMissingFavoriteCovers(before), true);
+	assert.equal(needsFavoriteGraphUpdate(before), true);
 	const document = decode(before);
 	const upgraded = encode({ ...document, revision: 2 }, before);
 	const next = JSON.parse(upgraded);
@@ -175,30 +192,43 @@ test('old-card cover retrofit preserves native body/footer, geometry, color, fre
 		next.nodes.find((node) => node.id === 'free'),
 		free()
 	);
-	assert.deepEqual(next.edges, root.edges);
+	assert.deepEqual(customEdges(next), root.edges);
 	assert.equal(decode(upgraded).records[0].note.text, '**Edited native quote**');
-	assert.equal(hasMissingFavoriteCovers(upgraded), false);
+	assert.equal(needsFavoriteGraphUpdate(upgraded), false);
 	assert.deepEqual(card(JSON.parse(encode({ ...document, revision: 3 }, upgraded))), card(next));
 });
 
-test('native cover width/image edits survive unrelated saves while quote edits still update plugin text', () => {
-	const root = JSON.parse(encode(doc([withCover()])));
-	card(root).text = card(root)
-		.text.replace('![封面|80]', '![封面|124]')
-		.replace('A quotation', 'Edited body\n![own](https://example.test/own.jpg)');
-	card(root).text = card(root).text.replace(
-		'https://images.example.test/book.jpg',
-		'https://images.example.test/custom.jpg'
-	);
+test('owned cover migration preserves manual body, footer, width, images and trailing whitespace', () => {
+	const record = withCover();
+	const root = oldCoverCanvas(record);
+	const ownCover = `${COVER_START}\n\n![封面|124](<https://images.example.test/custom.jpg>)\n\n${COVER_END}\n\n`;
+	card(root).text =
+		ownCover +
+		card(root).text.replace('A quotation', 'Edited body\n![own](https://example.test/own.jpg)');
+	card(root).text =
+		card(root).text.slice(0, card(root).text.lastIndexOf('<!-- weread-favorite:')) +
+		metadata('weread-favorite', { schemaVersion: 1, record, cover: true }) +
+		' \n\t';
+	Object.assign(card(root), {
+		x: -321,
+		y: 101,
+		width: 777,
+		height: 180,
+		color: '3',
+		custom: { retained: true }
+	});
 	const raw = JSON.stringify(root);
 	const decoded = decode(raw);
 	assert.equal(decoded.records[0].note.text, 'Edited body\n![own](https://example.test/own.jpg)');
-	const saved = encode(
-		{ ...decoded, revision: 2, records: [...decoded.records, entry('two')] },
-		raw
-	);
-	assert.deepEqual(card(JSON.parse(saved)), card(root));
-	assert.equal(hasMissingFavoriteCovers(saved), false);
+	const saved = encode({ ...decoded, revision: 2 }, raw);
+	const next = card(JSON.parse(saved));
+	assert(!next.text.includes(COVER_START));
+	assert(next.text.includes('Native custom footer'));
+	assert(next.text.endsWith(' \n\t'));
+	for (const key of ['id', 'x', 'y', 'width', 'height', 'color', 'custom'])
+		assert.deepEqual(next[key], card(root)[key]);
+	assert.equal(needsFavoriteGraphUpdate(saved), false);
+	assert.deepEqual(card(JSON.parse(encode({ ...decoded, revision: 3 }, saved))), next);
 });
 
 test('malformed cover envelope flags and damaged owned wrappers stay protected read-only', async () => {
@@ -235,7 +265,8 @@ test('legacy conversion, removal and restore include covers without reintroducin
 	const record = withCover();
 	const f = fixture([[LEGACY, JSON.stringify(doc([record]))]]);
 	await f.repository.load();
-	assert(card(JSON.parse(f.files.get(MAIN))).text.startsWith(COVER_START));
+	assert(!card(JSON.parse(f.files.get(MAIN))).text.includes(COVER_START));
+	assert(book(JSON.parse(f.files.get(MAIN))).text.includes('![封面|80]'));
 	assert.equal(f.repository.needsPresentationUpdate(), false);
 	const deleted = { ...record, updatedAt: record.updatedAt + 1, deletedAt: record.updatedAt + 1 };
 	await f.repository.save(doc([deleted], 2));
@@ -243,7 +274,8 @@ test('legacy conversion, removal and restore include covers without reintroducin
 	assert.equal(f.repository.needsPresentationUpdate(), false);
 	await f.repository.save(doc([record], 3));
 	const restored = card(JSON.parse(f.files.get(MAIN)));
-	assert.equal(restored.text.split('![封面|80]').length - 1, 1);
+	assert.equal(restored.text.split('![封面|80]').length - 1, 0);
+	assert.equal(book(JSON.parse(f.files.get(MAIN))).text.split('![封面|80]').length - 1, 1);
 	assert.equal(decode(f.files.get(MAIN)).records[0].note.text, record.note.text);
 });
 
@@ -260,7 +292,7 @@ test('optional native nodes and edges normalize to empty arrays without relying 
 		saved.nodes.find((node) => node.id === ownNode.id),
 		ownNode
 	);
-	assert.deepEqual(saved.edges, []);
+	assert.equal(saved.edges.length, 2);
 	assert.equal(decode(JSON.stringify(saved)).records.length, 1);
 	for (const key of ['nodes', 'edges']) {
 		for (const value of [null, false, 0, '', {}, '[]']) {
@@ -321,10 +353,22 @@ test('native move/resize/color, unknown properties, free node kinds and edges su
 			result.nodes.find((next) => next.id === node.id),
 			node
 		);
-	assert.deepEqual(result.edges, root.edges);
+	for (const edge of root.edges)
+		assert.deepEqual(
+			result.edges.find((next) => next.id === edge.id),
+			edge
+		);
 	assert.deepEqual(result.customRoot, root.customRoot);
 	const added = result.nodes.find((node) => node.text?.includes('book%3Ahighlight%3Atwo'));
-	assert(added.y >= Math.max(...root.nodes.map((node) => node.y + node.height)) + 40);
+	assert(added.y >= book(result).y + book(result).height + 40);
+	for (const node of root.nodes) {
+		assert(
+			added.x + added.width <= node.x ||
+				added.x >= node.x + node.width ||
+				added.y + added.height <= node.y ||
+				added.y >= node.y + node.height
+		);
+	}
 });
 
 test('native body edits replace snapshot text, retain layout and remain byte-identical through unrelated saves', () => {
@@ -365,7 +409,11 @@ test('native deletion cancels favorite, header deletion and empty Canvas are acc
 	root.nodes = root.nodes.filter((node) => node !== card(root));
 	assert.deepEqual(decode(JSON.stringify(root)).records, []);
 	const noHeader = JSON.parse(encode(doc()));
-	noHeader.nodes = noHeader.nodes.filter((node) => node !== header(noHeader));
+	const headerId = header(noHeader).id;
+	noHeader.nodes = noHeader.nodes.filter((node) => node.id !== headerId);
+	noHeader.edges = noHeader.edges.filter(
+		(edge) => edge.fromNode !== headerId && edge.toNode !== headerId
+	);
 	assert.deepEqual(decode(JSON.stringify(noHeader)), doc([entry()], 0));
 	const saved = JSON.parse(encode(doc([entry()], 1), JSON.stringify(noHeader)));
 	assert(header(saved));
@@ -407,7 +455,7 @@ test('damaged managed metadata, future metadata and invalid native structures ar
 		},
 		(root) => {
 			header(root).text = metadata('weread-favorites', {
-				schemaVersion: 2,
+				schemaVersion: 3,
 				revision: 1,
 				tombstones: []
 			});
@@ -541,4 +589,319 @@ test('legacy future/corrupt without valid backup stays read-only; empty load doe
 	await empty.repository.save(doc([], 1));
 	assert.equal(await empty.repository.hasPrimary(), true);
 	assert.deepEqual(decode(empty.files.get(MAIN)), doc([], 1));
+});
+
+const otherBookEntry = (bookId = 'other', id = 'one') => {
+	const record = entry(id);
+	record.id = record.note.id = `${bookId}:highlight:${id}`;
+	record.note.bookId = bookId;
+	return record;
+};
+const rewriteHeader = (root, change) => {
+	const value = headerValue(root);
+	change(value);
+	header(root).text = `# 我的收藏\n\n${metadata('weread-favorites', value)}`;
+};
+const overlaps = (a, b) =>
+	a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+test('graph creates one book per bookId, separate duplicate titles, native file preview and readable hierarchy', () => {
+	const records = [withCover(), entry('two'), otherBookEntry()];
+	const files = { book: 'Library/A book.md', other: 'Library/Duplicate title.md' };
+	const raw = encode(doc(records), undefined, files);
+	const root = JSON.parse(raw);
+	const value = headerValue(root);
+	assert.equal(value.schemaVersion, 2);
+	assert.equal(Object.keys(value.bookNodes).length, 2);
+	assert.equal(root.nodes.length, 6);
+	assert.equal(root.edges.length, 5);
+	for (const [bookId, path] of Object.entries(files)) {
+		const node = book(root, bookId);
+		assert.equal(node.type, 'file');
+		assert.equal(node.file, path);
+		assert.deepEqual(Object.keys(node).sort(), [
+			'file',
+			'height',
+			'id',
+			'type',
+			'width',
+			'x',
+			'y'
+		]);
+		assert(header(root).y + header(root).height <= node.y);
+		assert(
+			root.edges.some((edge) => edge.fromNode === header(root).id && edge.toNode === node.id)
+		);
+		for (const quote of root.nodes.filter((candidate) =>
+			candidate.text?.includes('<!-- weread-favorite:')
+		)) {
+			const record = decode(JSON.stringify({ nodes: [quote], edges: [] })).records[0];
+			if (record.note.bookId !== bookId) continue;
+			assert(quote.y >= node.y + node.height + 40);
+			assert(
+				root.edges.some((edge) => edge.fromNode === node.id && edge.toNode === quote.id)
+			);
+			assert(!quote.text.includes(COVER_START));
+		}
+	}
+	for (const a of root.nodes) for (const b of root.nodes) if (a !== b) assert(!overlaps(a, b));
+	assert.equal(needsFavoriteGraphUpdate(raw, files), false);
+	assert.equal(encode(doc(records), raw, files), raw);
+});
+
+test('file association survives omitted mapping, changes by bookId, and explicit missing mapping restores fallback cover', () => {
+	const raw = encode(doc([withCover()]), undefined, { book: 'Library/A.md' });
+	assert.equal(book(JSON.parse(encode(doc([withCover()]), raw))).file, 'Library/A.md');
+	assert.equal(needsFavoriteGraphUpdate(raw), false);
+	assert.equal(needsFavoriteGraphUpdate(raw, { book: 'Library/Renamed.md' }), true);
+	const renamed = encode(doc([withCover()]), raw, { book: 'Library/Renamed.md' });
+	assert.equal(book(JSON.parse(renamed)).file, 'Library/Renamed.md');
+	assert.equal(book(JSON.parse(renamed)).id, book(JSON.parse(raw)).id);
+	const deleted = encode(doc([withCover()]), renamed, {});
+	assert.equal(book(JSON.parse(deleted)).type, 'text');
+	assert(!('file' in book(JSON.parse(deleted))));
+	assert(book(JSON.parse(deleted)).text.includes('![封面|80]'));
+	assert.equal(needsFavoriteGraphUpdate(deleted, {}), false);
+	assert.deepEqual(decode(deleted).records, [withCover()]);
+});
+
+test('native book deletion never cancels quotes with or without remaining incident edges and is repaired only on save', () => {
+	for (const removeEdges of [false, true]) {
+		const root = JSON.parse(
+			encode(doc([entry(), entry('two')]), undefined, { book: 'Library/A.md' })
+		);
+		const original = book(root);
+		root.nodes = root.nodes.filter((node) => node.id !== original.id);
+		if (removeEdges)
+			root.edges = root.edges.filter(
+				(edge) => edge.fromNode !== original.id && edge.toNode !== original.id
+			);
+		const raw = JSON.stringify(root);
+		const parsed = decode(raw);
+		assert.deepEqual(parsed.records, [entry(), entry('two')]);
+		assert.equal(needsFavoriteGraphUpdate(raw, { book: 'Library/A.md' }), true);
+		assert(!JSON.parse(raw).nodes.some((node) => node.id === original.id));
+		const repaired = encode(parsed, raw, { book: 'Library/A.md' });
+		assert.equal(book(JSON.parse(repaired)).id, original.id);
+		assert.deepEqual(decode(repaired), parsed);
+		assert.equal(needsFavoriteGraphUpdate(repaired, { book: 'Library/A.md' }), false);
+	}
+});
+
+test('native quote deletion cancels only that quote and never recreates it during graph repair', () => {
+	const root = JSON.parse(encode(doc([entry(), entry('two')])));
+	const removed = card(root).id;
+	root.nodes = root.nodes.filter((node) => node.id !== removed);
+	root.edges = root.edges.filter((edge) => edge.fromNode !== removed && edge.toNode !== removed);
+	const parsed = decode(JSON.stringify(root));
+	assert.deepEqual(parsed.records, [entry('two')]);
+	const repaired = JSON.parse(encode(parsed, JSON.stringify(root)));
+	assert(!repaired.nodes.some((node) => node.id === removed));
+	assert.equal(
+		repaired.nodes.filter((node) => node.text?.includes('<!-- weread-favorite:')).length,
+		1
+	);
+});
+
+test('malformed, duplicate and incompatible root book references are protected read-only', () => {
+	const source = JSON.parse(encode(doc([entry(), otherBookEntry()])));
+	for (const mutate of [
+		(value) => {
+			value.bookNodes = [];
+		},
+		(value) => {
+			value.bookNodes.book = 7;
+		},
+		(value) => {
+			value.bookNodes.book = '';
+		},
+		(value) => {
+			value.bookNodes.other = value.bookNodes.book;
+		},
+		(value) => {
+			value.bookNodes.book = card(source).id;
+		},
+		(value) => {
+			value.bookNodes.book = header(source).id;
+		},
+		(value) => {
+			value.managedEdges = ['same', 'same'];
+		},
+		(value) => {
+			value.managedEdges = [null];
+		},
+		(value) => {
+			value.managedEdges = {};
+		},
+		(value) => {
+			value.schemaVersion = 3;
+		}
+	]) {
+		const root = structuredClone(source);
+		rewriteHeader(root, mutate);
+		const raw = JSON.stringify(root);
+		assert.throws(() => decode(raw));
+		assert.throws(() => needsFavoriteGraphUpdate(raw));
+		assert.throws(() => encode(doc(), raw));
+	}
+});
+
+test('book file map rejects external paths and traversal while native free file paths stay unmanaged', () => {
+	for (const path of [
+		'/tmp/a.md',
+		'../a.md',
+		'Library/../a.md',
+		'./a.md',
+		'Library//a.md',
+		'C:\\a.md',
+		'C:/a.md',
+		'file:///tmp/a.md',
+		'https://example.test/a.md',
+		'obsidian://a.md',
+		'\\server\\a.md',
+		'a\n.md',
+		'~/a.md',
+		'book.pdf'
+	]) {
+		assert.throws(() => encode(doc(), undefined, { book: path }));
+		assert.throws(() => needsFavoriteGraphUpdate(encode(doc()), { book: path }));
+	}
+	for (const path of ['读书/书名 #1.md', 'Library/C#?.MD', 'Library/A book.Md']) {
+		const mapped = encode(doc(), undefined, { book: path });
+		assert.equal(book(JSON.parse(mapped)).file, path);
+		assert.equal(needsFavoriteGraphUpdate(mapped, { book: path }), false);
+	}
+	const root = JSON.parse(encode(doc(), undefined, { book: '读书/书名 #1.md' }));
+	root.nodes.push({ ...free('outside', 'file'), file: '/old/unmanaged.md' });
+	const raw = encode(doc(), JSON.stringify(root));
+	assert.equal(
+		JSON.parse(raw).nodes.find((node) => node.id === 'outside').file,
+		'/old/unmanaged.md'
+	);
+	assert.equal(book(JSON.parse(raw)).file, '读书/书名 #1.md');
+});
+
+test('stable managed node and edge IDs avoid free IDs and remain idempotent after unrelated additions', () => {
+	const baseline = JSON.parse(encode(doc()));
+	const collisionNodes = baseline.nodes.map((node) => ({ ...free(node.id), x: 2000 }));
+	const collisionEdges = baseline.edges.map((edge) => ({
+		id: edge.id,
+		fromNode: collisionNodes[0].id,
+		toNode: collisionNodes[1].id
+	}));
+	const raw = encode(doc(), JSON.stringify({ nodes: collisionNodes, edges: collisionEdges }));
+	const root = JSON.parse(raw);
+	const ids = [...root.nodes, ...root.edges].map((item) => item.id);
+	assert.equal(new Set(ids).size, ids.length);
+	for (const node of collisionNodes)
+		assert.deepEqual(
+			root.nodes.find((candidate) => candidate.id === node.id),
+			node
+		);
+	for (const edge of collisionEdges)
+		assert.deepEqual(
+			root.edges.find((candidate) => candidate.id === edge.id),
+			edge
+		);
+	assert.equal(needsFavoriteGraphUpdate(raw), false);
+	assert.equal(encode(doc(), raw), raw);
+	const expanded = encode(doc([entry(), entry('two')], 2), raw);
+	const next = JSON.parse(expanded);
+	assert.equal(card(next).id, card(root).id);
+	assert.equal(book(next).id, book(root).id);
+	assert.equal(encode(doc([entry(), entry('two')], 2), expanded), expanded);
+});
+
+test('schema1 migration leaves all old quote positions, custom group edges and managed edge extensions intact', () => {
+	const root = oldCoverCanvas(withCover());
+	Object.assign(card(root), { x: -200, y: -300, width: 950, height: 170, color: '4' });
+	root.nodes.push(free('group', 'group'), free('annotation'));
+	root.edges.push({
+		id: 'group-edge',
+		fromNode: 'group',
+		toNode: card(root).id,
+		label: 'manual',
+		customEdge: { yes: true }
+	});
+	root.extension = { version: 44 };
+	const before = structuredClone(card(root));
+	const raw = encode(decode(JSON.stringify(root)), JSON.stringify(root), {
+		book: 'Library/A.md'
+	});
+	const result = JSON.parse(raw);
+	assert.deepEqual(card(result), before);
+	assert.deepEqual(result.extension, root.extension);
+	assert.deepEqual(customEdges(result), root.edges);
+	assert(!overlaps(book(result), card(result)));
+	assert(book(result).y + book(result).height < card(result).y);
+	Object.assign(
+		result.edges.find((edge) => headerValue(result).managedEdges.includes(edge.id)),
+		{ label: 'edited', customEdge: [1, 2] }
+	);
+	const changed = JSON.stringify(result);
+	const again = JSON.parse(encode(decode(changed), changed));
+	assert.deepEqual(again.edges, result.edges);
+	assert.equal(needsFavoriteGraphUpdate(changed), false);
+});
+
+test('empty native Canvas requires no graph update and migration detector validates header versions', () => {
+	const { isLegacyFavoritesCanvas } = module.exports;
+	for (const raw of ['{}', '{"nodes":[]}', '{"nodes":[],"edges":[]}']) {
+		assert.equal(needsFavoriteGraphUpdate(raw), false);
+		assert.equal(isLegacyFavoritesCanvas(raw), true);
+		assert.deepEqual(decode(raw), doc([], 0));
+	}
+	const old = JSON.stringify(oldCoverCanvas(entry()));
+	assert.equal(isLegacyFavoritesCanvas(old), true);
+	assert.equal(isLegacyFavoritesCanvas(encode(doc())), false);
+	assert.throws(() => isLegacyFavoritesCanvas('{broken'));
+	const future = JSON.parse(encode(doc()));
+	rewriteHeader(future, (value) => {
+		value.schemaVersion = 3;
+	});
+	assert.throws(() => isLegacyFavoritesCanvas(JSON.stringify(future)));
+});
+
+test('legacy two-book anchors and new quotes reserve native header and free-card bounds with margins', () => {
+	const records = [entry(), otherBookEntry()];
+	const root = JSON.parse(encode(doc(records)));
+	const quoteNodes = root.nodes.filter((node) => node.text?.includes('<!-- weread-favorite:'));
+	root.nodes = [header(root), ...quoteNodes, free('old-free')];
+	root.edges = [];
+	header(root).text =
+		`# 我的收藏\n\n${metadata('weread-favorites', { schemaVersion: 1, revision: 1, tombstones: [] })}`;
+	Object.assign(header(root), {
+		x: 0,
+		y: 0,
+		width: 440,
+		height: 400,
+		color: '2',
+		customRoot: true
+	});
+	Object.assign(quoteNodes[0], { x: 520, y: 480, width: 440, height: 400 });
+	Object.assign(quoteNodes[1], { x: 0, y: 480, width: 440, height: 400 });
+	const raw = encode(doc([...records, entry('new')], 2), JSON.stringify(root));
+	const result = JSON.parse(raw);
+	const expanded = (node) => ({
+		...node,
+		x: node.x - 40,
+		y: node.y - 40,
+		width: node.width + 80,
+		height: node.height + 80
+	});
+	for (const bookId of ['book', 'other']) {
+		for (const old of root.nodes) assert(!overlaps(book(result, bookId), expanded(old)));
+	}
+	for (const quote of quoteNodes)
+		assert.deepEqual(
+			result.nodes.find((node) => node.id === quote.id),
+			quote
+		);
+	for (const key of ['id', 'x', 'y', 'width', 'height', 'color', 'customRoot']) {
+		assert.equal(header(result)[key], header(root)[key]);
+	}
+	const newQuote = result.nodes.find((node) => node.text?.includes('book%3Ahighlight%3Anew'));
+	for (const old of root.nodes) assert(!overlaps(newQuote, expanded(old)));
+	assert.equal(needsFavoriteGraphUpdate(raw), false);
+	assert.equal(encode(doc([...records, entry('new')], 2), raw), raw);
 });

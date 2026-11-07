@@ -217,7 +217,7 @@ test('valid previous backup recovers corruption only after preserving original e
 });
 
 test('future schema stays read-only despite valid older backup and is never changed', async (t) => {
-	const future = document([], 99, 2);
+	const future = document([], 99, 3);
 	const f = fixture(t, [
 		[MAIN, future],
 		[BACKUP, document()]
@@ -354,7 +354,7 @@ test('external valid edit and external future-schema edit are rejected without c
 		const external = document(
 			[record({ id: note('external').id, note: note('external') })],
 			5,
-			future ? 2 : 1
+			future ? 3 : 1
 		);
 		f.files.set(MAIN, external);
 		await assert.rejects(f.service.setFavorite(note('two'), true), /外部修改/);

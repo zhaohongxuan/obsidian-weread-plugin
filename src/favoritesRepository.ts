@@ -4,8 +4,10 @@ import type { JournalNote } from './journalHelpers';
 import {
 	parseFavoritesCanvas,
 	serializeFavoritesCanvas,
-	hasMissingFavoriteCovers
+	needsFavoriteGraphUpdate,
+	isLegacyFavoritesCanvas
 } from './favoritesCanvas';
+import type { FavoriteBookFiles } from './favoritesCanvas';
 
 export const FAVORITES_DIRECTORY = 'WereadData/favorites';
 export const FAVORITES_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas`;
@@ -273,9 +275,11 @@ export class FavoritesRepository {
 		return { document, raw };
 	}
 
-	needsPresentationUpdate(): boolean {
+	needsPresentationUpdate(bookFiles?: FavoriteBookFiles): boolean {
 		return (
-			this.initialized && this.expected !== null && hasMissingFavoriteCovers(this.expected)
+			this.initialized &&
+			this.expected !== null &&
+			needsFavoriteGraphUpdate(this.expected, bookFiles)
 		);
 	}
 
@@ -288,12 +292,19 @@ export class FavoritesRepository {
 		await this.checkExpected();
 	}
 
-	async save(document: FavoritesDocument): Promise<void> {
+	async save(document: FavoritesDocument, bookFiles?: FavoriteBookFiles): Promise<void> {
 		if (!this.initialized) throw new FavoritesStorageError('收藏尚未安全加载，禁止写入');
-		const raw = serializeFavoritesCanvas(document, this.expected);
+		const raw = serializeFavoritesCanvas(document, this.expected, bookFiles);
 		parseFavorites(raw);
 		await this.checkExpected();
 		await this.directories();
+		if (this.expected !== null && isLegacyFavoritesCanvas(this.expected)) {
+			const original = this.expected;
+			const archive = await this.uniquePath('favorites.before-book-graph');
+			await this.checkExpected();
+			await this.verifiedWrite(archive, original);
+			await this.checkExpected();
+		}
 		await this.verifiedWrite(FAVORITES_STAGING_PATH, raw);
 		await this.checkExpected();
 		const previous =
