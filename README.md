@@ -1,252 +1,202 @@
-# Obsidian Weread Plugin
+# Obsidian 微信读书插件
 
-[![](https://github.com/zhaohongxuan/obsidian-weread-plugin/actions/workflows/CI.yml/badge.svg)](https://github.com/zhaohongxuan/obsidian-weread-plugin/actions/workflows/CI.yml)
-[![Release Obsidian plugin](https://github.com/zhaohongxuan/obsidian-weread-plugin/actions/workflows/release.yml/badge.svg)](https://github.com/zhaohongxuan/obsidian-weread-plugin/actions/workflows/release.yml)
-[![GitHub license](https://badgen.net/github/license/Naereen/Strapdown.js)](https://github.com/zhaohongxuan/obsidian-weread-plugin/blob/main/LICENSE)
-[![Github all releases](https://img.shields.io/github/downloads/zhaohongxuan/obsidian-weread-plugin/total.svg)](https://GitHub.com/zhaohongxuan/obsidian-weread-plugin/releases/)
-[![GitLab latest release](https://badgen.net/github/release/zhaohongxuan/obsidian-weread-plugin/)](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)
+[![最新版本](https://img.shields.io/github/v/release/zhaohongxuan/obsidian-weread-plugin)](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases/latest)
+[![CI](https://github.com/zhaohongxuan/obsidian-weread-plugin/actions/workflows/CI.yml/badge.svg)](https://github.com/zhaohongxuan/obsidian-weread-plugin/actions/workflows/CI.yml)
+[![下载量](https://img.shields.io/github/downloads/zhaohongxuan/obsidian-weread-plugin/total)](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)
+[![MIT License](https://img.shields.io/github/license/zhaohongxuan/obsidian-weread-plugin)](./LICENSE)
 
-Obsidian 微信读书插件，同步微信读书的书籍元信息、高亮划线、笔记、书评、热门划线等，支持 API Key 和 Cookie 双认证模式，书架管理、书籍详情页和阅读统计。
+把微信读书的划线、想法和书评同步到 Obsidian，再通过书架、日历、阅读统计与收藏画布，重新发现自己的阅读记录。
 
-## 3.0.0 更新亮点
+[快速开始](#快速开始) · [界面预览](#界面预览) · [同步与数据](#同步与数据) · [使用文档](#使用文档) · [更新记录](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)
 
-打开微信读书后，顶部固定显示「今日 / 书架 / 回顾 / 统计」。点击 Tab 只切换下方内容，不创建新的 Obsidian 标签页；各面板首次点击才加载，切回来保留筛选、浏览和滚动状态。命令面板中的对应入口也会优先复用当前微信读书页面。
+## 书架与阅读工作台
 
-- **今日**：阅读时长、今天创建的划线与想法，以及按真实书架阅读时间倒序排列的最近三本书；「旧句重逢」从往日划线中随机选取，可换一句、换一本。
-- **回顾**：按笔记创建日期浏览月历，查看「那年今日」，按划线／想法筛选；搜索会检索全部已缓存笔记的书名、作者与内容。选定日期的笔记在独立区域内滚动，刷新和继续加载时保留位置，切换日期或筛选后回到顶部。卡片日期后提供原文跳转和复制正文图标，具备位置信息的划线可回到 App 原文。
-- **书架模式**：文件夹和未归入文件夹的书在同一网格混排，共用标题／最近阅读排序；文件夹按其中书籍的最近阅读时间排序，成员书不在根目录重复展示。有声书和文章收藏入口不显示。笔记本模式展示有笔记的书和本地同步状态。
-- **阅读统计**：周／月／年／累计时长、阅读节奏、交互图表、书籍排行和分类偏好；热力图独立宽屏展示，窄屏可在卡片内横向浏览。周／月的连续阅读天数、峰值日期和活跃天数依据每日时长计算。
-- **共享缓存**：今日与回顾共用插件目录下的 JSON 笔记缓存，无需数据库。首次按书整理，之后默认每天校验一次，可在设置中改为每天两次；划线和想法数量未变化时复用详情。「刷新笔记」可立即校验。账号凭据变化时隔离缓存，网络失败会保留已取得内容并显示覆盖范围。
-- **接口协议**：适配微信读书 Agent Skill 1.0.5，补齐笔记本与想法分页；接口要求升级时显示明确提示。
+在同一个微信读书页面中切换 **今日 / 书架 / 回顾 / 收藏 / 统计**。页面按需加载，切换时保留筛选、浏览与滚动状态；书籍详情在页面内打开，通过面包屑返回。
 
-在「设置 → Weread → 书架设置 → 书架展示模式」选择书架模式或笔记本模式，默认使用书架模式，切换后页面自动更新。
+下图为 **书架模式的封面视图**，展示真实书籍与文件夹；也可切换为默认的列表（封面＋详情）视图。
 
-回顾日历记录的是笔记创建历史，不能恢复未记录的完整阅读轨迹。页面统计仅包含已成功缓存的划线和个人想法，不包含书签或他人的公开书评。新增浏览功能不修改已同步 Markdown，也不改变原有同步模板和过滤规则。
+![书架封面视图：文件夹、书籍封面与搜索筛选](./docs/screenshots/bookshelf.webp)
 
-### 界面预览
+| 页面 | 可以做什么                                                                                 |
+| ---- | ------------------------------------------------------------------------------------------ |
+| 今日 | 查看今天的阅读时长、划线与想法，继续阅读最近翻开的书，从「旧句重逢」找回往日划线。         |
+| 书架 | 搜索书籍、进入文件夹、筛选阅读和同步状态，在列表与封面视图间切换，打开详情或同步本地笔记。 |
+| 回顾 | 按笔记创建日期浏览日历和「那年今日」，搜索全部已缓存笔记，跳转原文或复制正文。             |
+| 收藏 | 星标个人划线，按列表、卡片或原生 Canvas 整理，搜索、排序、取消和撤销收藏。                 |
+| 统计 | 查看周、月、年和累计阅读时长，以及热力图、阅读节奏、书籍排行和分类偏好。                   |
 
-以下截图使用真实阅读数据，统计页展示一个完整月份的阅读情况。
+## 安装
 
-**今日：阅读概览、最近翻开的书与旧句重逢。**
+需要 **Obsidian 1.1.9 或更新版本**。支持桌面端与移动端；收藏画布需要启用 Obsidian 内置的 **Canvas** 插件。
 
-![今日阅读概览与旧句重逢](./docs/screenshots/today.webp)
+### 从社区插件安装
 
-**回顾：按日历查看笔记，在往日划线和那年今日之间重逢。**
+打开「设置 → 第三方插件 → 浏览」，搜索 `Weread`，安装并启用插件。
 
-![回顾日历与历史笔记](./docs/screenshots/review.webp)
+### 手动安装
 
-**阅读统计：阅读时长、节奏、书籍排行与分类偏好。**
+从 [最新 Release](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases/latest) 下载安装包，将其中的 `obsidian-weread-plugin` 文件夹放入笔记库的 `.obsidian/plugins/` 目录，随后在 Obsidian 中重新加载并启用插件。
 
-![阅读统计与阅读节奏](./docs/screenshots/reading-stats.webp)
+也可以分别下载三个发布文件，目录结构应为：
 
-## 3.1.0 划线收藏
+```text
+<笔记库>/.obsidian/plugins/obsidian-weread-plugin/
+├── main.js
+├── manifest.json
+└── style.css
+```
 
-需要 Obsidian 1.1.9 或更新版本，并启用内置 Canvas。
-
-顶部新增「收藏」Tab。今日、回顾、那年今日与旧句重逢中的个人划线，均可通过日期旁的星标收藏；想法和社区热门划线本期不开放收藏。
-
-- **收藏列表与卡片**：默认卡片，可切换列表并记住选择；支持本地搜索、按收藏/划线时间排序及分批加载。
-- **正文快照**：保存收藏时的正文、书名、作者、章节和来源。原划线变化、清笔记缓存或退出登录，不会清除收藏。
-- **取消与撤销**：星标与收藏列表保持同步，取消后可限时撤销；原文跳转与复制正文继续可用。
-- **原生 Canvas**：数据存于笔记库 `WereadData/favorites/favorites.canvas`。点击「在Canvas中打开」即可用 Obsidian 原生画布浏览和整理同一份收藏，不需要导出。已有位置、尺寸、颜色、连线和手动添加的内容会保留；编辑收藏正文或删除收藏卡片会同步到插件列表和星标。
-- **书籍层级**：画布按「书籍 → 句子」组织，不自动将书籍连接到「我的收藏」说明节点。同一本书复用一个封面文本卡片，展示封面、书名和作者。按 bookId 匹配已同步的本地笔记，仅在找到唯一匹配时显示「打开本地笔记」链接；未找到或无法唯一匹配时不显示跳转链接，不直接嵌入笔记文件预览。
-- **句子与封面**：句子节点使用紧凑宽高展示正文和出处，长句按内容适当增高并限制最大高度，不再重复显示图书封面；旧默认大卡片同步收紧，手动调整的尺寸保留。书籍卡片集中显示书名、作者及安全的封面。旧画布升级只移除插件生成的句子封面，保留手动图片、正文和布局，并额外保存迁移前原件。
-- **非级联删除**：删除书籍节点不会取消其句子收藏；下次打开或保存时可补齐书籍关联。删除句子节点仍会同步取消对应星标。
-- **旧数据迁移**：首次读取时自动将旧 JSON 收藏迁移到 Canvas，原 JSON 与旧备份保持不变；已有 Canvas 优先，不重复导入。
-- **恢复保护**：写入完成后才确认收藏成功；保留上一有效版本备份。截断文件先保留原件再尝试恢复，未知新格式或可解析但结构/元数据有误的画布保持只读。
-
-收藏归属当前笔记库的本地个人集合，切换登录仍保留，不修改已有书籍 Markdown，也不保存认证信息。多设备同时写入不保证自动合并；检测到外部修改时会重新加载并要求重试。手动备份笔记库时请包含 `WereadData/favorites` 目录。用户在画布中新建的自由卡片会保留，但不会自动当作带微信读书来源的划线收藏。
-
-可通过命令「打开微信读书收藏」进入列表，或通过「打开微信读书收藏画布」进入原生 Canvas；在「设置 → Weread → 书架设置」调整收藏默认视图。实现与持久化方案见 [收藏设计说明](./docs/favorites-design.md)。
-
-### 书籍详情
-
-在当前页面内打开详情，通过面包屑返回原来的书架或回顾页面；个人划线可以直接加入收藏。
-
-![书籍详情、面包屑导航与个人划线收藏](./docs/screenshots/book-detail.webp)
-
-### 旧句重逢排除书籍
-
-在「设置 → Weread → 书架设置 → 旧句重逢排除书籍」点击「选择书籍」，按书名或作者搜索并勾选，保存后立即生效。
-
-排除规则同时用于今日和回顾的「旧句重逢」，包括「换一句」「换一本」。书籍仍保留在普通笔记浏览、日历和收藏中；取消勾选并保存后可重新参与重逢。
-
-## 更新历史
-https://github.com/zhaohongxuan/obsidian-weread-plugin/releases
-
-## 功能
-- 🔑 **API Key 登录**：扫码一键获取，稳定免维护
-- 🔥 **热门划线同步**：同步社区热度最高的划线，标注共读人数
-- 📖 **书籍详情页**：多 Tab 浏览划线、笔记、热门划线、书评，支持 deeplink 跳转微信读书
-- 📊 **阅读统计**：周／月／年／累计概览、交互时长图、书籍排行和偏好分析；周／月每日记录可查看连续阅读天数、峰值日期和活跃天数。
-- 📚 **微信读书书架**：搜索、筛选、排序，按年份分组，同步日志
-- 📝 **笔记同步**：同步书籍元数据、高亮划线、划线想法、章节点评、书籍书评
-- 📱 **公众号同步**：支持同步微信公众号文章的划线和笔记
-- 📅 **Daily Notes**：将当日读书笔记插入 Daily Notes 指定位置
-- 🎨 **主题系统**：4 个内置主题，支持自定义、导入导出、社区分享
-- 📋 **自定义 FrontMatter**：可在头部 YAML 中增加标签、阅读状态等自定义字段
-- 📁 **灵活文件组织**：支持按书名/分类创建子文件夹，多种文件名格式
-- 🔄 **定时自动同步**：可配置间隔的自动同步
-
-## 安装方法
-插件市场直接搜索`weread`，找到`Weread Plugin`点击`install`安装，安装完成后点击`Enable`使插件启用，也可以直接在[release](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)页面手动下载。
+保留发布包中的文件名 `style.css`，不要改成 `styles.css`。更新已有安装时，请保留原目录中的配置和缓存文件。
 
 ## 快速开始
 
-### API Key
+> **首次同步前请留意：同步会重新生成书籍笔记正文。** 个人批注和永久笔记建议保存在独立笔记中，通过 Obsidian 链接或块引用关联原文。插件保持从微信读书到 Obsidian 的单向同步，不会把本地修改写回微信读书。
 
-1. 打开设置页，在「API Key」区域点击 **「扫码获取」**
-2. 已登录用户自动获取 Key；未登录弹出二维码，微信扫码登录后自动获取
-3. 获取成功后输入框旁显示 ✓ 绿色图标即完成配置
-4. 点击 Ribbon 按钮或命令面板 `Sync Weread` 开始同步
+1. **配置登录**：打开「设置 → Weread」。桌面端可使用「扫码获取」；也可手动填写 API Key。移动端可前往 [微信读书 Skills 页面](https://weread.qq.com/r/weread-skills) 获取 Key，再粘贴到设置中。
+2. **选择保存位置与模板**：设置书籍笔记的保存位置，在「主题管理」选择同步模板。
+3. **打开书架**：点击左侧微信读书图标，或在命令面板执行「打开微信读书书架」。
+4. **同步笔记**：点击书架工具栏的同步按钮，或在命令面板执行「同步微信读书笔记」。左侧图标的右键菜单也提供同步入口。
 
-> 💡 **移动端**：访问 <https://weread.qq.com/api/skills/apikeyGet> 复制 Key，粘贴到设置页。详见 [V2 使用指南](./docs/weread-v2-guide.md)。
+### 登录方式与功能范围
 
-## 设置参考
-<img width="2068" height="1554" alt="image" src="https://github.com/user-attachments/assets/dfcbdce1-b63d-4156-b18e-4aeef9e57c4f" />
+建议优先配置 API Key；需要同步公众号文章笔记时，还需要有效 Cookie。
 
+| 功能                             | 认证要求                                  |
+| -------------------------------- | ----------------------------------------- |
+| 普通书籍笔记同步、书架浏览       | API Key 或 Cookie                         |
+| 阅读统计、社区热门划线、公开书评 | API Key                                   |
+| 公众号文章的划线、想法与章节数据 | Cookie；仅填写 API Key 不足以使用这些接口 |
 
+桌面扫码登录会获取 Cookie，并在验证成功后尝试获取 API Key。若某项功能不可用，请先检查对应凭据。API Key 不等同于微信读书网页的登录会话。
 
-## 使用
-
-⚠️ 本插件是覆盖式更新，请不要在同步的文件里修改内容。写「永久笔记」（为什么写永久笔记参考[《卡片笔记写作法》](https://book.douban.com/subject/35503571/)）时，可使用[Block 引用](https://help.obsidian.md/How+to/Link+to+blocks)在外部分别批注。
+## 界面预览
 
 <details>
-<summary>📖 书籍详情页</summary>
+<summary>今日：阅读概览、最近翻开的书与旧句重逢</summary>
 
-在书架页点击书籍封面或标题，会在**当前微信读书页面**内打开书籍详情；顶部保留统一导航，通过「书架 / 书名」面包屑返回，原有搜索、筛选、滚动和焦点保持不变。从今日、回顾或收藏进入时，也会返回对应的原页面。
+![今日阅读概览与旧句重逢](./docs/screenshots/today.webp)
 
-1. **划线** Tab：按章节分组，以小圆点保留划线颜色，支持原文跳转、复制和星标收藏；收藏状态与今日、回顾、收藏页同步。
-2. **笔记** Tab：个人想法和注解，按时间倒序，不混入长书评。
-3. **热门划线** Tab：社区热度最高的划线（需 API Key），不作为个人划线收藏。
-4. **书评** Tab：个人书评 + 社区精选书评。
-
-封面、衬线书名、作者和简介使用与 3.0 一致的留白与主题配色；阅读进度、时长和条数以轻量信息行展示。可在页头打开微信读书或本地笔记。「刷新」只重新读取详情，「同步笔记」才同步该书的本地 Markdown。命令「打开当前书籍详情」也可从已同步书籍笔记进入。
-
-本地历史划线仍可离线阅读和复制；若缺少原始划线 ID 或创建时间，会提示联网读取后再收藏，避免与今日/回顾生成重复来源。
+今日与回顾共用本地笔记缓存。首次加载后默认每天校验一次，也可在设置中改为每天两次；「刷新笔记」可以立即校验。数量未变化时复用已缓存详情。
 
 </details>
 
 <details>
-<summary>📝 基础同步</summary>
+<summary>回顾：日历、历史笔记与那年今日</summary>
 
-1. 点击左侧 Ribbon 上的微信读书按钮，或 `Cmd+P`（Windows `Ctrl+P`）打开命令面板，输入 `Weread` 找到 `Sync Weread` 即可同步。
-![sync|50](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220522222015.png)
-2. 默认模板效果(theme:minimal) ![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220522221449.png)
-使用dataview+minimal cards的显示效果，[参考这里](https://github.com/zhaohongxuan/obsidian-weread-plugin/wiki/%E4%BD%BF%E7%94%A8Dataview%E8%BF%9B%E8%A1%8C%E4%B9%A6%E7%B1%8D%E7%AE%A1%E7%90%86)：
-![](https://cdn.jsdelivr.net/gh/zhaohongxuan/picgo@master/20220529135016.png)
+![回顾日历与历史笔记](./docs/screenshots/review.webp)
+
+按创建日期查看个人划线和想法；选定日期的笔记在独立区域内滚动。刷新和继续加载时保留位置，切换日期或筛选后回到顶部。
+
+日历反映的是已缓存笔记的创建历史，不能恢复没有记录的完整阅读轨迹。
+
 </details>
 
 <details>
-<summary>📅 同步笔记到 Daily Notes</summary>
-	
-1. 在设置中打开同步到Daily Notes的开关，然后分别设置Daily Notes的目录以及文件格式
-2. 如果Daily Note是Periodic Notes管理的，可以改成Periodic Notes的格式，比如我使用的格式`YYYY/[W]ww/YYYY-MM-DD`，就会按照 年/周/日的维度在文件夹中寻找Daily Notes.
-3. 设置在Daily Notes的特定的区间插入，可以修改默认值为你想要的markdown格式的内容，比如在`某两个标题`之间插入，注意📢，区间内的内容是会被覆盖的，不要在区间内修改文本。	
-![](https://user-images.githubusercontent.com/8613196/179385400-d556527f-8d73-4ca7-b348-62810df96fe2.png)
+<summary>书籍详情：章节划线、个人想法、热门划线和书评</summary>
+
+![书籍详情与个人划线收藏](./docs/screenshots/book-detail.webp)
+
+在书架点击封面或标题即可进入详情，也可执行「打开当前书籍详情」。个人划线支持原文跳转、复制和星标收藏；从详情返回时保留来源页面的状态。
+
+「刷新」重新读取详情，「同步笔记」才会更新本地书籍 Markdown。历史本地划线缺少来源 ID 或创建时间时，需要联网补齐后再收藏，以避免重复记录。
+
 </details>
 
 <details>
-<summary>🔥 热门划线同步</summary>
+<summary>阅读统计：时长、节奏、排行与分类偏好</summary>
 
-1. 确保已配置 **API Key**
-2. 在设置中开启「同步热门划线」开关
-3. 合并式模板中热门划线与用户划线融合，标注 📌🔥 和共读人数
-4. 分离式模板中热门划线独立展示，按章节分组
+![阅读统计与阅读节奏](./docs/screenshots/reading-stats.webp)
 
-支持本地缓存（默认 7 天有效期），可配置 TTL。
+支持周、月、年和累计概览；周、月的连续阅读天数、峰值日期和活跃天数按每日阅读时长计算。热力图在窄屏中可以横向浏览。
 
 </details>
 
-## 主题管理
+## 收藏与 Canvas
 
-插件内置 **4 个主题模板**，支持导入导出和自定义主题。
+在今日、回顾、那年今日、旧句重逢或书籍详情中，点击个人划线旁的星标即可收藏。收藏页支持搜索、排序、列表/卡片切换，以及取消后的限时撤销。个人想法和社区热门划线暂不支持收藏。
 
-### 内置主题
+点击「在Canvas中打开」，或执行「打开微信读书收藏画布」，即可整理同一份收藏：
 
-| 主题 | 说明 |
-|------|------|
-| 合并式模板 | 划线和想法 inline 展示，支持热门划线标记，适合快速回顾 |
-| 分离式模板 | 先展示纯划线，笔记统一在底部，适合整理归纳 |
-| 微信官方笔记主题 | 详细的元数据信息，适合生成书籍笔记 |
-| 分离式（含热门划线） | 我的划线、热门划线、笔记三个独立区块 🔥 |
+- **书籍封面卡片**：同一本书复用一个节点，展示封面、书名和作者。匹配到唯一的本地书籍笔记时显示「打开本地笔记」链接；没有本地笔记时不显示链接。
+- **紧凑句子卡片**：展示正文与出处，不重复放置封面；默认宽 360px，高度按内容调整，手动修改过的尺寸和位置保留。
+- **简洁连线**：只自动连接「书籍 → 句子」，不把所有书籍连接到「我的收藏」说明节点。
+- **删除行为**：删除句子卡片会取消对应收藏；删除书籍卡片不会取消句子收藏，下次打开或保存时可补回书籍关联。
 
-### 主题类型
+收藏保存在笔记库的 `WereadData/favorites/favorites.canvas`，不依赖登录状态。清理笔记缓存、退出登录或远端划线变化，不会自动清除收藏快照；在 Canvas 中主动编辑正文会更新本地收藏，不回写微信读书或书籍 Markdown。
 
-| 类型 | 说明 |
-|------|------|
-| 内置 | 插件自带，不可删除，不可编辑 |
-| 自定义 | 用户创建，可编辑、复制、导出 |
-| 旧模板 | 从旧版本迁移的模板，不可编辑，只能复制后自定义 |
+备份笔记库时请包含 `WereadData/favorites`。首次层级迁移会保留原始画布归档；已升级的画布需使用支持新格式的插件版本。多设备同时离线编辑不保证自动合并。更多迁移、原生编辑和恢复规则见 [收藏设计说明](./docs/favorites-design.md)。
 
-### 使用主题
+## 常用设置
 
-1. 在插件设置中打开**主题管理**
-2. 选择想要使用的主题，点击「使用此主题」
-3. 当前使用中的主题会显示「✓ 使用中」标签
+| 设置             | 默认或用途                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| 书架展示模式     | 默认「书架模式」，包含文件夹与书籍；「笔记本模式」聚焦有笔记的书和本地同步状态。       |
+| 书架视图         | 默认列表（封面＋详情），可切换纯封面视图；按最近阅读排序。                             |
+| 收藏默认视图     | 默认卡片，可切换列表。                                                                 |
+| 旧句重逢排除书籍 | 在「书架设置」中点击「选择书籍」设置。只影响旧句重逢，不隐藏书架、日历或收藏中的书籍。 |
+| 笔记缓存校验     | 默认每天一次，可改为每天两次；手动刷新可立即校验。                                     |
+| 定时同步         | 默认关闭，可按需开启并配置间隔。                                                       |
 
-### 创建自定义主题
+「书架模式 / 笔记本模式」决定展示哪些书；「列表 / 封面视图」决定书籍如何呈现，两者可以分别选择。
 
-1. 选择任意内置主题，点击「复制并自定义」
-2. 系统会创建该主题的副本并自动设为使用中
-3. 点击「编辑」修改模板内容或设置项
+## 同步与数据
 
-### 导入导出
+### 普通同步与强制同步
 
-- **导出**：点击主题的「导出」按钮，下载 JSON 文件
-- **导入**：支持从本地文件或 URL 导入主题
+普通同步会比较划线和想法数量，数量未变化时跳过更新。因此，远端正文编辑、划线位置调整或模板变更，可能不会仅凭数量检测触发重新生成。
 
-模板编辑说明见[模板编辑器使用说明](./docs/template-editor-window.md)。
+需要重新生成时，可执行「强制同步微信读书笔记」。强制同步跳过数量检查，仍遵循已配置的同步过滤条件。同步过程遇到网络错误时，可检查登录与网络后重试。
 
-## 已知问题
-- 使用 Cookie 登录时，长期不使用可能导致 Cookie 失效，建议优先使用 API Key。
-- 偶尔可能会有网络连接问题，重新点击同步即可，已同步的笔记不会再次更新。
+同步支持书籍元数据、个人划线、想法、章节点评和书评；可配置文件命名、分类子目录及自定义 Frontmatter。社区热门划线需 API Key，并在设置中单独开启。
 
-## TODO
-- [x] 解决Obsidian中CORS问题
-- [x] 设置界面笔记保存路径
-- [x] 优化文件同步逻辑，不需要每次都删除重建，可以根据Note的数量来判断
-- [x] 被动刷新Cookie延长有效期
-- [x] 多处登录导致Cookie失效Fix
-- [x] 弹出扫码框登录自动获取Cookie
-- [x] 书名重复导致同步失败
-- [x] 设置页面支持设置Template格式
-- [x] 文件名模板
-- [x] 移动端适配
-- [x] 阅读状态元数据，比如阅读中，阅读完成等等，以及阅读时间的分布等
-- [x] 按照章节Index进行排序
-- [x] 保留多个章节层级
-- [x] 同步微信公众号文章
-- [x] 模板预览功能
-- [x] 设置页面，目录选择优化 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/39
-- [x] 导出热门划线 https://github.com/zhaohongxuan/obsidian-weread-plugin/issues/42
-- [x] API Key 扫码获取与双模式路由
-- [x] 书籍详情页（划线/笔记/热门划线/书评四个 Tab）
-- [x] 主题系统（4 个内置主题 + 自定义导入导出）
-- [x] 阅读统计（年度/月度/每周 + 热力图）
+### Daily Notes
 
+可把当天读书笔记的块引用插入 **已经存在** 的 Daily Note。请先配置 Daily Notes 的目录、日期格式及插入区间；使用 Periodic Notes 时，应填写与其一致的格式，例如 `YYYY/[W]ww/YYYY-MM-DD`。
 
-## 文档
+插件会替换指定起止标记之间的内容，不会自动创建缺失的 Daily Note。个人文字请写在该同步区间之外。
 
-- [V2 使用指南](./docs/weread-v2-guide.md) — V2 功能介绍与使用说明
-- [微信读书 Agent API](./docs/weread-agent-api.md) — V2 Agent API 接口文档
-- [微信读书 API (V1)](./docs/weread-api.md) — V1 Cookie API 参考
-- [模板编辑器](./docs/template-editor-window.md) — 模板编辑器使用说明
+### 同步模板
+
+在「主题管理」中选择内置主题，或「复制并自定义」后编辑。这里的主题是同步笔记的内容模板。
+
+| 内置主题         | 适合的组织方式                                 |
+| ---------------- | ---------------------------------------------- |
+| 合并式模板       | 将划线与想法穿插展示，适合顺着原文回顾。       |
+| 分离式模板       | 将划线与笔记分区展示，适合集中整理。           |
+| 微信官方笔记主题 | 展示书籍元数据和笔记，适合保留完整的书籍记录。 |
+
+自定义主题支持编辑、复制及 JSON 导入导出，也可从 URL 导入。具体操作见 [模板编辑器使用说明](./docs/template-editor-window.md)。
+
+## 常见问题
+
+**点击左侧图标为什么没有开始同步？** 该图标用于打开书架。同步请使用书架工具栏、图标右键菜单，或命令「同步微信读书笔记」。
+
+**修改模板后为什么笔记没更新？** 普通同步会跳过划线和想法数量未变化的书籍，可使用强制同步重新生成。请先备份个人修改。
+
+**为什么有些功能提示需要 API Key 或 Cookie？** 不同接口的认证要求不同，参见上方的[功能范围](#登录方式与功能范围)。Cookie 或 Key 失效时需要重新配置；已配置 API Key 后，书架接口失败不会静默切换到另一个 Cookie 账号。
+
+**为什么书籍卡片没有本地笔记链接？** 需要先同步出对应书籍笔记，并能通过 bookId 找到唯一匹配文件。只浏览远端书架不会自动创建本地笔记。
+
+## 使用文档
+
+- [版本更新与安装包](https://github.com/zhaohongxuan/obsidian-weread-plugin/releases)
+- [V2 使用指南：认证与同步](./docs/weread-v2-guide.md)
+- [模板编辑器使用说明](./docs/template-editor-window.md)
+- [收藏画布与数据恢复规则](./docs/favorites-design.md)
+- [使用 Dataview 管理书籍](https://github.com/zhaohongxuan/obsidian-weread-plugin/wiki/%E4%BD%BF%E7%94%A8Dataview%E8%BF%9B%E8%A1%8C%E4%B9%A6%E7%B1%8D%E7%AE%A1%E7%90%86)
+- 开发参考：[Agent API](./docs/weread-agent-api.md) · [Cookie API](./docs/weread-api.md)
+- [反馈问题或建议](https://github.com/zhaohongxuan/obsidian-weread-plugin/issues)
 
 ## 赞赏
 
-<img src=https://github.com/zhaohongxuan/obsidian-weread-plugin/assets/8613196/661a1d1b-6f45-493b-adb5-6f53fbf2d499 width=30% />
+如果这个插件对你有帮助，欢迎支持后续维护。
 
-## 免责声明
-本程序没有爬取任何书籍内容，只提供登录用户的图书以及笔记信息，没有侵犯书籍作者版权和微信读书官方利益。
-## 感谢
-- [wereader](https://github.com/arry-lee/wereader)
-- [Kindle Plugin](https://github.com/hadynz/obsidian-kindle-plugin)
-- [Hypothesis Plugin](https://github.com/weichenw/obsidian-hypothesis-plugin)
-- [Obsidian Plugin Developer Docs](https://marcus.se.net/obsidian-plugin-docs/)
-- [http proxy middleware](https://github.com/chimurai/http-proxy-middleware)
-- [nunjucks](https://github.com/mozilla/nunjucks)
+<img src="https://github.com/zhaohongxuan/obsidian-weread-plugin/assets/8613196/661a1d1b-6f45-493b-adb5-6f53fbf2d499" width="240" alt="赞赏二维码" />
 
-## Star History
+## 项目说明与致谢
+
+本项目为非官方插件，用于整理本人账号可访问的阅读记录，不提供书籍正文下载。项目采用 [MIT 许可证](./LICENSE)。
+
+感谢 [wereader](https://github.com/arry-lee/wereader)、[Kindle Plugin](https://github.com/hadynz/obsidian-kindle-plugin)、[Hypothesis Plugin](https://github.com/weichenw/obsidian-hypothesis-plugin)、[Obsidian Plugin Developer Docs](https://marcus.se.net/obsidian-plugin-docs/)、[http-proxy-middleware](https://github.com/chimurai/http-proxy-middleware) 和 [Nunjucks](https://github.com/mozilla/nunjucks)。
 
 [![Star History](https://api.star-history.com/svg?repos=zhaohongxuan/obsidian-weread-plugin&type=Timeline)](https://star-history.com/#zhaohongxuan/obsidian-weread-plugin&type=Timeline)
