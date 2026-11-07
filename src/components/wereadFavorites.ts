@@ -284,8 +284,9 @@ export class WereadFavoritesPanel extends WereadPanel {
 		metadata.createEl('small', {
 			text: `收藏于 ${new Date(entry.favoritedAt).toLocaleDateString('zh-CN')} · 划线于 ${new Date(note.createTime).toLocaleDateString('zh-CN')}`
 		});
+		const actions = metadata.createDiv({ cls: 'weread-favorites-note-actions' });
 		const label = getJournalNoteBookmark(note) ? '回到原文' : '打开书籍';
-		const original = metadata.createEl('a', {
+		const original = actions.createEl('a', {
 			href: getPcUrl(note.bookId),
 			cls: 'weread-favorites-action',
 			attr: { 'aria-label': label, title: label }
@@ -297,7 +298,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 				if (this.active) new Notice('打开原文失败，请重试');
 			});
 		};
-		const copy = metadata.createEl('button', {
+		const copy = actions.createEl('button', {
 			cls: 'weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '复制正文', title: '复制正文' }
 		});
@@ -310,7 +311,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 				if (this.active) new Notice('复制失败，请重试');
 			}
 		};
-		const remove = metadata.createEl('button', {
+		const remove = actions.createEl('button', {
 			cls: 'weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '取消收藏', title: '取消收藏' }
 		});

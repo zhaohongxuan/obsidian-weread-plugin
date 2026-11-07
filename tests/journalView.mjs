@@ -269,6 +269,60 @@ window.smoke = {
     journal.publish(previousState); settingsStore.set(settings('account-a'));
     return assertions;
   },
+  async noteSorting() {
+    const previousState = state;
+    const notes = Array.from({length: 105}, (_, index) => ({...note('sort-' + index, 'a', index % 2 ? 'thought' : 'highlight', 'SORT NOTE ' + index, '2026-11-06T01:00:00Z'), createTime: RealDate.parse('2026-11-06T01:00:00Z') + index * 60000}));
+    const older = [note('older-early', 'a', 'thought', 'OLDER EARLY', '2026-11-05T01:00:00Z'), note('older-late', 'a', 'thought', 'OLDER LATE', '2026-11-05T02:30:00Z')];
+    const anniversaries = [note('anniversary-early', 'b', 'highlight', 'ANNIVERSARY EARLY', '2025-11-06T01:00:00Z'), note('anniversary-late', 'b', 'highlight', 'ANNIVERSARY LATE', '2025-11-06T02:00:00Z')];
+    const cache = [...notes.slice(40), ...older, ...anniversaries, ...notes.slice(0, 40)];
+    const cacheOrder = cache.map(note => note.id).join('|');
+    journal.publish({...state, notes: cache, syncing: false}); await mount('today');
+    const bodies = root => [...root.querySelectorAll('article .weread-journal-note-text')].map(node => node.textContent);
+    const today = () => document.querySelector('.weread-journal-today-notes');
+    const sort = root => root.querySelector('.weread-journal-sort');
+    check(sort(today())?.dataset.sortOrder === 'desc', 'Today exposes latest-first time sorting in its note heading');
+    check(bodies(today()).length === 100 && bodies(today())[0] === 'SORT NOTE 104' && bodies(today()).at(-1) === 'SORT NOTE 5', 'Today sorts all cached timestamps before its first-page limit');
+    check(/2026\/11\/0?6\s+10:44/.test(today().querySelector('.weread-journal-note-meta small').textContent), 'Journal metadata includes local hours and minutes with the note date');
+    const quoteText = document.querySelector('.weread-journal-quote .weread-journal-note-text').textContent;
+    sort(today()).focus(); sort(today()).click();
+    check(sort(today()).dataset.sortOrder === 'asc' && /最早在前/.test(sort(today()).title) && sort(today()).getAttribute('aria-label') === sort(today()).title, 'Time icon toggles to earliest-first with an accessible current-order label');
+    check(bodies(today())[0] === 'SORT NOTE 0' && bodies(today()).at(-1) === 'SORT NOTE 99', 'Today earliest-first uses the same timestamp for highlights and thoughts');
+    check(document.activeElement === sort(today()), 'Sort activation retains keyboard focus on its replacement action');
+    check(document.querySelector('.weread-journal-quote .weread-journal-note-text').textContent === quoteText, 'Changing list time order does not repick the featured quote');
+    view.contentEl.hidden = true; journal.publish({...state}); view.contentEl.hidden = false;
+    click('刷新笔记', view.contentEl); await tick();
+    check(sort(today()).dataset.sortOrder === 'asc' && bodies(today())[0] === 'SORT NOTE 0', 'Retained panel hide/show, cache publish and refresh preserve its time-order preference');
+    sort(today()).click();
+    check(bodies(today())[0] === 'SORT NOTE 104', 'Time sort toggles back to latest-first');
+
+    await mount('review');
+    const calendar = document.querySelector('.weread-journal-calendar');
+    const headerDate = document.querySelector('.weread-journal-today-date').textContent;
+    check(sort(results()).dataset.sortOrder === 'desc' && bodies(results())[0] === 'SORT NOTE 104', 'Review selected-day results default to latest-first');
+    document.querySelector('.weread-journal-day-list').scrollTop = 180;
+    click('再看 5 条', results());
+    check(bodies(results()).length === 105, 'Review next page is available before time-order reset');
+    sort(results()).click();
+    check(bodies(results()).length === 100 && bodies(results())[0] === 'SORT NOTE 0' && document.querySelector('.weread-journal-day-list').scrollTop === 0, 'Changing Review order resets pagination and only the note-list scroll');
+    const search = document.querySelector('input[type=search]'); search.value = 'SORT NOTE'; search.dispatchEvent(new Event('input'));
+    const filter = document.querySelector('select'); filter.value = 'thought'; filter.dispatchEvent(new Event('change'));
+    search.focus(); search.setSelectionRange(2, 5);
+    const retainedSearch = search, retainedFilter = filter;
+    sort(results()).click();
+    check(document.querySelector('input[type=search]') === retainedSearch && search.value === 'SORT NOTE' && search.selectionStart === 2 && search.selectionEnd === 5 && document.querySelector('select') === retainedFilter && filter.value === 'thought', 'Review sort retains search, selection and kind controls');
+    check(bodies(results())[0] === 'SORT NOTE 103' && bodies(results()).every(text => Number(text.replace('SORT NOTE ', '')) % 2 === 1), 'Search and kind filters compose with latest-first timestamp order');
+    search.value = ''; search.dispatchEvent(new Event('input')); filter.value = 'all'; filter.dispatchEvent(new Event('change'));
+    calendar.querySelector('button[aria-label^="2026-11-05，"]').click();
+    check(bodies(results()).join('|') === 'OLDER LATE|OLDER EARLY', 'Selected earlier day keeps the requested chronological order');
+    const selectedCalendar = document.querySelector('.weread-journal-calendar');
+    sort(results()).click();
+    check(bodies(results()).join('|') === 'OLDER EARLY|OLDER LATE' && bodies(document.querySelector('.weread-journal-anniversaries')).join('|') === 'ANNIVERSARY EARLY|ANNIVERSARY LATE', 'Review selected day and anniversaries share the chosen earliest-first order');
+    check(document.querySelector('.weread-journal-calendar') === selectedCalendar && document.querySelector('.weread-journal-day[aria-pressed=true]').getAttribute('aria-label').startsWith('2026-11-05，'), 'Time-order change preserves the calendar DOM and selected date');
+    check(document.querySelector('.weread-journal-today-date').textContent === headerDate && document.querySelector('input[type=month]').value === '2026-11', 'Sorting leaves the compact current date and calendar month unchanged');
+    check(cache.map(note => note.id).join('|') === cacheOrder && state.notes === cache, 'UI sorting never mutates or replaces the shared journal note cache');
+    journal.publish(previousState);
+    return assertions;
+  },
   async calendarHeatmap() {
     window.calendarPreviousState = state;
     const entries = [[1, 12], [3, 1], [4, 3], [5, 8], [6, 2]].flatMap(([day, count]) => Array.from({length: count}, (_, index) => note('heat-' + day + '-' + index, 'a', 'highlight', 'HEATMAP DAY ' + day + ' NOTE ' + index, '2026-11-' + String(day).padStart(2, '0') + 'T02:00:00Z')));
@@ -395,7 +449,10 @@ window.smoke = {
     click('换一本', quote());
     check(quote().textContent.includes('城市记忆') && quote().querySelector('h2').textContent === '旧句重逢', 'Change book also keeps the old-quote scope');
     const metadata = quote().querySelector('.weread-journal-note-meta');
-    check(metadata.children[0].tagName === 'SMALL' && metadata.children[1].tagName === 'A' && metadata.children[2].tagName === 'BUTTON', 'Original and copy icons follow the note kind and date');
+    check(metadata.children[0].tagName === 'SMALL' && metadata.children[1].classList.contains('weread-journal-note-actions') && metadata.children[1].querySelector('a') && metadata.children[1].querySelector('button'), 'Full note time precedes one group of original and copy actions');
+    const tools = metadata.querySelector('.weread-journal-note-actions');
+    const toolRects = [...tools.children].map(node => node.getBoundingClientRect());
+    check(Math.abs(tools.getBoundingClientRect().right - metadata.getBoundingClientRect().right) < 1 && toolRects.every(rect => Math.abs(rect.top - toolRects[0].top) < 1), 'Note tools align together at the metadata right edge without splitting rows');
     check(metadata.querySelector('a[aria-label] svg') && metadata.querySelector('button[aria-label="复制正文"] svg'), 'Actions have icons and accessible names');
     check(!quote().querySelector('.weread-journal-original'), 'Text footer link is removed from note cards');
     const copy = metadata.querySelector('button');
@@ -936,6 +993,7 @@ test(
 		await evaluate(
 			`(() => { const style = document.createElement('style'); style.textContent = 'body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f7f4; color: #292d29; --background-primary: #fff; --background-secondary: #f3f1ec; --background-modifier-border: #dddcd5; --text-normal: #292d29; --text-muted: #72756d; --interactive-accent: #5f765c; } main { max-width: 1050px; margin: auto; } button, input, select { font: inherit; padding: 7px 11px; border: 1px solid #d8d9d0; background: #fff; border-radius: 6px; color: inherit; } button { cursor: pointer; } button.mod-cta { background: #e0e8d9; } button:disabled { opacity: .45; }'; document.head.append(style); })()`
 		);
+		await evaluate('smoke.noteSorting()');
 		await evaluate('smoke.calendarHeatmap()');
 		await send('Input.dispatchKeyEvent', {
 			type: 'keyDown',

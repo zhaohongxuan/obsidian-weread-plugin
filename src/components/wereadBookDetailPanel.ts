@@ -20,6 +20,7 @@ import {
 } from '../utils/localHighlightParser';
 import { openWereadHighlightLocation } from '../utils/openWereadUrl';
 import { setOriginalReadingIcon } from '../utils/readingActionIcon';
+import { formatNoteTimestamp } from '../utils/noteTime';
 import { WereadPanel } from './wereadPanel';
 import { FavoritesUndoToast } from './wereadFavorites';
 
@@ -515,7 +516,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 						}
 					});
 				}
-				if (h.createTime) meta.createSpan({ text: this.date(h.createTime) });
+				if (h.createTime) meta.createSpan({ text: formatNoteTimestamp(Number(h.createTime) * 1000) });
 				if (h.range) meta.createSpan({ text: `位置 ${String(h.range).split('-')[0]}` });
 				if (!personal && h.totalCount) meta.createSpan({ text: `${h.totalCount} 人划线` });
 				const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
@@ -545,7 +546,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 					?.title ||
 				'';
 			if (chapter) meta.createSpan({ text: chapter });
-			if (r?.createTime) meta.createSpan({ text: this.date(r.createTime) });
+			if (r?.createTime) meta.createSpan({ text: formatNoteTimestamp(Number(r.createTime) * 1000) });
 			const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
 			this.sourceAndCopy(actions, r?.chapterUid, r?.range, chapter, r?.content || '');
 			if (this.localFilePath) this.button(actions, '本地笔记', () => void this.openLocal());
@@ -569,12 +570,15 @@ export class WereadBookDetailPanel extends WereadPanel {
 				const r = (wrapper.review as any)?.review || wrapper.review || wrapper;
 				const card = section.createEl('article', { cls: 'weread-detail-review' });
 				card.createEl('p', {
-					text: `${r.author?.name || (label === '我的书评' ? '我' : '读者')}${r.createTime ? ` · ${this.date(r.createTime)}` : ''}`,
+					text: `${r.author?.name || (label === '我的书评' ? '我' : '读者')}${r.createTime ? ` · ${formatNoteTimestamp(Number(r.createTime) * 1000)}` : ''}`,
 					cls: 'weread-detail-muted'
 				});
 				if (r.title) card.createEl('h3', { text: r.title });
 				card.createEl('p', { text: r.content || '', cls: 'weread-detail-note-text' });
-				if (r.content) this.copyButton(card, r.content);
+				if (r.content) {
+					const actions = card.createDiv({ cls: 'weread-detail-entry-actions' });
+					this.copyButton(actions, r.content);
+				}
 			}
 		}
 	}

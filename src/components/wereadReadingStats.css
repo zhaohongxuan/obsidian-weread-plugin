@@ -45,42 +45,19 @@
 	opacity: 0.35;
 	cursor: default;
 }
-.weread-stats-view .weread-stats-header {
-	margin-bottom: 20px;
-}
-.weread-stats-view .weread-stats-eyebrow {
-	margin: 0 0 8px;
-	font-size: 11px;
-	letter-spacing: 0.14em;
-	color: var(--text-muted);
-}
-.weread-stats-view .weread-stats-header-row {
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 16px;
-}
-.weread-stats-view .weread-stats-user-left {
+.weread-stats-view .weread-stats-period-controls {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
 	min-width: 0;
-	gap: 10px;
-}
-.weread-stats-view .weread-stats-user-avatar {
-	width: 32px;
-	height: 32px;
-	border-width: 1px;
-}
-.weread-stats-view .weread-stats-user-name {
-	font-size: 12px;
-	font-weight: 500;
-}
-.weread-stats-view .weread-stats-user-sub {
-	max-width: 560px;
-	font-size: 11px;
-	line-height: 1.7;
-	overflow-wrap: anywhere;
+	max-width: 100%;
+	margin-left: auto;
 }
 .weread-stats-view .weread-stats-export-btn {
 	flex: none;
-	align-self: flex-start;
+	margin-left: 0;
+	align-self: center;
 	white-space: nowrap;
 }
 .weread-stats-view .weread-stats-export-btn svg {
@@ -88,6 +65,9 @@
 	height: 14px;
 }
 .weread-stats-view .weread-stats-nav {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
 	gap: 14px;
 	margin-bottom: 24px;
 }
@@ -113,6 +93,7 @@
 	box-shadow: none;
 }
 .weread-stats-view .weread-stats-timepicker {
+	margin-left: 0;
 	padding: 0;
 	gap: 4px;
 	border: 0;
@@ -609,13 +590,7 @@
 	.weread-stats-view .weread-stats-container {
 		padding: 20px;
 	}
-	.weread-stats-view .weread-stats-header-row {
-		flex-wrap: wrap;
-	}
-	.weread-stats-view .weread-stats-user-left {
-		flex-basis: 100%;
-	}
-	.weread-stats-view .weread-stats-export-btn {
+	.weread-stats-view .weread-stats-period-controls {
 		margin-left: 0;
 	}
 	.weread-stats-view .weread-stats-nav {

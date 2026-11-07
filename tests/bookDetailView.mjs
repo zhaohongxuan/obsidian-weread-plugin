@@ -101,6 +101,8 @@ window.smoke={assertions,
   check([...root.querySelectorAll('.weread-detail-chapter-title')].map(n=>n.textContent).join('|')==='第一章 · 日常的光|第二章 · 向山而行','Highlights group in chapter order');
   check(quote().textContent===TEXT&&!quote().querySelector('img')&&!window.injected,'Highlight HTML is literal text without injected elements');
   const color=quote().closest('article').querySelector('[role="img"][aria-label="紫色划线"]');check(color&&color.getBoundingClientRect().width>0,'Personal source color remains visible with accessible name');
+  const createdDate=new Date(CREATED*1000), createdClock=String(createdDate.getHours()).padStart(2,'0')+':'+String(createdDate.getMinutes()).padStart(2,'0');
+  check(quote().closest('article').querySelector('.weread-detail-entry-meta').textContent.includes(createdClock),'Highlight metadata displays local creation hour and minute from API seconds');
   check(!root.textContent.includes('DELETED SENTINEL'),'Deleted type-zero highlight is excluded');
   check(star().getAttribute('aria-label')==='收藏'&&!star().disabled,'Authoritative personal highlight can be favorited');
   check([...root.querySelectorAll('.weread-detail-favorite')].filter(b=>b.disabled).length===2,'Missing original ID or timestamp cannot create favorites');
@@ -108,9 +110,12 @@ window.smoke={assertions,
   clipboardFails=true;click('复制正文',quote().closest('article'));await tick();clipboardFails=false;check(window.detailNotices.at(-1)==='复制失败，请重试','Clipboard rejection reports failure');
   click('回到原文',quote().closest('article'));await tick();check(f.plugin.opened[0][1].bookId==='42'&&f.plugin.opened[0][1].rangeStart===12,'Source action uses actual bookmark location');
   tab('notes');check(root.textContent.includes('我的笔记：')&&!root.textContent.includes('MY BOOK REVIEW SENTINEL'),'Own notes retain type-one thoughts without book reviews');
+  check(root.querySelector('.weread-detail-note .weread-detail-entry-meta').textContent.includes(createdClock),'Thought note metadata displays local creation hour and minute');
   check(!root.querySelector('.weread-detail-favorite'),'Own notes have no highlight favorite action');
   tab('popular');check(root.textContent.includes('COMMUNITY HIGHLIGHT SENTINEL')&&!root.querySelector('.weread-detail-favorite'),'Community highlights remain available without stars');
   tab('reviews');check(root.textContent.includes('MY BOOK REVIEW SENTINEL')&&root.textContent.includes('COMMUNITY REVIEW SENTINEL'),'Reviews preserve own and community reviews');
+  check([...root.querySelectorAll('.weread-detail-review .weread-detail-muted')].every(el=>el.textContent.includes(createdClock)),'Own and community reviews display local creation hour and minute');
+  click('复制正文',root.querySelector('.weread-detail-review'));await tick();check(clipboard.at(-1)==='MY BOOK REVIEW SENTINEL','Review copy preserves exact content after action grouping');
   check(!root.querySelector('.weread-detail-favorite'),'Reviews have no personal-highlight favorite action');
   tab('highlights');check(panel.getState().currentTab==='highlights','Tab changes persist in detail state');
  },

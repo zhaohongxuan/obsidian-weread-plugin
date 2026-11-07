@@ -23,6 +23,7 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	gap: 6px;
 	flex-shrink: 0;
 	min-height: 46px;
 	margin: 0;
@@ -36,6 +37,16 @@
 	font-weight: 500;
 	line-height: 1.4;
 	white-space: nowrap;
+}
+.weread-library-tab-icon {
+	display: inline-flex;
+	align-items: center;
+	order: -1;
+	color: inherit;
+}
+.weread-library-tab-icon svg {
+	width: 14px;
+	height: 14px;
 }
 .weread-library-view .weread-library-tabs [role='tab']:hover {
 	color: var(--text-normal);
@@ -76,10 +87,16 @@
 @media (max-width: 560px) {
 	.weread-library-tabs {
 		padding: 0 16px;
-		gap: 20px;
+		gap: 16px;
 	}
 	.weread-library-view .weread-library-tabs [role='tab'] {
 		min-height: 44px;
 		padding: 12px 0 10px;
+	}
+}
+@media (max-width: 360px) {
+	.weread-library-tabs {
+		gap: 12px;
+		padding: 0 12px;
 	}
 }

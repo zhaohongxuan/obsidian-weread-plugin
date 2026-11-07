@@ -272,8 +272,26 @@
 	min-width: 0;
 }
 
+.weread-journal-quote-heading {
+	flex-wrap: wrap;
+}
 .weread-journal-quote .weread-journal-actions {
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
+	justify-content: flex-end;
+	margin-left: auto;
 	margin-bottom: 0;
+}
+.weread-journal-quote .weread-journal-actions button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	white-space: nowrap;
+}
+.weread-journal-quote .weread-journal-actions svg {
+	flex: 0 0 14px;
+	width: 14px;
+	height: 14px;
 }
 
 .weread-journal-note {
@@ -313,7 +331,16 @@
 	gap: 4px;
 }
 .weread-journal-note-meta > small {
+	min-width: 0;
 	margin-right: 4px;
+}
+.weread-journal-note-actions {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 0 auto;
+	gap: 4px;
+	margin-left: auto;
 }
 .weread-journal-view .weread-journal-note-action {
 	display: inline-flex;
@@ -362,6 +389,25 @@
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 12px;
 	background: var(--background-primary);
+}
+.weread-journal-notes-heading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.weread-journal-view .weread-journal-sort {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 28px;
+	width: 28px;
+	height: 28px;
+	margin-left: auto;
+	padding: 5px;
+}
+.weread-journal-sort svg {
+	width: 16px;
+	height: 16px;
 }
 .weread-journal-today-notes > h2 {
 	margin: 0 0 8px;

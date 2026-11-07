@@ -79,6 +79,7 @@ test(
         export class ItemView { constructor() { this.children = new Set(); this.app = {workspace: {requestSaveLayout() {}}}; this.contentEl = document.createElement('div'); this.contentEl.className = 'view-content'; document.body.append(this.contentEl); }
           addChild(child) {this.children.add(child); return child;} removeChild(child) {this.children.delete(child); child.onClose();} }
         export class Notice {}
+        export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); element.append(svg); }
       `
 										: filename.endsWith('journalHelpers')
 											? 'export const journalId = value => String(value ?? "");'
@@ -290,7 +291,7 @@ function fixture({ initialTab = 'today', viewType, gates = {} } = {}) {
 			this.baseState = { state, result };
 		}
 	}
-	const obsidian = { Component, ItemView, Notice: class {} };
+	const obsidian = { Component, ItemView, Notice: class {}, setIcon: () => {} };
 	const { WereadPanel } = load('src/components/wereadPanel.ts', { obsidian });
 	class Panel extends WereadPanel {
 		constructor(element, app, tab) {

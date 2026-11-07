@@ -261,8 +261,13 @@
 	margin-left: auto;
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
+	justify-content: flex-end;
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
 	gap: 16px;
+}
+.weread-detail-panel .weread-detail-review > .weread-detail-entry-actions {
+	margin-top: 8px;
 }
 .weread-detail-panel .weread-detail-entry-actions button {
 	font-size: 11px;

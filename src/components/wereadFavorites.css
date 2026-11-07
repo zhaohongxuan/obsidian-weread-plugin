@@ -29,6 +29,9 @@
 	gap: 8px;
 	min-width: 0;
 }
+.weread-favorites-heading {
+	justify-content: flex-end;
+}
 .weread-favorites-view button,
 .weread-favorites-view input,
 .weread-favorites-view select {
@@ -112,7 +115,17 @@
 	gap: 4px;
 }
 .weread-favorites-meta small {
-	flex: 1 1 100%;
+	flex: 1 1 180px;
+	min-width: 0;
+}
+.weread-favorites-note-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	flex: 0 0 auto;
+	flex-wrap: nowrap;
+	gap: 4px;
+	margin-left: auto;
 }
 .weread-favorites-text {
 	white-space: pre-wrap;
