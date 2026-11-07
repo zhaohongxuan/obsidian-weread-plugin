@@ -40,7 +40,9 @@ export class SyncLogModal extends Modal {
 	private renderLogs() {
 		this.logsContainer.empty();
 		const allLogs = settingsStore.actions.getSyncLogs();
-		const logs = this.showAll ? allLogs : allLogs.filter((log) => log.syncedBooks > 0);
+		const logs = this.showAll
+			? allLogs
+			: allLogs.filter((log) => log.syncedBooks > 0 || !log.success || log.cancelled);
 
 		const visibleCount = logs.length;
 		const totalCount = allLogs.length;
@@ -99,20 +101,32 @@ export class SyncLogModal extends Modal {
 			cls: log.success ? 'sync-log-status sync-log-success' : 'sync-log-status sync-log-error'
 		});
 		setIcon(status, log.success ? 'check-circle' : 'x-circle');
-		status.createSpan({ text: log.success ? '成功' : '失败' });
+		status.createSpan({ text: log.cancelled ? '已取消' : log.success ? '成功' : '失败' });
 
 		// Stats row
 		const stats = container.createDiv({ cls: 'sync-log-stats' });
 		stats.createSpan({ text: `共 ${log.totalBooks} 本书` });
 		stats.createSpan({ text: `同步 ${log.syncedBooks} 本` });
 		stats.createSpan({ text: `跳过 ${log.skippedBooks} 本` });
+		if (log.failedBooks) stats.createSpan({ text: `失败 ${log.failedBooks} 本` });
 		stats.createSpan({ text: `耗时 ${log.duration.toFixed(2)} 秒` });
 
 		// Error message if failed
-		if (!log.success && log.errorMessage) {
+		if (
+			!log.success &&
+			log.errorMessage &&
+			!log.failures?.some((failure) => failure.errorMessage === log.errorMessage)
+		) {
 			container
 				.createDiv({ cls: 'sync-log-error' })
 				.createSpan({ text: `错误: ${log.errorMessage}` });
+		}
+
+		for (const failure of log.failures ?? []) {
+			container.createDiv({
+				cls: 'sync-log-error',
+				text: failure.errorMessage
+			});
 		}
 
 		// Notes list

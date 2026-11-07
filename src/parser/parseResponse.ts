@@ -352,7 +352,7 @@ export const parseReviews = (resp: BookReviewResponse): Review[] => {
 	});
 };
 
-export const parseChapterReviews = (resp: BookReviewResponse): BookReview => {
+export const parseChapterReviews = (resp: BookReviewResponse, chapters: Chapter[] = []): BookReview => {
 	const reviews = parseReviews(resp);
 	const chapterReviews = reviews.filter((review) => review.type == 1);
 
@@ -371,11 +371,23 @@ export const parseChapterReviews = (resp: BookReviewResponse): BookReview => {
 	});
 
 	const entireReviews = reviews.filter((review) => review.type == 4);
+	// Chapter UIDs may arrive as numbers or decimal strings; absent IDs must not match.
+	const chapterKey = (uid: unknown): string | undefined => {
+		if (typeof uid === 'number' && Number.isSafeInteger(uid) && uid >= 0) return String(uid);
+		if (typeof uid === 'string' && /^(0|[1-9]\d*)$/.test(uid)) return uid;
+		return undefined;
+	};
+	const chapterTitles = new Map<string, string>();
+	for (const chapter of chapters) {
+		const key = chapterKey(chapter.chapterUid);
+		if (key !== undefined && chapter.title) chapterTitles.set(key, chapter.title);
+	}
 	const chapterResult = new Map();
 	for (const review of chapterReviews) {
 		const chapterUid = review.chapterUid;
 		const chapterTitle = review.chapterTitle;
-		const existChapter = chapterResult.get(review.chapterUid);
+		const key = chapterKey(chapterUid) ?? chapterUid;
+		const existChapter = chapterResult.get(key);
 		if (existChapter == null) {
 			const chapter: ChapterReview = {
 				chapterUid: chapterUid,
@@ -388,9 +400,10 @@ export const parseChapterReviews = (resp: BookReviewResponse): BookReview => {
 			} else {
 				chapter.chapterReviews.push(review);
 			}
-			chapterResult.set(review.chapterUid, chapter);
+			chapterResult.set(key, chapter);
 		} else {
-			const chapterRview: ChapterReview = chapterResult.get(review.chapterUid);
+			const chapterRview: ChapterReview = chapterResult.get(key);
+			if (!chapterRview.chapterTitle && chapterTitle) chapterRview.chapterTitle = chapterTitle;
 			if (review.range) {
 				chapterRview.reviews.push(review);
 			} else {
@@ -398,9 +411,13 @@ export const parseChapterReviews = (resp: BookReviewResponse): BookReview => {
 			}
 		}
 	}
-	const chapterReviewResult: ChapterReview[] = Array.from(chapterResult.values()).sort(
-		(o1, o2) => o1.chapterUid - o2.chapterUid
-	);
+	const chapterReviewResult: ChapterReview[] = Array.from(chapterResult.values());
+	for (const chapter of chapterReviewResult) {
+		const key = chapterKey(chapter.chapterUid);
+		const title = key === undefined ? undefined : chapterTitles.get(key);
+		if (!chapter.chapterTitle && title) chapter.chapterTitle = title;
+	}
+	chapterReviewResult.sort((o1, o2) => o1.chapterUid - o2.chapterUid);
 	return {
 		bookReviews: entireReviews,
 		chapterReviews: chapterReviewResult

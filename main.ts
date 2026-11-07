@@ -243,7 +243,10 @@ export default class WereadPlugin extends Plugin {
 						.setIcon('refresh-ccw')
 						.setTitle('同步当前读书笔记')
 						.onClick(() => {
-							this.syncNotebooks.syncNotebook(noteFile);
+							void this.syncNotebooks.syncNotebook(noteFile).catch((error) => {
+								new Notice(error instanceof Error ? error.message : String(error));
+								console.error('[weread plugin] 同步当前笔记失败', error);
+							});
 						})
 				);
 			})
@@ -315,15 +318,14 @@ export default class WereadPlugin extends Plugin {
 
 	async syncBookById(bookId: string) {
 		if (this.syncing) {
-			new Notice('正在同步微信读书笔记，请稍后再试');
-			return;
+			throw new Error(`(${bookId}) 正在同步微信读书笔记，请稍后再试`);
 		}
 		this.syncing = true;
 		try {
 			await this.syncNotebooks.syncBookById(bookId);
 		} catch (e) {
-			new Notice('同步当前书籍异常,请打开控制台查看详情');
-			console.error('同步当前书籍异常', e);
+			console.error(`同步当前书籍 (${bookId}) 异常`, e);
+			throw e;
 		} finally {
 			this.syncing = false;
 		}
@@ -550,7 +552,7 @@ export default class WereadPlugin extends Plugin {
 				const settings = get(settingsStore);
 				const bookTitles = settings.lastSyncBookTitles || [];
 				settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
-				new Notice(`定时同步完成，共同步 ${syncedCount || 0} 本书`);
+				new Notice(`定时同步结束，共更新 ${syncedCount || 0} 本书`);
 			} catch (e) {
 				console.error('[weread plugin] 定时同步失败', e);
 				new Notice('定时同步失败，请查看控制台');
