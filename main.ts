@@ -350,7 +350,7 @@ export default class WereadPlugin extends Plugin {
 
 		if (type === 'WINDOW') {
 			const browserWindow = new WereadBrowserWindow();
-			await browserWindow.open(targetUrl);
+			await browserWindow.open(targetUrl, bookmark);
 			return;
 		}
 
