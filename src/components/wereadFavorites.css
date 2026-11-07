@@ -70,9 +70,9 @@
 	margin-block: 0 8px;
 }
 .weread-favorites-controls input {
-	flex: 0 1 250px;
-	width: 250px;
-	max-width: 250px;
+	flex: 1 1 280px;
+	width: 380px;
+	max-width: 420px;
 }
 .weread-favorites-toolbar-actions {
 	display: flex;
@@ -126,6 +126,24 @@
 .weread-favorites-status p {
 	margin-block: 6px;
 }
+.weread-favorites-counts {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+}
+.weread-favorites-count {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+.weread-favorites-count > span:first-child {
+	display: inline-flex;
+}
+.weread-favorites-count svg {
+	width: 14px;
+	height: 14px;
+}
 .weread-favorites-error {
 	color: var(--text-error);
 }
@@ -138,6 +156,17 @@
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
 	align-items: start;
 }
+/* One-pixel tracks let each card use its own height without changing DOM order. */
+.weread-favorites-results.is-cards.is-masonry {
+	--weread-favorites-card-gap: 20px;
+	grid-auto-rows: 1px;
+	row-gap: 0;
+	column-gap: var(--weread-favorites-card-gap);
+}
+.weread-favorites-results.is-cards.is-masonry > * {
+	align-self: start;
+	margin: 0 0 var(--weread-favorites-card-gap);
+}
 .weread-favorites-entry {
 	display: flex;
 	align-items: flex-start;
@@ -149,11 +178,13 @@
 	background: var(--background-primary);
 }
 .weread-favorites-results.is-cards .weread-favorites-entry {
-	background: linear-gradient(
-		135deg,
-		hsla(var(--accent-h, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.05),
-		hsla(var(--accent-h, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.015)
-	), var(--background-primary);
+	background:
+		linear-gradient(
+			135deg,
+			hsla(var(--weread-favorite-hue, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.03),
+			hsla(var(--weread-favorite-hue, 250), var(--accent-s, 45%), var(--accent-l, 60%), 0.006)
+		),
+		var(--background-primary);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.035);
 }
 .weread-favorites-content {

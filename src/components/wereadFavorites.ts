@@ -90,6 +90,9 @@ export class WereadFavoritesPanel extends WereadPanel {
 	private modeButtons = new Map<string, HTMLButtonElement>();
 	private canvasButton: HTMLButtonElement;
 	private openingCanvas = false;
+	private masonryObserver?: ResizeObserver;
+	private masonryFrame: number | null = null;
+	private masonryWindow?: Window;
 	constructor(
 		contentEl: HTMLElement,
 		private plugin: WereadPlugin,
@@ -168,6 +171,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 	}
 	async onClose(): Promise<void> {
 		this.active = false;
+		this.stopMasonry();
 		this.generation += 1;
 		this.openingCanvas = false;
 		this.unsubscribe?.();
@@ -200,8 +204,52 @@ export class WereadFavoritesPanel extends WereadPanel {
 			}
 		}
 	}
+	private stopMasonry(): void {
+		this.masonryObserver?.disconnect();
+		this.masonryObserver = undefined;
+		if (this.masonryFrame !== null) this.masonryWindow?.cancelAnimationFrame(this.masonryFrame);
+		this.masonryFrame = null;
+		this.masonryWindow = undefined;
+	}
+	private startMasonry(): void {
+		const view = this.results.ownerDocument.defaultView;
+		if (this.mode !== 'cards' || !view?.ResizeObserver) return;
+		this.masonryWindow = view;
+		this.results.addClass('is-masonry');
+		const layout = (): void => {
+			if (!this.active || this.masonryObserver !== observer || !this.results.clientWidth)
+				return;
+			// Electron zoom can resolve a 1px track to e.g. 0.992747px.
+			const tracks = view.getComputedStyle(this.results);
+			const rowHeight =
+				parseFloat(tracks.gridTemplateRows) || parseFloat(tracks.gridAutoRows) || 1;
+			for (const item of Array.from(this.results.children) as HTMLElement[]) {
+				const style = view.getComputedStyle(item);
+				const height = parseFloat(style.height) || item.offsetHeight;
+				if (!height) continue;
+				const outerHeight =
+					height +
+					(parseFloat(style.marginTop) || 0) +
+					(parseFloat(style.marginBottom) || 0);
+				const span = `span ${Math.ceil(outerHeight / rowHeight)}`;
+				if (item.style.gridRowEnd !== span) item.style.gridRowEnd = span;
+			}
+		};
+		const observer = new view.ResizeObserver(() => {
+			if (!this.active || this.masonryObserver !== observer || this.masonryFrame !== null)
+				return;
+			this.masonryFrame = view.requestAnimationFrame(() => {
+				this.masonryFrame = null;
+				layout();
+			});
+		});
+		this.masonryObserver = observer;
+		for (const item of Array.from(this.results.children)) observer.observe(item);
+		layout();
+	}
 	private render(): void {
 		if (!this.active || !this.results) return;
+		this.stopMasonry();
 		const state = this.state;
 		const direction = this.sortAscending ? '从旧到新' : '从新到旧';
 		this.sortButton.setAttribute('aria-label', `按收藏时间${direction}排序`);
@@ -246,13 +294,25 @@ export class WereadFavoritesPanel extends WereadPanel {
 			)
 			.sort(
 				(a, b) =>
-					(this.sortAscending ? a.favoritedAt - b.favoritedAt : b.favoritedAt - a.favoritedAt) ||
-					a.id.localeCompare(b.id)
+					(this.sortAscending
+						? a.favoritedAt - b.favoritedAt
+						: b.favoritedAt - a.favoritedAt) || a.id.localeCompare(b.id)
 			);
-		if (state.loaded)
-			this.status.createEl('p', {
-				text: `${entries.length} 条收藏${query ? ` · 共 ${state.favorites.length} 条` : ''}`
-			});
+		if (state.loaded) {
+			const counts = this.status.createEl('p', { cls: 'weread-favorites-counts' });
+			const bookCount = new Set(
+				entries.map(({ note }) => String(note.bookId ?? '').trim()).filter(Boolean)
+			).size;
+			for (const [icon, text] of [
+				['star', `${entries.length} 条收藏`],
+				['book-open', `${bookCount} 本书`]
+			]) {
+				const count = counts.createSpan({ cls: 'weread-favorites-count' });
+				setIcon(count.createSpan({ attr: { 'aria-hidden': 'true' } }), icon);
+				count.createSpan({ text });
+			}
+			if (query) counts.createSpan({ text: `共 ${state.favorites.length} 条收藏` });
+		}
 		this.results.empty();
 		this.results.className = `weread-favorites-results is-${this.mode}`;
 		if (!entries.length && state.loaded)
@@ -274,11 +334,21 @@ export class WereadFavoritesPanel extends WereadPanel {
 				this.limit += 30;
 				this.render();
 			};
+		this.startMasonry();
 	}
 	private renderEntry(entry: FavoriteEntry): void {
 		const note = entry.note;
 		const card = this.results.createEl('article', { cls: 'weread-favorites-entry' });
 		card.dataset.favoriteId = entry.id;
+		if (this.mode === 'cards') {
+			// Stable per favorite: filtering and sorting must not make colors jump.
+			let hue = 2166136261;
+			for (let index = 0; index < entry.id.length; index++) {
+				hue = Math.imul(hue ^ entry.id.charCodeAt(index), 16777619);
+			}
+			hue ^= hue >>> 16;
+			card.style.setProperty('--weread-favorite-hue', String((hue >>> 0) % 360));
+		}
 		if (this.mode === 'cards' && note.cover && /^https?:\/\//.test(note.cover)) {
 			const cover = card.createEl('img', {
 				cls: 'weread-favorites-cover',

@@ -119,6 +119,25 @@ window.smoke={assertions,
   check(!root.querySelector('.weread-detail-favorite'),'Reviews have no personal-highlight favorite action');
   tab('highlights');check(panel.getState().currentTab==='highlights','Tab changes persist in detail state');
  },
+ async header(){
+  const f=await mount(router(),[],{state:{localFilePath:'fixture.md'}});
+  const counts=root.querySelector('.weread-detail-counts');
+  check([...counts.children].map(el=>el.textContent).join('|')==='4 条划线|1 条笔记','Cover counts include personal highlights and thoughts, excluding deleted highlights and book reviews');
+  check(counts.parentElement.classList.contains('weread-detail-cover-column')&&!root.querySelector('.weread-detail-info .weread-detail-counts'),'Counts belong exclusively to the cover column');
+  const actions=[...root.querySelectorAll('.weread-detail-header-actions button')];
+  check(actions.map(el=>el.textContent).join('|')==='去阅读|本地笔记|刷新|同步笔记','Header retains four concise visible text actions');
+  check(actions.every(el=>el.querySelector('.weread-detail-action-icon[aria-hidden="true"] svg')&&el.lastElementChild.textContent===el.textContent),'Each header action has a decorative icon and an accessible visible text label');
+  check(actions[0].querySelector('[data-weread-icon="book-arrow-up-right"]'),'Read action uses the chosen book and arrow icon');
+  actions[0].focus();check(document.activeElement===actions[0],'Read text action remains keyboard focusable');
+  click('去阅读');await tick();check(f.plugin.opened.length===1,'Renamed read action preserves the preferred reading route');
+  root.querySelector('.weread-detail-cover').dispatchEvent(new Event('error'));
+  check(!root.querySelector('.weread-detail-cover')&&root.querySelector('.weread-detail-jacket').textContent==='山间的阅读'&&counts.textContent==='4 条划线1 条笔记','Broken cover retains title fallback and loaded counts');
+  await mount(router((i,id,response)=>i===0?{...response,cover:''}:i===2?{...response,book:{...response.book,cover:''}}:response),[],{state:{bookCover:''}});
+  check(!root.querySelector('.weread-detail-cover')&&root.querySelector('.weread-detail-jacket').textContent==='山间的阅读','Missing cover renders a readable title fallback above counts');
+  const loading=gate();await close();activeFixture=persistence();root=host();panel=new WereadBookDetailPanel(root,router((i,id,response)=>loading.promise.then(()=>response)),activeFixture.plugin);await panel.onOpen();const request=panel.setState(state);await tick();
+  check(root.querySelector('.weread-detail-counts').textContent===''&&getComputedStyle(root.querySelector('.weread-detail-counts')).display==='none','Unknown loading counts stay hidden instead of inventing zero');
+  check(button('正在刷新…').disabled&&button('正在刷新…').querySelector('svg'),'Pending refresh keeps its icon, text, and disabled state');loading.resolve();await request;
+ },
  async stateValidation(){
   await mount();await panel.setState({...state,bookId:42});
   check(panel.getState().bookId==='42'&&root.querySelector('h1').textContent==='山间的阅读','Finite numeric workspace book ID normalizes to the canonical string');
@@ -200,9 +219,11 @@ window.smoke={assertions,
  async failures(){
   let failing=true;await mount(router((i,id,response)=>{if(failing&&i===2)throw new Error('API_SECRET_SENTINEL');return response;}));
   check(root.textContent.includes('山间的阅读')&&root.textContent.includes('重试'),'Partial API failure retains book metadata and retry action');
+  check(root.querySelector('.weread-detail-counts').textContent==='1 条笔记','Failed highlights omit an unknown count while keeping the loaded note count');
   check(!root.textContent.includes('API_SECRET_SENTINEL'),'API exception details are not exposed');failing=false;click('重试');await until(()=>!!quote(),'retry data');check(quote().textContent===TEXT,'Retry recovers remote highlights');
   await mount(router(()=>{throw new Error('API_SECRET_SENTINEL');}));check(root.textContent.includes('书架临时标题')&&button('重试')&&!root.textContent.includes('API_SECRET_SENTINEL'),'All API failures retain shelf title and safe retry');
   await mount(router((i,id,response)=>i===2?{...response,updated:[]}:i===3||i===5?{reviews:[]}:i===4?{items:[],chapters:[]}:response));
+  check(root.querySelector('.weread-detail-counts').textContent==='0 条划线0 条笔记'&&root.querySelector('.weread-detail-counts').getBoundingClientRect().height>0,'Loaded empty responses show visible zero counts beneath the cover');
   check(root.textContent.includes('还没有划线'),'Empty personal highlights have friendly copy');for(const name of ['notes','popular','reviews']){tab(name);check(root.querySelector('.weread-detail-empty')&&!root.querySelector('article'),'Empty '+name+' has friendly state');}
  },
  async races(){
@@ -217,8 +238,14 @@ window.smoke={assertions,
   await close();activeFixture=persistence();root=host();panel=new WereadBookDetailPanel(root,router(),activeFixture.plugin,{breadcrumbLabel:'收藏',onBack:()=>{backCount++;void panel.onClose();}});await panel.onOpen();await panel.setState(state);click('返回收藏');check(backCount===before+2,'Custom origin breadcrumb returns to Favorites');
   await close();check(intervals.size===0&&undoTimers.size===0&&settingsStore.listenerCount()===0,'Closed detail leaves no interval, Undo timer or settings subscriptions');
  },
- async preview(){await mount(router((i,id,response)=>i===2?{...response,updated:[highlight('remote-1',{colorStyle:3,markText:'晨光穿过树叶，阅读让平凡的一天有了新的层次。那些看似微小的片刻，恰恰是生活值得珍藏的部分。'}),highlight('remote-3',{colorStyle:1,range:'60-90',markText:'慢下来，才能看见身边被忽略的细节。书页里的世界如此辽阔，也让眼前的日常变得丰盈。'}),highlight('remote-2',{colorStyle:5,chapterUid:2,markText:'在山与水之间，找回内心的安静。脚步可以慢一些，方向要清楚。'})]}:response));star().click();await settled();await Promise.all([...document.images].map(image=>image.decode().catch(()=>{})));},
- layout(){const page=root.getBoundingClientRect();check(document.documentElement.scrollWidth<=innerWidth,'Detail fits viewport '+innerWidth);check([...root.querySelectorAll('button')].filter(b=>b.offsetWidth).every(b=>{const r=b.getBoundingClientRect();return r.right<=innerWidth+1&&r.left>=-1;}),'Visible detail actions stay inside viewport '+innerWidth);check(quote()&&page.width>250,'Readable quote remains present at viewport '+innerWidth);},
+ async preview(){await mount(router((i,id,response)=>i===2?{...response,updated:[highlight('remote-1',{colorStyle:3,markText:'晨光穿过树叶，阅读让平凡的一天有了新的层次。那些看似微小的片刻，恰恰是生活值得珍藏的部分。'}),highlight('remote-3',{colorStyle:1,range:'60-90',markText:'慢下来，才能看见身边被忽略的细节。书页里的世界如此辽阔，也让眼前的日常变得丰盈。'}),highlight('remote-2',{colorStyle:5,chapterUid:2,markText:'在山与水之间，找回内心的安静。脚步可以慢一些，方向要清楚。'})]}:response),[],{state:{localFilePath:'fixture.md'}});star().click();await settled();await Promise.all([...document.images].map(image=>image.decode().catch(()=>{})));},
+ layout(){const page=root.getBoundingClientRect();check(document.documentElement.scrollWidth<=innerWidth,'Detail fits viewport '+innerWidth);check([...root.querySelectorAll('button')].filter(b=>b.offsetWidth).every(b=>{const r=b.getBoundingClientRect();return r.right<=innerWidth+1&&r.left>=-1;}),'Visible detail actions stay inside viewport '+innerWidth);check(quote()&&page.width>250,'Readable quote remains present at viewport '+innerWidth);
+  const jacket=root.querySelector('.weread-detail-jacket').getBoundingClientRect(),counts=root.querySelector('.weread-detail-counts').getBoundingClientRect(),info=root.querySelector('.weread-detail-info').getBoundingClientRect(),stats=root.querySelector('.weread-detail-reading-stats').getBoundingClientRect();
+  check(counts.top>=jacket.bottom&&counts.left>=jacket.left-1&&counts.right<=jacket.right+1&&counts.height>0,'Counts stay visibly below and within the cover column at viewport '+innerWidth);
+  check(info.left>jacket.right&&stats.left>=info.left&&stats.right<=info.right+1,'Metadata and wrapping reading stats stay right of the cover at viewport '+innerWidth);
+  check([...root.querySelectorAll('.weread-detail-counts > span')].every(el=>el.getBoundingClientRect().right<=counts.right+1),'Individual count labels remain legible inside the cover column at viewport '+innerWidth);
+  if(innerWidth>=1000){const facts=root.querySelector('.weread-detail-facts').getBoundingClientRect(),progress=root.querySelector('.weread-detail-progress').getBoundingClientRect();check(Math.abs(facts.top-progress.top)<2,'Status, duration, and progress share one compact desktop row');}
+ },
  async close(){await close();check(intervals.size===0&&undoTimers.size===0,'Final cleanup releases timers');check(browserErrors.length===0,'No uncaught browser errors or rejected UI promises: '+browserErrors.join('|'));}
 };
 `;
@@ -235,6 +262,7 @@ test(
 		await browser.evaluate(await bundleFixture(fixture));
 		for (const scenario of [
 			'content',
+			'header',
 			'stateValidation',
 			'explicitSync',
 			'sync',
@@ -249,11 +277,24 @@ test(
 			t.diagnostic(`Passed detail scenario: ${scenario}`);
 		}
 		await browser.evaluate('smoke.preview()');
+		const accessibility = await browser.send('Accessibility.getFullAXTree');
+		for (const label of ['去阅读', '本地笔记', '刷新', '同步笔记']) {
+			assert(
+				accessibility.nodes.some(
+					(node) => !node.ignored && node.role?.value === 'button' && node.name?.value === label
+				),
+				`Chrome exposes the header button with its visible accessible name: ${label}`
+			);
+		}
 		await browser.evaluate('smoke.layout()');
 		await screenshot('/tmp/obsidian-weread-book-detail.png');
 		await browser.viewport(375, 844);
 		await browser.evaluate('smoke.layout()');
 		await screenshot('/tmp/obsidian-weread-book-detail-mobile.png');
+		for (const width of [320, 600]) {
+			await browser.viewport(width, 844);
+			await browser.evaluate('smoke.layout()');
+		}
 		await browser.viewport(1180);
 		await browser.evaluate('document.body.classList.add("theme-dark"); smoke.layout()');
 		await screenshot('/tmp/obsidian-weread-book-detail-dark.png');

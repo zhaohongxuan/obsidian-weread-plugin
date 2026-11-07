@@ -485,21 +485,19 @@
 	padding: 8px 0;
 }
 .weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) > .weread-stats-section {
-	grid-column: 1 / -1;
-}
-.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) .weread-stats-book-list {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-	gap: 12px 24px;
-}
-.weread-stats-view .weread-stats-content-grid:has(.weread-ghmap-inner) .weread-stats-book-row {
-	border-bottom: 0;
-	padding: 8px 0;
+	grid-column: auto;
 }
 .weread-stats-view .weread-ghmap-inner {
-	--weread-stats-heat-cell: 12px;
+	--weread-stats-heat-cell: 8px;
+	--weread-stats-heat-gap: 2px;
 	width: max-content;
 	min-width: 0;
+}
+.weread-stats-view .weread-ghmap-months,
+.weread-stats-view .weread-ghmap-grid,
+.weread-stats-view .weread-ghmap-col,
+.weread-stats-view .weread-ghmap-daylabels {
+	gap: var(--weread-stats-heat-gap);
 }
 .weread-stats-view .weread-ghmap-right {
 	flex: none;
@@ -581,7 +579,7 @@
 		grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
 	}
 }
-@container weread-stats (max-width: 800px) {
+@container weread-stats (max-width: 1000px) {
 	.weread-stats-view .weread-stats-content-grid {
 		grid-template-columns: minmax(0, 1fr);
 	}

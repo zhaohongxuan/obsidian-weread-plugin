@@ -300,11 +300,28 @@ export class WereadBookDetailPanel extends WereadPanel {
 			TABS.find(([tab]) => tab === this.currentTab)?.[1] || '划线'
 		);
 	}
+	private headerButton(
+		parent: HTMLElement,
+		text: string,
+		icon: string,
+		action: () => void
+	): HTMLButtonElement {
+		const button = this.button(parent, '', action);
+		const glyph = button.createSpan({
+			cls: 'weread-detail-action-icon',
+			attr: { 'aria-hidden': 'true' }
+		});
+		if (icon === 'reading') setOriginalReadingIcon(glyph);
+		else setIcon(glyph, icon);
+		button.createSpan({ text });
+		return button;
+	}
 	private renderHeader(): void {
 		const title =
 			this.detail?.title || this.highlightResp?.book?.title || this.bookTitle || '书籍详情';
 		const cover = this.detail?.cover || this.highlightResp?.book?.cover || this.bookCover;
-		const jacket = this.header.createDiv({ cls: 'weread-detail-jacket' });
+		const coverColumn = this.header.createDiv({ cls: 'weread-detail-cover-column' });
+		const jacket = coverColumn.createDiv({ cls: 'weread-detail-jacket' });
 		if (cover && /^https?:\/\//.test(cover)) {
 			const image = jacket.createEl('img', {
 				cls: 'weread-detail-cover',
@@ -348,7 +365,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 				attr: { max: '100', value: String(percent), 'aria-label': '阅读进度' }
 			});
 		}
-		const counts = info.createDiv({ cls: 'weread-detail-counts' });
+		const counts = coverColumn.createDiv({ cls: 'weread-detail-counts' });
 		if (this.highlightResp)
 			counts.createSpan({ text: `${this.personalHighlights().length} 条划线` });
 		if (this.reviewResp)
@@ -356,18 +373,21 @@ export class WereadBookDetailPanel extends WereadPanel {
 				text: `${this.reviewResp.reviews?.filter((row) => row.review?.type !== 4).length || 0} 条笔记`
 			});
 		const actions = info.createDiv({ cls: 'weread-detail-header-actions' });
-		this.button(actions, '在微信读书中打开', () => void this.openBook());
-		if (this.localFilePath) this.button(actions, '打开本地笔记', () => void this.openLocal());
-		const refresh = this.button(
+		this.headerButton(actions, '去阅读', 'reading', () => void this.openBook());
+		if (this.localFilePath)
+			this.headerButton(actions, '本地笔记', 'file-text', () => void this.openLocal());
+		const refresh = this.headerButton(
 			actions,
 			this.loading ? '正在刷新…' : '刷新',
+			'refresh-cw',
 			() => void this.loadData()
 		);
 		refresh.disabled = this.loading || this.syncing || !this.bookId;
 		if (typeof this.plugin.syncBookById === 'function') {
-			const sync = this.button(
+			const sync = this.headerButton(
 				actions,
 				this.syncing ? '同步中…' : '同步笔记',
+				'cloud-download',
 				() => void this.syncNotes()
 			);
 			sync.classList.add('weread-detail-sync');
