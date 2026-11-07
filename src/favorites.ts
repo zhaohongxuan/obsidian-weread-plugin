@@ -83,11 +83,27 @@ export class WereadFavoritesService {
 					void this.load(true).catch((): void => undefined);
 				}, 80);
 			};
+			const removed = (file: { path: string }, oldPath = file.path) => {
+				if (oldPath !== FAVORITES_PATH && !FAVORITES_PATH.startsWith(`${oldPath}/`)) {
+					if (file.path === FAVORITES_PATH || FAVORITES_PATH.startsWith(`${file.path}/`))
+						changed({ path: FAVORITES_PATH });
+					return;
+				}
+				if (this.disposed || (!this.state.loaded && !this.hydration)) return;
+				this.state.writable = false;
+				this.state.error = '收藏主画布已移走或删除，请恢复画布后重新读取';
+				this.emit();
+				changed({ path: FAVORITES_PATH });
+			};
 			const modified = vault.on('modify', changed);
 			const created = vault.on('create', changed);
+			const deleted = vault.on('delete', removed);
+			const renamed = vault.on('rename', removed);
 			this.eventDisposers.push(
 				() => vault.offref(modified),
-				() => vault.offref(created)
+				() => vault.offref(created),
+				() => vault.offref(deleted),
+				() => vault.offref(renamed)
 			);
 		}
 	}

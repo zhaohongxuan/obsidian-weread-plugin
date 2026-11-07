@@ -61,8 +61,8 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 	};
 	const listeners = new Map();
 	const files = new Map();
-	const emit = (event, file) => {
-		for (const callback of listeners.get(event) || []) callback(file);
+	const emit = (event, ...args) => {
+		for (const callback of listeners.get(event) || []) callback(...args);
 	};
 	const vault = { adapter };
 	if (nativeVault)
@@ -84,6 +84,25 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 			async modify(file, raw) {
 				await adapter.write(file.path, raw);
 				emit('modify', file);
+			},
+			async rename(file, newPath) {
+				const oldPath = file.path;
+				await fs.rename(path(oldPath), path(newPath));
+				for (const [p, entry] of [...files]) {
+					if (p === oldPath || p.startsWith(oldPath + '/')) {
+						files.delete(p);
+						entry.path = newPath + p.slice(oldPath.length);
+						files.set(entry.path, entry);
+					}
+				}
+				emit('rename', file, oldPath);
+			},
+			async delete(file) {
+				await fs.rm(path(file.path), { recursive: true });
+				for (const p of [...files.keys()]) {
+					if (p === file.path || p.startsWith(file.path + '/')) files.delete(p);
+				}
+				emit('delete', file);
 			},
 			on(event, callback) {
 				if (!listeners.has(event)) listeners.set(event, new Set());
@@ -291,6 +310,80 @@ test('real Vault Canvas writes index the file and native edits refresh stars wit
 	service.dispose();
 	assert([...f.listeners.values()].every((set) => set.size === 0));
 });
+
+for (const action of ['delete', 'rename']) {
+	test(`Vault ${action} makes live favorites read-only without reviving the canceled predecessor`, async (t) => {
+		const f = await fixture(t, { nativeVault: true });
+		const service = f.restart();
+		await service.setFavorite(note('kept'), true);
+		await service.setFavorite(note('canceled'), true);
+		await service.remove(note('canceled').id);
+		const newest = await f.adapter.read(FAVORITES_PATH);
+		const backup = await f.adapter.read(FAVORITES_BACKUP_PATH);
+		assert.equal(
+			parseFavorites(backup).records.find((e) => e.id === note('canceled').id).deletedAt,
+			undefined
+		);
+		const file = f.vault.getAbstractFileByPath(FAVORITES_PATH);
+		const renamedPath = 'WereadData/favorites/renamed.canvas';
+		const unavailable = waitForSnapshot(
+			service,
+			(state) => !state.loading && !state.writable && state.error.includes('已保护备份')
+		);
+		if (action === 'rename') await f.vault.rename(file, renamedPath);
+		else await f.vault.delete(file);
+		assert.equal(service.getSnapshot().writable, false, 'Invalidate UI immediately');
+		await unavailable;
+		await assert.rejects(service.setFavorite(note('blocked'), true));
+		await assert.rejects(service.ensureCanvas());
+		assert.equal(await f.adapter.exists(FAVORITES_PATH), false);
+		assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), backup);
+		const restarted = f.restart();
+		assert.equal((await restarted.load()).writable, false);
+		assert.equal(restarted.isFavorite(note('canceled').id), false);
+		if (action === 'rename') assert.equal(await f.adapter.read(renamedPath), newest);
+		const restored = waitForSnapshot(service, (state) => state.writable && !state.loading);
+		const restartRestored = waitForSnapshot(
+			restarted,
+			(state) => state.writable && !state.loading
+		);
+		if (action === 'rename') await f.vault.rename(file, FAVORITES_PATH);
+		else await f.vault.create(FAVORITES_PATH, newest);
+		await Promise.all([restored, restartRestored]);
+		assert.equal(service.isFavorite(note('kept').id), true);
+		assert.equal(service.isFavorite(note('canceled').id), false);
+		await service.setFavorite(note('after-restore'), true);
+		assert.equal(service.isFavorite(note('after-restore').id), true);
+		service.dispose();
+		restarted.dispose();
+		assert([...f.listeners.values()].every((set) => set.size === 0));
+	});
+}
+
+for (const action of ['delete', 'rename']) {
+	test(`parent directory ${action} invalidates a loaded Canvas without recreating its old path`, async (t) => {
+		const f = await fixture(t, { nativeVault: true });
+		const service = f.restart();
+		await service.setFavorite(note(), true);
+		const folder = f.vault.getAbstractFileByPath('WereadData/favorites');
+		const unavailable = waitForSnapshot(
+			service,
+			(state) => !state.loading && !state.writable && state.error.includes('已保护备份')
+		);
+		if (action === 'rename') await f.vault.rename(folder, 'WereadData/moved-favorites');
+		else await f.vault.delete(folder);
+		assert.equal(service.getSnapshot().writable, false);
+		await unavailable;
+		await assert.rejects(service.ensureCanvas());
+		assert.equal(await f.adapter.exists(FAVORITES_PATH), false);
+		if (action === 'rename') {
+			const restored = waitForSnapshot(service, (state) => state.writable && !state.loading);
+			await f.vault.rename(folder, 'WereadData/favorites');
+			await restored;
+			assert.equal(service.isFavorite(note().id), true);
+		}
+	});
+}
 
 test('plugin mutation flushes a pending native Canvas save before merging a new favorite', async (t) => {
 	const views = [];

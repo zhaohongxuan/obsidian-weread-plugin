@@ -381,6 +381,73 @@ test('external edit during staging is detected before backup or main overwrite',
 	assert(!f.files.has(BACKUP));
 });
 
+test('missing or renamed primary never resurrects a canceled favorite from its predecessor', async (t) => {
+	for (const renamed of [false, true]) {
+		const f = fixture(t);
+		await f.service.setFavorite(note(), true);
+		await f.service.remove(note().id);
+		const canceled = f.files.get(MAIN);
+		assert.equal(parseFavorites(f.files.get(BACKUP)).records[0].deletedAt, undefined);
+		if (renamed) f.files.set('WereadData/favorites/renamed.canvas', canceled);
+		f.files.delete(MAIN);
+		const before = [...f.files];
+		const state = await f.service.load(true);
+		assert.equal(state.writable, false);
+		assert.match(state.error, /移走或删除/);
+		assert.equal(f.service.isFavorite(note().id), false);
+		await assert.rejects(f.service.setFavorite(note('blocked'), true));
+		await assert.rejects(f.service.ensureCanvas());
+		const restarted = f.restart();
+		assert.equal((await restarted.load()).writable, false);
+		assert.deepEqual([...f.files], before, 'No recovery, migration or mutation writes');
+		f.files.set(MAIN, canceled);
+		assert.equal((await restarted.load(true)).writable, true);
+		assert.equal(restarted.isFavorite(note().id), false);
+		await restarted.setFavorite(note('new'), true);
+		assert.equal(restarted.isFavorite(note('new').id), true);
+		assert.equal(restarted.isFavorite(note().id), false);
+	}
+});
+
+test('missing primary with any Canvas recovery artifact blocks legacy reimport without writes', async (t) => {
+	for (const path of [BACKUP, STAGE]) {
+		const legacy = JSON.stringify({ schemaVersion: 1, revision: 1, records: [record()] });
+		const f = fixture(t, [
+			[path, document()],
+			[LEGACY, legacy]
+		]);
+		const before = [...f.files];
+		assert.equal((await f.service.load()).writable, false);
+		await assert.rejects(f.service.ensureCanvas());
+		assert.deepEqual([...f.files], before);
+		assert.equal(f.operations.filter(([kind]) => kind === 'write').length, 0);
+	}
+});
+
+test('valid empty primary remains empty even with an active predecessor backup', async (t) => {
+	const empty = '{"nodes":[],"edges":[]}';
+	const f = fixture(t, [
+		[MAIN, empty],
+		[BACKUP, document()]
+	]);
+	const state = await f.service.load();
+	assert.equal(state.writable, true);
+	assert.deepEqual(state.favorites, []);
+	assert.equal(state.warning, '');
+	assert.equal(f.files.get(MAIN), empty);
+	assert.equal(f.operations.filter(([kind]) => kind === 'write').length, 0);
+});
+
+test('a previously loaded native Canvas cannot disappear into a writable first-use state', async (t) => {
+	const f = fixture(t, [[MAIN, document()]]);
+	await f.service.load();
+	f.files.delete(MAIN);
+	assert.equal((await f.service.load(true)).writable, false);
+	await assert.rejects(f.service.ensureCanvas());
+	assert.equal(f.files.has(MAIN), false);
+	assert.equal(f.operations.filter(([kind]) => kind === 'write').length, 0);
+});
+
 test('automatic previous backup stays bounded and export API is absent', async (t) => {
 	const f = fixture(t);
 	assert.equal(f.service.exportBackup, undefined);

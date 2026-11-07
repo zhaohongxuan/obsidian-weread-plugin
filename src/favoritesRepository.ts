@@ -177,8 +177,24 @@ export class FavoritesRepository {
 		const raw = await this.read(FAVORITES_PATH);
 		let document: FavoritesDocument;
 		let warning = '';
+		if (raw === null) {
+			if (
+				this.expected !== null ||
+				(await this.read(FAVORITES_BACKUP_PATH)) !== null ||
+				(await this.read(FAVORITES_STAGING_PATH)) !== null
+			) {
+				throw new FavoritesStorageError(
+					'收藏主画布已移走或删除；已保护备份，请手动恢复画布后重新读取'
+				);
+			}
+			const migrated = await this.migrateLegacy();
+			document = migrated?.document ?? { schemaVersion: 1, revision: 0, records: [] };
+			this.expected = migrated?.raw ?? null;
+			if (migrated) warning = '已将旧收藏转换为 Canvas；原 JSON 文件已原样保留';
+			this.initialized = true;
+			return { document, warning };
+		}
 		try {
-			if (raw === null) throw new FavoritesStorageError('收藏主文件不存在');
 			document = parseFavorites(raw);
 		} catch (error) {
 			if (error instanceof FutureSchemaError || error instanceof FavoritesCanvasMetadataError)
@@ -187,12 +203,10 @@ export class FavoritesRepository {
 			if (backup !== null) {
 				document = parseFavorites(backup);
 				// Preserve the original bytes before attempting recovery, without renaming or deleting.
-				if (raw !== null) {
-					const quarantine = await this.uniquePath('favorites.corrupt');
-					await this.adapter.write(quarantine, raw);
-					if ((await this.adapter.read(quarantine)) !== raw) {
-						throw new FavoritesStorageError('无法安全保留损坏的收藏文件；未恢复');
-					}
+				const quarantine = await this.uniquePath('favorites.corrupt');
+				await this.adapter.write(quarantine, raw);
+				if ((await this.adapter.read(quarantine)) !== raw) {
+					throw new FavoritesStorageError('无法安全保留损坏的收藏文件；未恢复');
 				}
 				if ((await this.read(FAVORITES_PATH)) !== raw) {
 					throw new FavoritesConflictError('恢复期间收藏文件发生变化；未覆盖');
@@ -200,11 +214,6 @@ export class FavoritesRepository {
 				await this.verifiedWrite(FAVORITES_PATH, backup);
 				warning = '已从上一份有效备份恢复收藏；原损坏文件已保留（如存在）';
 				this.expected = backup;
-			} else if (raw === null && (await this.read(FAVORITES_STAGING_PATH)) === null) {
-				const migrated = await this.migrateLegacy();
-				document = migrated?.document ?? { schemaVersion: 1, revision: 0, records: [] };
-				this.expected = migrated?.raw ?? null;
-				if (migrated) warning = '已将旧收藏转换为 Canvas；原 JSON 文件已原样保留';
 			} else {
 				throw new FavoritesStorageError(
 					'收藏文件损坏或仅有未完成写入；已保护原文件，禁止写入'
