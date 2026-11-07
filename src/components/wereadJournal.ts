@@ -7,6 +7,9 @@ import type WereadPlugin from '../../main';
 import type ApiRouter from '../api-router';
 import type { JournalNote, JournalState, WereadJournalService } from '../journal';
 import { WereadPanel } from './wereadPanel';
+import type { WereadFavoritesService } from '../favorites';
+import type { FavoritesState } from '../models';
+import { FavoritesUndoToast } from './wereadFavorites';
 
 export const WEREAD_TODAY_VIEW_ID = 'weread-today-view';
 export const WEREAD_REVIEW_VIEW_ID = 'weread-review-view';
@@ -22,8 +25,80 @@ function noteDay(note: JournalNote): string {
 export class WereadJournalPanel extends WereadPanel {
 	private unsubscribe?: () => void;
 	private unsubscribeSettings?: () => void;
+	private unsubscribeFavorites?: () => void;
+	private favorites?: WereadFavoritesService;
+	private favoritesUndo?: FavoritesUndoToast;
+	private favoriteState?: FavoritesState;
+	private favoritesGeneration = 0;
+	private updateFavoriteStars(initialStar?: HTMLButtonElement): void {
+		if (!this.active || !this.favoriteState) return;
+		const state = this.favoriteState;
+		const ids = new Set(state.favorites.map((entry) => entry.id));
+		const stars = initialStar
+			? [initialStar]
+			: Array.from(
+					this.contentEl.querySelectorAll<HTMLButtonElement>('.weread-journal-favorite')
+				);
+		for (const star of stars) {
+			const id = star.dataset.favoriteId!;
+			const favorite = ids.has(id);
+			const label = favorite ? '取消收藏' : '收藏';
+			const pressed = String(favorite);
+			const disabled =
+				!state.loaded || state.loading || !state.writable || state.pendingIds.includes(id);
+			const title = !state.writable
+				? state.error || state.warning || '收藏当前为只读'
+				: !state.loaded || state.loading
+					? '正在读取收藏…'
+					: label;
+			if (star.getAttribute('aria-pressed') !== pressed)
+				star.setAttribute('aria-pressed', pressed);
+			if (star.getAttribute('aria-label') !== label) star.setAttribute('aria-label', label);
+			if (star.disabled !== disabled) star.disabled = disabled;
+			if (star.title !== title) star.title = title;
+		}
+	}
+	private async toggleFavorite(note: JournalNote): Promise<void> {
+		const favorites = this.favorites;
+		if (!favorites) return;
+		const state = favorites.getSnapshot();
+		if (!state.loaded || state.loading || !state.writable || state.pendingIds.includes(note.id))
+			return;
+		const entry = state.favorites.find((entry) => entry.id === note.id);
+		const generation = this.favoritesGeneration;
+		this.favoritesUndo?.clear();
+		try {
+			await favorites.setFavorite(note, !entry);
+			if (!this.active || generation !== this.favoritesGeneration) return;
+			if (entry) this.favoritesUndo?.show(entry);
+			else new Notice('已收藏');
+		} catch (error) {
+			if (this.active)
+				new Notice(error instanceof Error ? error.message : '收藏保存失败，请重试');
+		}
+	}
 	private credentialGeneration = 0;
 	private credentialKey = '';
+	private exclusionsKey = '';
+	private readExcludedBookIds(): Set<string> {
+		const value: unknown = get(settingsStore)?.journalExcludedBookIds;
+		return new Set(
+			Array.isArray(value)
+				? value
+						.map((id) =>
+							typeof id === 'string'
+								? id.trim()
+								: typeof id === 'number' && Number.isFinite(id)
+									? String(id)
+									: ''
+						)
+						.filter(Boolean)
+				: []
+		);
+	}
+	private readExclusionsKey(): string {
+		return JSON.stringify([...this.readExcludedBookIds()].sort());
+	}
 	private readCredentialKey(): string {
 		const settings = get(settingsStore);
 		return JSON.stringify([
@@ -124,14 +199,41 @@ export class WereadJournalPanel extends WereadPanel {
 			attr: { 'aria-live': 'polite' }
 		});
 		this.body = this.contentEl.createDiv({ cls: 'weread-journal-body' });
+		this.favorites = this.plugin.favoritesService;
+		if (this.favorites) {
+			this.favoritesUndo = new FavoritesUndoToast(
+				this.contentEl,
+				this.favorites,
+				() => this.active
+			);
+			this.favoriteState = this.favorites.getSnapshot();
+			this.unsubscribeFavorites = this.favorites.subscribe((state) => {
+				this.favoriteState = state;
+				if (!this.active) return;
+				this.favoritesUndo?.update(state);
+				this.updateFavoriteStars();
+			});
+			void this.favorites.load().catch((error: unknown) => {
+				if (this.active)
+					new Notice(error instanceof Error ? error.message : '收藏加载失败');
+			});
+		}
 		this.unsubscribe = this.journal.subscribe((state) => {
 			this.state = state;
 			if (this.active) this.render();
 		});
 		this.credentialKey = this.readCredentialKey();
+		this.exclusionsKey = this.readExclusionsKey();
 		this.unsubscribeSettings = settingsStore.subscribe(() => {
 			const key = this.readCredentialKey();
-			if (key === this.credentialKey) return;
+			const exclusionsKey = this.readExclusionsKey();
+			const exclusionsChanged = exclusionsKey !== this.exclusionsKey;
+			this.exclusionsKey = exclusionsKey;
+			if (key === this.credentialKey) {
+				// Only replace the quote: Review controls, focus and scroll stay intact.
+				if (exclusionsChanged && this.active) this.renderQuote();
+				return;
+			}
 			this.credentialKey = key;
 			this.credentialGeneration += 1;
 			this.todayBooks = [];
@@ -175,8 +277,12 @@ export class WereadJournalPanel extends WereadPanel {
 	}
 	async onClose(): Promise<void> {
 		this.active = false;
+		this.favoritesGeneration += 1;
 		this.unsubscribe?.();
 		this.unsubscribeSettings?.();
+		this.unsubscribeFavorites?.();
+		this.unsubscribeFavorites = undefined;
+		this.favoritesUndo?.clear();
 		this.credentialGeneration += 1;
 		window.clearInterval(this.refreshTimer);
 	}
@@ -263,7 +369,12 @@ export class WereadJournalPanel extends WereadPanel {
 				? this.state.syncing
 					? '加载中…'
 					: '暂不可用'
-				: `${notes.filter((n) => n.kind === kind).length} 条${this.state.failedBooks || this.state.syncing ? ' · 已加载' : ''}`;
+				: `${notes.filter((n) => n.kind === kind).length} 条`;
+		const countStatus = this.state.syncing
+			? '统计中，当前为部分结果'
+			: this.state.failedBooks
+				? '部分书籍加载失败，当前为部分结果'
+				: '';
 		const metrics = summary.createDiv({ cls: 'weread-journal-today-metrics' });
 		metrics.createEl('h2', { text: '今日数据', cls: 'weread-journal-summary-title' });
 		const metricsGrid = metrics.createDiv({ cls: 'weread-journal-today-metrics-grid' });
@@ -275,6 +386,12 @@ export class WereadJournalPanel extends WereadPanel {
 			const card = metricsGrid.createDiv();
 			card.createEl('span', { text: label });
 			card.createEl('strong', { text: value });
+			if (label !== '阅读时长' && countStatus) {
+				card.createEl('small', {
+					text: countStatus,
+					cls: 'weread-journal-metric-status'
+				});
+			}
 		}
 		const booksSummary = summary.createDiv({ cls: 'weread-journal-today-books' });
 		booksSummary.createEl('h2', {
@@ -332,8 +449,13 @@ export class WereadJournalPanel extends WereadPanel {
 	}
 	private renderQuote(): void {
 		const today = this.date;
+		const excluded = this.readExcludedBookIds();
 		const highlights = this.state.notes.filter(
-			(note) => note.kind === 'highlight' && note.text.trim() && noteDay(note) < today
+			(note) =>
+				note.kind === 'highlight' &&
+				note.text.trim() &&
+				noteDay(note) < today &&
+				!excluded.has(note.bookId)
 		);
 		const candidates = highlights;
 		if (
@@ -344,7 +466,9 @@ export class WereadJournalPanel extends WereadPanel {
 		)
 			this.quote = undefined;
 		if (!this.quote) this.quote = this.randomQuote(candidates);
+		const previous = this.body.querySelector('.weread-journal-quote');
 		const section = this.body.createDiv({ cls: 'weread-journal-quote' });
+		previous?.replaceWith(section);
 		const header = section.createDiv({ cls: 'weread-journal-heading' });
 		header.createEl('h2', { text: '旧句重逢' });
 		const actions = header.createDiv({ cls: 'weread-journal-actions' });
@@ -365,7 +489,12 @@ export class WereadJournalPanel extends WereadPanel {
 			this.render();
 		};
 		if (this.quote) this.renderNote(section, this.quote);
-		else section.createEl('p', { text: '暂时没有可回顾的往日划线。' });
+		else
+			section.createEl('p', {
+				text: excluded.size
+					? '当前没有可重逢的往日划线，可在设置中的「旧句重逢排除书籍」重新包含书籍。'
+					: '暂时没有可回顾的往日划线。'
+			});
 	}
 	private randomQuote(notes: readonly JournalNote[]): JournalNote | undefined {
 		const ids = [...new Set(notes.map((note) => note.bookId))];
@@ -586,6 +715,16 @@ export class WereadJournalPanel extends WereadPanel {
 				new Notice('复制失败，请重试');
 			}
 		};
+		if (note.kind === 'highlight' && this.favorites) {
+			const star = metadata.createEl('button', {
+				cls: 'weread-journal-note-action weread-journal-favorite',
+				attr: { type: 'button', 'aria-label': '收藏', 'aria-pressed': 'false' }
+			});
+			star.dataset.favoriteId = note.id;
+			setIcon(star, 'star');
+			star.onclick = () => void this.toggleFavorite(note);
+			this.updateFavoriteStars(star);
+		}
 		content.createEl('p', { text: note.text, cls: 'weread-journal-note-text' });
 		const source = content.createEl('button', {
 			text: `《${note.bookTitle}》 · ${note.author || '未知作者'}`,

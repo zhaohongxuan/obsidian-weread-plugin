@@ -18,6 +18,7 @@ import { WEREAD_BOOKSHELF_VIEW_ID } from './src/components/wereadBookshelf';
 import { WEREAD_READING_STATS_VIEW_ID } from './src/components/wereadReadingStats';
 import { WEREAD_BOOK_DETAIL_VIEW_ID, WereadBookDetailView } from './src/components/wereadBookDetailView';
 import { WereadJournalService } from './src/journal';
+import { WereadFavoritesService } from './src/favorites';
 import { WEREAD_TODAY_VIEW_ID, WEREAD_REVIEW_VIEW_ID } from './src/components/wereadJournal';
 import { WereadLibraryView, WEREAD_LIBRARY_VIEW_ID } from './src/components/wereadLibrary';
 import type { WereadTab } from './src/components/wereadPanel';
@@ -27,12 +28,17 @@ export default class WereadPlugin extends Plugin {
 	private syncNotebooks: SyncNotebooks;
 	private bookshelfService: WereadBookshelfService;
 	private journalService: WereadJournalService;
+	public favoritesService: WereadFavoritesService;
 	private fileManager: FileManager;
 	private syncReadingStats: SyncReadingStats;
 	private wereadSettingsTab!: WereadSettingsTab;
 	private syncing = false;
 	private scheduledSyncTimer: number | null = null;
 	private libraryNavigation: Promise<void> = Promise.resolve();
+
+	public getJournalService(): WereadJournalService {
+		return this.journalService;
+	}
 
 	onload() {
 		console.log('load weread plugin');
@@ -48,6 +54,24 @@ export default class WereadPlugin extends Plugin {
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter, this.app.vault);
 		this.bookshelfService = new WereadBookshelfService(fileManager, apiRouter);
 		this.journalService = new WereadJournalService(this, apiRouter);
+		this.favoritesService = new WereadFavoritesService(this);
+		this.addCommand({
+			id: 'open-weread-favorites',
+			name: '打开微信读书收藏',
+			callback: () => { void this.activateLibraryTab('favorites'); }
+		});
+		this.addCommand({
+			id: 'open-weread-favorites-canvas',
+			name: '打开微信读书收藏画布',
+			callback: async () => {
+				try {
+					const path = await this.favoritesService.ensureCanvas();
+					await this.app.workspace.openLinkText(path, '', true);
+				} catch (error) {
+					new Notice(error instanceof Error ? error.message : '收藏画布打开失败，请重试');
+				}
+			}
+		});
 		for (const [type, tab] of [
 			[WEREAD_LIBRARY_VIEW_ID, 'today'],
 			[WEREAD_TODAY_VIEW_ID, 'today'],
@@ -146,6 +170,27 @@ export default class WereadPlugin extends Plugin {
 			WEREAD_BOOK_DETAIL_VIEW_ID,
 			(leaf) => new WereadBookDetailView(leaf, apiRouter, this)
 		);
+
+		this.addCommand({
+			id: 'open-weread-book-detail',
+			name: '打开当前书籍详情',
+			checkCallback: (checking) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!(file instanceof TFile)) return false;
+				const annotation = fileManager.getWereadNoteAnnotationFile(file);
+				if (!annotation?.bookId) return false;
+				if (!checking) {
+					void this.activateBookDetailView(
+						annotation.bookId,
+						annotation.title,
+						annotation.cover,
+						file.path,
+						true
+					);
+				}
+				return true;
+			}
+		});
 
 		this.addCommand({
 			id: 'open-weread-reading-view-tab',
@@ -346,32 +391,35 @@ export default class WereadPlugin extends Plugin {
 	async activateBookshelfView() { await this.activateLibraryTab('bookshelf'); }
 	async activateReadingStatsView() { await this.activateLibraryTab('stats'); }
 
-	async activateBookDetailView(bookId: string, bookTitle?: string, bookCover?: string, localFilePath?: string, replaceCurrentLeaf = false) {
-		const { workspace } = this.app;
-
-		let leaf: WorkspaceLeaf | null = null;
-
-		if (replaceCurrentLeaf) {
-			// 使用 getLeaf(false) 获取当前活跃的 leaf，不创建新 leaf
-			leaf = workspace.getLeaf(false);
-		} else {
-			// 原有逻辑：优先复用已有 detail leaf，否则新建一个 tab
-			const existingLeaves = workspace.getLeavesOfType(WEREAD_BOOK_DETAIL_VIEW_ID);
-			if (existingLeaves.length > 0) {
-				leaf = existingLeaves[0];
+	async activateBookDetailView(
+		bookId: string,
+		bookTitle?: string,
+		bookCover?: string,
+		localFilePath?: string,
+		replaceCurrentLeaf = false
+	): Promise<void> {
+		this.libraryNavigation = this.libraryNavigation.catch((): void => undefined).then(async () => {
+			const { workspace } = this.app;
+			const selection = { bookId, bookTitle, bookCover, localFilePath };
+			const active = workspace.getActiveViewOfType(WereadLibraryView);
+			const existing = [WEREAD_LIBRARY_VIEW_ID, WEREAD_TODAY_VIEW_ID, WEREAD_REVIEW_VIEW_ID, WEREAD_BOOKSHELF_VIEW_ID, WEREAD_READING_STATS_VIEW_ID]
+				.flatMap((type) => workspace.getLeavesOfType(type))
+				.find((candidate) => candidate.view instanceof WereadLibraryView);
+			const leaf = replaceCurrentLeaf
+				? workspace.getLeaf(false)
+				: active?.leaf ?? existing ?? workspace.getLeaf(false);
+			if (leaf.view instanceof WereadLibraryView) {
+				await leaf.view.openBookDetail(selection);
 			} else {
-				leaf = workspace.getLeaf('tab');
+				await leaf.setViewState({
+					type: WEREAD_LIBRARY_VIEW_ID,
+					active: true,
+					state: { tab: 'bookshelf', bookDetail: selection, originTab: 'bookshelf' }
+				});
 			}
-		}
-
-		if (leaf) {
-			await leaf.setViewState({
-				type: WEREAD_BOOK_DETAIL_VIEW_ID,
-				active: true,
-				state: { bookId, bookTitle, bookCover, localFilePath }
-			});
-			workspace.revealLeaf(leaf);
-		}
+			await workspace.revealLeaf(leaf);
+		});
+		return this.libraryNavigation;
 	}
 
 	private async syncCookiesToPartition(): Promise<void> {
@@ -477,6 +525,7 @@ export default class WereadPlugin extends Plugin {
 	onunload() {
 		console.log('unloading weread plugin', new Date().toLocaleString());
 		this.journalService?.dispose();
+		this.favoritesService?.dispose();
 		this.clearScheduledSyncTimer();
 	}
 

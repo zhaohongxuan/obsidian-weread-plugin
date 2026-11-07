@@ -24,6 +24,7 @@ import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import { getPcUrl } from '../parser/parseResponse';
 import { WereadPanel, type WereadNavigate } from './wereadPanel';
+import type { WereadBookSelection } from './wereadLibrary';
 
 // 计算相对时间（中文显示）
 function getRelativeTimeInChinese(timestamp: number): string {
@@ -154,7 +155,8 @@ export class WereadBookshelfPanel extends WereadPanel {
 		contentEl: HTMLElement,
 		private plugin: WereadPlugin,
 		private bookshelfService: WereadBookshelfService,
-		private navigate?: WereadNavigate
+		private navigate?: WereadNavigate,
+		private onOpenBookDetail?: (selection: WereadBookSelection) => Promise<void>
 	) {
 		super(contentEl, plugin.app);
 		const settings = get(settingsStore);
@@ -1199,7 +1201,16 @@ export class WereadBookshelfPanel extends WereadPanel {
 
 	private openBookDetail(book: BookshelfBook): void {
 		const localPath = book.localFile?.file?.path || '';
-		this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath);
+		if (this.onOpenBookDetail) {
+			void this.onOpenBookDetail({
+				bookId: book.bookId,
+				bookTitle: book.title,
+				bookCover: book.cover,
+				localFilePath: localPath
+			});
+		} else {
+			void this.plugin.activateBookDetailView(book.bookId, book.title, book.cover, localPath);
+		}
 	}
 
 	private async openLocalFile(book: BookshelfBook): Promise<void> {

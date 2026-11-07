@@ -19,6 +19,7 @@ import WereadLoginModel from './components/wereadLoginModel';
 import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { ThemeManagerModal } from './components/themeManagerModal';
+import { WereadReencounterBooksModal } from './components/wereadReencounterBooksModal';
 
 import ApiRouter from './api-router';
 import { parseBookIdList } from './utils/bookIdUtils';
@@ -239,6 +240,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.setValue(get(settingsStore).bookshelfSourceMode ?? 'bookshelf')
 				.onChange((value) => settingsStore.actions.setBookshelfSourceMode(value as 'bookshelf' | 'notebooks')));
 		new Setting(this.containerEl)
+			.setName('收藏默认视图')
+			.setDesc('收藏保存在笔记库 WereadData/favorites/favorites.canvas，可在收藏页直接打开原生画布浏览；跨登录保留，不随笔记缓存清理。')
+			.addDropdown((dropdown) => dropdown
+				.addOption('cards', '卡片视图')
+				.addOption('list', '列表视图')
+				.setValue(get(settingsStore).favoritesViewMode ?? 'cards')
+				.onChange((value) => settingsStore.actions.setFavoritesViewMode(value as 'cards' | 'list')));
+		new Setting(this.containerEl)
 			.setName('今日与回顾更新频率')
 			.setDesc('首次整理后复用本地缓存；按划线和想法数量校验，仅更新有变化的书。可在页面手动刷新。')
 			.addDropdown((dropdown) => dropdown
@@ -246,6 +255,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.addOption('12', '每天两次')
 				.setValue(String(get(settingsStore).journalRefreshHours))
 				.onChange((value) => settingsStore.actions.setJournalRefreshHours(Number(value))));
+		new Setting(this.containerEl)
+			.setName('旧句重逢排除书籍')
+			.setDesc('选中的书籍将从「今日」与「回顾」的旧句重逢中排除，仅影响旧句推荐。')
+			.addButton((button) => {
+				const updateText = (ids: string[]) => button.setButtonText(`选择书籍（已排除 ${ids.length} 本）`);
+				updateText(get(settingsStore).journalExcludedBookIds);
+				button.onClick(() => new WereadReencounterBooksModal(this.plugin, updateText).open());
+			});
 			this.readingOpenModeSetting();
 			this.bookOpenModeSetting();
 

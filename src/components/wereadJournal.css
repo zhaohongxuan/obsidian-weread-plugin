@@ -1,4 +1,10 @@
 /* Quiet journal layouts inherit Obsidian's light and dark theme colors. */
+.weread-journal-view .weread-journal-favorite[aria-pressed='true'] {
+	color: var(--interactive-accent);
+}
+.weread-journal-favorite[aria-pressed='true'] svg {
+	fill: currentColor;
+}
 .weread-journal-view {
 	--weread-journal-serif: ui-serif, 'Songti SC', 'Noto Serif CJK SC', serif;
 	--weread-journal-paper: var(--background-secondary);
@@ -163,6 +169,15 @@
 .weread-journal-today-metrics-grid > div {
 	min-width: 0;
 }
+.weread-journal-metric-status {
+	display: block;
+	margin-top: 6px;
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
 .weread-journal-today-book-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));

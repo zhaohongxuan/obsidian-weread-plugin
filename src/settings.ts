@@ -7,6 +7,18 @@ import separatedTemplate from './themes/separatedTemplate.njk';
 import WereadPlugin from '../main';
 import type { SyncLogEntry, Theme } from './models';
 
+export function normalizeJournalExcludedBookIds(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	const ids = value.map((id: unknown) =>
+		typeof id === 'string'
+			? id.trim()
+			: typeof id === 'number' && Number.isFinite(id)
+				? String(id)
+				: ''
+	);
+	return [...new Set(ids.filter(Boolean))];
+}
+
 export type SyncMode = 'blacklist' | 'whitelist';
 export type ReadingOpenMode = 'TAB' | 'WINDOW';
 export type BookOpenMode = 'web' | 'app';
@@ -99,6 +111,8 @@ export interface WereadPluginSettings {
 	syncLogs: SyncLogEntry[];
 	bookshelfSourceMode: 'bookshelf' | 'notebooks';
 	journalRefreshHours: number;
+	journalExcludedBookIds: string[];
+	favoritesViewMode: 'cards' | 'list';
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfViewMode: BookshelfViewMode;
 	bookshelfShowCoverTitle: boolean;
@@ -161,6 +175,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	syncLogs: [],
 	bookshelfSourceMode: 'bookshelf',
 	journalRefreshHours: 24,
+	journalExcludedBookIds: [],
+	favoritesViewMode: 'cards',
 	bookshelfSortMode: 'recent',
 	bookshelfViewMode: 'list',
 	bookshelfShowCoverTitle: true,
@@ -190,6 +206,7 @@ const createSettingsStore = () => {
 		const { manualSyncMode, ...restData } = data;
 		const settings: WereadPluginSettings = {
 			...restData,
+			journalExcludedBookIds: normalizeJournalExcludedBookIds(data.journalExcludedBookIds),
 			syncMode:
 				data.syncMode === 'blacklist' || data.syncMode === 'whitelist'
 					? data.syncMode
@@ -786,12 +803,25 @@ const createSettingsStore = () => {
 		store.update((state) => ({ ...state, journalRefreshHours: hours === 12 ? 12 : 24 }));
 	};
 
+	const setJournalExcludedBookIds = (ids: unknown) => {
+		store.update((state) => ({
+			...state,
+			journalExcludedBookIds: normalizeJournalExcludedBookIds(ids)
+		}));
+	};
+
+	const setFavoritesViewMode = (mode: 'cards' | 'list') => {
+		store.update((state) => ({ ...state, favoritesViewMode: mode === 'list' ? 'list' : 'cards' }));
+	};
+
 	return {
 		subscribe: store.subscribe,
 		initialise,
 		actions: {
+			setFavoritesViewMode,
 			setBookshelfSourceMode,
 			setJournalRefreshHours,
+			setJournalExcludedBookIds,
 			setLoginMethod,
 			setNoteLocationFolder,
 			setCookies,

@@ -1,0 +1,389 @@
+.weread-detail-panel {
+	color: var(--text-normal);
+	background: var(--background-primary);
+	font-family: var(--font-interface);
+	width: 100%;
+	min-width: 0;
+	overflow-x: hidden;
+}
+.weread-detail-panel *,
+.weread-detail-panel *::before,
+.weread-detail-panel *::after {
+	box-sizing: border-box;
+}
+.weread-detail-panel .weread-detail-page {
+	max-width: 940px;
+	margin: 0 auto;
+	padding: 30px 42px 64px;
+	min-width: 0;
+}
+.weread-detail-panel .weread-detail-breadcrumb {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 42px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.weread-detail-panel .weread-detail-breadcrumb > span:last-child {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.weread-detail-panel button.weread-detail-action,
+.weread-detail-panel button.weread-detail-back,
+.weread-detail-panel button.weread-detail-tab {
+	appearance: none;
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	border-radius: 3px;
+	color: var(--text-muted);
+	font: inherit;
+	font-size: 12px;
+	height: auto;
+	padding: 5px 0;
+	cursor: pointer;
+}
+.weread-detail-panel button.weread-detail-action:hover,
+.weread-detail-panel button.weread-detail-back:hover {
+	color: var(--text-normal);
+	text-decoration: underline;
+}
+.weread-detail-panel button:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 4px;
+}
+.weread-detail-panel button:disabled {
+	cursor: default;
+	opacity: 0.48;
+}
+.weread-detail-panel .weread-detail-hero {
+	display: grid;
+	grid-template-columns: 142px minmax(0, 1fr);
+	gap: 34px;
+	align-items: start;
+	margin-bottom: 40px;
+}
+.weread-detail-panel .weread-detail-jacket {
+	width: 142px;
+	min-height: 192px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 3px 6px 6px 3px;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.09);
+	overflow: hidden;
+}
+.weread-detail-panel .weread-detail-jacket > span {
+	padding: 20px 14px;
+	font-family: var(--font-text);
+	color: var(--text-muted);
+	overflow-wrap: anywhere;
+}
+.weread-detail-panel .weread-detail-cover {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+.weread-detail-panel .weread-detail-info {
+	min-width: 0;
+}
+.weread-detail-panel .weread-detail-eyebrow {
+	margin: 0 0 10px;
+	font-size: 11px;
+	letter-spacing: 0.12em;
+	color: var(--text-faint);
+}
+.weread-detail-panel h1.weread-detail-title {
+	margin: 0 0 10px;
+	font-family: var(--font-text), 'Noto Serif SC', 'Songti SC', serif;
+	font-size: clamp(25px, 3vw, 34px);
+	font-weight: 600;
+	line-height: 1.4;
+	letter-spacing: 0.025em;
+	overflow-wrap: anywhere;
+}
+.weread-detail-panel .weread-detail-author {
+	margin: 0 0 18px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+.weread-detail-panel .weread-detail-intro {
+	margin: 0 0 18px;
+	font-size: 12px;
+	line-height: 1.85;
+	color: var(--text-muted);
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	white-space: pre-wrap;
+}
+.weread-detail-panel .weread-detail-facts,
+.weread-detail-panel .weread-detail-counts {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 18px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.8;
+}
+.weread-detail-panel .weread-detail-progress {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin: 10px 0;
+	color: var(--text-muted);
+	font-size: 11px;
+}
+.weread-detail-panel .weread-detail-progress progress {
+	appearance: none;
+	width: 110px;
+	height: 3px;
+	accent-color: var(--text-muted);
+	border: 0;
+	border-radius: 2px;
+	background: var(--background-modifier-border);
+}
+.weread-detail-panel .weread-detail-progress progress::-webkit-progress-bar {
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+}
+.weread-detail-panel .weread-detail-progress progress::-webkit-progress-value {
+	background: var(--text-muted);
+	border-radius: 2px;
+}
+.weread-detail-panel .weread-detail-progress progress::-moz-progress-bar {
+	background: var(--text-muted);
+}
+.weread-detail-panel .weread-detail-header-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 22px;
+	margin-top: 17px;
+}
+.weread-detail-panel .weread-detail-tabs {
+	display: flex;
+	gap: 28px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: 28px;
+}
+.weread-detail-panel button.weread-detail-tab {
+	border-radius: 0;
+	padding: 12px 0;
+	margin-bottom: -1px;
+	border-bottom: 2px solid transparent;
+	font-size: 13px;
+	white-space: nowrap;
+}
+.weread-detail-panel button.weread-detail-tab.is-active {
+	color: var(--text-normal);
+	border-bottom-color: var(--text-normal);
+}
+.weread-detail-panel .weread-detail-content {
+	min-width: 0;
+}
+.weread-detail-panel .weread-detail-chapter {
+	margin: 0 0 34px;
+}
+.weread-detail-panel h2.weread-detail-chapter-title {
+	font-size: 12px;
+	font-weight: 500;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+	line-height: 1.6;
+	margin: 0 0 8px;
+	overflow-wrap: anywhere;
+}
+.weread-detail-panel .weread-detail-highlight,
+.weread-detail-panel .weread-detail-popular,
+.weread-detail-panel .weread-detail-note,
+.weread-detail-panel .weread-detail-review {
+	padding: 24px 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	min-width: 0;
+}
+.weread-detail-panel .weread-detail-highlight:last-child,
+.weread-detail-panel .weread-detail-popular:last-child {
+	border-bottom: 0;
+}
+.weread-detail-panel blockquote.weread-detail-quote {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	color: var(--text-normal);
+	font-family: var(--font-text), 'Noto Serif SC', 'Songti SC', serif;
+	font-size: 17px;
+	line-height: 2;
+	font-weight: 400;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	background: transparent;
+}
+.weread-detail-panel .weread-detail-annotation {
+	margin: 14px 0 0;
+	padding-left: 14px;
+	border-left: 2px solid var(--background-modifier-border);
+	font-size: 13px;
+	line-height: 1.85;
+	color: var(--text-muted);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.weread-detail-panel .weread-detail-entry-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 14px;
+	margin-top: 17px;
+	color: var(--text-faint);
+	font-size: 11px;
+}
+.weread-detail-panel .weread-detail-entry-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+.weread-detail-panel .weread-detail-entry-actions button {
+	font-size: 11px;
+}
+.weread-detail-panel button.weread-detail-favorite {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4px;
+	min-width: 25px;
+	min-height: 25px;
+}
+.weread-detail-panel .weread-detail-highlight-color {
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	flex: 0 0 7px;
+	border-radius: 50%;
+	background: var(--color-yellow, var(--text-muted));
+}
+.weread-detail-panel .weread-detail-highlight-color[data-color='blue'] {
+	background: var(--color-blue, var(--text-muted));
+}
+.weread-detail-panel .weread-detail-highlight-color[data-color='green'] {
+	background: var(--color-green, var(--text-muted));
+}
+.weread-detail-panel .weread-detail-highlight-color[data-color='red'] {
+	background: var(--color-red, var(--text-muted));
+}
+.weread-detail-panel .weread-detail-highlight-color[data-color='purple'] {
+	background: var(--color-purple, var(--text-muted));
+}
+.weread-detail-panel .weread-detail-favorite svg {
+	width: 15px;
+	height: 15px;
+}
+.weread-detail-panel .weread-detail-favorite.is-favorite {
+	color: var(--text-accent);
+}
+.weread-detail-panel .weread-detail-favorite.is-favorite svg {
+	fill: currentColor;
+}
+.weread-detail-panel .weread-detail-note-text {
+	margin: 12px 0 0;
+	font-size: 14px;
+	line-height: 1.95;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.weread-detail-panel .weread-detail-review h3 {
+	margin: 12px 0;
+	font-size: 17px;
+	font-family: var(--font-text);
+}
+.weread-detail-panel .weread-detail-muted,
+.weread-detail-panel .weread-detail-empty {
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.85;
+}
+.weread-detail-panel .weread-detail-empty {
+	padding: 35px 0;
+	text-align: center;
+}
+.weread-detail-panel .weread-detail-warning,
+.weread-detail-panel .weread-detail-favorite-status {
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.8;
+	overflow-wrap: anywhere;
+}
+.weread-detail-panel .weread-detail-warning {
+	padding: 12px 0;
+}
+.weread-detail-panel .weread-detail-warning button {
+	margin-left: 14px;
+}
+.weread-detail-panel .weread-detail-favorite-status:empty {
+	display: none;
+}
+@media (max-width: 600px) {
+	.weread-detail-panel .weread-detail-page {
+		padding: 22px 22px 48px;
+	}
+	.weread-detail-panel .weread-detail-breadcrumb {
+		margin-bottom: 28px;
+	}
+	.weread-detail-panel .weread-detail-hero {
+		grid-template-columns: 100px minmax(0, 1fr);
+		gap: 22px;
+		margin-bottom: 28px;
+	}
+	.weread-detail-panel .weread-detail-jacket {
+		width: 100px;
+		min-height: 138px;
+	}
+	.weread-detail-panel h1.weread-detail-title {
+		font-size: 25px;
+	}
+	.weread-detail-panel .weread-detail-tabs {
+		gap: 24px;
+	}
+}
+@media (max-width: 400px) {
+	.weread-detail-panel .weread-detail-page {
+		padding: 18px 16px 40px;
+	}
+	.weread-detail-panel .weread-detail-hero {
+		grid-template-columns: 76px minmax(0, 1fr);
+		gap: 16px;
+	}
+	.weread-detail-panel .weread-detail-jacket {
+		width: 76px;
+		min-height: 106px;
+	}
+	.weread-detail-panel h1.weread-detail-title {
+		font-size: 22px;
+	}
+	.weread-detail-panel .weread-detail-tabs {
+		gap: 0;
+		justify-content: space-between;
+	}
+	.weread-detail-panel button.weread-detail-tab {
+		font-size: 12px;
+	}
+	.weread-detail-panel blockquote.weread-detail-quote {
+		font-size: 16px;
+	}
+	.weread-detail-panel .weread-detail-header-actions {
+		gap: 4px 12px;
+	}
+	.weread-detail-panel .weread-detail-entry-actions {
+		gap: 10px;
+	}
+	.weread-detail-panel .weread-detail-progress {
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+}
