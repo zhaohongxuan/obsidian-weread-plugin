@@ -5,6 +5,11 @@
 	overflow: hidden;
 	padding: 0;
 }
+/* Host themes may add bottom padding to every view; our inner panel owns scrolling. */
+.view-content.weread-library-view {
+	padding: 0 !important;
+	overflow: hidden !important;
+}
 .weread-library-tabs {
 	display: flex;
 	flex: 0 0 auto;

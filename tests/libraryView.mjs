@@ -1,11 +1,170 @@
 // Run: node --test tests/libraryView.mjs
 // Executes the production shell with panel fixtures and the small DOM API it uses.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { transformSync } from 'esbuild';
+import { build, transformSync } from 'esbuild';
 
 const TABS = ['today', 'bookshelf', 'review', 'favorites', 'stats'];
+const chromeBin =
+	process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
+test(
+	'production Library fills its Obsidian view despite late host padding styles in Chrome',
+	{ skip: !existsSync(chromeBin), timeout: 30000 },
+	async (t) => {
+		const bundle = await build({
+			stdin: {
+				resolveDir: process.cwd(),
+				loader: 'ts',
+				contents: `
+      import { WereadLibraryView } from './src/components/wereadLibrary';
+      HTMLElement.prototype.createEl = function(tag, options = {}) {
+        const node = document.createElement(tag); if (options.cls) node.className = options.cls;
+        if (options.text !== undefined) node.textContent = options.text;
+        for (const [key, value] of Object.entries(options.attr || {})) node.setAttribute(key, value);
+        this.append(node); return node;
+      };
+      HTMLElement.prototype.createDiv = function(options) { return this.createEl('div', options); };
+      HTMLElement.prototype.empty = function() { this.replaceChildren(); };
+      HTMLElement.prototype.addClass = function(...names) { this.classList.add(...names); };
+      const style = document.createElement('style');
+      style.textContent = '* {box-sizing:border-box} body {margin:0} .view-content {height:600px; padding-bottom:32px!important; overflow:auto!important}';
+      document.head.append(style);
+      const plugin = {app: {workspace: {requestSaveLayout() {}}}};
+      (async () => {
+        const view = new WereadLibraryView({}, plugin, {}, {}, {}, {}); await view.onOpen();
+        const root = view.contentEl;
+        const first = root.querySelector('[role=tabpanel]'); first.scrollTop = 140;
+        const heightBefore = first.clientHeight;
+        await view.selectTab('review'); await view.selectTab('today');
+        const measured = {paddingBottom: getComputedStyle(root).paddingBottom, overflowY: getComputedStyle(root).overflowY,
+          gap: root.getBoundingClientRect().bottom - first.getBoundingClientRect().bottom,
+          retainedScroll: first.scrollTop, samePanel: root.querySelector('[role=tabpanel]') === first,
+          sameHeight: first.clientHeight === heightBefore, panelHeight: first.clientHeight};
+        await view.onClose(); measured.closed = root.children.length === 0;
+        const output = document.createElement('pre'); output.id = 'library-result'; output.textContent = JSON.stringify(measured); document.body.append(output);
+      })().catch(error => { const output = document.createElement('pre'); output.id = 'library-error'; output.textContent = error.stack; document.body.append(output); });
+    `
+			},
+			bundle: true,
+			platform: 'browser',
+			format: 'iife',
+			write: false,
+			plugins: [
+				{
+					name: 'library-host-style-fixtures',
+					setup(builder) {
+						builder.onResolve({ filter: /^obsidian$/ }, () => ({
+							path: 'obsidian',
+							namespace: 'mock'
+						}));
+						builder.onResolve(
+							{
+								filter: /\/(?:journalHelpers|wereadJournal|wereadBookshelf|wereadReadingStats|wereadFavorites|wereadBookDetailPanel)$/
+							},
+							({ path: filename }) => ({ path: filename, namespace: 'mock' })
+						);
+						builder.onLoad(
+							{ filter: /.*/, namespace: 'mock' },
+							({ path: filename }) => ({
+								contents:
+									filename === 'obsidian'
+										? `
+        export class ItemView { constructor() { this.children = new Set(); this.app = {workspace: {requestSaveLayout() {}}}; this.contentEl = document.createElement('div'); this.contentEl.className = 'view-content'; document.body.append(this.contentEl); }
+          addChild(child) {this.children.add(child); return child;} removeChild(child) {this.children.delete(child); child.onClose();} }
+        export class Notice {}
+      `
+										: filename.endsWith('journalHelpers')
+											? 'export const journalId = value => String(value ?? "");'
+											: `
+        class Panel { constructor(element) {this.contentEl = element;} async onOpen() {const inner = document.createElement('div'); inner.style.height = '1800px'; this.contentEl.append(inner);} async onClose() {this.contentEl.empty();} }
+        export {Panel as WereadJournalPanel, Panel as WereadBookshelfPanel, Panel as WereadReadingStatsPanel, Panel as WereadFavoritesPanel, Panel as WereadBookDetailPanel};
+      `
+							})
+						);
+						builder.onLoad({ filter: /\.css$/ }, ({ path: filename }) => ({
+							contents:
+								'const style = document.createElement("style"); style.textContent = ' +
+								JSON.stringify(readFileSync(filename, 'utf8')) +
+								'; document.head.append(style);',
+							loader: 'js'
+						}));
+					}
+				}
+			]
+		});
+		const directory = await mkdtemp(path.join(tmpdir(), 'library-view-chrome-'));
+		const filename = path.join(directory, 'fixture.html');
+		await writeFile(
+			filename,
+			'<!doctype html><html><head></head><body><script>' +
+				bundle.outputFiles[0].text.replaceAll('</script', '<\\/script') +
+				'</script></body></html>'
+		);
+		const chrome = spawn(chromeBin, [
+			'--headless=new',
+			'--disable-gpu',
+			'--no-first-run',
+			'--no-default-browser-check',
+			'--disable-background-networking',
+			'--user-data-dir=' + path.join(directory, 'profile'),
+			'--virtual-time-budget=1000',
+			'--dump-dom',
+			pathToFileURL(filename).href
+		]);
+		let stdout = '',
+			stderr = '';
+		chrome.stdout.on('data', (chunk) => {
+			stdout += chunk;
+		});
+		chrome.stderr.on('data', (chunk) => {
+			stderr += chunk;
+		});
+		const exited = new Promise((resolve, reject) => {
+			chrome.once('error', reject);
+			chrome.once('exit', resolve);
+		});
+		t.after(async () => {
+			if (chrome.exitCode === null && chrome.signalCode === null) {
+				chrome.kill('SIGKILL');
+				await exited;
+			}
+			const resolved = path.resolve(directory);
+			assert.equal(path.dirname(resolved), path.resolve(tmpdir()));
+			assert(path.basename(resolved).startsWith('library-view-chrome-'));
+			await rm(resolved, { recursive: true, force: true, maxRetries: 5, retryDelay: 150 });
+		});
+		assert.equal(await exited, 0, stderr);
+		const result = stdout.match(/<pre id="library-result">(.*?)<\/pre>/s);
+		assert(result, stdout.match(/<pre id="library-error">(.*?)<\/pre>/s)?.[1] || stderr);
+		const measured = JSON.parse(result[1].replaceAll('&quot;', '"').replaceAll('&amp;', '&'));
+		assert.equal(
+			measured.paddingBottom,
+			'0px',
+			'Library must override late host padding-bottom:32px!important to remove the white strip'
+		);
+		assert.equal(
+			measured.overflowY,
+			'hidden',
+			'Library root keeps scrolling inside its active panel'
+		);
+		assert(
+			Math.abs(measured.gap) < 1,
+			'Active Library panel bottom must be flush with the host view bottom'
+		);
+		assert.equal(measured.retainedScroll, 140);
+		assert(measured.samePanel);
+		assert(measured.sameHeight);
+		assert(measured.panelHeight > 0);
+		assert(measured.closed);
+	}
+);
 function load(filename, mocks) {
 	const module = { exports: {} };
 	const code = transformSync(readFileSync(filename, 'utf8'), {
@@ -415,11 +574,14 @@ test('closing unloads every visited child exactly once, including a pending pane
 
 test('cold workspace restore normalizes numeric YAML book IDs before mounting details', async () => {
 	const f = fixture();
-	await f.view.setState({
-		tab: 'bookshelf',
-		originTab: 'bookshelf',
-		bookDetail: { bookId: 12345, bookTitle: 'Numeric metadata book' }
-	}, {});
+	await f.view.setState(
+		{
+			tab: 'bookshelf',
+			originTab: 'bookshelf',
+			bookDetail: { bookId: 12345, bookTitle: 'Numeric metadata book' }
+		},
+		{}
+	);
 	assert.equal(f.created.size, 0);
 	assert.deepEqual(f.view.getState().bookDetail, {
 		bookId: '12345',
@@ -515,13 +677,20 @@ test('detail state restores before open, preserves hidden origin and serializes 
 		localFilePath: 'books/saved.md',
 		currentTab: 'reviews'
 	};
-	await f.view.setState({
+	await f.view.setState(
+		{
+			tab: 'stats',
+			originTab: 'review',
+			bookDetail: { ...selection, apiPayload: { secret: 'never persisted' } }
+		},
+		{}
+	);
+	assert.equal(f.created.size, 0);
+	assert.deepEqual(f.view.getState(), {
 		tab: 'stats',
 		originTab: 'review',
-		bookDetail: { ...selection, apiPayload: { secret: 'never persisted' } }
-	}, {});
-	assert.equal(f.created.size, 0);
-	assert.deepEqual(f.view.getState(), { tab: 'stats', originTab: 'review', bookDetail: selection });
+		bookDetail: selection
+	});
 	await f.view.onOpen();
 	await tick();
 	const detail = f.panel('detail');
@@ -557,7 +726,11 @@ test('replacing A with B and closing pending details unload each child exactly o
 	assert.equal(first.closes, 1);
 	assert.equal(f.contentEl.contains(first.contentEl), false);
 	first.options.onBack();
-	assert.equal(f.view.getState().bookDetail.bookId, 'b', 'stale breadcrumb cannot clear newer route');
+	assert.equal(
+		f.view.getState().bookDetail.bookId,
+		'b',
+		'stale breadcrumb cannot clear newer route'
+	);
 	a.resolve();
 	await tick();
 	assert.equal(first.contentEl.children.length, 0);
@@ -618,7 +791,10 @@ test('bookshelf detail and breadcrumb preserve the owning leaf, DOM, filter, scr
 	assert.equal(shelf.closes, 0);
 	assert.deepEqual(f.tabbar(), [nav]);
 	assert.equal(f.button('bookshelf').getAttribute('aria-selected'), 'true');
-	assert.equal(f.button('bookshelf').getAttribute('aria-controls'), detail.contentEl.getAttribute('id'));
+	assert.equal(
+		f.button('bookshelf').getAttribute('aria-controls'),
+		detail.contentEl.getAttribute('id')
+	);
 	const menu = {};
 	f.view.onMoreOptionsMenu(menu);
 	assert.equal(detail.menu, menu);

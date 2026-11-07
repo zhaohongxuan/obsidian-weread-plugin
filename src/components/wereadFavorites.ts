@@ -6,6 +6,9 @@ import type { WereadFavoritesService } from '../favorites';
 import type { FavoriteEntry, FavoritesState } from '../models';
 import { settingsStore } from '../settings';
 import { WereadPanel } from './wereadPanel';
+import { getPcUrl } from '../parser/parseResponse';
+import { getJournalNoteBookmark, openJournalNoteOriginal } from '../utils/openWereadUrl';
+import { setOriginalReadingIcon } from '../utils/readingActionIcon';
 
 /** A single five-second undo opportunity, owned by the currently open panel. */
 export class FavoritesUndoToast {
@@ -282,17 +285,19 @@ export class WereadFavoritesPanel extends WereadPanel {
 		metadata.createEl('small', {
 			text: `收藏于 ${new Date(entry.favoritedAt).toLocaleDateString('zh-CN')} · 划线于 ${new Date(note.createTime).toLocaleDateString('zh-CN')}`
 		});
-		const href =
-			note.sourceUrl && /^weread:\/\/(bestbookmark|reading)\?/.test(note.sourceUrl)
-				? note.sourceUrl
-				: `weread://reading?bId=${encodeURIComponent(note.bookId)}`;
-		const label = href.includes('bestbookmark?') ? '回到原文' : '打开书籍';
+		const label = getJournalNoteBookmark(note) ? '回到原文' : '打开书籍';
 		const original = metadata.createEl('a', {
-			href,
+			href: getPcUrl(note.bookId),
 			cls: 'weread-favorites-action',
 			attr: { 'aria-label': label, title: label }
 		});
-		setIcon(original, 'external-link');
+		setOriginalReadingIcon(original);
+		original.onclick = (event) => {
+			event.preventDefault();
+			void openJournalNoteOriginal(this.plugin, note).catch(() => {
+				if (this.active) new Notice('打开原文失败，请重试');
+			});
+		};
 		const copy = metadata.createEl('button', {
 			cls: 'weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '复制正文', title: '复制正文' }

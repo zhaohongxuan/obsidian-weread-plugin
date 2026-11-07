@@ -1,3 +1,4 @@
+import * as CryptoJS from 'crypto-js';
 import type { DataAdapter } from 'obsidian';
 import type { FavoriteEntry } from './models';
 import type { JournalNote } from './journalHelpers';
@@ -9,13 +10,44 @@ import {
 } from './favoritesCanvas';
 import type { FavoriteBookFiles } from './favoritesCanvas';
 
-export const FAVORITES_DIRECTORY = 'WereadData/favorites';
-export const FAVORITES_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas`;
-export const FAVORITES_BACKUP_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas.previous.json`;
-export const FAVORITES_STAGING_PATH = `${FAVORITES_DIRECTORY}/favorites.canvas.staging.json`;
-export const LEGACY_FAVORITES_PATH = `${FAVORITES_DIRECTORY}/favorites.json`;
-export const LEGACY_FAVORITES_BACKUP_PATH = `${FAVORITES_DIRECTORY}/favorites.previous.json`;
-export const LEGACY_FAVORITES_STAGING_PATH = `${FAVORITES_DIRECTORY}/favorites.staging.json`;
+export const LEGACY_FAVORITES_DIRECTORY = 'WereadData/favorites';
+export const LEGACY_CANVAS_PATH = `${LEGACY_FAVORITES_DIRECTORY}/favorites.canvas`;
+
+/** Empty is the vault root. Validate before joining; never resolve traversal into a valid path. */
+export function validateFavoritesCanvasFolder(value: unknown): string {
+	if (typeof value !== 'string') throw new FavoritesStorageError('收藏画布目录无效');
+	const folder = value.trim();
+	if (
+		folder &&
+		(/[\\\u0000-\u001f\u007f]/.test(folder) ||
+			/^([/~]|[a-z][a-z0-9+.-]*:)/i.test(folder) ||
+			folder.split('/').some((part) => !part || part === '.' || part === '..'))
+	)
+		throw new FavoritesStorageError('收藏画布目录必须是笔记库内的相对路径，不能包含 . 或 ..');
+	return folder;
+}
+
+export function favoritesPaths(value: unknown = '') {
+	const folder = validateFavoritesCanvasFolder(value);
+	const join = (name: string) => (folder ? `${folder}/${name}` : name);
+	return Object.freeze({
+		folder,
+		primary: join('favorites.canvas'),
+		backup: join('favorites.canvas.previous.json'),
+		staging: join('favorites.canvas.staging.json'),
+		legacy: join('favorites.json'),
+		legacyBackup: join('favorites.previous.json'),
+		legacyStaging: join('favorites.staging.json')
+	});
+}
+export type FavoritesPaths = ReturnType<typeof favoritesPaths>;
+export const FAVORITES_DIRECTORY = '';
+export const FAVORITES_PATH = favoritesPaths().primary;
+export const FAVORITES_BACKUP_PATH = favoritesPaths().backup;
+export const FAVORITES_STAGING_PATH = favoritesPaths().staging;
+export const LEGACY_FAVORITES_PATH = `${LEGACY_FAVORITES_DIRECTORY}/favorites.json`;
+export const LEGACY_FAVORITES_BACKUP_PATH = `${LEGACY_FAVORITES_DIRECTORY}/favorites.previous.json`;
+export const LEGACY_FAVORITES_STAGING_PATH = `${LEGACY_FAVORITES_DIRECTORY}/favorites.staging.json`;
 
 export interface FavoritesDocument {
 	schemaVersion: 1;
@@ -151,13 +183,22 @@ export class FavoritesRepository {
 	private expected: string | null = null;
 	private initialized = false;
 	private unique = 0;
-	constructor(private adapter: DataAdapter) {}
+	readonly paths: FavoritesPaths;
+	constructor(
+		private adapter: DataAdapter,
+		folder: unknown = '',
+		private allowLegacy = true
+	) {
+		this.paths = favoritesPaths(folder);
+	}
 
 	private async read(path: string): Promise<string | null> {
 		return (await this.adapter.exists(path)) ? this.adapter.read(path) : null;
 	}
 	private async directories(): Promise<void> {
-		for (const path of ['WereadData', FAVORITES_DIRECTORY]) {
+		const parts = this.paths.folder ? this.paths.folder.split('/') : [];
+		for (let i = 1; i <= parts.length; i++) {
+			const path = parts.slice(0, i).join('/');
 			if (!(await this.adapter.exists(path))) await this.adapter.mkdir(path);
 		}
 	}
@@ -168,7 +209,7 @@ export class FavoritesRepository {
 		parseFavorites(saved);
 	}
 	private async checkExpected(): Promise<void> {
-		if ((await this.read(FAVORITES_PATH)) !== this.expected) {
+		if ((await this.read(this.paths.primary)) !== this.expected) {
 			this.initialized = false;
 			throw new FavoritesConflictError('收藏文件已被外部修改，已重新加载；请重试操作');
 		}
@@ -176,20 +217,21 @@ export class FavoritesRepository {
 
 	async load(): Promise<{ document: FavoritesDocument; warning: string }> {
 		this.initialized = false;
-		const raw = await this.read(FAVORITES_PATH);
+		const raw = await this.read(this.paths.primary);
 		let document: FavoritesDocument;
 		let warning = '';
 		if (raw === null) {
 			if (
 				this.expected !== null ||
-				(await this.read(FAVORITES_BACKUP_PATH)) !== null ||
-				(await this.read(FAVORITES_STAGING_PATH)) !== null
+				(await this.read(this.paths.backup)) !== null ||
+				(await this.read(this.paths.staging)) !== null ||
+				(await this.archivePaths()).length > 0
 			) {
 				throw new FavoritesStorageError(
 					'收藏主画布已移走或删除；已保护备份，请手动恢复画布后重新读取'
 				);
 			}
-			const migrated = await this.migrateLegacy();
+			const migrated = this.allowLegacy ? await this.migrateLegacy() : null;
 			document = migrated?.document ?? { schemaVersion: 1, revision: 0, records: [] };
 			this.expected = migrated?.raw ?? null;
 			if (migrated) warning = '已将旧收藏转换为 Canvas；原 JSON 文件已原样保留';
@@ -201,7 +243,7 @@ export class FavoritesRepository {
 		} catch (error) {
 			if (error instanceof FutureSchemaError || error instanceof FavoritesCanvasMetadataError)
 				throw error;
-			const backup = await this.read(FAVORITES_BACKUP_PATH);
+			const backup = await this.read(this.paths.backup);
 			if (backup !== null) {
 				document = parseFavorites(backup);
 				// Preserve the original bytes before attempting recovery, without renaming or deleting.
@@ -210,10 +252,10 @@ export class FavoritesRepository {
 				if ((await this.adapter.read(quarantine)) !== raw) {
 					throw new FavoritesStorageError('无法安全保留损坏的收藏文件；未恢复');
 				}
-				if ((await this.read(FAVORITES_PATH)) !== raw) {
+				if ((await this.read(this.paths.primary)) !== raw) {
 					throw new FavoritesConflictError('恢复期间收藏文件发生变化；未覆盖');
 				}
-				await this.verifiedWrite(FAVORITES_PATH, backup);
+				await this.verifiedWrite(this.paths.primary, backup);
 				warning = '已从上一份有效备份恢复收藏；原损坏文件已保留（如存在）';
 				this.expected = backup;
 			} else {
@@ -249,7 +291,7 @@ export class FavoritesRepository {
 		const raw = serializeFavoritesCanvas(document);
 		const check = async (): Promise<void> => {
 			if (
-				(await this.read(FAVORITES_PATH)) !== null ||
+				(await this.read(this.paths.primary)) !== null ||
 				(await this.read(LEGACY_FAVORITES_PATH)) !== original ||
 				(await this.read(LEGACY_FAVORITES_BACKUP_PATH)) !== backup
 			) {
@@ -259,19 +301,19 @@ export class FavoritesRepository {
 		await this.directories();
 		await check();
 		if (
-			(await this.read(FAVORITES_BACKUP_PATH)) !== null ||
-			(await this.read(FAVORITES_STAGING_PATH)) !== null
+			(await this.read(this.paths.backup)) !== null ||
+			(await this.read(this.paths.staging)) !== null
 		) {
 			throw new FavoritesConflictError('迁移期间出现 Canvas 恢复文件；未覆盖');
 		}
-		await this.verifiedWrite(FAVORITES_STAGING_PATH, raw);
+		await this.verifiedWrite(this.paths.staging, raw);
 		await check();
-		if ((await this.read(FAVORITES_BACKUP_PATH)) !== null) {
+		if ((await this.read(this.paths.backup)) !== null) {
 			throw new FavoritesConflictError('迁移期间出现 Canvas 备份；未覆盖');
 		}
-		await this.verifiedWrite(FAVORITES_BACKUP_PATH, raw);
+		await this.verifiedWrite(this.paths.backup, raw);
 		await check();
-		await this.verifiedWrite(FAVORITES_PATH, raw);
+		await this.verifiedWrite(this.paths.primary, raw);
 		return { document, raw };
 	}
 
@@ -284,7 +326,7 @@ export class FavoritesRepository {
 	}
 
 	async hasPrimary(): Promise<boolean> {
-		return this.adapter.exists(FAVORITES_PATH);
+		return this.adapter.exists(this.paths.primary);
 	}
 
 	async verifyCurrent(): Promise<void> {
@@ -305,7 +347,7 @@ export class FavoritesRepository {
 			await this.verifiedWrite(archive, original);
 			await this.checkExpected();
 		}
-		await this.verifiedWrite(FAVORITES_STAGING_PATH, raw);
+		await this.verifiedWrite(this.paths.staging, raw);
 		await this.checkExpected();
 		const previous =
 			this.expected ??
@@ -313,16 +355,224 @@ export class FavoritesRepository {
 		if (document.revision !== parseFavorites(previous).revision + 1) {
 			throw new FavoritesStorageError('收藏版本必须严格递增');
 		}
-		await this.verifiedWrite(FAVORITES_BACKUP_PATH, previous);
+		await this.verifiedWrite(this.paths.backup, previous);
 		await this.checkExpected();
-		await this.verifiedWrite(FAVORITES_PATH, raw);
+		await this.verifiedWrite(this.paths.primary, raw);
 		this.expected = raw;
 	}
 
-	private async uniquePath(prefix: string): Promise<string> {
+	private join(name: string): string {
+		return this.paths.folder ? `${this.paths.folder}/${name}` : name;
+	}
+
+	private async archivePaths(): Promise<string[]> {
+		if (typeof this.adapter.list !== 'function') return [];
+		if (this.paths.folder && !(await this.adapter.exists(this.paths.folder))) return [];
+		const prefix = this.paths.folder ? `${this.paths.folder}/` : '';
+		const listed = await this.adapter.list(this.paths.folder);
+		return listed.files
+			.filter(
+				(path) =>
+					path.startsWith(prefix) &&
+					/^favorites\.(?:(?:corrupt|before-book-graph|before-location-change)\.[^/]+\.canvas|location-transfer\.[^/]+\.json)$/.test(
+						path.slice(prefix.length)
+					)
+			)
+			.sort();
+	}
+
+	/** Includes invalid recovery bytes: their presence must never mean a fresh collection. */
+	private async storageSnapshot(): Promise<Map<string, string>> {
+		const files = new Map<string, string>();
+		const paths = [
+			this.paths.primary,
+			this.paths.backup,
+			this.paths.staging,
+			this.paths.legacy,
+			this.paths.legacyBackup,
+			this.paths.legacyStaging,
+			...(await this.archivePaths())
+		];
+		for (const path of paths) {
+			const raw = await this.read(path);
+			if (raw !== null)
+				files.set(path.slice(this.paths.folder ? this.paths.folder.length + 1 : 0), raw);
+		}
+		return files;
+	}
+
+	async hasStorage(): Promise<boolean> {
+		return (await this.storageSnapshot()).size > 0;
+	}
+
+	/** Copy, never move: old bytes remain authoritative until the caller commits settings. */
+	async copyTo(destination: FavoritesRepository): Promise<() => Promise<void>> {
+		await this.verifyCurrent();
+		if (this.paths.folder === destination.paths.folder) return () => this.verifyCurrent();
+		if (typeof this.adapter.list !== 'function') {
+			throw new FavoritesStorageError(
+				'收藏目录迁移需要安全列出历史备份，请升级 Obsidian 后重试'
+			);
+		}
+		const source = await this.storageSnapshot();
+		if (await destination.hasStorage()) {
+			const resumed = await destination.resumeCopyFrom(this);
+			if (resumed) return resumed;
+			throw new FavoritesConflictError(
+				'收藏目标目录已有画布或恢复文件；未覆盖，请选择空目录'
+			);
+		}
+		const written = new Map<string, string>();
+		const equal = (a: Map<string, string>, b: Map<string, string>) =>
+			a.size === b.size && [...a].every(([name, raw]) => b.get(name) === raw);
+		const check = async () => {
+			await this.verifyCurrent();
+			if (
+				!equal(source, await this.storageSnapshot()) ||
+				!equal(written, await destination.storageSnapshot())
+			) {
+				throw new FavoritesConflictError(
+					'收藏迁移期间文件发生变化；已保留原目录，请检查目标目录'
+				);
+			}
+		};
+		await check();
+		await destination.directories();
+		const copies = new Map(source);
+		if (this.expected !== null) {
+			// This immutable baseline outlives rotating previous/staging files.
+			const baseline = await destination.uniquePath('favorites.before-location-change');
+			copies.set(
+				baseline.slice(destination.paths.folder ? destination.paths.folder.length + 1 : 0),
+				this.expected
+			);
+			if (!copies.has('favorites.canvas.previous.json'))
+				copies.set('favorites.canvas.previous.json', this.expected);
+			if (!copies.has('favorites.canvas.staging.json'))
+				copies.set('favorites.canvas.staging.json', this.expected);
+		}
+		const primary = copies.get('favorites.canvas');
+		copies.delete('favorites.canvas');
+		if (primary !== undefined) copies.set('favorites.canvas', primary);
+		if (source.size) {
+			const receiptPath = await destination.uniquePath('favorites.location-transfer', 'json');
+			const receiptName = receiptPath.slice(
+				destination.paths.folder ? destination.paths.folder.length + 1 : 0
+			);
+			const encode = (files: Map<string, string>) =>
+				[...files].map(([name, raw]) => [name, CryptoJS.SHA256(raw).toString()]);
+			const sourceFiles = encode(source);
+			const destinationFiles = encode(copies);
+			const raw = JSON.stringify({
+				format: 'weread-favorites-location-transfer',
+				schemaVersion: 1,
+				sourceFolder: this.paths.folder,
+				destinationFolder: destination.paths.folder,
+				sourceFiles,
+				destinationFiles
+			});
+			await check();
+			if (await destination.adapter.exists(receiptPath))
+				throw new FavoritesConflictError('收藏迁移凭据已存在；未覆盖');
+			await destination.adapter.write(receiptPath, raw);
+			if ((await destination.adapter.read(receiptPath)) !== raw)
+				throw new FavoritesStorageError('收藏迁移凭据校验失败；原目录已保留');
+			written.set(receiptName, raw);
+		}
+		for (const [name, raw] of copies) {
+			await check();
+			const path = destination.join(name);
+			if (await destination.adapter.exists(path))
+				throw new FavoritesConflictError('收藏目标文件已存在；未覆盖');
+			await destination.adapter.write(path, raw);
+			if ((await destination.adapter.read(path)) !== raw)
+				throw new FavoritesStorageError('收藏迁移写入校验失败；原目录已保留');
+			written.set(name, raw);
+		}
+		await check();
+		await destination.load();
+		await destination.verifyCurrent();
+		await check();
+		return check;
+	}
+
+	private async resumeCopyFrom(
+		source: FavoritesRepository
+	): Promise<(() => Promise<void>) | null> {
+		const current = await this.storageSnapshot();
+		for (const [name, raw] of current) {
+			if (!/^favorites\.location-transfer\.[^/]+\.json$/.test(name)) continue;
+			let receipt: Record<string, any>;
+			try {
+				receipt = object(JSON.parse(raw));
+			} catch {
+				continue;
+			}
+			if (
+				receipt.format !== 'weread-favorites-location-transfer' ||
+				receipt.schemaVersion !== 1 ||
+				receipt.sourceFolder !== source.paths.folder ||
+				receipt.destinationFolder !== this.paths.folder
+			)
+				continue;
+			const decode = (value: unknown): Map<string, string> | null => {
+				if (!Array.isArray(value)) return null;
+				const files = new Map<string, string>();
+				for (const row of value) {
+					if (
+						!Array.isArray(row) ||
+						row.length !== 2 ||
+						typeof row[0] !== 'string' ||
+						typeof row[1] !== 'string' ||
+						!/^[a-f0-9]{64}$/.test(row[1]) ||
+						files.has(row[0])
+					)
+						return null;
+					files.set(row[0], row[1]);
+				}
+				return files;
+			};
+			const sourceFiles = decode(receipt.sourceFiles);
+			const destinationFiles = decode(receipt.destinationFiles);
+			if (
+				!sourceFiles ||
+				!destinationFiles ||
+				!sourceFiles.has('favorites.canvas') ||
+				destinationFiles.get('favorites.canvas') !== sourceFiles.get('favorites.canvas') ||
+				destinationFiles.has(name)
+			)
+				continue;
+			destinationFiles.set(name, CryptoJS.SHA256(raw).toString());
+			const equal = (a: Map<string, string>, b: Map<string, string>) =>
+				a.size === b.size &&
+				[...a].every(
+					([key, digest]) =>
+						b.has(key) && CryptoJS.SHA256(b.get(key)).toString() === digest
+				);
+			const verify = async () => {
+				await source.verifyCurrent();
+				if (
+					!equal(sourceFiles, await source.storageSnapshot()) ||
+					!equal(destinationFiles, await this.storageSnapshot())
+				) {
+					throw new FavoritesConflictError(
+						'收藏迁移凭据与文件不一致；已保护新旧目录，请手动检查'
+					);
+				}
+			};
+			await verify();
+			await this.load();
+			await this.verifyCurrent();
+			await verify();
+			return verify;
+		}
+		return null;
+	}
+
+	private async uniquePath(prefix: string, extension = 'canvas'): Promise<string> {
 		let path: string;
 		do {
-			path = `${FAVORITES_DIRECTORY}/${prefix}.${Date.now()}.${this.unique++}.canvas`;
+			path = this.join(`${prefix}.${Date.now()}.${this.unique++}.${extension}`);
 		} while (await this.adapter.exists(path));
 		return path;
 	}

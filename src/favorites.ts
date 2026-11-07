@@ -3,7 +3,10 @@ import type { JournalNote } from './journalHelpers';
 import type { FavoriteEntry, FavoritesState } from './models';
 import {
 	copyFavorite,
-	FAVORITES_PATH,
+	LEGACY_FAVORITES_DIRECTORY,
+	LEGACY_CANVAS_PATH,
+	validateFavoritesCanvasFolder,
+	FavoritesStorageError,
 	FavoritesConflictError,
 	FavoritesRepository,
 	validateFavorite,
@@ -14,6 +17,11 @@ import { resolveFavoriteBookFiles } from './favoriteBookFiles';
 
 export type { FavoriteEntry, FavoritesState } from './models';
 type Listener = (state: FavoritesState) => void;
+export interface FavoritesStorageOptions {
+	folder?: unknown;
+	locationVersion?: number;
+	commitLocation?: (folder: string, version: 1) => Promise<void>;
+}
 
 /** Vault-owned personal snapshots, deliberately independent of authentication and journal caches. */
 export class WereadFavoritesService {
@@ -38,7 +46,20 @@ export class WereadFavoritesService {
 	private reloadTimer?: ReturnType<typeof setTimeout>;
 	private eventDisposers: (() => void)[] = [];
 
-	constructor(private plugin: Plugin) {
+	private adapter: DataAdapter;
+	private canvasPaths = new Set<string>();
+	private locationVersion: number;
+	private configurationError?: unknown;
+	private pendingTransfer?: {
+		source: FavoritesRepository;
+		destination: FavoritesRepository;
+		verify: () => Promise<void>;
+	};
+
+	constructor(
+		private plugin: Plugin,
+		private options: FavoritesStorageOptions = {}
+	) {
 		const vault = plugin.app.vault;
 		const adapter = vault.adapter;
 		// Vault writes publish changes to open native Canvas views and index newly created files.
@@ -46,7 +67,7 @@ export class WereadFavoritesService {
 			get: (target, key) => {
 				if (key === 'write')
 					return async (path: string, raw: string) => {
-						if (path !== FAVORITES_PATH || typeof vault.create !== 'function') {
+						if (!this.canvasPaths.has(path) || typeof vault.create !== 'function') {
 							return adapter.write(path, raw);
 						}
 						this.writingCanvas += 1;
@@ -68,11 +89,23 @@ export class WereadFavoritesService {
 				return typeof value === 'function' ? value.bind(target) : value;
 			}
 		}) as DataAdapter;
-		this.repository = new FavoritesRepository(wrapped);
+		this.adapter = wrapped;
+		this.locationVersion = options.locationVersion ?? (options.commitLocation ? 0 : 1);
+		let folder = '';
+		try {
+			folder = validateFavoritesCanvasFolder(
+				options.folder === undefined ? '' : options.folder
+			);
+		} catch (error) {
+			this.configurationError = error;
+		}
+		this.repository = new FavoritesRepository(wrapped, folder, !options.commitLocation);
+		this.canvasPaths.add(this.repository.paths.primary);
+		this.canvasPaths.add(LEGACY_CANVAS_PATH);
 		if (typeof vault.on === 'function' && typeof vault.offref === 'function') {
 			const changed = (file: { path: string }) => {
 				if (
-					file.path !== FAVORITES_PATH ||
+					file.path !== this.repository.paths.primary ||
 					this.writingCanvas ||
 					this.disposed ||
 					(!this.state.loaded && !this.hydration)
@@ -85,16 +118,22 @@ export class WereadFavoritesService {
 				}, 80);
 			};
 			const removed = (file: { path: string }, oldPath = file.path) => {
-				if (oldPath !== FAVORITES_PATH && !FAVORITES_PATH.startsWith(`${oldPath}/`)) {
-					if (file.path === FAVORITES_PATH || FAVORITES_PATH.startsWith(`${file.path}/`))
-						changed({ path: FAVORITES_PATH });
+				if (
+					oldPath !== this.repository.paths.primary &&
+					!this.repository.paths.primary.startsWith(`${oldPath}/`)
+				) {
+					if (
+						file.path === this.repository.paths.primary ||
+						this.repository.paths.primary.startsWith(`${file.path}/`)
+					)
+						changed({ path: this.repository.paths.primary });
 					return;
 				}
 				if (this.disposed || (!this.state.loaded && !this.hydration)) return;
 				this.state.writable = false;
 				this.state.error = '收藏主画布已移走或删除，请恢复画布后重新读取';
 				this.emit();
-				changed({ path: FAVORITES_PATH });
+				changed({ path: this.repository.paths.primary });
 			};
 			const modified = vault.on('modify', changed);
 			const created = vault.on('create', changed);
@@ -107,6 +146,102 @@ export class WereadFavoritesService {
 				() => vault.offref(renamed)
 			);
 		}
+	}
+
+	getCanvasPath(): string {
+		return this.repository.paths.primary;
+	}
+
+	private async loadRepository() {
+		if (this.configurationError) throw this.configurationError;
+		if (this.locationVersion !== 0) return this.repository.load();
+		if (this.pendingTransfer) {
+			await this.commitTransfer();
+			return this.repository.load();
+		}
+		const destination = this.repository;
+		const source = new FavoritesRepository(this.adapter, LEGACY_FAVORITES_DIRECTORY);
+		if (await source.hasStorage()) {
+			await source.load();
+			await this.flushNativeDrafts(source);
+			if (source.paths.folder !== destination.paths.folder) {
+				this.requireClosedCanvas(source.paths.primary);
+				const verify = await source.copyTo(destination);
+				this.pendingTransfer = { source, destination, verify };
+				await this.commitTransfer();
+				return destination.load();
+			}
+		}
+		const result = await destination.load();
+		await destination.verifyCurrent();
+		await this.options.commitLocation?.(destination.paths.folder, 1);
+		this.locationVersion = 1;
+		return result;
+	}
+
+	private async commitTransfer(): Promise<void> {
+		const transfer = this.pendingTransfer;
+		if (!transfer) return;
+		await transfer.verify();
+		await transfer.destination.verifyCurrent();
+		this.requireClosedCanvas(transfer.source.paths.primary);
+		await this.options.commitLocation?.(transfer.destination.paths.folder, 1);
+		if (this.reloadTimer) clearTimeout(this.reloadTimer);
+		this.reloadTimer = undefined;
+		this.repository = transfer.destination;
+		this.locationVersion = 1;
+		this.pendingTransfer = undefined;
+	}
+
+	private requireClosedCanvas(path: string): void {
+		if (
+			this.plugin.app.workspace
+				?.getLeavesOfType?.('canvas')
+				.some((leaf) => (leaf.view as Partial<TextFileView>).file?.path === path)
+		) {
+			throw new FavoritesStorageError('收藏画布编辑已保存，请关闭原生收藏画布后重试目录迁移');
+		}
+	}
+
+	private async flushNativeDrafts(repository: FavoritesRepository): Promise<boolean> {
+		await repository.verifyCurrent();
+		let flushed = false;
+		for (const leaf of this.plugin.app.workspace?.getLeavesOfType?.('canvas') || []) {
+			const view = leaf.view as Partial<TextFileView>;
+			if (view.file?.path !== repository.paths.primary) continue;
+			if (typeof view.save !== 'function')
+				throw new FavoritesStorageError('收藏原生画布无法安全保存，请关闭画布后重试');
+			await view.save();
+			flushed = true;
+		}
+		if (flushed) await repository.load();
+		await repository.verifyCurrent();
+		return flushed;
+	}
+
+	/** Settings are committed only after exact copies verify; the old directory is never removed. */
+	changeCanvasFolder(value: string): Promise<string> {
+		let folder: string;
+		try {
+			folder = validateFavoritesCanvasFolder(value);
+		} catch (error) {
+			return Promise.reject(this.failure(this.message(error)));
+		}
+		return this.enqueue('', async () => {
+			if (folder === this.repository.paths.folder) return this.getCanvasPath();
+			await this.prepareWrite();
+			this.requireClosedCanvas(this.getCanvasPath());
+			if (this.pendingTransfer?.destination.paths.folder !== folder) {
+				const source = this.repository;
+				const destination = new FavoritesRepository(this.adapter, folder, false);
+				this.canvasPaths.add(destination.paths.primary);
+				const verify = await source.copyTo(destination);
+				this.pendingTransfer = { source, destination, verify };
+			}
+			await this.commitTransfer();
+			this.state.warning = '收藏目录已更新；原目录和迁移前快照已保留';
+			return this.getCanvasPath();
+		});
 	}
 
 	getSnapshot(): FavoritesState {
@@ -148,7 +283,7 @@ export class WereadFavoritesService {
 			// Install the flight before notifying listeners, which may call load again.
 			this.hydration = Promise.resolve().then(async () => {
 				try {
-					const result = await this.repository.load();
+					const result = await this.loadRepository();
 					this.document = result.document;
 					this.state.warning = result.warning;
 					this.state.error = '';
@@ -221,7 +356,10 @@ export class WereadFavoritesService {
 		if (typeof workspace?.getLeavesOfType === 'function') {
 			for (const leaf of workspace.getLeavesOfType('canvas')) {
 				const view = leaf.view as Partial<TextFileView>;
-				if (view.file?.path === FAVORITES_PATH && typeof view.save === 'function') {
+				if (
+					view.file?.path === this.repository.paths.primary &&
+					typeof view.save === 'function'
+				) {
 					await view.save();
 					flushed = true;
 				}
@@ -284,7 +422,7 @@ export class WereadFavoritesService {
 				this.document = next;
 				this.refreshFavorites();
 			}
-			return FAVORITES_PATH;
+			return this.repository.paths.primary;
 		});
 	}
 	private enqueue<T>(id: string, work: () => Promise<T>): Promise<T> {
@@ -343,7 +481,7 @@ export class WereadFavoritesService {
 		// Never echo adapter exceptions, which may contain arbitrary user data or credentials.
 		return error instanceof Error &&
 			((error.name === 'Error' && /^(收藏|只能收藏)/.test(error.message)) ||
-				error instanceof FavoritesConflictError)
+				error instanceof FavoritesStorageError)
 			? error.message
 			: '收藏存储操作失败，请检查文件权限或可用空间后重试';
 	}

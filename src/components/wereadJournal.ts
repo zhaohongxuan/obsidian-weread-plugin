@@ -10,6 +10,9 @@ import { WereadPanel } from './wereadPanel';
 import type { WereadFavoritesService } from '../favorites';
 import type { FavoritesState } from '../models';
 import { FavoritesUndoToast } from './wereadFavorites';
+import { getPcUrl } from '../parser/parseResponse';
+import { getJournalNoteBookmark, openJournalNoteOriginal } from '../utils/openWereadUrl';
+import { setOriginalReadingIcon } from '../utils/readingActionIcon';
 
 export const WEREAD_TODAY_VIEW_ID = 'weread-today-view';
 export const WEREAD_REVIEW_VIEW_ID = 'weread-review-view';
@@ -436,11 +439,19 @@ export class WereadJournalPanel extends WereadPanel {
 				void this.plugin.activateBookDetailView(book.bookId, book.title, book.cover);
 			};
 			content.createEl('small', { text: book.author });
-			content.createEl('a', {
+			const reading = content.createEl('a', {
 				text: '继续阅读 ↗',
-				href: `weread://reading?bId=${encodeURIComponent(book.bookId)}`,
+				href: getPcUrl(book.bookId),
 				cls: 'weread-journal-original'
 			});
+			reading.onclick = (event) => {
+				event.preventDefault();
+				void openJournalNoteOriginal(this.plugin, { bookId: book.bookId, text: '' }).catch(
+					() => {
+						new Notice('打开书籍失败，请重试');
+					}
+				);
+			};
 		}
 		this.renderQuote();
 		const traces = this.body.createDiv({ cls: 'weread-journal-today-notes' });
@@ -633,17 +644,22 @@ export class WereadJournalPanel extends WereadPanel {
 		for (let day = 1; day <= days; day++) {
 			const key = dayKey(new Date(this.month.getFullYear(), this.month.getMonth(), day));
 			const count = counts.get(key) ?? 0;
+			const intensity =
+				count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 10 ? 3 : 4;
+			const label = `${key}，${count}条笔记`;
 			const button = grid.createEl('button', {
 				cls: `weread-journal-day${count ? ' has-notes' : ''}${key === this.selectedDay ? ' is-selected' : ''}`,
 				attr: {
-					'aria-label': `${key}，${count}条笔记`,
+					'aria-label': label,
+					title: label,
+					'data-note-count': String(count),
+					'data-note-intensity': String(intensity),
 					'aria-pressed': String(key === this.selectedDay),
 					...(key === this.date ? { 'aria-current': 'date' } : {})
 				}
 			});
 			button.disabled = key > this.date;
 			button.createEl('span', { text: String(day) });
-			button.createEl('small', { text: count ? String(count) : '·' });
 			button.onclick = () => {
 				this.selectedDay = key;
 				this.limit = 100;
@@ -651,7 +667,7 @@ export class WereadJournalPanel extends WereadPanel {
 			};
 		}
 		calendar.createEl('p', {
-			text: '标记为笔记数量；按笔记创建日期统计。',
+			text: '日期底色越深，笔记越多；按笔记创建日期统计。',
 			cls: 'weread-journal-calendar-caption'
 		});
 		const footer = calendar.createDiv({ cls: 'weread-journal-calendar-footer' });
@@ -704,17 +720,19 @@ export class WereadJournalPanel extends WereadPanel {
 		metadata.createEl('small', {
 			text: `${note.kind === 'highlight' ? '划线' : '想法'} · ${new Date(note.createTime).toLocaleDateString('zh-CN')}`
 		});
-		const href =
-			note.sourceUrl && /^weread:\/\/(bestbookmark|reading)\?/.test(note.sourceUrl)
-				? note.sourceUrl
-				: `weread://reading?bId=${encodeURIComponent(note.bookId)}`;
-		const label = href.includes('bestbookmark?') ? '回到原文' : '打开书籍';
+		const label = getJournalNoteBookmark(note) ? '回到原文' : '打开书籍';
 		const original = metadata.createEl('a', {
-			href,
+			href: getPcUrl(note.bookId),
 			cls: 'weread-journal-note-action',
 			attr: { title: label, 'aria-label': label }
 		});
-		setIcon(original, 'external-link');
+		setOriginalReadingIcon(original);
+		original.onclick = (event) => {
+			event.preventDefault();
+			void openJournalNoteOriginal(this.plugin, note).catch(() => {
+				new Notice('打开原文失败，请重试');
+			});
+		};
 		const copy = metadata.createEl('button', {
 			cls: 'weread-journal-note-action',
 			attr: { type: 'button', title: '复制正文', 'aria-label': '复制正文' }

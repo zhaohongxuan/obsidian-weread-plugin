@@ -54,7 +54,11 @@ export default class WereadPlugin extends Plugin {
 		this.syncNotebooks = new SyncNotebooks(fileManager, apiRouter, this.app.vault);
 		this.bookshelfService = new WereadBookshelfService(fileManager, apiRouter);
 		this.journalService = new WereadJournalService(this, apiRouter);
-		this.favoritesService = new WereadFavoritesService(this);
+		this.favoritesService = new WereadFavoritesService(this, {
+			folder: get(settingsStore).favoritesCanvasFolder,
+			locationVersion: get(settingsStore).favoritesCanvasLocationVersion,
+			commitLocation: settingsStore.actions.commitFavoritesCanvasLocation
+		});
 		this.addCommand({
 			id: 'open-weread-favorites',
 			name: '打开微信读书收藏',

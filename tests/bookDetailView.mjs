@@ -104,8 +104,8 @@ window.smoke={assertions,
   check(!root.textContent.includes('DELETED SENTINEL'),'Deleted type-zero highlight is excluded');
   check(star().getAttribute('aria-label')==='收藏'&&!star().disabled,'Authoritative personal highlight can be favorited');
   check([...root.querySelectorAll('.weread-detail-favorite')].filter(b=>b.disabled).length===2,'Missing original ID or timestamp cannot create favorites');
-  click('复制',quote().closest('article'));await tick();check(clipboard.at(-1)===TEXT&&!clipboard.at(-1).includes('!['),'Copy preserves exact quote without Canvas cover markdown');
-  clipboardFails=true;click('复制',quote().closest('article'));await tick();clipboardFails=false;check(window.detailNotices.at(-1)==='复制失败，请重试','Clipboard rejection reports failure');
+  click('复制正文',quote().closest('article'));await tick();check(clipboard.at(-1)===TEXT&&!clipboard.at(-1).includes('!['),'Copy preserves exact quote without Canvas cover markdown');
+  clipboardFails=true;click('复制正文',quote().closest('article'));await tick();clipboardFails=false;check(window.detailNotices.at(-1)==='复制失败，请重试','Clipboard rejection reports failure');
   click('回到原文',quote().closest('article'));await tick();check(f.plugin.opened[0][1].bookId==='42'&&f.plugin.opened[0][1].rangeStart===12,'Source action uses actual bookmark location');
   tab('notes');check(root.textContent.includes('我的笔记：')&&!root.textContent.includes('MY BOOK REVIEW SENTINEL'),'Own notes retain type-one thoughts without book reviews');
   check(!root.querySelector('.weread-detail-favorite'),'Own notes have no highlight favorite action');

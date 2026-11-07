@@ -19,6 +19,7 @@ import {
 	parseLocalUserHighlights
 } from '../utils/localHighlightParser';
 import { openWereadHighlightLocation } from '../utils/openWereadUrl';
+import { setOriginalReadingIcon } from '../utils/readingActionIcon';
 import { WereadPanel } from './wereadPanel';
 import { FavoritesUndoToast } from './wereadFavorites';
 
@@ -585,31 +586,48 @@ export class WereadBookDetailPanel extends WereadPanel {
 	): void {
 		const bookId = this.bookId;
 		const generation = this.generation;
-		if (chapterUid !== undefined && range)
-			this.button(parent, '回到原文', () => {
-				if (!this.valid(generation, bookId)) return;
-				void openWereadHighlightLocation(this.plugin, bookId, chapterUid, range, {
-					chapterTitle,
-					markText: text
-				}).catch(() => {
-					if (this.valid(generation, bookId)) new Notice('打开原文失败，请重试');
-				});
-			});
+		if (chapterUid !== undefined && range) {
+			const original = this.button(
+				parent,
+				'',
+				() => {
+					if (!this.valid(generation, bookId)) return;
+					void openWereadHighlightLocation(this.plugin, bookId, chapterUid, range, {
+						chapterTitle,
+						markText: text
+					}).catch(() => {
+						if (this.valid(generation, bookId)) new Notice('打开原文失败，请重试');
+					});
+				},
+				'weread-detail-action weread-detail-note-action'
+			);
+			original.title = '回到原文';
+			original.setAttribute('aria-label', '回到原文');
+			setOriginalReadingIcon(original);
+		}
 		this.copyButton(parent, text);
 	}
 	private copyButton(parent: HTMLElement, text: string): void {
 		const bookId = this.bookId,
 			generation = this.generation;
-		this.button(parent, '复制', () => {
-			void navigator.clipboard
-				.writeText(text)
-				.then(() => {
-					if (this.valid(generation, bookId)) new Notice('已复制');
-				})
-				.catch(() => {
-					if (this.valid(generation, bookId)) new Notice('复制失败，请重试');
-				});
-		});
+		const copy = this.button(
+			parent,
+			'',
+			() => {
+				void navigator.clipboard
+					.writeText(text)
+					.then(() => {
+						if (this.valid(generation, bookId)) new Notice('已复制');
+					})
+					.catch(() => {
+						if (this.valid(generation, bookId)) new Notice('复制失败，请重试');
+					});
+			},
+			'weread-detail-action weread-detail-note-action'
+		);
+		copy.title = '复制正文';
+		copy.setAttribute('aria-label', '复制正文');
+		setIcon(copy, 'copy');
 	}
 	private date(seconds: number): string {
 		const date = new Date(Number(seconds) * 1000);

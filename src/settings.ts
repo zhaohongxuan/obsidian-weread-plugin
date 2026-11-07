@@ -113,6 +113,8 @@ export interface WereadPluginSettings {
 	journalRefreshHours: number;
 	journalExcludedBookIds: string[];
 	favoritesViewMode: 'cards' | 'list';
+	favoritesCanvasFolder: string;
+	favoritesCanvasLocationVersion: 0 | 1;
 	bookshelfSortMode: BookshelfSortMode;
 	bookshelfViewMode: BookshelfViewMode;
 	bookshelfShowCoverTitle: boolean;
@@ -177,6 +179,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	journalRefreshHours: 24,
 	journalExcludedBookIds: [],
 	favoritesViewMode: 'cards',
+	favoritesCanvasFolder: '',
+	favoritesCanvasLocationVersion: 0,
 	bookshelfSortMode: 'recent',
 	bookshelfViewMode: 'list',
 	bookshelfShowCoverTitle: true,
@@ -195,6 +199,15 @@ const createSettingsStore = () => {
 	const store = writable(DEFAULT_SETTINGS as WereadPluginSettings);
 
 	let _plugin!: WereadPlugin;
+	let persistence: Promise<void> | undefined;
+	let publishingLocation = false;
+	const enqueueSave = (save: () => Promise<void>): Promise<void> => {
+		const operation = persistence ? persistence.then(save, save) : save();
+		const settled = operation.catch((): void => undefined);
+		persistence = settled;
+		void settled.then(() => { if (persistence === settled) persistence = undefined; });
+		return operation;
+	};
 
 	const initialise = async (plugin: WereadPlugin): Promise<void> => {
 		const loadedData = await plugin.loadData();
@@ -325,16 +338,30 @@ const createSettingsStore = () => {
 
 		_plugin = plugin;
 		store.set(settings);
+		await persistence;
 	};
 
-	store.subscribe(async (settings) => {
-		if (_plugin) {
-			const data = {
-				...settings
-			};
-			await _plugin.saveData(data);
+	store.subscribe((settings) => {
+		if (_plugin && !publishingLocation) {
+			const data = { ...settings };
+			void enqueueSave(() => _plugin.saveData({
+				...data,
+				favoritesCanvasFolder: get(store).favoritesCanvasFolder,
+				favoritesCanvasLocationVersion: get(store).favoritesCanvasLocationVersion
+			})).catch(() => console.error('[weread plugin] 设置保存失败'));
 		}
 	});
+
+	const commitFavoritesCanvasLocation = (folder: string, version: 1): Promise<void> =>
+		enqueueSave(async () => {
+			if (!_plugin) throw new Error('收藏设置尚未加载');
+			const next = { ...get(store), favoritesCanvasFolder: folder, favoritesCanvasLocationVersion: version };
+			await _plugin.saveData(next);
+			publishingLocation = true;
+			try {
+				store.update((current) => ({ ...current, favoritesCanvasFolder: folder, favoritesCanvasLocationVersion: version }));
+			} finally { publishingLocation = false; }
+		});
 
 	const setLoginMethod = (method: string) => {
 		store.update((settings) => {
@@ -818,6 +845,7 @@ const createSettingsStore = () => {
 		subscribe: store.subscribe,
 		initialise,
 		actions: {
+			commitFavoritesCanvasLocation,
 			setFavoritesViewMode,
 			setBookshelfSourceMode,
 			setJournalRefreshHours,

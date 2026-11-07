@@ -22,6 +22,7 @@ const fixture = String.raw`
 import { WereadJournalView } from './src/components/wereadJournal';
 import { WereadFavoritesPanel } from './src/components/wereadFavorites';
 import { settingsStore } from './src/settings';
+import { getPcUrl } from './src/parser/parseResponse';
 const RealDate = Date;
 const NOW = RealDate.parse('2026-11-06T04:00:00Z');
 window.Date = class extends RealDate {
@@ -124,7 +125,13 @@ const favorites = {
     return 'WereadData/favorites/favorites.canvas';
   }
 };
-const settings = (key) => ({ wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, journalExcludedBookIds: [], favoritesViewMode: 'cards' });
+const readingOpens = [];
+const externalOpens = [];
+const browserOpens = [];
+let readingOpenFails = false;
+window.journalExternalOpens = externalOpens;
+window.open = (url) => { browserOpens.push(url); return null; };
+const settings = (key) => ({ bookOpenMode: 'web', wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, journalExcludedBookIds: [], favoritesViewMode: 'cards' });
 settingsStore.set(settings('account-a'));
 const plugin = {
   app: {workspace: {async openLinkText(...args) {
@@ -133,7 +140,11 @@ const plugin = {
   }}},
   favoritesService: favorites,
   async activateJournalView() {}, async activateBookshelfView() {}, async activateReadingStatsView() {},
-  async activateBookDetailView() {}
+  async activateBookDetailView() {},
+  async openPreferredReadingView(...args) {
+    readingOpens.push(args);
+    if (readingOpenFails) throw new Error('PRIVATE WEB OPEN FAILURE DATA');
+  }
 };
 let apiCalls = 0;
 let api = {
@@ -168,6 +179,132 @@ const cards = (root = document) => [...root.querySelectorAll('article')].map((no
 const results = () => document.querySelector('.weread-journal-day-notes');
 window.smoke = {
   assertions,
+  async originalNavigation() {
+    const previousState = state;
+    const located = {...baseNotes[0], sourceUrl: 'weread://bestbookmark?bookId=a&chapterUid=42&rangeStart=10&rangeEnd=28'};
+    const expectedBookmark = (record) => ({bookId: record.bookId, chapterUid: 42, rangeStart: 10, rangeEnd: 28, chapterTitle: record.chapterTitle, markText: record.text});
+    const setMode = (bookOpenMode) => settingsStore.set({...settingsStore.current(), bookOpenMode});
+    const originalIn = (root) => root?.querySelector('.weread-journal-note-meta a[aria-label], .weread-journal-note-meta button[aria-label="回到原文"], .weread-journal-note-meta button[aria-label="打开书籍"], .weread-favorites-meta a[aria-label]');
+    const activate = async (action) => {
+      check(action, 'Original action exists in the production note renderer');
+      let preventedByView = false;
+      const stopBrowser = (event) => { preventedByView = event.defaultPrevented; event.preventDefault(); };
+      document.addEventListener('click', stopBrowser, {once: true});
+      action.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true}));
+      await tick();
+      return preventedByView;
+    };
+    const expectWeb = async (root, record, label) => {
+      const count = readingOpens.length, externalCount = externalOpens.length;
+      const prevented = await activate(originalIn(root));
+      check(readingOpens.length === count + 1, 'REGRESSION: ' + label + ' web original must call plugin.openPreferredReadingView instead of leaving a raw weread:// navigation');
+      check(prevented && externalOpens.length === externalCount, label + ' intercepts browser navigation without opening an external deep link');
+      check(JSON.stringify(readingOpens.at(-1)) === JSON.stringify([undefined, expectedBookmark(record)]), label + ' preserves book, chapter, range, chapter title and mark text');
+      check(originalIn(root).querySelector('svg[data-weread-icon="book-arrow-up-right"]'), label + ' original action renders the approved book-and-arrow icon');
+    };
+    journal.publish({...state, notes: [located]});
+    setMode('web'); await mount('today');
+    await expectWeb(document.querySelector('.weread-journal-today-notes'), located, 'Today');
+    const retained = originalIn(document.querySelector('.weread-journal-today-notes'));
+    setMode('app');
+    const webCount = readingOpens.length;
+    check(await activate(retained), 'Setting switch after render still prevents browser navigation');
+    check(readingOpens.length === webCount && externalOpens.at(-1) === located.sourceUrl, 'Existing original action reads latest app mode and opens the bookmark through the desktop shell');
+    setMode('web'); await expectWeb(document.querySelector('.weread-journal-today-notes'), located, 'Today switched back');
+    const continueReading = document.querySelector('.weread-journal-today-book-list .weread-journal-original');
+    const beforeContinue = readingOpens.length;
+    check(await activate(continueReading), 'Today continue-reading action prevents browser navigation');
+    check(readingOpens.length === beforeContinue + 1 && readingOpens.at(-1)[0] === getPcUrl('latest') && readingOpens.at(-1)[1] === undefined, 'Today latest-book action opens the preferred web book reader');
+    setMode('app'); await activate(continueReading);
+    check(externalOpens.at(-1) === 'weread://reading?bId=latest', 'Rendered continue-reading action observes latest app setting');
+    setMode('web');
+
+    const selected = {...baseNotes[2], sourceUrl: located.sourceUrl};
+    const anniversary = {...baseNotes[5], sourceUrl: 'weread://bestbookmark?bookId=b&chapterUid=42&rangeStart=10&rangeEnd=28'};
+    journal.publish({...state, notes: [located, selected, anniversary]});
+    await mount('review');
+    document.querySelector('button[aria-label^="2026-11-05，"]').click();
+    await expectWeb(results(), selected, 'Review selected day');
+    const search = document.querySelector('input[type=search]');
+    search.value = selected.text; search.dispatchEvent(new Event('input'));
+    await expectWeb(results(), selected, 'Review search');
+    search.value = ''; search.dispatchEvent(new Event('input'));
+    await expectWeb(document.querySelector('.weread-journal-anniversaries'), anniversary, 'Review anniversary');
+    const quote = document.querySelector('.weread-journal-quote');
+    if (originalIn(quote)) await expectWeb(quote, selected, 'Old quote');
+
+    for (const sourceUrl of [undefined, 'weread://reading?bId=a', 'weread://bestbookmark?bookId=wrong-book&chapterUid=42&rangeStart=10&rangeEnd=28', 'weread://reading?bId=wrong-book', 'weread://bestbookmark?bookId=a&chapterUid=oops&rangeStart=10&rangeEnd=28', 'weread://bestbookmark?bookId=a&chapterUid=42&rangeStart=NaN&rangeEnd=28', 'https://evil.invalid/?bookId=wrong-book', 'weread://bestbookmark?bookId=%E0%A4%A&chapterUid=42&rangeStart=10&rangeEnd=28']) {
+      const fallback = {...located, sourceUrl};
+      journal.publish({...state, notes: [fallback]}); setMode('web'); await mount('today');
+      const before = readingOpens.length, externalBefore = externalOpens.length;
+      check(await activate(originalIn(document.querySelector('.weread-journal-today-notes'))), 'Fallback web action intercepts navigation for ' + sourceUrl);
+      check(readingOpens.length === before + 1 && readingOpens.at(-1)[0] === getPcUrl(fallback.bookId) && readingOpens.at(-1)[1] === undefined && externalOpens.length === externalBefore, 'Missing or invalid location opens only the note book in the web reader: ' + sourceUrl);
+      setMode('app'); await activate(originalIn(document.querySelector('.weread-journal-today-notes')));
+      check(externalOpens.at(-1) === 'weread://reading?bId=a', 'Missing or invalid location app fallback cannot navigate to another book: ' + sourceUrl);
+    }
+
+    journal.publish({...state, notes: [located]}); setMode('web'); await mount('today');
+    const failures = [];
+    const onUnhandled = (event) => { failures.push(String(event.reason)); event.preventDefault(); };
+    window.addEventListener('unhandledrejection', onUnhandled);
+    readingOpenFails = true;
+    const noticesBefore = (window.journalNotices || []).length;
+    await activate(originalIn(document.querySelector('.weread-journal-today-notes')));
+    check(window.journalNotices.length > noticesBefore && /失败|无法/.test(window.journalNotices.at(-1)) && !window.journalNotices.at(-1).includes('PRIVATE WEB OPEN FAILURE DATA'), 'Failed web original gives a safe user-facing failure notice');
+    readingOpenFails = false;
+    await expectWeb(document.querySelector('.weread-journal-today-notes'), located, 'Retry after failed open');
+    check(failures.length === 0, 'Failed web original and retry never produce an unhandled rejection');
+    const previousFavorites = favoriteState;
+    const host = document.createElement('main'); document.body.append(host);
+    favorites.publish({favorites: [{id: located.id, note: located, favoritedAt: NOW, updatedAt: NOW}]});
+    const panel = new WereadFavoritesPanel(host, plugin, favorites); await panel.onOpen();
+    await expectWeb(host, located, 'Favorites');
+    setMode('app'); const favoriteWebCount = readingOpens.length;
+    check(await activate(originalIn(host)), 'Favorites app action intercepts browser navigation');
+    check(readingOpens.length === favoriteWebCount && externalOpens.at(-1) === located.sourceUrl, 'Favorites app action preserves the location through the native shell');
+    await panel.onClose(); host.remove(); favorites.publish(previousFavorites);
+    check(browserOpens.length === 0, 'Desktop original actions use the preferred reader or native shell without browser window.open');
+    window.removeEventListener('unhandledrejection', onUnhandled);
+    readingOpens.length = 0; externalOpens.length = 0;
+    journal.publish(previousState); settingsStore.set(settings('account-a'));
+    return assertions;
+  },
+  async calendarHeatmap() {
+    window.calendarPreviousState = state;
+    const entries = [[1, 12], [3, 1], [4, 3], [5, 8], [6, 2]].flatMap(([day, count]) => Array.from({length: count}, (_, index) => note('heat-' + day + '-' + index, 'a', 'highlight', 'HEATMAP DAY ' + day + ' NOTE ' + index, '2026-11-' + String(day).padStart(2, '0') + 'T02:00:00Z')));
+    journal.publish({...state, notes: entries}); await mount('review');
+    const calendar = document.querySelector('.weread-journal-calendar');
+    const day = (date) => calendar.querySelector('button[aria-label^="2026-11-' + String(date).padStart(2, '0') + '，"]');
+    for (const [date, count] of [[1, 12], [2, 0], [3, 1], [4, 3], [5, 8], [6, 2]]) {
+      const button = day(date);
+      check(button.textContent.trim() === String(date) && !button.querySelector('small, .count, .weread-journal-day-count'), 'Calendar date ' + date + ' has no visible count badge or dot');
+      check(button.getAttribute('aria-label').includes(count + '条笔记') && button.title.includes(count + '条笔记'), 'Calendar date ' + date + ' retains exact note counts in accessible name and tooltip');
+      check(!button.disabled && button.tabIndex === 0, 'Past and current calendar dates remain keyboard reachable');
+    }
+    const activity = [2, 3, 4, 5, 1].map((date, intensity) => {
+      const button = day(date);
+      check(Number(button.dataset.noteIntensity) === intensity && Number(button.dataset.noteCount) === [0, 1, 3, 8, 12][intensity], 'Calendar activity metadata matches the real note count for date ' + date);
+      return {date, opacity: Number(getComputedStyle(button, '::before').opacity)};
+    });
+    check(activity[0].opacity === 0 && activity.every((entry, index) => index === 0 || entry.opacity > activity[index - 1].opacity), 'More notes produce a progressively stronger rendered calendar background');
+    check(day(6).getAttribute('aria-current') === 'date' && day(6).getAttribute('aria-pressed') === 'true', 'Heatmap preserves current-day and selected-day semantics');
+    check(day(7).disabled, 'Heatmap preserves disabled future days');
+    day(3).focus({preventScroll: true});
+    check(document.activeElement === day(3), 'Calendar date accepts keyboard focus before activation');
+  },
+  async calendarAfterKeyboard() {
+    const selected = document.querySelector('.weread-journal-day[aria-pressed="true"]');
+    check(selected?.getAttribute('aria-label').startsWith('2026-11-03，'), 'Enter activates the focused calendar date');
+    check(results().querySelectorAll('article').length === 1 && results().textContent.includes('HEATMAP DAY 3 NOTE 0'), 'Keyboard-selected date filters notes without changing their scope');
+    const search = document.querySelector('input[type=search]'); search.value = 'HEATMAP DAY 5'; search.dispatchEvent(new Event('input'));
+    check(results().querySelectorAll('article').length === 8, 'Calendar heatmap retains search across dates');
+    search.value = ''; search.dispatchEvent(new Event('input'));
+    check(results().querySelectorAll('article').length === 1, 'Clearing search restores the selected date');
+    document.querySelector('button[aria-label^="2026-11-02，"]').click();
+    check(!results().querySelector('article') && results().textContent.includes('这个范围内还没有笔记'), 'Zero-activity day remains selectable with an empty result');
+    journal.publish(window.calendarPreviousState); delete window.calendarPreviousState;
+    return assertions;
+  },
   async favoritesPreview(mode = 'cards') {
     await closeFavoritesPreview();
     if (view) { await view.onClose(); view.contentEl.remove(); view = undefined; }
@@ -239,7 +376,7 @@ window.smoke = {
     clipboardFails = true; const written = clipboardWrites.length; copy.click(); await tick(); clipboardFails = false;
     check(clipboardWrites.length === written && window.journalNotices.at(-1) === '复制失败，请重试', 'Clipboard failure gives feedback without claiming success');
     check(!document.body.textContent.includes('YESTERDAY BOOK SENTINEL'), 'Today shelf excludes previous local day');
-    check(document.querySelector('a[href^="weread://"]'), 'Original source links rendered');
+    check(document.querySelector('.weread-journal-today-notes a[aria-label="打开书籍"]')?.href === getPcUrl('a'), 'Original source links retain the safe own-book web reader URL');
     return assertions;
   },
   async review() {
@@ -616,6 +753,10 @@ async function browserBundle() {
 						path: 'obsidian',
 						namespace: 'mock'
 					}));
+					builder.onResolve({ filter: /^electron$/ }, () => ({
+						path: 'electron',
+						namespace: 'mock'
+					}));
 					builder.onResolve({ filter: /(?:^|\/)settings$/ }, () => ({
 						path: 'settings',
 						namespace: 'mock'
@@ -623,8 +764,10 @@ async function browserBundle() {
 					builder.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({
 						contents:
 							name === 'obsidian'
-								? `export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
-								: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setJournalExcludedBookIds(ids) { set({...value, journalExcludedBookIds: ids}); }, setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`
+								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
+								: name === 'electron'
+									? `export const shell = {async openExternal(url) { window.journalExternalOpens.push(url); }};`
+									: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setJournalExcludedBookIds(ids) { set({...value, journalExcludedBookIds: ids}); }, setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`
 					}));
 					builder.onLoad({ filter: /\.css$/ }, async ({ path: filename }) => ({
 						contents: `const style = document.createElement('style'); style.textContent = ${JSON.stringify(await readFile(filename, 'utf8'))}; document.head.append(style);`,
@@ -756,6 +899,23 @@ test(
 		await evaluate(
 			`(() => { const style = document.createElement('style'); style.textContent = 'body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f7f4; color: #292d29; --background-primary: #fff; --background-secondary: #f3f1ec; --background-modifier-border: #dddcd5; --text-normal: #292d29; --text-muted: #72756d; --interactive-accent: #5f765c; } main { max-width: 1050px; margin: auto; } button, input, select { font: inherit; padding: 7px 11px; border: 1px solid #d8d9d0; background: #fff; border-radius: 6px; color: inherit; } button { cursor: pointer; } button.mod-cta { background: #e0e8d9; } button:disabled { opacity: .45; }'; document.head.append(style); })()`
 		);
+		await evaluate('smoke.calendarHeatmap()');
+		await send('Input.dispatchKeyEvent', {
+			type: 'keyDown',
+			key: 'Enter',
+			code: 'Enter',
+			text: '\r',
+			unmodifiedText: '\r',
+			windowsVirtualKeyCode: 13
+		});
+		await send('Input.dispatchKeyEvent', {
+			type: 'keyUp',
+			key: 'Enter',
+			code: 'Enter',
+			windowsVirtualKeyCode: 13
+		});
+		await evaluate('smoke.calendarAfterKeyboard()');
+		await evaluate('smoke.originalNavigation()');
 		await evaluate('smoke.today()');
 		await evaluate(
 			'Promise.all([...document.images].map(image => image.decode().catch(() => {})))'

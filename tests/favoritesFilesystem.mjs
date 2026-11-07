@@ -27,7 +27,7 @@ new Function('require', 'module', 'exports', compiled.outputFiles[0].text)(
 const { WereadFavoritesService, FAVORITES_PATH, FAVORITES_BACKUP_PATH, parseFavorites } =
 	module.exports;
 
-async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
+async function fixture(t, { nativeVault = false, nativeViews = [], storageOptions = {} } = {}) {
 	const parent = await fs.realpath(tmpdir());
 	const root = await fs.mkdtemp(join(parent, 'weread-favorites-'));
 	const services = [];
@@ -48,6 +48,10 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 				if (e.code === 'ENOENT') return false;
 				throw e;
 			}
+		},
+		async list(p) {
+			const entries = await fs.readdir(p ? path(p) : root, { withFileTypes: true });
+			return { files: entries.filter((entry) => entry.isFile()).map((entry) => p ? p + '/' + entry.name : entry.name), folders: [] };
 		},
 		async mkdir(p) {
 			await fs.mkdir(path(p));
@@ -134,7 +138,7 @@ async function fixture(t, { nativeVault = false, nativeViews = [] } = {}) {
 					}
 				}
 			}
-		});
+		}, storageOptions);
 		services.push(service);
 		return service;
 	};
@@ -225,10 +229,10 @@ test('real truncated file recovery preserves damaged bytes; a future schema is n
 	assert.equal(state.writable, true);
 	assert(state.warning.includes('备份'));
 	assert.equal(await f.adapter.read(FAVORITES_PATH), previous);
-	const entries = await fs.readdir(f.path('WereadData/favorites'));
+	const entries = await fs.readdir(f.root);
 	const quarantine = entries.find((name) => name.startsWith('favorites.corrupt.'));
 	assert(quarantine);
-	assert.equal(await fs.readFile(f.path('WereadData/favorites/' + quarantine), 'utf8'), damaged);
+	assert.equal(await fs.readFile(f.path(quarantine), 'utf8'), damaged);
 	const futureCanvas = JSON.parse(previous);
 	let changed = false;
 	for (const node of futureCanvas.nodes) {
@@ -346,7 +350,7 @@ for (const action of ['delete', 'rename']) {
 			undefined
 		);
 		const file = f.vault.getAbstractFileByPath(FAVORITES_PATH);
-		const renamedPath = 'WereadData/favorites/renamed.canvas';
+		const renamedPath = 'renamed.canvas';
 		const unavailable = waitForSnapshot(
 			service,
 			(state) => !state.loading && !state.writable && state.error.includes('已保护备份')
@@ -383,7 +387,7 @@ for (const action of ['delete', 'rename']) {
 
 for (const action of ['delete', 'rename']) {
 	test(`parent directory ${action} invalidates a loaded Canvas without recreating its old path`, async (t) => {
-		const f = await fixture(t, { nativeVault: true });
+		const f = await fixture(t, { nativeVault: true, storageOptions: { folder: 'WereadData/favorites' } });
 		const service = f.restart();
 		await service.setFavorite(note(), true);
 		const folder = f.vault.getAbstractFileByPath('WereadData/favorites');
@@ -396,7 +400,7 @@ for (const action of ['delete', 'rename']) {
 		assert.equal(service.getSnapshot().writable, false);
 		await unavailable;
 		await assert.rejects(service.ensureCanvas());
-		assert.equal(await f.adapter.exists(FAVORITES_PATH), false);
+		assert.equal(await f.adapter.exists('WereadData/favorites/favorites.canvas'), false);
 		if (action === 'rename') {
 			const restored = waitForSnapshot(service, (state) => state.writable && !state.loading);
 			await f.vault.rename(folder, 'WereadData/favorites');
@@ -892,10 +896,10 @@ test('format-one upgrade archives original exact bytes beyond rotating previous 
 		'Loading legacy Canvas stays read-only'
 	);
 	await service.ensureCanvas();
-	const entries = await fs.readdir(f.path('WereadData/favorites'));
+	const entries = await fs.readdir(f.root);
 	const archives = entries.filter((name) => name.startsWith('favorites.before-book-graph.'));
 	assert.equal(archives.length, 1);
-	const archive = 'WereadData/favorites/' + archives[0];
+	const archive = archives[0];
 	assert.equal(await f.adapter.read(archive), original);
 	const upgradedRaw = await f.adapter.read(FAVORITES_PATH);
 	const upgraded = JSON.parse(upgradedRaw);
@@ -908,11 +912,46 @@ test('format-one upgrade archives original exact bytes beyond rotating previous 
 	assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), upgradedRaw);
 	assert.equal(await f.adapter.read(archive), original);
 	assert.equal(
-		(await fs.readdir(f.path('WereadData/favorites'))).filter((name) =>
+		(await fs.readdir(f.root)).filter((name) =>
 			name.startsWith('favorites.before-book-graph.')
 		).length,
 		1
 	);
+});
+
+test('real Vault folder change verifies exact copies, indexes the destination and follows only its events', async (t) => {
+	const storageOptions = { folder: '', locationVersion: 1 };
+	storageOptions.commitLocation = async (folder, version) => {
+		storageOptions.folder = folder;
+		storageOptions.locationVersion = version;
+	};
+	const f = await fixture(t, { nativeVault: true, storageOptions });
+	const service = f.restart();
+	await service.setFavorite(note(), true);
+	const original = await f.adapter.read(FAVORITES_PATH);
+	const previous = await f.adapter.read(FAVORITES_BACKUP_PATH);
+	const target = 'Personal/Collection/favorites.canvas';
+	assert.equal(await service.changeCanvasFolder('Personal/Collection'), target);
+	assert.equal(await f.adapter.read(FAVORITES_PATH), original);
+	assert.equal(await f.adapter.read(FAVORITES_BACKUP_PATH), previous);
+	assert.equal(await f.adapter.read(target), original);
+	assert.equal(await f.adapter.read('Personal/Collection/favorites.canvas.previous.json'), previous);
+	const file = f.vault.getAbstractFileByPath(target);
+	assert.equal(file.extension, 'canvas', 'destination is indexed through Vault.create');
+	const baseline = (await fs.readdir(f.path('Personal/Collection'))).find((name) => name.startsWith('favorites.before-location-change.'));
+	assert.equal(await f.adapter.read('Personal/Collection/' + baseline), original);
+	await f.vault.modify(f.vault.getAbstractFileByPath(FAVORITES_PATH), '{stale old copy');
+	assert.equal(service.getSnapshot().writable, true, 'old events cannot invalidate current favorites');
+	const changed = JSON.parse(original);
+	const quote = quoteCard(changed);
+	quote.text = quote.text.replace('第一行句子。', '新目录里的原生编辑。');
+	const updated = waitForSnapshot(service, (state) => state.favorites[0]?.note.text.includes('新目录'));
+	await f.vault.modify(file, JSON.stringify(changed));
+	await updated;
+	await service.setFavorite(note('after-move'), true);
+	assert.equal(await f.adapter.read('Personal/Collection/' + baseline), original);
+	assert.equal((await f.restart().load()).favorites.length, 2);
+	assert.equal(await service.ensureCanvas(), target);
 });
 
 test('failed original-byte archive verification blocks legacy graph upgrade before primary or backup writes', async (t) => {

@@ -252,6 +252,34 @@
 .weread-detail-panel .weread-detail-entry-actions button {
 	font-size: 11px;
 }
+.weread-detail-panel button.weread-detail-note-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	min-height: 0;
+	padding: 4px;
+	margin: 0;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--text-muted);
+	box-shadow: none;
+	text-decoration: none;
+}
+.weread-detail-panel button.weread-detail-note-action:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	color: var(--text-accent);
+	text-decoration: none;
+}
+.weread-detail-panel .weread-detail-note-action svg {
+	width: 16px;
+	height: 16px;
+}
+.weread-detail-panel button.weread-detail-note-action:focus-visible {
+	outline-offset: 2px;
+}
 .weread-detail-panel button.weread-detail-favorite {
 	display: inline-flex;
 	align-items: center;
