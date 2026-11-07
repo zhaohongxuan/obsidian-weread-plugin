@@ -495,6 +495,80 @@ window.smoke = {
     journal.publish({...state, notes: baseNotes});
     await view.onClose(); view.contentEl.remove(); view = undefined;
   },
+  async scrollNotesSetup() {
+    const many = Array.from({length: 400}, (_, i) => note('scroll-' + i, 'a', i % 2 ? 'thought' : 'highlight', 'SCROLL FIXTURE ' + i + ' 阅读让每一天留下清晰的痕迹。', '2026-11-06T03:00:00Z'));
+    journal.publish({...state, notes: [...many, ...baseNotes.filter(entry => entry.createTime < RealDate.parse('2026-11-05T16:00:00Z'))], syncing: false});
+    await mount('review');
+    const list = document.querySelector('.weread-journal-day-list');
+    check(list.getAttribute('role') === 'region' && list.tabIndex === 0 && list.getAttribute('aria-label') === '2026-11-06 · 笔记', 'Review day list is a keyboard-focusable region labelled by the selected date');
+    check(list.querySelectorAll('article').length === 100 && list.scrollHeight > list.clientHeight * 5, '400-note day keeps pagination inside a genuinely overflowing list');
+    check(list.clientHeight > 100 && list.clientHeight <= innerHeight * .65 + 1, 'Review note list height is bounded by the current viewport');
+    const style = getComputedStyle(list);
+    check(style.overflowY === 'auto' && style.overscrollBehaviorY === 'contain', 'Review list scrolls locally and contains overscroll');
+    check(!list.querySelector('h2, .weread-journal-calendar, .weread-journal-controls') && list.previousElementSibling.tagName === 'H2', 'Date heading, calendar and search controls remain outside the scrolling list');
+    check(document.documentElement.scrollHeight < 2400 && document.documentElement.scrollWidth <= innerWidth && list.scrollWidth <= list.clientWidth, 'Hundreds of notes do not create a huge outer page or horizontal overflow');
+    if (innerWidth <= 400) check(list.getBoundingClientRect().top >= document.querySelector('.weread-journal-calendar').getBoundingClientRect().bottom, 'Mobile keeps the compact calendar above the bounded list');
+    list.scrollIntoView({block: 'center'}); list.focus({preventScroll: true});
+    window.scrollTestOuterY = scrollY;
+  },
+  async scrollNotesAfterKey() {
+    let list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop > 0 && Math.abs(scrollY - window.scrollTestOuterY) < 2, 'PageDown scrolls the focused notes region without scrolling the outer page');
+    list.scrollTop = 240;
+    const before = list.scrollTop;
+    const loads = journalLoads, calls = apiCalls;
+    journal.publish({...state, syncing: true}); await tick();
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === before && document.activeElement === list, 'Background progress preserves inner scroll and focused region across rerenders');
+    journal.publish({...state, notes: [...state.notes], syncing: false}); await tick();
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === before, 'Async cache completion preserves inner scroll');
+    favorites.publish(); await tick();
+    check(document.querySelector('.weread-journal-day-list') === list && list.scrollTop === before, 'Favorite updates preserve the list DOM and inner scroll');
+    settingsStore.actions.setJournalExcludedBookIds(['a']);
+    check(document.querySelector('.weread-journal-day-list') === list && list.scrollTop === before, 'Quote exclusion updates preserve inner scroll');
+    settingsStore.actions.setJournalExcludedBookIds([]);
+    const activateDetail = plugin.activateBookDetailView;
+    plugin.activateBookDetailView = async () => { view.contentEl.hidden = true; };
+    list.querySelector('.weread-journal-source').click(); await tick();
+    view.contentEl.hidden = false; plugin.activateBookDetailView = activateDetail;
+    check(document.querySelector('.weread-journal-day-list') === list && list.scrollTop === before, 'Opening a source book and returning to the retained Review DOM preserves inner scroll');
+    list.scrollTop = list.scrollHeight;
+    const pageScroll = list.scrollTop;
+    click('再看 100 条', list); await tick();
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.querySelectorAll('article').length === 200 && list.scrollTop === pageScroll, 'Loading the next page retains the previous inner reading position');
+    click('刷新笔记', view.contentEl); await tick();
+    journal.publish({...state, notes: [...state.notes]}); await tick();
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === pageScroll, 'Explicit refresh and subsequent cache publish preserve the current list position');
+    const filter = document.querySelector('.weread-journal-controls select'); filter.value = 'thought'; filter.dispatchEvent(new Event('change'));
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === 0 && list.querySelectorAll('article').length === 100 && [...list.querySelectorAll('article')].every(card => card.classList.contains('is-thought')), 'Kind changes reset scroll and pagination for the new results');
+    list.scrollTop = 200;
+    const search = document.querySelector('input[type=search]'); search.value = 'SCROLL FIXTURE'; search.dispatchEvent(new Event('input'));
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === 0 && list.getAttribute('aria-label') === '搜索全部已缓存笔记', 'Search changes reset inner scroll and update the accessible region label');
+    search.value = ''; search.dispatchEvent(new Event('input'));
+    document.querySelector('.weread-journal-controls select').value = 'all'; document.querySelector('.weread-journal-controls select').dispatchEvent(new Event('change'));
+    list = document.querySelector('.weread-journal-day-list'); list.scrollTop = 200;
+    document.querySelector('button[aria-label^="2026-11-05，"]').click();
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === 0 && list.getAttribute('aria-label') === '2026-11-05 · 笔记' && list.querySelectorAll('article').length === 2, 'Changing the selected date starts its notes at the top');
+    document.querySelector('button[aria-label^="2026-11-06，"]').click();
+    list = document.querySelector('.weread-journal-day-list'); list.scrollTop = 200;
+    const month = document.querySelector('input[type=month]'); month.value = '2026-10'; month.dispatchEvent(new Event('change'));
+    list = document.querySelector('.weread-journal-day-list');
+    check(list.scrollTop === 0 && !list.querySelector('article') && list.textContent.includes('这个范围内还没有笔记') && list.clientHeight < 100, 'Empty selected day resets scroll and does not reserve an oversized blank region');
+    click('回到今天');
+    check(document.querySelector('.weread-journal-day-list').querySelectorAll('article').length === 100, 'Returning to today restores its first page of notes');
+    check(apiCalls === calls && journalLoads === loads + 1, 'Scrolling, local filters and pagination need no API calls or journal loads beyond explicit refresh');
+    await mount('today');
+    const today = document.querySelector('.weread-journal-today-notes');
+    check(!document.querySelector('.weread-journal-day-list') && getComputedStyle(today).maxHeight === 'none' && getComputedStyle(today).overflowY === 'visible', 'Today notes retain their existing unbounded layout');
+    journal.publish({...state, notes: baseNotes});
+    await view.onClose(); view.contentEl.remove(); view = undefined;
+  },
   async behavior() {
     const many = Array.from({length: 105}, (_, i) => note('page-' + i, 'a', 'thought', 'PAGE FIXTURE ' + i, '2026-11-06T03:00:00Z'));
     journal.publish({ ...state, notes: many, syncing: false });
@@ -761,6 +835,29 @@ test(
 		await evaluate('smoke.review()');
 		await evaluate('smoke.behavior()');
 		await evaluate('smoke.exclusions()');
+		for (const width of [1180, 375]) {
+			await send('Emulation.setDeviceMetricsOverride', {
+				width,
+				height: width === 375 ? 667 : 1000,
+				deviceScaleFactor: 1,
+				mobile: width === 375
+			});
+			await evaluate('smoke.scrollNotesSetup()');
+			await send('Input.dispatchKeyEvent', {
+				type: 'keyDown',
+				key: 'PageDown',
+				code: 'PageDown',
+				windowsVirtualKeyCode: 34
+			});
+			await send('Input.dispatchKeyEvent', {
+				type: 'keyUp',
+				key: 'PageDown',
+				code: 'PageDown',
+				windowsVirtualKeyCode: 34
+			});
+			await evaluate('new Promise(resolve => setTimeout(resolve, 180))');
+			await evaluate('smoke.scrollNotesAfterKey()');
+		}
 		const assertions = await evaluate('smoke.favorites()');
 		assert(assertions.length >= 20);
 		await send('Emulation.setDeviceMetricsOverride', {

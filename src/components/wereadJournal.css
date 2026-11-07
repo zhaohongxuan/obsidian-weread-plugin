@@ -613,6 +613,21 @@
 	margin-top: 0;
 }
 
+.weread-journal-view.is-review .weread-journal-day-list {
+	min-width: 0;
+	max-height: min(65vh, 640px);
+	max-height: min(65dvh, 640px);
+	overflow-y: auto;
+	overflow-x: hidden;
+	overscroll-behavior-y: contain;
+	scrollbar-gutter: stable;
+}
+
+.weread-journal-view.is-review .weread-journal-day-list:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 3px;
+}
+
 .weread-journal-anniversaries {
 	margin-top: 28px;
 }

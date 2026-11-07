@@ -336,9 +336,18 @@ export class WereadJournalPanel extends WereadPanel {
 				? focused
 				: undefined;
 		const selection = search ? [search.selectionStart, search.selectionEnd] : undefined;
+		const previousList = this.body.querySelector<HTMLElement>('.weread-journal-day-list');
+		const scrollTop = previousList?.scrollTop ?? 0;
+		const scrollKey = previousList?.dataset.scrollKey;
+		const listFocused = focused === previousList;
 		this.body.empty();
 		if (this.mode === 'today') this.renderToday();
 		else this.renderReview();
+		const list = this.body.querySelector<HTMLElement>('.weread-journal-day-list');
+		if (list && list.dataset.scrollKey === scrollKey) {
+			list.scrollTop = scrollTop;
+			if (listFocused) list.focus({ preventScroll: true });
+		}
 		if (selection) {
 			const replacement = this.body.querySelector<HTMLInputElement>('input[type="search"]');
 			replacement?.focus({ preventScroll: true });
@@ -544,16 +553,20 @@ export class WereadJournalPanel extends WereadPanel {
 			});
 			past.createEl('h2', { text: '那年今日' });
 			this.renderNotes(anniversaries, '往年今日暂无符合筛选的笔记。', past);
-			results.createEl('h2', {
-				text: this.query.trim() ? '搜索全部已缓存笔记' : `${this.selectedDay} · 笔记`
+			const label = this.query.trim() ? '搜索全部已缓存笔记' : `${this.selectedDay} · 笔记`;
+			results.createEl('h2', { text: label });
+			const list = results.createDiv({
+				cls: 'weread-journal-day-list',
+				attr: { role: 'region', 'aria-label': label, tabindex: '0' }
 			});
+			list.dataset.scrollKey = JSON.stringify([this.selectedDay, this.query, this.kind]);
 			this.renderNotes(
 				this.state.notes.filter(
 					(note) =>
 						(this.query.trim() || noteDay(note) === this.selectedDay) && matches(note)
 				),
 				'这个范围内还没有笔记。',
-				results
+				list
 			);
 		};
 		query.oninput = () => {
