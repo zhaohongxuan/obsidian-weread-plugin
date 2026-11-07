@@ -80,9 +80,38 @@
 .weread-journal-heading {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: 12px;
+	gap: 10px;
+	flex-wrap: nowrap;
+	margin-bottom: 20px;
+}
+.weread-journal-today-date {
+	flex: 0 0 auto;
+	white-space: nowrap;
+	font-family: var(--weread-journal-serif);
+	font-size: 13px;
+	line-height: 1.5;
+}
+.weread-journal-heading .weread-journal-status {
+	flex: 1 1 0;
+	min-width: 0;
+	padding: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: right;
+}
+.weread-journal-view .weread-journal-refresh {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 28px;
+	width: 28px;
+	height: 28px;
+	padding: 5px;
+}
+.weread-journal-refresh svg {
+	width: 16px;
+	height: 16px;
 }
 
 .weread-journal-view h1,

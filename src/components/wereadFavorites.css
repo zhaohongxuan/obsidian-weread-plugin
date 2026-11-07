@@ -29,15 +29,6 @@
 	gap: 8px;
 	min-width: 0;
 }
-.weread-favorites-heading {
-	justify-content: space-between;
-}
-.weread-favorites-heading h1 {
-	font-family: var(--weread-favorites-serif);
-	font-size: clamp(24px, 3vw, 36px);
-	font-weight: 500;
-	line-height: 1.5;
-}
 .weread-favorites-view button,
 .weread-favorites-view input,
 .weread-favorites-view select {
@@ -76,7 +67,7 @@
 	line-height: 1.7;
 }
 .weread-favorites-controls {
-	margin-block: 24px 12px;
+	margin-block: 12px;
 }
 .weread-favorites-controls input {
 	flex: 1 1 200px;

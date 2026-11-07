@@ -123,7 +123,7 @@ window.smoke = {
   check(document.querySelector('.weread-stats-overview .weread-stats-hero') && document.querySelector('.weread-stats-overview .weread-stats-kpi-grid'), 'Overview groups hero and KPIs');
   check(document.querySelector('.weread-stats-rhythm-grid'), 'Monthly renders daily rhythm');
   check(document.querySelectorAll('.weread-stats-trend .weread-stats-bar').length === 6, 'Current month shows elapsed six days only');
-  check(getComputedStyle(document.querySelector('h1')).fontFamily.includes('Songti SC'), 'Heading inherits reference serif environment');
+  check(getComputedStyle(document.querySelector('.weread-stats-section-title')).fontFamily.includes('Songti SC'), 'Section headings retain reference serif environment');
   const categories = [...document.querySelectorAll('.weread-stats-category-row')];
   check(categories.length === 3 && categories.every(row => row.textContent.includes('%') && row.textContent.includes('分钟')), 'Category rows expose duration and share');
   check(categories.find(row => row.textContent.includes('文学'))?.textContent.includes('30分钟'), 'Literature category shows its actual 30-minute fixture');

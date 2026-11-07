@@ -172,7 +172,7 @@ const mount = async (mode, cache = journal, router = api) => {
   await view.onOpen(); await tick(); return view;
 };
 const click = (label, root = document) => {
-  const button = [...root.querySelectorAll('button')].find((node) => node.textContent === label);
+  const button = [...root.querySelectorAll('button')].find((node) => node.textContent === label || node.getAttribute('aria-label') === label);
   check(button && !button.disabled, 'button available: ' + label); button.click();
 };
 const cards = (root = document) => [...root.querySelectorAll('article')].map((node) => node.textContent);
@@ -326,11 +326,39 @@ window.smoke = {
   async closeFavoritesPreview() { await closeFavoritesPreview(); },
   async today() {
     await mount('today');
+    check(!view.contentEl.querySelector('h1'), 'Today removes the large title for a compact single header row');
+    const heading = view.contentEl.querySelector('.weread-journal-heading');
+    const date = heading.querySelector('.weread-journal-today-date');
+    const status = heading.querySelector('.weread-journal-status');
+    const refresh = heading.querySelector('button[aria-label="刷新笔记"]');
+    check(date?.textContent === new Date().toLocaleDateString('zh-CN', {year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'}) && !view.contentEl.querySelector('.weread-journal-body > .weread-journal-muted'), 'Today shows the full local date exactly once in its header');
+    check(status && refresh?.title === '刷新笔记' && refresh.textContent === '' && refresh.querySelector('svg[data-icon="refresh-cw"]'), 'Cache status and an accessible icon-only refresh action share the header');
+    const assertHeaderRow = () => {
+      const d = date.getBoundingClientRect(), s = status.getBoundingClientRect(), r = refresh.getBoundingClientRect();
+      check(d.left < s.left && s.right <= r.left && Math.abs((d.top + d.height / 2) - (r.top + r.height / 2)) < 2 && heading.getBoundingClientRect().height < 40, 'Today date, cache status and rightmost refresh stay in one compact row at width ' + innerWidth);
+      check(r.width >= 24 && Math.abs(refresh.querySelector('svg').getBoundingClientRect().width - 16) < 1 && document.documentElement.scrollWidth <= innerWidth, 'Compact refresh keeps a usable target and 16px icon without horizontal overflow');
+    };
+    assertHeaderRow();
+    const beforeHeaderState = state;
+    journal.publish({...state, error: '加载失败，请重试。'.repeat(30)});
+    check(status.title === status.textContent && status.getAttribute('aria-label') === status.textContent && getComputedStyle(status).textOverflow === 'ellipsis', 'Truncated cache and error information remains available in full through tooltip and accessible label');
+    assertHeaderRow(); journal.publish(beforeHeaderState);
+    const originalLoad = journal.load;
+    const refreshGate = gate(); const refreshForces = [];
+    journal.load = async force => { refreshForces.push(force); await refreshGate.promise; return state; };
+    refresh.click(); await tick(); refresh.click();
+    check(refresh.disabled && refreshForces.length === 1 && refreshForces[0] === true, 'Refresh icon forces a manual update and prevents duplicate pending loads');
+    refreshGate.resolve(); await tick(); journal.load = originalLoad;
+    check(!refresh.disabled, 'Refresh icon becomes available again after the update completes');
+    journal.load = async () => { throw new Error('REFRESH FAILURE FIXTURE'); };
+    refresh.click(); await tick(); journal.load = originalLoad;
+    check(!refresh.disabled && window.journalNotices.at(-1) === 'REFRESH FAILURE FIXTURE', 'Failed refresh keeps its notice and allows retry from the same icon');
     check(document.body.textContent.includes('1小时1分钟'), 'Today reads local-day duration');
     check(document.querySelector('.weread-journal-summary').textContent.includes('今日划线1 条'), 'Today counts highlight after UTC midnight boundary');
     const completeState = { ...state, syncing: false, failedBooks: 0, error: '' };
     const metricCards = () => [...document.querySelector('.weread-journal-today-metrics-grid').children];
     journal.publish({ ...completeState, notes: [], syncing: true, scannedBooks: 428, totalBooks: 565 });
+    check(refresh.disabled && status.textContent.includes('正在更新 428/565 本'), 'Background syncing disables refresh and retains visible cache coverage');
     check(metricCards().slice(1).every(card => card.querySelector('strong').textContent === '0 条'), 'Partial zero counts contain only numbers and units');
     check(metricCards().slice(1).every(card => card.querySelector('small.weread-journal-metric-status')?.textContent === '统计中，当前为部分结果'), 'In-progress counts explain partial coverage below the value');
     check(!metricCards()[0].querySelector('.weread-journal-metric-status'), 'Note coverage does not qualify the independent reading duration');
@@ -381,6 +409,14 @@ window.smoke = {
   },
   async review() {
     await mount('review');
+    const heading = view.contentEl.querySelector('.weread-journal-heading');
+    const headerDate = heading.querySelector('.weread-journal-today-date');
+    const headerStatus = heading.querySelector('.weread-journal-status');
+    const refresh = heading.querySelector('button[aria-label="刷新笔记"]');
+    const dateText = new Date().toLocaleDateString('zh-CN', {year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'});
+    check(!view.contentEl.querySelector('h1') && headerDate.textContent === dateText, 'Review uses the same compact actual-today date header without a large title');
+    const d = headerDate.getBoundingClientRect(), r = refresh.getBoundingClientRect();
+    check(headerStatus && refresh.textContent === '' && refresh.title === '刷新笔记' && d.right <= headerStatus.getBoundingClientRect().left && headerStatus.getBoundingClientRect().right <= r.left && Math.abs((d.top + d.height / 2) - (r.top + r.height / 2)) < 2 && heading.getBoundingClientRect().height < 40, 'Review keeps date, cache info and rightmost refresh icon in one row at width ' + innerWidth);
     check(document.body.textContent.includes('去年今日'), 'Review includes anniversary thought');
     const quote = document.querySelector('.weread-journal-quote');
     const before = quote.querySelector('article').textContent;
@@ -397,6 +433,7 @@ window.smoke = {
     check(document.activeElement === search && search.selectionStart === 1 && search.selectionEnd === 3, 'Search focus and selection survive cache progress');
     search.value = ''; search.dispatchEvent(new Event('input'));
     const day = document.querySelector('button[aria-label^="2026-11-05，"]'); day.click();
+    check(headerDate.textContent === dateText, 'Review selected day remains independent of the header current date');
     check(cards(results()).filter((text) => !text.includes('去年今日')).length === 2 && cards(results()).filter((text) => !text.includes('去年今日')).every((text) => text.includes('旧句') || text.includes('昨日句子')), 'Calendar day selection filters local dates');
     const select = document.querySelector('select'); select.value = 'thought'; select.dispatchEvent(new Event('change'));
     check(cards(results()).length === 0 && results().textContent.includes('这个范围内还没有笔记') && cards(document.querySelector('.weread-journal-anniversaries')).every((text) => text.includes('去年今日')), 'Kind filter applies to selected calendar day and separate anniversaries');
@@ -412,7 +449,7 @@ window.smoke = {
     check(box.width <= 261 && results().getBoundingClientRect().left >= box.right, 'Desktop uses compact left calendar and right notes');
     const day = calendar.querySelector('.weread-journal-day');
     check(day.getBoundingClientRect().width <= 36 && day.getBoundingClientRect().height <= 42, 'Calendar days stay compact under host button styles');
-    check(getComputedStyle(document.querySelector('h1')).fontFamily.includes('Songti SC') && getComputedStyle(document.querySelector('.weread-journal-note-text')).fontFamily.includes('Songti SC'), 'Reference serif stack is applied to heading and reading prose');
+    check(getComputedStyle(document.querySelector('.weread-journal-today-date')).fontFamily.includes('Songti SC') && getComputedStyle(document.querySelector('.weread-journal-note-text')).fontFamily.includes('Songti SC'), 'Reference serif stack is applied to heading and reading prose');
     check(Boolean(document.querySelector('.weread-journal-retro-grid').compareDocumentPosition(document.querySelector('.weread-journal-quote')) & Node.DOCUMENT_POSITION_FOLLOWING), 'Calendar and notes precede the featured quote');
     check(calendar.querySelector('button[aria-label^="2026-11-07，"]').disabled, 'Future calendar dates are disabled');
     calendar.querySelector('button[aria-label="上个月"]').click();
@@ -764,7 +801,7 @@ async function browserBundle() {
 					builder.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({
 						contents:
 							name === 'obsidian'
-								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
+								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'refresh-cw' ? 'M3 11a9 9 0 0 1 15.4-6.4L21 7 M21 3v4h-4 M21 13a9 9 0 0 1-15.4 6.4L3 17 M3 21v-4h4' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
 								: name === 'electron'
 									? `export const shell = {async openExternal(url) { window.journalExternalOpens.push(url); }};`
 									: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setJournalExcludedBookIds(ids) { set({...value, journalExcludedBookIds: ids}); }, setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`

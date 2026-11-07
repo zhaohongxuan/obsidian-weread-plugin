@@ -46,21 +46,13 @@
 	cursor: default;
 }
 .weread-stats-view .weread-stats-header {
-	margin-bottom: 28px;
+	margin-bottom: 20px;
 }
 .weread-stats-view .weread-stats-eyebrow {
 	margin: 0 0 8px;
 	font-size: 11px;
 	letter-spacing: 0.14em;
 	color: var(--text-muted);
-}
-.weread-stats-view .weread-stats-heading {
-	margin: 0 0 18px;
-	font-family: var(--weread-stats-serif);
-	font-size: clamp(26px, 3vw, 36px);
-	font-weight: 500;
-	line-height: 1.5;
-	letter-spacing: 0.035em;
 }
 .weread-stats-view .weread-stats-header-row {
 	align-items: flex-start;

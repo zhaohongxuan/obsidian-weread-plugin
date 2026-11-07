@@ -434,7 +434,6 @@ export class WereadReadingStatsPanel extends WereadPanel {
 	private renderHeader(el: HTMLElement) {
 		const header = el.createDiv({ cls: 'weread-stats-header' });
 		header.createDiv({ cls: 'weread-stats-eyebrow', text: '阅读手记 · 统计' });
-		header.createEl('h1', { cls: 'weread-stats-heading', text: '阅读统计' });
 		const headerRow = header.createDiv({ cls: 'weread-stats-header-row' });
 
 		// Left: avatar + name + signature

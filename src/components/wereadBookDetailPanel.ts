@@ -323,7 +323,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 		});
 		if (this.detail?.intro)
 			info.createEl('p', { text: this.detail.intro, cls: 'weread-detail-intro' });
-		const facts = info.createDiv({ cls: 'weread-detail-facts' });
+		const stats = info.createDiv({ cls: 'weread-detail-reading-stats' });
+		const facts = stats.createDiv({ cls: 'weread-detail-facts' });
 		const reading = this.progress?.book;
 		if (reading?.finishTime || this.detail?.finishReading) facts.createSpan({ text: '已读完' });
 		else if (reading?.progress) facts.createSpan({ text: '阅读中' });
@@ -340,7 +341,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 			facts.createSpan({ text: `读完于 ${this.date(reading.finishTime)}` });
 		if (typeof reading?.progress === 'number' && Number.isFinite(reading.progress)) {
 			const percent = Math.max(0, Math.min(100, reading.progress));
-			const progress = info.createDiv({ cls: 'weread-detail-progress' });
+			const progress = stats.createDiv({ cls: 'weread-detail-progress' });
 			progress.createSpan({ text: `阅读进度 ${percent}%` });
 			progress.createEl('progress', {
 				attr: { max: '100', value: String(percent), 'aria-label': '阅读进度' }

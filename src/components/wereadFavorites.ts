@@ -104,7 +104,6 @@ export class WereadFavoritesPanel extends WereadPanel {
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-favorites-view');
 		const heading = this.contentEl.createDiv({ cls: 'weread-favorites-heading' });
-		heading.createEl('h1', { text: '把心动的句子，留在身边。' });
 		this.canvasButton = heading.createEl('button', {
 			text: '在Canvas中打开',
 			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }

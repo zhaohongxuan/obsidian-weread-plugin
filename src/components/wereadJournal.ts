@@ -112,6 +112,9 @@ export class WereadJournalPanel extends WereadPanel {
 	}
 	private body: HTMLElement;
 	private status: HTMLElement;
+	private headerDate: HTMLElement;
+	private refreshButton: HTMLButtonElement;
+	private pendingLoads = 0;
 	private selectedDay = dayKey(new Date());
 	private month = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 	private query = '';
@@ -185,22 +188,25 @@ export class WereadJournalPanel extends WereadPanel {
 		this.active = true;
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-journal-view');
-		if (this.mode === 'review') this.contentEl.addClass('is-review');
+		this.contentEl.addClass(this.mode === 'today' ? 'is-today' : 'is-review');
 		const heading = this.contentEl.createDiv({ cls: 'weread-journal-heading' });
-		heading.createEl('h1', {
-			text: this.mode === 'today' ? '把今天，读进生活里。' : '与读过的时光重逢。'
+		this.headerDate = heading.createEl('time', { cls: 'weread-journal-today-date' });
+		this.status = heading.createDiv({
+			cls: 'weread-journal-status',
+			attr: { 'aria-live': 'polite' }
 		});
-		heading.createEl('button', { text: '刷新笔记' }).onclick = () => {
+		this.refreshButton = heading.createEl('button', {
+			cls: 'weread-journal-refresh',
+			attr: { type: 'button', title: '刷新笔记', 'aria-label': '刷新笔记' }
+		});
+		setIcon(this.refreshButton, 'refresh-cw');
+		this.refreshButton.onclick = () => {
 			void this.loadJournal(true);
 			if (this.mode === 'today') {
 				void this.loadStats();
 				void this.loadTodayBooks();
 			}
 		};
-		this.status = this.contentEl.createDiv({
-			cls: 'weread-journal-status',
-			attr: { 'aria-live': 'polite' }
-		});
 		this.body = this.contentEl.createDiv({ cls: 'weread-journal-body' });
 		this.favorites = this.plugin.favoritesService;
 		if (this.favorites) {
@@ -290,10 +296,15 @@ export class WereadJournalPanel extends WereadPanel {
 		window.clearInterval(this.refreshTimer);
 	}
 	private async loadJournal(force = false): Promise<void> {
+		this.pendingLoads += 1;
+		this.refreshButton.disabled = true;
 		try {
 			await this.journal.load(force);
 		} catch (error) {
 			if (this.active) new Notice(error instanceof Error ? error.message : '笔记加载失败');
+		} finally {
+			this.pendingLoads -= 1;
+			this.refreshButton.disabled = this.pendingLoads > 0 || this.state.syncing;
 		}
 	}
 	private async loadStats(): Promise<void> {
@@ -331,6 +342,13 @@ export class WereadJournalPanel extends WereadPanel {
 		this.status.setText(
 			`${state.hasCache ? `已缓存 ${state.notes.length} 条笔记` : '首次整理笔记'}${state.syncing ? ` · 正在更新 ${state.scannedBooks}/${state.totalBooks} 本` : ''}${state.updatedAt ? ` · 上次更新 ${new Date(state.updatedAt).toLocaleString('zh-CN')}` : ''}${state.failedBooks ? ` · ${state.failedBooks} 本未完整获取` : ''}${state.error ? ` · ${state.error}` : ''}`
 		);
+		this.status.title = this.status.textContent ?? '';
+		this.status.setAttribute('aria-label', this.status.textContent ?? '');
+		this.headerDate.setText(new Date().toLocaleDateString('zh-CN', {
+			year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+		}));
+		this.headerDate.setAttribute('datetime', this.date);
+		this.refreshButton.disabled = this.pendingLoads > 0 || state.syncing;
 		const focused = this.body.ownerDocument.activeElement;
 		const search =
 			focused instanceof HTMLInputElement &&
@@ -360,15 +378,6 @@ export class WereadJournalPanel extends WereadPanel {
 	private renderToday(): void {
 		const today = this.date;
 		const notes = this.state.notes.filter((note) => noteDay(note) === today);
-		this.body.createEl('p', {
-			text: new Date().toLocaleDateString('zh-CN', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric',
-				weekday: 'long'
-			}),
-			cls: 'weread-journal-muted'
-		});
 		const summary = this.body.createDiv({ cls: 'weread-journal-summary' });
 		const seconds = this.todaySeconds;
 		const duration = this.statsLoading
