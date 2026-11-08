@@ -63,6 +63,8 @@ Tests:
 
 ## Tooling configuration
 
+- Mark icon-only buttons with Obsidian's `clickable-icon` class. The native `.is-tablet button:not(.clickable-icon)` rule adds horizontal padding that can collapse SVGs inside compact controls. Do not mask this with SVG shrink overrides: test actual rendered Journal/Favorites/Stats controls with the native tablet rule and assert positive SVG/content widths with no overflow at desktop, phone and tablet sizes. Mobile reading always uses App deeplinks; disabled mobile settings must not overwrite the saved desktop preferences.
+
 - TypeScript: `tsconfig.json` (ESNext modules, ES6 target, `noImplicitAny: true`).
 - Lint: `.eslintrc` with `@typescript-eslint` and `prettier`.
 - Format: `.prettierrc` (single quotes, semicolons, print width 100).
@@ -177,6 +179,8 @@ Report pass/fail/skip counts. Missing Chrome causes browser tests to **skip**, s
 
 ### 2. Focused regressions by changed area
 
+If local macOS Chrome processes crash during a heavily parallel run (for example, allocator/display-link failures), rerun the same complete suite with `node --test --test-concurrency=2 tests/*.mjs`. Report the process failure and controlled-run result accurately; do not use this to disregard assertion failures.
+
 Run the affected group while developing, then the full checks above for executable changes:
 
 | Area                                                         | Command                                                                                                                                                                      |
@@ -184,10 +188,11 @@ Run the affected group while developing, then the full checks above for executab
 | API, pagination and authentication                           | `node --test tests/apiPagination.mjs tests/apiKeyValidation.mjs tests/cookieNotebooks.mjs`                                                                                   |
 | Sync results, chapter titles and legacy parser compatibility | `node --test tests/syncResults.mjs tests/reviewChapterTitles.mjs tests/legacyParserSyntax.mjs`                                                                               |
 | Journal/cache and Today/Review UI                            | `node --test tests/journal.mjs tests/journalExclusionSettings.mjs tests/journalView.mjs`                                                                                     |
+| Bookshelf categories, browsing and filters                   | `node --test tests/bookshelf.mjs tests/bookshelfFilters.mjs`                                                                                                                 |
 | Favorites data, Canvas, filesystem and directory settings    | `node --test tests/favorites.mjs tests/favoritesCanvas.mjs tests/favoritesFilesystem.mjs tests/favoritesStorage.mjs tests/favoritesSettings.mjs tests/favoriteBookFiles.mjs` |
 | Favorites layout, search, counts and palette                 | `node --test tests/favoritesMasonry.mjs`                                                                                                                                     |
 | Library and in-page book details                             | `node --test tests/libraryView.mjs tests/bookDetailHelpers.mjs tests/bookDetailView.mjs`                                                                                     |
-| Reader positioning and tab/window lifecycle                  | `node --test tests/webReaderBookmark.mjs tests/readingNavigation.mjs tests/windowNavigation.mjs`                                                                             |
+| Reader positioning and tab/window lifecycle                  | `node --test tests/mobileReading.mjs tests/webReaderBookmark.mjs tests/readingNavigation.mjs tests/windowNavigation.mjs`                                                     |
 | Statistics/cache, insights and layout                        | `node --test tests/statsCache.mjs tests/statsInsights.mjs tests/statsPanel.mjs tests/statsView.mjs`                                                                          |
 
 For a narrow reproduction, use `node --test --test-name-pattern='fractional browser zoom' tests/favoritesMasonry.mjs`. A targeted name filter intentionally excludes other cases; it does not replace the complete group/full suite.

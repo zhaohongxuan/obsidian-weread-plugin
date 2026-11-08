@@ -4,6 +4,8 @@ export interface JournalNote {
 	bookTitle: string;
 	author: string;
 	cover?: string;
+	/** Verified upstream book.type; absent in older journal caches. */
+	bookType?: number;
 	kind: 'highlight' | 'thought';
 	text: string;
 	/** Unix time in milliseconds. */
@@ -74,19 +76,41 @@ export function sameJournalRevision(
 	);
 }
 
+const validBookType = (value: unknown): value is number =>
+	typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+
+/** Only upstream type or an existing WeChat source URL establishes article identity. */
+export function isJournalArticle(note: JournalNote): boolean {
+	if (note.bookType === 3) return true;
+	if (!note.sourceUrl) return false;
+	try {
+		const url = new URL(note.sourceUrl);
+		return (
+			(url.protocol === 'https:' || url.protocol === 'http:') &&
+			url.hostname === 'mp.weixin.qq.com'
+		);
+	} catch {
+		return false;
+	}
+}
+
 export function journalMetadata(book: JournalObject): {
 	bookId: string;
 	bookTitle: string;
 	author: string;
 	cover?: string;
+	bookType?: number;
 } {
 	const nested = journalObject(book.book);
 	const cover = (text(nested.cover) || text(book.cover)).replace('/s_', '/t7_');
+	// Match parseMetadata's book.type contract; never coerce unrelated string fields.
+	const bookType = [nested.type, book.type].find(validBookType);
 	return {
 		bookId: journalBookId(book),
 		bookTitle: text(nested.title) || text(book.title),
 		author: text(nested.author) || text(book.author),
-		...(cover ? { cover } : {})
+		...(cover ? { cover } : {}),
+		...(bookType !== undefined ? { bookType } : {})
 	};
 }
 
@@ -216,6 +240,7 @@ export function validJournalNote(value: unknown, bookId: string): value is Journ
 		['cover', 'chapterTitle', 'sourceUrl'].every(
 			(key) => note[key] === undefined || typeof note[key] === 'string'
 		) &&
+		(note.bookType === undefined || validBookType(note.bookType)) &&
 		typeof note.createTime === 'number' &&
 		Number.isFinite(note.createTime) &&
 		note.createTime > 0 &&

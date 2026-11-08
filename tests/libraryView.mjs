@@ -400,7 +400,12 @@ function fixture({ initialTab = 'today', viewType, gates = {} } = {}) {
 			throw new Error('Internal tabs must not replace views');
 		}
 	};
-	const plugin = { app };
+	const plugin = {
+		app,
+		openWereadSettingsTab: () => {
+			calls.settings = (calls.settings ?? 0) + 1;
+		}
+	};
 	const view = new WereadLibraryView(leaf, plugin, {}, {}, {}, {}, initialTab, viewType);
 	const buttons = () => contentEl.all((node) => node.getAttribute('role') === 'tab');
 	const tabbar = () => contentEl.all((node) => node.getAttribute('role') === 'tablist');
@@ -435,6 +440,12 @@ test('all five tabs navigate within one leaf and lazily open each retained panel
 	await f.view.onOpen();
 	assert.deepEqual([...f.created.keys()], ['today']);
 	const tabbar = f.tabbar()[0];
+	const settings = f.contentEl.all((node) => node.getAttribute('aria-label') === '微信读书设置');
+	assert.equal(settings.length, 1);
+	assert.equal(settings[0].getAttribute('role'), null);
+	settings[0].click();
+	assert.equal(f.calls.settings, 1);
+	f.assertSelected('today');
 	const today = f.panel('today');
 	today.filter.value = 'retained search';
 	today.contentEl.scrollTop = 173;

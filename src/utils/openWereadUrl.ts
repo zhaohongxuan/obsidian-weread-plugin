@@ -87,9 +87,13 @@ export async function openJournalNoteOriginal(
 		);
 		return;
 	}
-	if (get(settingsStore).bookOpenMode === 'app') {
+	if (Platform.isMobile || get(settingsStore).bookOpenMode === 'app') {
 		if (!(await openWereadDeepLink(`weread://reading?bId=${encodeURIComponent(note.bookId)}`)))
-			new Notice('无法打开微信读书 App，请确认已安装客户端，或改用网页版阅读入口');
+			new Notice(
+				Platform.isMobile
+					? '无法打开微信读书 App，请确认已安装客户端后重试'
+					: '无法打开微信读书 App，请确认已安装客户端，或改用网页版阅读入口'
+			);
 	} else {
 		await plugin.openPreferredReadingView(getPcUrl(note.bookId));
 	}
@@ -105,12 +109,16 @@ export async function openWereadHighlightLocation(
 	const settings = get(settingsStore);
 	const appDeepLink = buildBestBookmarkDeepLink(bookId, chapterUid, range);
 
-	if (settings.bookOpenMode === 'app') {
+	if (Platform.isMobile || settings.bookOpenMode === 'app') {
 		const opened = await openWereadDeepLink(appDeepLink);
 		if (opened) {
 			return;
 		}
-		new Notice('无法打开微信读书 App，请确认已安装客户端，或改用网页版阅读入口');
+		new Notice(
+			Platform.isMobile
+				? '无法打开微信读书 App，请确认已安装客户端后重试'
+				: '无法打开微信读书 App，请确认已安装客户端，或改用网页版阅读入口'
+		);
 		return;
 	}
 

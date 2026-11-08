@@ -1,3 +1,39 @@
+/* The settings action remains outside the tablist and reachable in narrow panes. */
+.weread-library-header {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: stretch;
+	border-bottom: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+}
+.weread-library-header > .weread-library-tabs {
+	flex: 1 1 auto;
+	min-width: 0;
+	border-bottom: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+.weread-library-header > .weread-library-settings {
+	flex: 0 0 30px;
+	align-self: center;
+	width: 30px;
+	height: 30px;
+	margin: 0 16px 0 4px;
+	padding: 5px;
+	border: 0;
+	box-shadow: none;
+	background: transparent;
+	color: var(--text-muted);
+}
+.weread-library-header > .weread-library-settings:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+.weread-library-settings svg {
+	width: 16px;
+	height: 16px;
+}
+
 /* The host leaf scrolls within the selected panel, leaving navigation in place. */
 .weread-library-view {
 	display: flex;

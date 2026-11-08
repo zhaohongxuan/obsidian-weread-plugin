@@ -112,6 +112,7 @@ export interface WereadPluginSettings {
 	bookshelfSourceMode: 'bookshelf' | 'notebooks';
 	journalRefreshHours: number;
 	journalExcludedBookIds: string[];
+	journalIncludeArticles: boolean;
 	favoritesViewMode: 'cards' | 'list';
 	favoritesCanvasFolder: string;
 	favoritesCanvasLocationVersion: 0 | 1;
@@ -178,6 +179,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	bookshelfSourceMode: 'bookshelf',
 	journalRefreshHours: 24,
 	journalExcludedBookIds: [],
+	journalIncludeArticles: true,
 	favoritesViewMode: 'cards',
 	favoritesCanvasFolder: '',
 	favoritesCanvasLocationVersion: 0,
@@ -220,6 +222,10 @@ const createSettingsStore = () => {
 		const settings: WereadPluginSettings = {
 			...restData,
 			journalExcludedBookIds: normalizeJournalExcludedBookIds(data.journalExcludedBookIds),
+			journalIncludeArticles:
+				typeof rawData.journalIncludeArticles === 'boolean'
+					? rawData.journalIncludeArticles
+					: DEFAULT_SETTINGS.journalIncludeArticles,
 			syncMode:
 				data.syncMode === 'blacklist' || data.syncMode === 'whitelist'
 					? data.syncMode
@@ -837,6 +843,10 @@ const createSettingsStore = () => {
 		}));
 	};
 
+	const setJournalIncludeArticles = (value: boolean) => {
+		store.update((state) => ({ ...state, journalIncludeArticles: value }));
+	};
+
 	const setFavoritesViewMode = (mode: 'cards' | 'list') => {
 		store.update((state) => ({ ...state, favoritesViewMode: mode === 'list' ? 'list' : 'cards' }));
 	};
@@ -850,6 +860,7 @@ const createSettingsStore = () => {
 			setBookshelfSourceMode,
 			setJournalRefreshHours,
 			setJournalExcludedBookIds,
+			setJournalIncludeArticles,
 			setLoginMethod,
 			setNoteLocationFolder,
 			setCookies,

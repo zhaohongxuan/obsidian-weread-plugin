@@ -142,7 +142,8 @@ export class WereadLibraryView extends ItemView {
 		this.contentEl.empty();
 		this.contentEl.addClass('weread-library-view');
 		this.opened = true;
-		const nav = this.contentEl.createDiv({
+		const header = this.contentEl.createDiv({ cls: 'weread-library-header' });
+		const nav = header.createDiv({
 			cls: 'weread-library-tabs',
 			attr: { role: 'tablist', 'aria-label': '微信读书功能' }
 		});
@@ -183,6 +184,12 @@ export class WereadLibraryView extends ItemView {
 			};
 			this.buttons.set(tab, button);
 		}
+		const settingsButton = header.createEl('button', {
+			cls: 'clickable-icon weread-library-settings',
+			attr: { type: 'button', 'aria-label': '微信读书设置', title: '设置' }
+		});
+		setIcon(settingsButton, 'settings');
+		settingsButton.onclick = () => this.plugin.openWereadSettingsTab();
 		this.panelsEl = this.contentEl.createDiv({ cls: 'weread-library-panels' });
 		await this.selectTab(this.tab);
 		this.mountDetail();

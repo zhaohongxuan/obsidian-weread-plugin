@@ -276,8 +276,8 @@
 	flex-wrap: wrap;
 }
 .weread-journal-quote .weread-journal-actions {
-	flex: 0 0 auto;
-	flex-wrap: nowrap;
+	flex: 0 1 auto;
+	flex-wrap: wrap;
 	justify-content: flex-end;
 	margin-left: auto;
 	margin-bottom: 0;
@@ -292,6 +292,55 @@
 	flex: 0 0 14px;
 	width: 14px;
 	height: 14px;
+}
+
+.weread-journal-quote .weread-journal-actions .weread-journal-article-toggle {
+	padding: 5px 6px;
+	border-color: transparent;
+	background: transparent;
+	color: var(--text-muted);
+}
+.weread-journal-toggle-track {
+	position: relative;
+	flex: 0 0 26px;
+	width: 26px;
+	height: 14px;
+	border-radius: 7px;
+	background: var(--background-modifier-border);
+}
+.weread-journal-toggle-track::after {
+	content: '';
+	position: absolute;
+	left: 2px;
+	top: 2px;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--text-on-accent, white);
+}
+.weread-journal-article-toggle[aria-checked='true'] .weread-journal-toggle-track {
+	background: var(--interactive-accent);
+}
+.weread-journal-article-toggle[aria-checked='true'] .weread-journal-toggle-track::after {
+	transform: translateX(12px);
+}
+
+.weread-journal-anniversary-year + .weread-journal-anniversary-year {
+	margin-top: 24px;
+}
+.weread-journal-view .weread-journal-anniversary-year-heading {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	margin: 16px 0 4px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.5;
+}
+.weread-journal-anniversary-year-count {
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 400;
 }
 
 .weread-journal-note {

@@ -236,12 +236,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private bookOpenModeSetting(): void {
 		new Setting(this.containerEl)
 			.setName('阅读入口')
-			.setDesc('控制书架、详情、今日、回顾、收藏中的阅读入口打开网页版还是 App')
+			.setDesc('桌面可选择网页版或 App；移动端 iOS/iPadOS/Android 固定使用 App（deeplink）')
 			.addDropdown((dropdown) => {
 				return dropdown
 					.addOption('web', '网页版')
 					.addOption('app', 'App（deeplink）')
-					.setValue(get(settingsStore).bookOpenMode ?? 'web')
+					.setValue(Platform.isMobile ? 'app' : get(settingsStore).bookOpenMode ?? 'web')
+					.setDisabled(Platform.isMobile)
 					.onChange((value: string) => {
 						settingsStore.actions.setBookOpenMode(value as BookOpenMode);
 					});
@@ -252,13 +253,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName('网页版打开方式')
 			.setDesc(
-				'控制书架、详情、今日、回顾、收藏中的网页版阅读入口默认在新标签页还是新窗口打开'
+				'仅桌面网页版阅读入口可选择新标签页或新窗口；移动端固定使用 App（deeplink）'
 			)
 			.addDropdown((dropdown) => {
 				return dropdown
 					.addOption('TAB', '新标签页')
 					.addOption('WINDOW', '新窗口')
 					.setValue(get(settingsStore).readingOpenMode)
+					.setDisabled(Platform.isMobile)
 					.onChange((value: string) => {
 						settingsStore.actions.setReadingOpenMode(value as ReadingOpenMode);
 					});
@@ -293,6 +295,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.setValue(String(get(settingsStore).journalRefreshHours))
 				.onChange((value) => settingsStore.actions.setJournalRefreshHours(Number(value))));
 		new Setting(this.containerEl)
+			.setName('旧句重逢包含公众号')
+			.setDesc('仅控制「今日」与「回顾」的旧句重逢是否包含公众号，不影响笔记同步、完整回顾和收藏。')
+			.addToggle((toggle) => toggle
+				.setValue(get(settingsStore).journalIncludeArticles)
+				.onChange((value) => settingsStore.actions.setJournalIncludeArticles(value)));
+		new Setting(this.containerEl)
 			.setName('旧句重逢排除书籍')
 			.setDesc('选中的书籍将从「今日」与「回顾」的旧句重逢中排除，仅影响旧句推荐。')
 			.addButton((button) => {
@@ -319,7 +327,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName('书架默认视图')
-			.setDesc('书架页的默认展示方式，可在书架工具栏图标间快速切换')
+			.setDesc('选择书架默认的列表（封面与详情）或纯封面展示方式')
 			.addDropdown((dropdown) => {
 				return dropdown
 					.addOption('list', '列表（封面+详情）')

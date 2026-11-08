@@ -13,6 +13,12 @@ export type { BookshelfSourceMode, ShelfSyncResponse, BookshelfFolder, Bookshelf
 const PROGRESS_CONCURRENCY = 4;
 const PROGRESS_TEXT_PATTERN = /^(\d+(?:\.\d+)?)%?$/;
 
+/** Normalize the documented bookshelf category string to its primary classification. */
+export function getBookshelfCategory(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	return value.split('-', 1)[0].trim() || undefined;
+}
+
 const IDLE_PROGRESS: BookshelfProgress = {
 	state: 'idle'
 };
@@ -66,6 +72,7 @@ export default class WereadBookshelfService {
 					bookId,
 					title: String(raw.title || '未命名书籍'),
 					author: String(raw.author || '未知作者'),
+					category: getBookshelfCategory(raw.category),
 					cover:
 						typeof raw.cover === 'string'
 							? raw.cover.replace('/s_', '/t7_')

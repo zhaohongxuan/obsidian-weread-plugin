@@ -593,12 +593,12 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		const periodControls = nav.createDiv({ cls: 'weread-stats-period-controls' });
 		if (this.currentMode !== 'overall') {
 			const timePicker = periodControls.createDiv({ cls: 'weread-stats-timepicker' });
-			const prevBtn = timePicker.createEl('button', { cls: 'weread-stats-timepicker-btn' });
+			const prevBtn = timePicker.createEl('button', { cls: 'clickable-icon weread-stats-timepicker-btn' });
 			setIcon(prevBtn, 'chevron-left');
 			prevBtn.setAttribute('aria-label', '上一时段');
 			prevBtn.addEventListener('click', () => { this.currentOffset--; this.data = null; this.render(); this.loadData(); });
 			timePicker.createSpan({ cls: 'weread-stats-timepicker-label', text: periodLabel(this.currentMode, this.currentOffset) });
-			const nextBtn = timePicker.createEl('button', { cls: 'weread-stats-timepicker-btn' + (this.currentOffset >= 0 ? ' is-disabled' : '') });
+			const nextBtn = timePicker.createEl('button', { cls: 'clickable-icon weread-stats-timepicker-btn' + (this.currentOffset >= 0 ? ' is-disabled' : '') });
 			setIcon(nextBtn, 'chevron-right');
 			nextBtn.setAttribute('aria-label', '下一时段');
 			if (this.currentOffset >= 0) nextBtn.setAttribute('disabled', 'true');
@@ -757,7 +757,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const viewTitles: Record<ChartView, string> = { bar: '柱状图', calendar: '日历', heatmap: '热力图' };
 			for (const v of availableViews) {
 				const btn = toggleGroup.createEl('button', {
-					cls: 'weread-stats-view-toggle-btn' + (currentView === v ? ' is-active' : ''),
+					cls: 'clickable-icon weread-stats-view-toggle-btn' + (currentView === v ? ' is-active' : ''),
 					attr: { title: viewTitles[v], 'aria-label': viewTitles[v], 'aria-pressed': String(currentView === v) }
 				});
 				setIcon(btn, viewIcons[v]);
