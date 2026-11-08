@@ -2,7 +2,7 @@
 .weread-bookshelf-folder-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-	gap: 20px 12px;
+	gap: 12px 6px;
 	align-items: start;
 	margin: 12px 0 28px;
 }
@@ -247,7 +247,7 @@
 @container (max-width: 480px) {
 	.weread-bookshelf-folder-grid {
 		grid-template-columns: repeat(auto-fill, minmax(97.6px, 1fr));
-		gap: 16px 10px;
+		gap: 10px 6px;
 	}
 	.weread-bookshelf-folder-grid > button.weread-bookshelf-folder-card {
 		padding: 5px;
