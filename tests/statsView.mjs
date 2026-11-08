@@ -129,6 +129,20 @@ window.smoke = {
   check(categories.find(row => row.textContent.includes('文学'))?.textContent.includes('30分钟'), 'Literature category shows its actual 30-minute fixture');
   layout(false); return assertions;
  },
+ iconGeometry() {
+  return ['.weread-stats-timepicker-btn', '.weread-stats-view-toggle-btn'].flatMap(selector => {
+   const nodes = [...document.querySelectorAll(selector)];
+   check(nodes.length >= 2, 'Production stats icon controls exist: ' + selector);
+   return nodes.map(node => {
+    const svg = node.querySelector('svg'); check(svg, 'Production stats SVG exists: ' + selector);
+    const box = node.getBoundingClientRect(), icon = svg.getBoundingClientRect(), style = getComputedStyle(node);
+    const left = box.left + parseFloat(style.paddingLeft) + parseFloat(style.borderLeftWidth || 0);
+    const right = box.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth || 0);
+    return {selector, width: icon.width, height: icon.height, contentWidth: right - left, padding: style.padding,
+     fits: icon.left >= left - 1 && icon.right <= right + 1 && icon.top >= box.top - 1 && icon.bottom <= box.bottom + 1};
+   });
+  });
+ },
  async controls() {
   const original = calls.length; await click('.weread-stats-timepicker-btn');
   check(calls.length === original + 1 && document.querySelector('.weread-stats-timepicker-label').textContent === '2026年10月', 'Previous loads previous month');
@@ -267,7 +281,7 @@ async function browserBundle() {
      export class Component { addChild(child) { return child; } removeChild(child) { child.onunload?.(); return child; } }
      export class ItemView extends Component {} export class Modal {} export class Notice { constructor(text) { console.info(text); } }
      export class TFile {} export class Vault {} export class App {} export class Menu {} export class WorkspaceLeaf {}
-     export function setIcon(el, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor'); svg.setAttribute('stroke-width','1.7'); svg.setAttribute('aria-hidden','true'); const p = document.createElementNS(svg.namespaceURI,'path'); const paths = {'chevron-left':'m15 18-6-6 6-6','chevron-right':'m9 18 6-6-6-6','image-down':'M13 3H3v18h18V11M17 3v10m-4-4 4 4 4-4M3 16l5-5 8 10','bar-chart-2':'M5 20V10m7 10V4m7 16v-7','calendar-days':'M3 5h18v16H3zM3 10h18M7 3v4m10-4v4','clock':'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'}; p.setAttribute('d', paths[name] || 'M4 5h16v14H4zM8 9h8m-8 4h6'); svg.append(p); el.append(svg); }
+     export function setIcon(el, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('class','svg-icon'); svg.setAttribute('width','24'); svg.setAttribute('height','24'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor'); svg.setAttribute('stroke-width','1.7'); svg.setAttribute('aria-hidden','true'); const p = document.createElementNS(svg.namespaceURI,'path'); const paths = {'chevron-left':'m15 18-6-6 6-6','chevron-right':'m9 18 6-6-6-6','image-down':'M13 3H3v18h18V11M17 3v10m-4-4 4 4 4-4M3 16l5-5 8 10','bar-chart-2':'M5 20V10m7 10V4m7 16v-7','calendar-days':'M3 5h18v16H3zM3 10h18M7 3v4m10-4v4','clock':'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'}; p.setAttribute('d', paths[name] || 'M4 5h16v14H4zM8 9h8m-8 4h6'); svg.append(p); el.append(svg); }
     `
 								: name === 'settings'
 									? 'export const settingsStore = {value: {}, actions: {setUserSignature() {}}};'
@@ -428,6 +442,33 @@ test(
 		// Main imports legacy style.css after the Stats module; verify that cascade too.
 		await appendCss(await readFile('style.css', 'utf8'));
 		await evaluate('smoke.open()');
+		// Exact native Obsidian tablet selector/padding from app.css used in the
+		// real WebKit reproduction; its specificity must exceed component padding.
+		await appendCss('.is-tablet button:not(.clickable-icon) { padding: 4px 20px; }');
+		for (const [mode, width, classes] of [
+			['desktop', 1024, 'theme-light'],
+			['phone', 390, 'theme-light is-mobile is-phone is-ios'],
+			['tablet-wide', 1024, 'theme-light is-mobile is-tablet is-ios'],
+			['tablet-narrow', 768, 'theme-light is-mobile is-tablet is-ios']
+		]) {
+			await resize(width, 1366, mode !== 'desktop');
+			await evaluate(`document.body.className = ${JSON.stringify(classes)}`);
+			await t.test(`stats ${mode} icon SVGs fit usable button content`, async () => {
+				const geometry = await evaluate('smoke.iconGeometry()');
+				assert(
+					geometry.every(
+						(icon) =>
+							icon.width >= 12 &&
+							icon.height >= 12 &&
+							icon.contentWidth >= icon.width - 1 &&
+							icon.fits
+					),
+					JSON.stringify(geometry)
+				);
+			});
+		}
+		await evaluate('document.body.className = "theme-light"');
+		await resize(1100, 1000, false);
 		const screenshot = async (filename) => {
 			await evaluate('smoke.settle()');
 			const shot = await send('Page.captureScreenshot', {

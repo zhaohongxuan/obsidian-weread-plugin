@@ -269,6 +269,30 @@ window.smoke = {
     journal.publish(previousState); settingsStore.set(settings('account-a'));
     return assertions;
   },
+  async iconSetup() {
+    await closeFavoritesPreview();
+    journal.publish({...state, notes: baseNotes, syncing: false, error: ''});
+    await mount('today');
+  },
+  async iconCleanup() {
+    await closeFavoritesPreview();
+    favorites.publish({favorites: []});
+  },
+  iconGeometry(selectors) {
+    return selectors.flatMap(selector => {
+      const nodes = [...document.querySelectorAll(selector)];
+      check(nodes.length > 0, 'Production icon control exists: ' + selector);
+      return nodes.map(node => {
+        const svg = node.querySelector('svg');
+        check(svg, 'Production icon SVG exists: ' + selector);
+        const box = node.getBoundingClientRect(), icon = svg.getBoundingClientRect(), style = getComputedStyle(node);
+        const left = box.left + parseFloat(style.paddingLeft) + parseFloat(style.borderLeftWidth || 0);
+        const right = box.right - parseFloat(style.paddingRight) - parseFloat(style.borderRightWidth || 0);
+        return {selector, width: icon.width, height: icon.height, contentWidth: right - left, padding: style.padding,
+          fits: icon.left >= left - 1 && icon.right <= right + 1 && icon.top >= box.top - 1 && icon.bottom <= box.bottom + 1};
+      });
+    });
+  },
   async noteSorting() {
     const previousState = state;
     const notes = Array.from({length: 105}, (_, index) => ({...note('sort-' + index, 'a', index % 2 ? 'thought' : 'highlight', 'SORT NOTE ' + index, '2026-11-06T01:00:00Z'), createTime: RealDate.parse('2026-11-06T01:00:00Z') + index * 60000}));
@@ -1008,7 +1032,7 @@ async function browserBundle() {
 					builder.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({
 						contents:
 							name === 'obsidian'
-								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'refresh-cw' ? 'M3 11a9 9 0 0 1 15.4-6.4L21 7 M21 3v4h-4 M21 13a9 9 0 0 1-15.4 6.4L3 17 M3 21v-4h4' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
+								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); svg.setAttribute('class', 'svg-icon'); svg.setAttribute('width', '24'); svg.setAttribute('height', '24'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'refresh-cw' ? 'M3 11a9 9 0 0 1 15.4-6.4L21 7 M21 3v4h-4 M21 13a9 9 0 0 1-15.4 6.4L3 17 M3 21v-4h4' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
 								: name === 'electron'
 									? `export const shell = {async openExternal(url) { window.journalExternalOpens.push(url); }};`
 									: `let value, persisted; const listeners = new Set(), actionCalls = []; const set = (next) => { value = next; for (const fn of listeners) fn(value); }; const save = (key, next) => { actionCalls.push([key, structuredClone(next)]); persisted = structuredClone({...value, [key]: next}); set(structuredClone(persisted)); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, reload() { set(structuredClone(persisted)); }, saved: () => structuredClone(persisted), actionCalls, actions: { setJournalExcludedBookIds(ids) { save('journalExcludedBookIds', ids); }, setJournalIncludeArticles(include) { save('journalIncludeArticles', include); }, setFavoritesViewMode(mode) { save('favoritesViewMode', mode); } }, listenerCount: () => listeners.size };`
@@ -1143,6 +1167,62 @@ test(
 		await evaluate(
 			`(() => { const style = document.createElement('style'); style.textContent = 'body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f7f4; color: #292d29; --background-primary: #fff; --background-secondary: #f3f1ec; --background-modifier-border: #dddcd5; --text-normal: #292d29; --text-muted: #72756d; --interactive-accent: #5f765c; } main { max-width: 1050px; margin: auto; } button, input, select { font: inherit; padding: 7px 11px; border: 1px solid #d8d9d0; background: #fff; border-radius: 6px; color: inherit; } button { cursor: pointer; } button.mod-cta { background: #e0e8d9; } button:disabled { opacity: .45; }'; document.head.append(style); })()`
 		);
+		// Minimal native Obsidian app.css tablet rule, extracted read-only during the
+		// WebKit reproduction. Keep its specificity: simplified mobile CSS misses this bug.
+		await evaluate(
+			`(() => { const style = document.createElement('style'); style.textContent = '.is-tablet button:not(.clickable-icon) { padding: 4px 20px; }'; document.head.append(style); })()`
+		);
+		for (const surface of ['journal', 'favorites']) {
+			await evaluate(
+				surface === 'journal' ? 'smoke.iconSetup()' : 'smoke.favoritesPreview("cards")'
+			);
+			const selectors =
+				surface === 'journal'
+					? [
+							'.weread-journal-refresh',
+							'.weread-journal-note-actions button',
+							'.weread-journal-sort',
+							'.weread-journal-note-actions a'
+						]
+					: ['.weread-favorites-toolbar-icon', '.weread-favorites-action:has(svg)'];
+			for (const [mode, width, classes] of [
+				['desktop', 1024, ''],
+				['phone', 390, 'is-mobile is-phone is-ios'],
+				['tablet-wide', 1024, 'is-mobile is-tablet is-ios'],
+				['tablet-narrow', 768, 'is-mobile is-tablet is-ios']
+			]) {
+				await send('Emulation.setDeviceMetricsOverride', {
+					width,
+					height: 1366,
+					deviceScaleFactor: 1,
+					mobile: mode !== 'desktop'
+				});
+				await evaluate(`document.body.className = ${JSON.stringify(classes)}`);
+				await t.test(`${surface} ${mode} icon SVGs fit usable button content`, async () => {
+					const geometry = await evaluate(
+						`smoke.iconGeometry(${JSON.stringify(selectors)})`
+					);
+					assert(
+						geometry.every(
+							(icon) =>
+								icon.width >= 12 &&
+								icon.height >= 12 &&
+								icon.contentWidth >= icon.width - 1 &&
+								icon.fits
+						),
+						JSON.stringify(geometry)
+					);
+				});
+			}
+		}
+		await evaluate('smoke.iconCleanup()');
+		await evaluate('document.body.className = ""');
+		await send('Emulation.setDeviceMetricsOverride', {
+			width: 1180,
+			height: 1000,
+			deviceScaleFactor: 1,
+			mobile: false
+		});
 		await evaluate('smoke.noteSorting()');
 		t.diagnostic(
 			`${await evaluate('smoke.anniversaryYears()')} focused anniversary year-group assertions passed`

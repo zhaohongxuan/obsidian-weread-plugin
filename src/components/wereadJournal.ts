@@ -202,7 +202,7 @@ export class WereadJournalPanel extends WereadPanel {
 			attr: { 'aria-live': 'polite' }
 		});
 		this.refreshButton = heading.createEl('button', {
-			cls: 'weread-journal-refresh',
+			cls: 'clickable-icon weread-journal-refresh',
 			attr: { type: 'button', title: '刷新笔记', 'aria-label': '刷新笔记' }
 		});
 		setIcon(this.refreshButton, 'refresh-cw');
@@ -552,7 +552,7 @@ export class WereadJournalPanel extends WereadPanel {
 		};
 		const blockedQuote = this.quote;
 		const blacklist = actions.createEl('button', {
-			cls: 'weread-journal-blacklist',
+			cls: 'clickable-icon weread-journal-blacklist',
 			attr: {
 				type: 'button',
 				'aria-label': '加入旧句重逢黑名单',
@@ -809,7 +809,7 @@ export class WereadJournalPanel extends WereadPanel {
 		});
 		const label = `时间排序：${this.noteSortOrder === 'desc' ? '最新在前' : '最早在前'}`;
 		const button = heading.createEl('button', {
-			cls: 'weread-journal-sort',
+			cls: 'clickable-icon weread-journal-sort',
 			attr: {
 				type: 'button',
 				title: label,
@@ -927,7 +927,7 @@ export class WereadJournalPanel extends WereadPanel {
 			});
 		};
 		const copy = actions.createEl('button', {
-			cls: 'weread-journal-note-action',
+			cls: 'clickable-icon weread-journal-note-action',
 			attr: { type: 'button', title: '复制正文', 'aria-label': '复制正文' }
 		});
 		setIcon(copy, 'copy');
@@ -941,7 +941,7 @@ export class WereadJournalPanel extends WereadPanel {
 		};
 		if (note.kind === 'highlight' && this.favorites) {
 			const star = actions.createEl('button', {
-				cls: 'weread-journal-note-action weread-journal-favorite',
+				cls: 'clickable-icon weread-journal-note-action weread-journal-favorite',
 				attr: { type: 'button', 'aria-label': '收藏', 'aria-pressed': 'false' }
 			});
 			star.dataset.favoriteId = note.id;

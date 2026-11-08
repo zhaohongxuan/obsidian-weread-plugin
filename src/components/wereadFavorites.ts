@@ -134,7 +134,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			['list', '列表视图', 'list']
 		] as const) {
 			const button = actions.createEl('button', {
-				cls: 'weread-favorites-toolbar-icon',
+				cls: 'clickable-icon weread-favorites-toolbar-icon',
 				attr: { type: 'button', 'aria-label': label, title: label }
 			});
 			setIcon(button, icon);
@@ -146,7 +146,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			};
 		}
 		this.canvasButton = actions.createEl('button', {
-			cls: 'weread-favorites-toolbar-icon',
+			cls: 'clickable-icon weread-favorites-toolbar-icon',
 			attr: { type: 'button', 'aria-label': '在Canvas中打开收藏' }
 		});
 		setIcon(this.canvasButton, 'layout-dashboard');
@@ -376,7 +376,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			});
 		};
 		const copy = actions.createEl('button', {
-			cls: 'weread-favorites-action',
+			cls: 'clickable-icon weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '复制正文', title: '复制正文' }
 		});
 		setIcon(copy, 'copy');
@@ -389,7 +389,7 @@ export class WereadFavoritesPanel extends WereadPanel {
 			}
 		};
 		const remove = actions.createEl('button', {
-			cls: 'weread-favorites-action',
+			cls: 'clickable-icon weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '取消收藏', title: '取消收藏' }
 		});
 		setIcon(remove, 'star');

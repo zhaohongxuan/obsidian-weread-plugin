@@ -63,6 +63,8 @@ Tests:
 
 ## Tooling configuration
 
+- Mark icon-only buttons with Obsidian's `clickable-icon` class. The native `.is-tablet button:not(.clickable-icon)` rule adds horizontal padding that can collapse SVGs inside compact controls. Do not mask this with SVG shrink overrides: test actual rendered Journal/Favorites/Stats controls with the native tablet rule and assert positive SVG/content widths with no overflow at desktop, phone and tablet sizes. Mobile reading always uses App deeplinks; disabled mobile settings must not overwrite the saved desktop preferences.
+
 - TypeScript: `tsconfig.json` (ESNext modules, ES6 target, `noImplicitAny: true`).
 - Lint: `.eslintrc` with `@typescript-eslint` and `prettier`.
 - Format: `.prettierrc` (single quotes, semicolons, print width 100).
@@ -190,7 +192,7 @@ Run the affected group while developing, then the full checks above for executab
 | Favorites data, Canvas, filesystem and directory settings    | `node --test tests/favorites.mjs tests/favoritesCanvas.mjs tests/favoritesFilesystem.mjs tests/favoritesStorage.mjs tests/favoritesSettings.mjs tests/favoriteBookFiles.mjs` |
 | Favorites layout, search, counts and palette                 | `node --test tests/favoritesMasonry.mjs`                                                                                                                                     |
 | Library and in-page book details                             | `node --test tests/libraryView.mjs tests/bookDetailHelpers.mjs tests/bookDetailView.mjs`                                                                                     |
-| Reader positioning and tab/window lifecycle                  | `node --test tests/webReaderBookmark.mjs tests/readingNavigation.mjs tests/windowNavigation.mjs`                                                                             |
+| Reader positioning and tab/window lifecycle                  | `node --test tests/mobileReading.mjs tests/webReaderBookmark.mjs tests/readingNavigation.mjs tests/windowNavigation.mjs`                                                     |
 | Statistics/cache, insights and layout                        | `node --test tests/statsCache.mjs tests/statsInsights.mjs tests/statsPanel.mjs tests/statsView.mjs`                                                                          |
 
 For a narrow reproduction, use `node --test --test-name-pattern='fractional browser zoom' tests/favoritesMasonry.mjs`. A targeted name filter intentionally excludes other cases; it does not replace the complete group/full suite.

@@ -236,12 +236,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 	private bookOpenModeSetting(): void {
 		new Setting(this.containerEl)
 			.setName('阅读入口')
-			.setDesc('控制书架、详情、今日、回顾、收藏中的阅读入口打开网页版还是 App')
+			.setDesc('桌面可选择网页版或 App；移动端 iOS/iPadOS/Android 固定使用 App（deeplink）')
 			.addDropdown((dropdown) => {
 				return dropdown
 					.addOption('web', '网页版')
 					.addOption('app', 'App（deeplink）')
-					.setValue(get(settingsStore).bookOpenMode ?? 'web')
+					.setValue(Platform.isMobile ? 'app' : get(settingsStore).bookOpenMode ?? 'web')
+					.setDisabled(Platform.isMobile)
 					.onChange((value: string) => {
 						settingsStore.actions.setBookOpenMode(value as BookOpenMode);
 					});
@@ -252,13 +253,14 @@ export class WereadSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName('网页版打开方式')
 			.setDesc(
-				'控制书架、详情、今日、回顾、收藏中的网页版阅读入口默认在新标签页还是新窗口打开'
+				'仅桌面网页版阅读入口可选择新标签页或新窗口；移动端固定使用 App（deeplink）'
 			)
 			.addDropdown((dropdown) => {
 				return dropdown
 					.addOption('TAB', '新标签页')
 					.addOption('WINDOW', '新窗口')
 					.setValue(get(settingsStore).readingOpenMode)
+					.setDisabled(Platform.isMobile)
 					.onChange((value: string) => {
 						settingsStore.actions.setReadingOpenMode(value as ReadingOpenMode);
 					});

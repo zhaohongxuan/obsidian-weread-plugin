@@ -1,5 +1,5 @@
 import './wereadBookDetail.css';
-import { Notice, TFile, setIcon } from 'obsidian';
+import { Notice, Platform, TFile, setIcon } from 'obsidian';
 import { get } from 'svelte/store';
 import type ApiRouter from '../api-router';
 import type WereadPlugin from '../../main';
@@ -258,7 +258,12 @@ export class WereadBookDetailPanel extends WereadPanel {
 		action: () => void,
 		cls = 'weread-detail-action'
 	): HTMLButtonElement {
-		const button = parent.createEl('button', { text, cls, attr: { type: 'button' } });
+		// Compact icon controls must opt out of the host's tablet text-button padding.
+		const button = parent.createEl('button', {
+			text,
+			cls: text ? cls : `clickable-icon ${cls}`,
+			attr: { type: 'button' }
+		});
 		button.onclick = action;
 		return button;
 	}
@@ -536,7 +541,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 						}
 					});
 				}
-				if (h.createTime) meta.createSpan({ text: formatNoteTimestamp(Number(h.createTime) * 1000) });
+				if (h.createTime)
+					meta.createSpan({ text: formatNoteTimestamp(Number(h.createTime) * 1000) });
 				if (h.range) meta.createSpan({ text: `位置 ${String(h.range).split('-')[0]}` });
 				if (!personal && h.totalCount) meta.createSpan({ text: `${h.totalCount} 人划线` });
 				const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
@@ -566,7 +572,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 					?.title ||
 				'';
 			if (chapter) meta.createSpan({ text: chapter });
-			if (r?.createTime) meta.createSpan({ text: formatNoteTimestamp(Number(r.createTime) * 1000) });
+			if (r?.createTime)
+				meta.createSpan({ text: formatNoteTimestamp(Number(r.createTime) * 1000) });
 			const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
 			this.sourceAndCopy(actions, r?.chapterUid, r?.range, chapter, r?.content || '');
 			if (this.localFilePath) this.button(actions, '本地笔记', () => void this.openLocal());
@@ -662,7 +669,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 		const bookId = this.bookId,
 			generation = this.generation;
 		try {
-			if (get(settingsStore).bookOpenMode === 'app')
+			if (Platform.isMobile || get(settingsStore).bookOpenMode === 'app')
 				window.open(`weread://reading?bId=${encodeURIComponent(bookId)}`);
 			else await this.plugin.openPreferredReadingView(getPcUrl(bookId));
 		} catch {
