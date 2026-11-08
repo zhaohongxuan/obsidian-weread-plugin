@@ -27,7 +27,11 @@ const mocks = {
 	'./settings': { settingsStore: settings },
 	'./parser/parseResponse': {
 		parseMetadata: (entry) => ({
-			...entry.book,
+			bookId: entry.book.bookId,
+			title: entry.book.title,
+			author: entry.book.author,
+			cover: entry.book.cover,
+			bookType: entry.book.type,
 			noteCount: entry.noteCount,
 			reviewCount: entry.reviewCount
 		})
@@ -40,7 +44,7 @@ const mocks = {
 		formatTimestampToDate: (time) => new Date(time * 1000).toISOString().slice(0, 10)
 	}
 };
-const Service = load('src/bookshelf.ts', mocks).default;
+const { default: Service, getBookshelfCategory } = load('src/bookshelf.ts', mocks);
 const local = (id) => ({
 	bookId: id,
 	title: `Local ${id}`,
@@ -54,6 +58,7 @@ const raw = {
 			bookId: 'a',
 			title: 'A',
 			author: 'Author A',
+			category: ' 哲学宗教 - 东方哲学 - 中国哲学 ',
 			finishReading: 1,
 			readUpdateTime: 1700000000,
 			cover: 'a.jpg'
@@ -92,6 +97,82 @@ function service(overrides = {}) {
 	);
 }
 
+test('official category strings normalize to the trimmed primary classification', () => {
+	for (const [value, expected] of [
+		['哲学宗教-东方哲学', '哲学宗教'],
+		[' 哲学宗教 - 东方哲学 - 中国哲学 ', '哲学宗教'],
+		[' 文学 ', '文学'],
+		['经济理财-投资', '经济理财']
+	]) {
+		assert.equal(getBookshelfCategory(value), expected);
+	}
+	for (const value of [
+		undefined,
+		null,
+		'',
+		'   ',
+		'-东方哲学',
+		0,
+		42,
+		true,
+		[],
+		['文学'],
+		{ category: '文学' },
+		new String('文学')
+	]) {
+		assert.equal(getBookshelfCategory(value), undefined);
+	}
+});
+
+test('shelf category uses only raw strings and stays separate from article kind and folders', async () => {
+	const collection = await service({
+		getShelf: async () => ({
+			books: [
+				{ bookId: 'a', title: '哲学宗教', category: { title: '哲学宗教' } },
+				{ bookId: 'b', title: '文学', category: 42 },
+				{ bookId: 'c', title: '历史' },
+				{ bookId: 'article', type: 3, category: ' 文学-散文 ' }
+			],
+			archive: [{ name: '哲学宗教', bookIds: ['a', 'b', 'c'] }]
+		})
+	}).getCollection('bookshelf');
+	for (const book of collection.books.filter((book) => book.bookId !== 'article')) {
+		assert.equal(book.category, undefined);
+	}
+	const article = collection.books.find((book) => book.bookId === 'article');
+	assert.equal(article.category, '文学');
+	assert.equal(article.isArticle, true);
+	assert.equal(collection.remoteEntryCount, 4);
+	assert.deepEqual(collection.folders[0].bookIds, ['a', 'b', 'c']);
+});
+
+test('434 shelf books preserve categories without per-book enrichment requests', async () => {
+	let shelfCalls = 0;
+	let bookCalls = 0;
+	const books = Array.from({ length: 434 }, (_, index) => ({
+		bookId: `shelf-${index}`,
+		title: `Book ${index}`,
+		category: index % 2 === 0 ? ' 哲学宗教-东方哲学 ' : undefined
+	}));
+	const collection = await service({
+		getShelf: async () => {
+			shelfCalls += 1;
+			return { books };
+		},
+		getBook: async () => {
+			bookCalls += 1;
+			throw new Error('Category enrichment must not request book details');
+		}
+	}).getCollection('bookshelf');
+	assert.equal(shelfCalls, 1);
+	assert.equal(bookCalls, 0);
+	assert.equal(collection.remoteEntryCount, 434);
+	assert.equal(collection.books.length, 436);
+	assert.equal(collection.books.filter((book) => book.category === '哲学宗教').length, 217);
+	assert.equal(collection.books.filter((book) => book.isLocalOnly).length, 2);
+	assert.equal(collection.books.filter((book) => book.category === undefined).length, 219);
+});
+
 test('real shelf includes audio and article entry in count and preserves local-only notes', async () => {
 	const collection = await service().getCollection('bookshelf');
 	assert.equal(collection.remoteEntryCount, 6);
@@ -104,6 +185,13 @@ test('real shelf includes audio and article entry in count and preserves local-o
 	assert.equal(collection.books[0].lastReadDate, '2023-11-14');
 	assert.equal(collection.books[0].finished, true);
 	assert.equal(collection.books[0].progress.readingProgress, undefined);
+	assert.equal(collection.books[0].category, '哲学宗教');
+	assert.equal(collection.books[1].category, undefined);
+	assert.equal(collection.books.find((book) => book.bookId === 'local').category, undefined);
+	assert.equal(collection.books[0].noteCount, 2);
+	assert.equal(collection.books[0].reviewCount, 1);
+	assert.equal(collection.books[0].countsKnown, true);
+	assert.equal(collection.books[0].isArticle, false);
 	assert.equal(collection.books[1].countsKnown, false);
 });
 
@@ -116,6 +204,7 @@ test('empty mp does not count as an entry and notebook source preserves notebook
 	const notebooks = await service().getCollection('notebooks');
 	assert.equal(notebooks.books[0].noteCount, 7);
 	assert.equal(notebooks.books[0].reviewCount, 3);
+	assert.ok(notebooks.books.every((book) => book.category === undefined));
 	assert.equal(
 		notebooks.books.some((book) => book.bookId === 'local'),
 		true
@@ -190,6 +279,7 @@ const Panel = load('src/components/wereadBookshelf.ts', {
 		Platform: { isDesktopApp: false }
 	},
 	'./wereadBookshelf.css': {},
+	'../bookshelf': { default: Service, getBookshelfCategory },
 	'../settings': { settingsStore: settings },
 	'./wereadPanel': { WereadPanel: class {} },
 	'svelte/store': mocks['svelte/store'],

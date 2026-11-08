@@ -66,7 +66,7 @@ Object.defineProperty(navigator, 'clipboard', {configurable: true, value: {async
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 const gate = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return {promise, resolve}; };
 const note = (id, bookId, kind, text, date) => ({
-  id: bookId + ':' + kind + ':' + id, bookId, kind, text, createTime: RealDate.parse(date), cover: 'https://fixture.invalid/' + bookId + '.svg',
+  id: bookId + ':' + kind + ':' + id, bookId, bookType: 0, kind, text, createTime: RealDate.parse(date), cover: 'https://fixture.invalid/' + bookId + '.svg',
   bookTitle: bookId === 'a' ? '山间的阅读' : '城市与记忆', author: bookId === 'a' ? '林间' : '周行',
   chapterTitle: '在日常里发现光', sourceUrl: 'weread://reading?bId=' + bookId
 });
@@ -131,7 +131,7 @@ const browserOpens = [];
 let readingOpenFails = false;
 window.journalExternalOpens = externalOpens;
 window.open = (url) => { browserOpens.push(url); return null; };
-const settings = (key) => ({ bookOpenMode: 'web', wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, journalExcludedBookIds: [], favoritesViewMode: 'cards' });
+const settings = (key) => ({ bookOpenMode: 'web', wereadApiKey: key, userVid: '', cookies: [], journalRefreshHours: 24, journalExcludedBookIds: [], saveArticleToggle: true, favoritesViewMode: 'cards' });
 settingsStore.set(settings('account-a'));
 const plugin = {
   app: {workspace: {async openLinkText(...args) {
@@ -322,6 +322,52 @@ window.smoke = {
     check(cache.map(note => note.id).join('|') === cacheOrder && state.notes === cache, 'UI sorting never mutates or replaces the shared journal note cache');
     journal.publish(previousState);
     return assertions;
+  },
+  async anniversaryYears() {
+    const previousState = state, assertionStart = assertions.length;
+    const entries = [2025, 2024, 2023].flatMap((year, index) => [
+      note('year-early-' + year, 'a', index === 0 ? 'thought' : 'highlight', 'YEAR ' + year + ' EARLY', year + '-11-06T01:00:00Z'),
+      note('year-late-' + year, 'b', index === 1 ? 'thought' : 'highlight', 'YEAR ' + year + ' LATE', year + '-11-06T02:00:00Z')
+    ]);
+    journal.publish({...state, notes: [entries[3], entries[0], entries[5], entries[2], entries[1], entries[4]]});
+    await mount('review');
+    const past = () => view.contentEl.querySelector('.weread-journal-anniversaries');
+    const groups = () => [...past().querySelectorAll('.weread-journal-anniversary-year')];
+    const years = () => groups().map(group => group.dataset.year).join('|');
+    const bodies = root => [...root.querySelectorAll('article .weread-journal-note-text')].map(node => node.textContent);
+    const counts = () => groups().map(group => group.querySelector('.weread-journal-anniversary-year-count')?.textContent).join('|');
+    check(years() === '2025|2024|2023', 'Anniversaries: latest-first renders three distinct year groups');
+    check(groups().every(group => group.querySelector('h3.weread-journal-anniversary-year-heading')?.firstChild?.textContent.trim() === group.dataset.year + ' 年') && counts() === '2 条|2 条|2 条', 'Anniversaries: each year has its own heading and full matching count');
+    check(bodies(past()).join('|') === 'YEAR 2025 LATE|YEAR 2025 EARLY|YEAR 2024 LATE|YEAR 2024 EARLY|YEAR 2023 LATE|YEAR 2023 EARLY', 'Anniversaries: timestamps sort latest-first within every year across books and note kinds');
+    const renderedBodies = bodies(past());
+    check(renderedBodies.length === 6 && new Set(renderedBodies).size === 6 && entries.every(entry => renderedBodies.includes(entry.text)), 'Anniversaries: multiple books in a year produce no missing or duplicate notes');
+    check([...past().querySelectorAll('article')].every(card => card.querySelector('.weread-journal-source') && (!card.classList.contains('is-highlight') || card.querySelector('.weread-journal-favorite')) && card.querySelector('button[aria-label="复制正文"]') && card.querySelector('.weread-journal-note-meta a[aria-label]')), 'Anniversaries: grouped cards retain book, highlight favorite, copy and original actions');
+    click('复制正文', past()); await tick();
+    check(clipboardWrites.at(-1) === 'YEAR 2025 LATE', 'Anniversaries: grouped note copy acts on the correct note');
+    past().querySelector('.weread-journal-sort').click();
+    check(years() === '2023|2024|2025' && bodies(past()).join('|') === 'YEAR 2023 EARLY|YEAR 2023 LATE|YEAR 2024 EARLY|YEAR 2024 LATE|YEAR 2025 EARLY|YEAR 2025 LATE', 'Anniversaries: earliest-first reverses both year and within-year chronology');
+    const filter = view.contentEl.querySelector('select'); filter.value = 'thought'; filter.dispatchEvent(new Event('change'));
+    check(years() === '2024|2025' && counts() === '1 条|1 条' && bodies(past()).join('|') === 'YEAR 2024 LATE|YEAR 2025 EARLY', 'Anniversaries: kind filtering recalculates counts and removes empty years');
+    const search = view.contentEl.querySelector('input[type=search]'); search.value = 'YEAR 2025'; search.dispatchEvent(new Event('input'));
+    check(years() === '2025' && counts() === '1 条' && bodies(past())[0] === 'YEAR 2025 EARLY', 'Anniversaries: search composes with kind filtering and year counts');
+    search.value = 'NO MATCHING YEAR'; search.dispatchEvent(new Event('input'));
+    check(groups().length === 0 && !past().querySelector('article') && past().textContent.includes('往年今日暂无符合筛选的笔记'), 'Anniversaries: empty filters show the existing hint without empty year headings');
+    const bulk = [2025, 2024, 2023].flatMap(year => Array.from({length: 60}, (_, index) => ({...note('bulk-year-' + year + '-' + index, index % 2 ? 'a' : 'b', 'highlight', 'BULK ' + year + '-' + index, year + '-11-06T01:00:00Z'), createTime: RealDate.parse(year + '-11-06T01:00:00Z') + index * 60000})));
+    const cacheOrder = bulk.map(entry => entry.id).join('|');
+    journal.publish({...state, notes: bulk}); await mount('review');
+    const more = () => [...past().querySelectorAll('button')].filter(button => button.textContent.startsWith('再看 '));
+    check(years() === '2025|2024' && bodies(past()).length === 100 && counts() === '60 条|40 / 60 条', 'Anniversaries: one global 100-note limit spans years with a partial-year count');
+    check(bodies(groups()[0])[0] === 'BULK 2025-59' && bodies(groups()[1]).at(-1) === 'BULK 2024-20', 'Anniversaries: global pagination slices the chronologically ordered notes');
+    check(more().length === 1 && more()[0].textContent === '再看 80 条' && !more()[0].closest('.weread-journal-anniversary-year'), 'Anniversaries: exactly one load-more action outside year groups counts all remaining years');
+    more()[0].click();
+    const loadedIds = [...past().querySelectorAll('.weread-journal-favorite')].map(button => button.dataset.favoriteId);
+    check(years() === '2025|2024|2023' && bodies(past()).length === 180 && counts() === '60 条|60 条|60 条' && more().length === 0, 'Anniversaries: load more completes all years and their visible counts');
+    check(new Set(loadedIds).size === 180 && bulk.every(entry => loadedIds.includes(entry.id)), 'Anniversaries: pagination neither drops nor duplicates records across year boundaries');
+    past().querySelector('.weread-journal-sort').click();
+    check(years() === '2023|2024' && bodies(past()).length === 100 && counts() === '60 条|40 / 60 条' && bodies(past())[0] === 'BULK 2023-0' && bodies(past()).at(-1) === 'BULK 2024-39', 'Anniversaries: sort resets the global page and partial counts in earliest-first order');
+    check(state.notes === bulk && bulk.map(entry => entry.id).join('|') === cacheOrder, 'Anniversaries: grouping and pagination preserve shared cache order');
+    journal.publish(previousState);
+    return assertions.length - assertionStart;
   },
   async calendarHeatmap() {
     window.calendarPreviousState = state;
@@ -728,6 +774,103 @@ window.smoke = {
     journal.publish({...state, notes: baseNotes});
     await view.onClose(); view.contentEl.remove(); view = undefined;
   },
+  async reencounterControls() {
+    const assertionStart = assertions.length;
+    const ordinary = baseNotes.map(entry => ({...entry, bookType: 0}));
+    const articles = [
+      {...note('article-one', 'mp', 'highlight', 'ARTICLE SENTINEL 第一条公众号旧句', '2026-11-05T04:00:00Z'), bookType: 3, bookTitle: '合成公众号'},
+      {...note('article-two', 'mp', 'highlight', 'ARTICLE SENTINEL 第二条公众号旧句', '2026-11-04T04:00:00Z'), bookType: 3, bookTitle: '合成公众号'}
+    ];
+    const notes = [...ordinary, ...articles, {...note('other-two', 'b', 'highlight', '城市另一条旧句', '2026-11-03T02:00:00Z'), bookType: 0}];
+    for (const mode of ['today', 'review']) {
+      settingsStore.set(settings('account-a'));
+      journal.publish({...state, notes});
+      await mount(mode);
+      const quote = () => view.contentEl.querySelector('.weread-journal-quote');
+      const quoteId = () => quote().querySelector('.weread-journal-favorite')?.dataset.favoriteId;
+      const blacklist = () => quote().querySelector('.weread-journal-blacklist');
+      const toggle = () => quote().querySelector('.weread-journal-article-toggle');
+      check(toggle()?.tagName === 'BUTTON' && toggle().getAttribute('role') === 'switch' && toggle().getAttribute('aria-label') === '旧句重逢包含公众号' && toggle().getAttribute('aria-checked') === 'true', mode + ': compact article switch is accessible and defaults to included for existing settings');
+      check(blacklist()?.getAttribute('aria-label') === '加入旧句重逢黑名单' && blacklist().textContent.trim() === '' && blacklist().querySelector('svg[data-icon="ban"]'), mode + ': blacklist is an accessible icon-only ban action');
+      check(blacklist().title.includes('山间的阅读') && blacklist().title.includes('划线'), mode + ': blacklist tooltip identifies the current book and its highlights');
+      const stale = blacklist();
+      settingsStore.actions.setJournalExcludedBookIds(['already-excluded']);
+      const firstId = quoteId();
+      const notesBefore = JSON.stringify(state.notes), favoritesBefore = JSON.stringify(favoriteState);
+      const loadsBefore = journalLoads, callsBefore = apiCalls, writesBefore = favoriteWrites;
+      const actionStart = settingsStore.actionCalls.length;
+      stale.click(); await tick();
+      check(firstId?.startsWith('a:') && !quoteId()?.startsWith('a:'), mode + ': blacklist immediately removes the current book with multiple quotes');
+      check(JSON.stringify(settingsStore.current().journalExcludedBookIds) === JSON.stringify(['already-excluded', 'a']), mode + ': blacklist action appends to the latest existing excluded IDs');
+      check(settingsStore.actionCalls[actionStart]?.[0] === 'journalExcludedBookIds', mode + ': blacklist uses the existing persisted settings action');
+      const replacementId = quoteId(), callsAfterBlacklist = settingsStore.actionCalls.length;
+      stale.click(); await tick();
+      check(quoteId() === replacementId && settingsStore.actionCalls.length === callsAfterBlacklist, mode + ': detached stale blacklist cannot blacklist the replacement book');
+      for (let i = 0; i < 6; i++) {
+        click('换一句', quote());
+        check(!quoteId()?.startsWith('a:'), mode + ': same-book shuffle never restores any blacklisted quote ' + i);
+        click('换一本', quote());
+        check(!quoteId()?.startsWith('a:'), mode + ': other-book shuffle never restores a blacklisted book ' + i);
+      }
+      settingsStore.actions.setJournalExcludedBookIds(['already-excluded', 'a', 'b', 'mp']);
+      check(quote().classList.contains('is-empty') && !quoteId() && blacklist().disabled && [...quote().querySelectorAll('button')].filter(button => ['换一句', '换一本'].includes(button.textContent)).every(button => button.disabled), mode + ': all blocked renders the compact empty state and disables blacklist and shuffle actions');
+      settingsStore.actions.setJournalExcludedBookIds(['already-excluded', 'b', 'mp']);
+      check(quoteId()?.startsWith('a:') && !blacklist().disabled, mode + ': restoring via existing excluded settings restores the whole book');
+      settingsStore.actions.setJournalExcludedBookIds(['a', 'b']);
+      check(quoteId()?.startsWith('mp:'), mode + ': article-only eligibility deterministically selects a channel quote');
+      blacklist().click(); await tick();
+      check(!quoteId() && JSON.stringify(settingsStore.current().journalExcludedBookIds) === JSON.stringify(['a', 'b', 'mp']), mode + ': blacklisting a channel excludes all of its article quotes');
+      settingsStore.actions.setJournalExcludedBookIds(['a', 'b']);
+      check(quoteId()?.startsWith('mp:'), mode + ': restoring a channel restores article quotes');
+      toggle().click(); await tick();
+      check(toggle().getAttribute('aria-checked') === 'false' && settingsStore.current().journalIncludeArticles === false && !quoteId(), mode + ': disabling articles immediately removes a current channel quote');
+      check(settingsStore.saved().journalIncludeArticles === false && settingsStore.current().saveArticleToggle === true, mode + ': article preference is persisted independently of article sync');
+      check(journalLoads === loadsBefore && apiCalls === callsBefore && favoriteWrites === writesBefore && JSON.stringify(state.notes) === notesBefore, mode + ': blacklist, restoration and article switch do not reload or mutate journal, call APIs or write favorites');
+      settingsStore.set(settings('account-a'));
+      settingsStore.reload(); await mount(mode);
+      check(toggle().getAttribute('aria-checked') === 'false' && !quoteId() && JSON.stringify(settingsStore.current().journalExcludedBookIds) === JSON.stringify(['a', 'b']), mode + ': mocked saved settings retain exclusions and article choice in a newly opened panel');
+      toggle().click(); await tick();
+      check(toggle().getAttribute('aria-checked') === 'true' && quoteId()?.startsWith('mp:'), mode + ': enabling articles restores channel eligibility deterministically');
+      const peer = new WereadJournalView({}, plugin, journal, api, mode === 'today' ? 'review' : 'today');
+      await peer.onOpen(); await tick();
+      const peerQuote = () => peer.contentEl.querySelector('.weread-journal-quote');
+      const peerToggle = () => peerQuote().querySelector('.weread-journal-article-toggle');
+      peerToggle().click(); await tick();
+      check(toggle().getAttribute('aria-checked') === 'false' && peerToggle().getAttribute('aria-checked') === 'false' && !quoteId() && !peerQuote().querySelector('article'), mode + ': Today and Review switches and current quotes update together');
+      await peer.onClose(); peer.contentEl.remove();
+      settingsStore.actions.setJournalExcludedBookIds([]);
+      for (let i = 0; i < 8; i++) {
+        click('换一句', quote()); check(!quoteId()?.startsWith('mp:'), mode + ': article-disabled same-book shuffle stays ordinary ' + i);
+        click('换一本', quote()); check(!quoteId()?.startsWith('mp:'), mode + ': article-disabled other-book shuffle stays ordinary ' + i);
+      }
+      const retained = view.contentEl.querySelector(mode === 'review' ? '.weread-journal-day-notes' : '.weread-journal-today-notes');
+      let search, calendarHtml, resultHtml;
+      if (mode === 'review') {
+        search = view.contentEl.querySelector('input[type=search]');
+        search.value = 'ARTICLE SENTINEL'; search.dispatchEvent(new Event('input'));
+        search = view.contentEl.querySelector('input[type=search]'); search.focus();
+        resultHtml = view.contentEl.querySelector('.weread-journal-day-notes').innerHTML;
+        calendarHtml = view.contentEl.querySelector('.weread-journal-calendar').innerHTML;
+        check(resultHtml.includes('ARTICLE SENTINEL'), 'Review: disabled article quotes remain searchable in the full cached journal');
+      }
+      const preservedResults = view.contentEl.querySelector(mode === 'review' ? '.weread-journal-day-notes' : '.weread-journal-today-notes');
+      toggle().click(); toggle().click();
+      check(preservedResults.isConnected && (mode !== 'today' || retained === preservedResults), mode + ': switch changes replace only the quote and retain ordinary note DOM');
+      if (mode === 'review') check(search.isConnected && document.activeElement === search && search.value === 'ARTICLE SENTINEL' && preservedResults.innerHTML === resultHtml && view.contentEl.querySelector('.weread-journal-calendar').innerHTML === calendarHtml, 'Review: article switch preserves focused search, complete article results and calendar counts');
+      check(JSON.stringify(state.notes) === notesBefore && JSON.stringify(favoriteState) === favoritesBefore && favoriteWrites === writesBefore, mode + ': quote controls never mutate cached notes or favorites');
+      // The peer and new panel openings legitimately load once; setting actions and shuffles do not.
+      const loadsAfterMounts = journalLoads, callsAfterMounts = apiCalls;
+      settingsStore.actions.setJournalIncludeArticles(false);
+      journal.publish({...state, notes: [...notes]}); await tick();
+      check(!quoteId()?.startsWith('mp:'), mode + ': cache reload publications respect article exclusion');
+      check(journalLoads === loadsAfterMounts && apiCalls === callsAfterMounts, mode + ': quote settings and cache publications never initiate upstream pulls');
+      check(loadsAfterMounts === loadsBefore + 2 && callsAfterMounts === callsBefore + 2, mode + ': only explicit fixture panel opens load journal and Today shelf/stat APIs');
+      settingsStore.set(settings('account-a'));
+    }
+    journal.publish({...state, notes: baseNotes});
+    await view.onClose(); view.contentEl.remove(); view = undefined;
+    return assertions.length - assertionStart;
+  },
   async scrollNotesSetup() {
     const many = Array.from({length: 400}, (_, i) => note('scroll-' + i, 'a', i % 2 ? 'thought' : 'highlight', 'SCROLL FIXTURE ' + i + ' 阅读让每一天留下清晰的痕迹。', '2026-11-06T03:00:00Z'));
     journal.publish({...state, notes: [...many, ...baseNotes.filter(entry => entry.createTime < RealDate.parse('2026-11-05T16:00:00Z'))], syncing: false});
@@ -761,6 +904,11 @@ window.smoke = {
     settingsStore.actions.setJournalExcludedBookIds(['a']);
     check(document.querySelector('.weread-journal-day-list') === list && list.scrollTop === before, 'Quote exclusion updates preserve inner scroll');
     settingsStore.actions.setJournalExcludedBookIds([]);
+    const articleToggle = () => document.querySelector('.weread-journal-article-toggle');
+    articleToggle().click();
+    check(document.querySelector('.weread-journal-day-list') === list && list.scrollTop === before && document.activeElement === list, 'Article switch preserves Review list DOM, inner scroll and focused region');
+    articleToggle().click();
+    check(document.querySelector('.weread-journal-day-list') === list && list.scrollTop === before && document.activeElement === list, 'Re-enabling articles preserves the same focused Review reading position');
     const activateDetail = plugin.activateBookDetailView;
     plugin.activateBookDetailView = async () => { view.contentEl.hidden = true; };
     list.querySelector('.weread-journal-source').click(); await tick();
@@ -863,7 +1011,7 @@ async function browserBundle() {
 								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'refresh-cw' ? 'M3 11a9 9 0 0 1 15.4-6.4L21 7 M21 3v4h-4 M21 13a9 9 0 0 1-15.4 6.4L3 17 M3 21v-4h4' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
 								: name === 'electron'
 									? `export const shell = {async openExternal(url) { window.journalExternalOpens.push(url); }};`
-									: `let value; const listeners = new Set(); const set = (next) => { value = next; for (const fn of listeners) fn(value); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, actions: { setJournalExcludedBookIds(ids) { set({...value, journalExcludedBookIds: ids}); }, setFavoritesViewMode(mode) { set({...value, favoritesViewMode: mode}); } }, listenerCount: () => listeners.size };`
+									: `let value, persisted; const listeners = new Set(), actionCalls = []; const set = (next) => { value = next; for (const fn of listeners) fn(value); }; const save = (key, next) => { actionCalls.push([key, structuredClone(next)]); persisted = structuredClone({...value, [key]: next}); set(structuredClone(persisted)); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, reload() { set(structuredClone(persisted)); }, saved: () => structuredClone(persisted), actionCalls, actions: { setJournalExcludedBookIds(ids) { save('journalExcludedBookIds', ids); }, setJournalIncludeArticles(include) { save('journalIncludeArticles', include); }, setFavoritesViewMode(mode) { save('favoritesViewMode', mode); } }, listenerCount: () => listeners.size };`
 					}));
 					builder.onLoad({ filter: /\.css$/ }, async ({ path: filename }) => ({
 						contents: `const style = document.createElement('style'); style.textContent = ${JSON.stringify(await readFile(filename, 'utf8'))}; document.head.append(style);`,
@@ -996,6 +1144,9 @@ test(
 			`(() => { const style = document.createElement('style'); style.textContent = 'body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f7f4; color: #292d29; --background-primary: #fff; --background-secondary: #f3f1ec; --background-modifier-border: #dddcd5; --text-normal: #292d29; --text-muted: #72756d; --interactive-accent: #5f765c; } main { max-width: 1050px; margin: auto; } button, input, select { font: inherit; padding: 7px 11px; border: 1px solid #d8d9d0; background: #fff; border-radius: 6px; color: inherit; } button { cursor: pointer; } button.mod-cta { background: #e0e8d9; } button:disabled { opacity: .45; }'; document.head.append(style); })()`
 		);
 		await evaluate('smoke.noteSorting()');
+		t.diagnostic(
+			`${await evaluate('smoke.anniversaryYears()')} focused anniversary year-group assertions passed`
+		);
 		await evaluate('smoke.calendarHeatmap()');
 		await send('Input.dispatchKeyEvent', {
 			type: 'keyDown',
@@ -1092,6 +1243,9 @@ test(
 		await evaluate('smoke.review()');
 		await evaluate('smoke.behavior()');
 		await evaluate('smoke.exclusions()');
+		t.diagnostic(
+			`${await evaluate('smoke.reencounterControls()')} focused reencounter control assertions passed`
+		);
 		for (const width of [1180, 375]) {
 			await send('Emulation.setDeviceMetricsOverride', {
 				width,

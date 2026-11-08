@@ -293,6 +293,12 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.setValue(String(get(settingsStore).journalRefreshHours))
 				.onChange((value) => settingsStore.actions.setJournalRefreshHours(Number(value))));
 		new Setting(this.containerEl)
+			.setName('旧句重逢包含公众号')
+			.setDesc('仅控制「今日」与「回顾」的旧句重逢是否包含公众号，不影响笔记同步、完整回顾和收藏。')
+			.addToggle((toggle) => toggle
+				.setValue(get(settingsStore).journalIncludeArticles)
+				.onChange((value) => settingsStore.actions.setJournalIncludeArticles(value)));
+		new Setting(this.containerEl)
 			.setName('旧句重逢排除书籍')
 			.setDesc('选中的书籍将从「今日」与「回顾」的旧句重逢中排除，仅影响旧句推荐。')
 			.addButton((button) => {
@@ -319,7 +325,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName('书架默认视图')
-			.setDesc('书架页的默认展示方式，可在书架工具栏图标间快速切换')
+			.setDesc('选择书架默认的列表（封面与详情）或纯封面展示方式')
 			.addDropdown((dropdown) => {
 				return dropdown
 					.addOption('list', '列表（封面+详情）')

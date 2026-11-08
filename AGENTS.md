@@ -177,6 +177,8 @@ Report pass/fail/skip counts. Missing Chrome causes browser tests to **skip**, s
 
 ### 2. Focused regressions by changed area
 
+If local macOS Chrome processes crash during a heavily parallel run (for example, allocator/display-link failures), rerun the same complete suite with `node --test --test-concurrency=2 tests/*.mjs`. Report the process failure and controlled-run result accurately; do not use this to disregard assertion failures.
+
 Run the affected group while developing, then the full checks above for executable changes:
 
 | Area                                                         | Command                                                                                                                                                                      |
@@ -184,6 +186,7 @@ Run the affected group while developing, then the full checks above for executab
 | API, pagination and authentication                           | `node --test tests/apiPagination.mjs tests/apiKeyValidation.mjs tests/cookieNotebooks.mjs`                                                                                   |
 | Sync results, chapter titles and legacy parser compatibility | `node --test tests/syncResults.mjs tests/reviewChapterTitles.mjs tests/legacyParserSyntax.mjs`                                                                               |
 | Journal/cache and Today/Review UI                            | `node --test tests/journal.mjs tests/journalExclusionSettings.mjs tests/journalView.mjs`                                                                                     |
+| Bookshelf categories, browsing and filters                   | `node --test tests/bookshelf.mjs tests/bookshelfFilters.mjs`                                                                                                                 |
 | Favorites data, Canvas, filesystem and directory settings    | `node --test tests/favorites.mjs tests/favoritesCanvas.mjs tests/favoritesFilesystem.mjs tests/favoritesStorage.mjs tests/favoritesSettings.mjs tests/favoriteBookFiles.mjs` |
 | Favorites layout, search, counts and palette                 | `node --test tests/favoritesMasonry.mjs`                                                                                                                                     |
 | Library and in-page book details                             | `node --test tests/libraryView.mjs tests/bookDetailHelpers.mjs tests/bookDetailView.mjs`                                                                                     |

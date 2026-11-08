@@ -39,8 +39,14 @@ new Function('require', 'module', 'exports', compiled.outputFiles[0].text)(
 	module,
 	module.exports
 );
-const { WereadJournalService, testSettings, parseJournalNotes, journalSourceComplete } =
-	module.exports;
+const {
+	WereadJournalService,
+	testSettings,
+	parseJournalNotes,
+	journalSourceComplete,
+	isJournalArticle,
+	validJournalNote
+} = module.exports;
 
 const book = (bookId = 'one', overrides = {}) => ({
 	bookId,
@@ -166,6 +172,75 @@ test('parser keeps both kinds, numeric IDs, milliseconds, chapters, source links
 	assert.equal(journalSourceComplete({ reviews: [] }, 'thought', 1), false);
 });
 
+test('article metadata preserves note identity, content, dates and source links for both kinds', () => {
+	const original = parseJournalNotes(book(), highlight(), reviews());
+	for (const notebook of [
+		book('one', { book: { ...book().book, type: 3 } }),
+		book('one', { type: 3 })
+	]) {
+		const notes = parseJournalNotes(notebook, highlight(), reviews());
+		assert.equal(notes.length, original.length);
+		assert(notes.every((note) => note.bookType === 3 && isJournalArticle(note)));
+		assert.deepEqual(
+			notes.map(({ bookType, ...note }) => note),
+			original
+		);
+	}
+	const ordinary = parseJournalNotes(
+		book('one', { type: 3, book: { ...book().book, type: 1 } }),
+		highlight(),
+		reviews()
+	);
+	assert(ordinary.every((note) => note.bookType === 1 && !isJournalArticle(note)));
+	for (const type of ['3', null, -1, 3.5, NaN, Infinity]) {
+		const notes = parseJournalNotes(book('one', { type }), highlight(), reviews());
+		assert(notes.every((note) => note.bookType === undefined && !isJournalArticle(note)));
+	}
+});
+
+test('article classification uses exact WeChat URL host and never title or ID guesses', () => {
+	const [note] = parseJournalNotes(book(), highlight(), reviews());
+	assert.equal(isJournalArticle({ ...note, bookType: 3 }), true);
+	for (const sourceUrl of [
+		'https://mp.weixin.qq.com/s/example',
+		'http://mp.weixin.qq.com/s?__biz=example',
+		'https://MP.WEIXIN.QQ.COM/s/example'
+	]) {
+		assert.equal(isJournalArticle({ ...note, sourceUrl }), true, sourceUrl);
+	}
+	for (const sourceUrl of [
+		undefined,
+		'',
+		'not a URL',
+		'//mp.weixin.qq.com/s/example',
+		'https://mp.weixin.qq.com.evil.example/s',
+		'https://evilmp.weixin.qq.com/s',
+		'https://mp.weixin.qq.com@evil.example/s',
+		'https://evil.example/mp.weixin.qq.com',
+		'javascript://mp.weixin.qq.com/s',
+		note.sourceUrl
+	]) {
+		assert.equal(isJournalArticle({ ...note, sourceUrl }), false, String(sourceUrl));
+	}
+	assert.equal(
+		isJournalArticle({ ...note, bookId: 'MP_WXS_unverified', bookTitle: '公众号文章' }),
+		false
+	);
+});
+
+test('old journal note schema remains valid with optional verified type', () => {
+	const notes = parseJournalNotes(book(), highlight(), reviews());
+	for (const note of notes) {
+		assert.equal(Object.hasOwn(note, 'bookType'), false);
+		assert.equal(validJournalNote(note, 'one'), true);
+		assert.equal(validJournalNote({ ...note, bookType: 3 }, 'one'), true);
+		assert.equal(validJournalNote({ ...note, bookType: 1 }, 'one'), true);
+		for (const bookType of ['3', null, -1, NaN, Infinity]) {
+			assert.equal(validJournalNote({ ...note, bookType }, 'one'), false);
+		}
+	}
+});
+
 test('load returns immediately, single flight emits progress and persists notes with counts but no credentials', async (t) => {
 	const gate = deferred();
 	const { service, counts, files } = fixture(t, {
@@ -213,6 +288,147 @@ test('fresh persisted cache hydrates after restart and forced listing skips unch
 	assert.equal(second.counts.books, 1);
 	assert.equal(second.counts.highlights, 0);
 	assert.equal(second.counts.reviews, 0);
+});
+
+test('old cached notes gain overview article type without detail calls or changing note data', async (t) => {
+	const first = fixture(t);
+	await first.service.load();
+	const original = await settled(first.service);
+	assert(original.notes.every((note) => !Object.hasOwn(note, 'bookType')));
+	first.service.dispose();
+	const second = fixture(
+		t,
+		{
+			async getNotebooksWithRetry() {
+				second.counts.books++;
+				return [book('one', { book: { ...book().book, type: 3 } })];
+			}
+		},
+		first.files
+	);
+	const hydrated = await second.service.load();
+	assert.equal(hydrated.hasCache, true);
+	assert.equal(hydrated.syncing, false);
+	assert.deepEqual(hydrated.notes, original.notes);
+	assert.deepEqual(second.counts, { books: 0, highlights: 0, reviews: 0, writes: 0 });
+	await second.service.load(true);
+	const enriched = await settled(second.service);
+	assert.equal(enriched.failedBooks, 0);
+	assert.equal(enriched.totalBooks, original.totalBooks);
+	assert.equal(enriched.scannedBooks, original.scannedBooks);
+	assert(enriched.notes.every((note) => note.bookType === 3 && isJournalArticle(note)));
+	assert.deepEqual(
+		enriched.notes.map(({ bookType, ...note }) => note),
+		original.notes
+	);
+	assert.deepEqual(second.counts, { books: 1, highlights: 0, reviews: 0, writes: 1 });
+	const record = JSON.parse([...first.files].find(([path]) => path.endsWith('.json'))[1]);
+	assert.equal(record.version, 1);
+	assert(record.books[0].notes.every((note) => note.bookType === 3));
+
+	// A later overview lacking type must not erase established type or any notes.
+	second.api.getNotebooksWithRetry = async () => [book()];
+	await second.service.load(true);
+	assert.deepEqual((await settled(second.service)).notes, enriched.notes);
+	assert.equal(second.counts.highlights, 0);
+	assert.equal(second.counts.reviews, 0);
+	second.service.dispose();
+	const third = fixture(t, {}, first.files);
+	const restarted = await third.service.load();
+	assert.deepEqual(restarted.notes, enriched.notes);
+	assert.deepEqual(third.counts, { books: 0, highlights: 0, reviews: 0, writes: 0 });
+});
+
+test('excluding articles enriches fresh legacy caches once through the existing overview', async (t) => {
+	const first = fixture(t, {
+		async getNotebooksWithRetry() {
+			return [book('one'), book('two')];
+		}
+	});
+	await first.service.load();
+	const original = await settled(first.service);
+	first.service.dispose();
+	const gate = deferred();
+	const second = fixture(
+		t,
+		{
+			async getNotebooksWithRetry() {
+				second.counts.books++;
+				return gate.promise;
+			}
+		},
+		first.files
+	);
+	// The default fresh-cache path must still perform no requests.
+	await second.service.load();
+	assert.equal(second.counts.books, 0);
+	testSettings.update((settings) => ({ ...settings, journalIncludeArticles: false }));
+	await Promise.all([second.service.load(), second.service.load(), second.service.load()]);
+	assert.equal(second.counts.books, 1);
+	gate.resolve([
+		book('one', { book: { ...book('one').book, type: 0 } }),
+		book('two', { book: { ...book('two').book, type: 3 } })
+	]);
+	const enriched = await settled(second.service);
+	assert.deepEqual(
+		enriched.notes.map(({ bookType, ...note }) => note),
+		original.notes
+	);
+	assert(
+		enriched.notes
+			.filter((note) => note.bookId === 'one')
+			.every((note) => note.bookType === 0 && !isJournalArticle(note))
+	);
+	assert(enriched.notes.filter((note) => note.bookId === 'two').every(isJournalArticle));
+	await second.service.load();
+	await second.service.load();
+	assert.deepEqual(second.counts, { books: 1, highlights: 0, reviews: 0, writes: 1 });
+});
+
+test('legacy metadata attempts with missing types or errors do not loop and reset with account lineage', async (t) => {
+	for (const fails of [false, true]) {
+		const first = fixture(t);
+		await first.service.load();
+		const original = await settled(first.service);
+		first.service.dispose();
+		const second = fixture(
+			t,
+			{
+				async getNotebooksWithRetry() {
+					second.counts.books++;
+					if (fails) throw new Error('synthetic overview failure');
+					return [book()];
+				}
+			},
+			first.files
+		);
+		testSettings.update((settings) => ({ ...settings, journalIncludeArticles: false }));
+		await second.service.load();
+		assert.deepEqual((await settled(second.service)).notes, original.notes);
+		await second.service.load();
+		await settled(second.service);
+		assert.equal(second.counts.books, 1);
+		assert.equal(second.counts.highlights, 0);
+		assert.equal(second.counts.reviews, 0);
+		// Preference flips alone cannot turn the once-only attempt into a loop.
+		testSettings.update((settings) => ({ ...settings, journalIncludeArticles: true }));
+		await second.service.load();
+		testSettings.update((settings) => ({ ...settings, journalIncludeArticles: false }));
+		await second.service.load();
+		assert.equal(second.counts.books, 1);
+		// Explicit refresh remains available after either missing metadata or failure.
+		await second.service.load(true);
+		await settled(second.service);
+		assert.equal(second.counts.books, 2);
+		testSettings.update((settings) => ({ ...settings, wereadApiKey: 'test-key-b' }));
+		testSettings.update((settings) => ({ ...settings, wereadApiKey: 'test-key-a' }));
+		await second.service.load();
+		await settled(second.service);
+		assert.equal(second.counts.books, 3);
+		assert.equal(second.counts.highlights, 0);
+		assert.equal(second.counts.reviews, 0);
+		second.service.dispose();
+	}
 });
 
 test('partial failures preserve cached book, persist incomplete marker and retry even at same revision', async (t) => {

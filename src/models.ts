@@ -553,6 +553,8 @@ export type BookshelfBook = {
 	title: string;
 	author: string;
 	cover?: string;
+	/** Canonical primary classification from the official bookshelf category. */
+	category?: string;
 	noteCount: number;
 	reviewCount: number;
 	lastReadDate?: string;

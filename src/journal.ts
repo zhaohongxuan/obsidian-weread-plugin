@@ -71,6 +71,7 @@ export class WereadJournalService {
 	private inflight?: Promise<void>;
 	private writes: Promise<void> = Promise.resolve();
 	private lastAttempt = -Infinity;
+	private articleMetadataAttempted = false;
 	private unsubscribeSettings: () => void;
 
 	constructor(
@@ -92,6 +93,7 @@ export class WereadJournalService {
 			this.hydration = undefined;
 			this.inflight = undefined;
 			this.lastAttempt = -Infinity;
+			this.articleMetadataAttempted = false;
 			this.books = new Map();
 			this.state = emptyState();
 			this.emit();
@@ -124,7 +126,10 @@ export class WereadJournalService {
 		}
 		await this.hydration;
 		if (!this.current(generation)) return this.getSnapshot();
-		const settings = get(settingsStore) as { journalRefreshHours?: number };
+		const settings = get(settingsStore) as {
+			journalRefreshHours?: number;
+			journalIncludeArticles?: boolean;
+		};
 		const hours = settings.journalRefreshHours;
 		const ttl =
 			(typeof hours === 'number' && Number.isFinite(hours) && hours > 0 ? hours : 24) *
@@ -134,11 +139,20 @@ export class WereadJournalService {
 		const now = Date.now();
 		const fresh = this.state.updatedAt > 0 && now - this.state.updatedAt < ttl;
 		const incomplete = this.state.failedBooks > 0 || !this.state.hasCache;
+		// Old caches have no type. Enrich through the ordinary overview once, even
+		// within TTL; unchanged revisions still skip all highlight/review requests.
+		const needsArticleMetadata =
+			settings.journalIncludeArticles === false &&
+			!this.articleMetadataAttempted &&
+			this.state.notes.some((note) => note.bookType === undefined);
 		if (
 			!this.inflight &&
-			(force || ((!fresh || incomplete) && now - this.lastAttempt >= RETRY_MS))
+			(force ||
+				needsArticleMetadata ||
+				((!fresh || incomplete) && now - this.lastAttempt >= RETRY_MS))
 		) {
 			const previous = this.state;
+			if (settings.journalIncludeArticles === false) this.articleMetadataAttempted = true;
 			this.lastAttempt = now;
 			this.state = {
 				...this.state,
@@ -356,7 +370,7 @@ export class WereadJournalService {
 	private async fetchBook(book: JournalObject, old?: CachedBook): Promise<CachedBook> {
 		const bookId = journalBookId(book);
 		const revision = journalRevision(book);
-		const article = journalObject(book.book).type === 3;
+		const article = journalMetadata(book).bookType === 3;
 		const [highlights, reviews] = await Promise.allSettled([
 			book.noteCount === 0
 				? Promise.resolve({ updated: [] })

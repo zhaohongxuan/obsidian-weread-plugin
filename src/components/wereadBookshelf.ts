@@ -12,7 +12,7 @@ import {
 	Menu
 } from 'obsidian';
 import WereadPlugin from '../../main';
-import WereadBookshelfService from '../bookshelf';
+import WereadBookshelfService, { getBookshelfCategory } from '../bookshelf';
 import type { BookshelfCollection, BookshelfSourceMode, ShelfBook } from '../bookshelf';
 import type { BookshelfBook, BookshelfFolder } from '../models';
 
@@ -139,6 +139,8 @@ export class WereadBookshelfPanel extends WereadPanel {
 	private previousCredentials = '';
 	private searchKeyword = '';
 	private categoryFilter: CategoryFilter = 'all';
+	private genreFilter = 'all';
+	private genreSelect?: HTMLSelectElement;
 	private syncStatusFilter: SyncStatusFilter =
 		get(settingsStore).bookshelfDefaultSyncStatusFilter;
 	private readingStatusFilter: ReadingStatusFilter = 'all';
@@ -217,6 +219,16 @@ export class WereadBookshelfPanel extends WereadPanel {
 		const filterDropdowns = toolbarFilters.createDiv({
 			cls: 'weread-bookshelf-filter-dropdowns'
 		});
+
+		this.genreSelect = filterDropdowns.createEl('select', {
+			cls: 'dropdown weread-bookshelf-genre-filter',
+			attr: { 'aria-label': '筛选书籍分类' }
+		});
+		this.genreSelect.onchange = () => {
+			this.genreFilter = this.genreSelect!.value;
+			this.activeFolderId = null;
+			this.renderBooks();
+		};
 
 		const categorySelect = filterDropdowns.createEl('select', {
 			cls: 'dropdown',
@@ -333,60 +345,11 @@ export class WereadBookshelfPanel extends WereadPanel {
 			}
 		});
 
-		const openWebButton = Platform.isDesktopApp
-			? (() => {
-					const btn = toolbarActions.createEl('button', {
-						cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
-						attr: { 'aria-label': '网页版' }
-					});
-					setIcon(btn, 'globe');
-					return btn;
-				})()
-			: null;
-
-		const readingStatsButton = toolbarActions.createEl('button', {
-			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
-			attr: { 'aria-label': '同步阅读统计' }
-		});
-		setIcon(readingStatsButton, 'bar-chart-2');
-		setTooltip(readingStatsButton, '阅读统计');
-		readingStatsButton.addEventListener('click', () => {
-			if (this.navigate) void this.navigate('stats');
-			else void this.plugin.activateReadingStatsView();
-		});
-
-		const viewToggleButton = toolbarActions.createEl('button', {
-			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
-			attr: { 'aria-label': '切换视图模式' }
-		});
-		const updateViewToggleIcon = () => {
-			if (this.viewMode === 'cover') {
-				setIcon(viewToggleButton, 'layout-grid');
-				setTooltip(viewToggleButton, '封面视图（点击切换到列表视图）');
-			} else {
-				setIcon(viewToggleButton, 'list');
-				setTooltip(viewToggleButton, '列表视图（点击切换到封面视图）');
-			}
-		};
-		updateViewToggleIcon();
-		viewToggleButton.addEventListener('click', () => {
-			this.viewMode = this.viewMode === 'list' ? 'cover' : 'list';
-			settingsStore.actions.setBookshelfViewMode(this.viewMode);
-			updateViewToggleIcon();
-			this.renderBooks();
-		});
-
 		const syncLogButton = toolbarActions.createEl('button', {
 			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
 			attr: { 'aria-label': '同步日志' }
 		});
 		setIcon(syncLogButton, 'history');
-
-		const syncOptionsButton = toolbarActions.createEl('button', {
-			cls: 'clickable-icon weread-bookshelf-icon-button weread-toolbar-icon-button',
-			attr: { 'aria-label': '选项' }
-		});
-		setIcon(syncOptionsButton, 'settings');
 
 		syncButton.onclick = async () => {
 			if (isSyncing) return;
@@ -399,8 +362,6 @@ export class WereadBookshelfPanel extends WereadPanel {
 			setTooltip(syncButton, '取消同步');
 			syncButton.removeClass('mod-cta');
 			syncButton.addClass('mod-warning');
-			syncOptionsButton.disabled = true;
-			if (openWebButton) openWebButton.disabled = true;
 
 			// 点击取消
 			const cancelHandler = () => {
@@ -423,22 +384,11 @@ export class WereadBookshelfPanel extends WereadPanel {
 				isSyncing = false;
 				syncButton.removeEventListener('click', cancelHandler);
 				updateSyncButton(isAltPressed);
-				syncOptionsButton.disabled = false;
-				if (openWebButton) openWebButton.disabled = false;
 			}
-		};
-		syncOptionsButton.onclick = () => {
-			this.plugin.openWereadSettingsTab();
 		};
 		syncLogButton.onclick = () => {
 			new SyncLogModal(this.app).open();
 		};
-		if (openWebButton) {
-			openWebButton.onclick = async () => {
-				await this.plugin.openPreferredReadingView();
-			};
-		}
-
 		this.summaryEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-summary' });
 		this.emptyStateEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-empty' });
 		this.gridEl = this.contentEl.createDiv({ cls: 'weread-bookshelf-grid' });
@@ -457,6 +407,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				this.activeFolderId = null;
 				this.categoryFilter = 'all';
 				categorySelect.value = 'all';
+				this.genreFilter = 'all';
 				void this.loadBookshelf();
 			}
 		});
@@ -559,7 +510,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 		});
 		content.createDiv({
 			cls: 'weread-bookshelf-unlogged-description',
-			text: '请点击右上角设置按钮配置 API Key'
+			text: '请在 Obsidian 设置 → Weread 中配置 API Key 或扫码登录'
 		});
 
 		const button = content.createEl('button', {
@@ -571,7 +522,36 @@ export class WereadBookshelfPanel extends WereadPanel {
 		};
 	}
 
+	private updateGenreFilter(): void {
+		if (!this.genreSelect) return;
+		const categories = [
+			...new Set(
+				this.shelfBooks
+					.map((book) => getBookshelfCategory(book.category))
+					.filter((category): category is string => Boolean(category))
+			)
+		].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+		const options = [
+			['all', '全部分类'],
+			...categories.map((category) => [`category:${category}`, category])
+		];
+		if (this.shelfBooks.some((book) => !getBookshelfCategory(book.category)))
+			options.push(['unknown', '暂未获取分类']);
+		if (!options.some(([value]) => value === this.genreFilter)) this.genreFilter = 'all';
+		if (
+			JSON.stringify(
+				Array.from(this.genreSelect.options).map((option) => [option.value, option.text])
+			) !== JSON.stringify(options)
+		) {
+			this.genreSelect.replaceChildren();
+			for (const [value, text] of options)
+				this.genreSelect.createEl('option', { value, text });
+		}
+		this.genreSelect.value = this.genreFilter;
+	}
+
 	private renderBooks(): void {
+		this.updateGenreFilter();
 		let filteredBooks = this.getFilteredBooks();
 		this.gridEl.empty();
 		this.emptyStateEl.empty();
@@ -620,6 +600,8 @@ export class WereadBookshelfPanel extends WereadPanel {
 
 	/** Folders inherit their latest book date and participate in the same sort as books. */
 	private getShelfItems(filteredBooks: BookshelfBook[]): ShelfGridItem[] {
+		if (this.genreFilter && this.genreFilter !== 'all')
+			return filteredBooks.map((book) => ({ kind: 'book', book }));
 		const groupedIds = new Set(this.collection.folders.flatMap((folder) => folder.bookIds));
 		const items: ShelfGridItem[] = filteredBooks
 			.filter((book) => !book.remoteExists || !groupedIds.has(book.bookId))
@@ -1062,6 +1044,13 @@ export class WereadBookshelfPanel extends WereadPanel {
 		const saveArticleToggle = get(settingsStore).saveArticleToggle;
 		return [...this.shelfBooks]
 			.filter((book) => {
+				const category = getBookshelfCategory(book.category);
+				if (
+					this.genreFilter &&
+					this.genreFilter !== 'all' &&
+					(category ? `category:${category}` : 'unknown') !== this.genreFilter
+				)
+					return false;
 				const searchMatched =
 					keyword.length === 0 ||
 					`${book.title} ${book.author}`.toLowerCase().includes(keyword);
