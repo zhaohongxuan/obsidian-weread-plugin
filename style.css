@@ -1431,8 +1431,8 @@
 }
 
 .weread-bookshelf-card-cover-wrap {
-	width: 88px;
-	flex: 0 0 88px;
+	width: 70.4px;
+	flex: 0 0 70.4px;
 }
 
 .weread-bookshelf-card-cover-wrap.is-clickable {
@@ -1441,8 +1441,8 @@
 
 .weread-bookshelf-card-cover,
 .weread-bookshelf-card-cover-placeholder {
-	width: 88px;
-	height: 120px;
+	width: 70.4px;
+	height: 96px;
 	border-radius: 8px;
 	object-fit: cover;
 	background: var(--background-modifier-border);
@@ -1556,7 +1556,7 @@
 /* ===== 书架纯封面视图 ===== */
 .weread-bookshelf-cover-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(76.8px, 1fr));
 	gap: 14px;
 }
 
@@ -1633,7 +1633,7 @@
 /* 窄屏下封面列数自适应收窄 */
 @container (max-width: 480px) {
 	.weread-bookshelf-cover-grid {
-		grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(57.6px, 1fr));
 		gap: 10px;
 	}
 }

@@ -1,7 +1,7 @@
 /** Folder tiles use book-cover proportions instead of the wide notebook card grid. */
 .weread-bookshelf-folder-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
 	gap: 20px 12px;
 	align-items: start;
 	margin: 12px 0 28px;
@@ -246,7 +246,7 @@
 }
 @container (max-width: 480px) {
 	.weread-bookshelf-folder-grid {
-		grid-template-columns: repeat(auto-fill, minmax(122px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(97.6px, 1fr));
 		gap: 16px 10px;
 	}
 	.weread-bookshelf-folder-grid > button.weread-bookshelf-folder-card {
