@@ -307,6 +307,8 @@ export class WereadFavoritesService {
 	setFavorite(note: JournalNote, active: boolean): Promise<void> {
 		// Capture the operation at acceptance; later caller changes cannot alter queued writes.
 		const captured = { ...note };
+		// Classification belongs to the journal cache, not the durable favorite snapshot.
+		delete captured.bookType;
 		return this.mutate(captured.id, () => {
 			if (typeof active !== 'boolean') throw new Error('收藏状态必须是布尔值');
 			const valid = validateFavoriteNote(captured);
