@@ -294,37 +294,6 @@
 	height: 14px;
 }
 
-.weread-journal-quote .weread-journal-actions .weread-journal-article-toggle {
-	padding: 5px 6px;
-	border-color: transparent;
-	background: transparent;
-	color: var(--text-muted);
-}
-.weread-journal-toggle-track {
-	position: relative;
-	flex: 0 0 26px;
-	width: 26px;
-	height: 14px;
-	border-radius: 7px;
-	background: var(--background-modifier-border);
-}
-.weread-journal-toggle-track::after {
-	content: '';
-	position: absolute;
-	left: 2px;
-	top: 2px;
-	width: 10px;
-	height: 10px;
-	border-radius: 50%;
-	background: var(--text-on-accent, white);
-}
-.weread-journal-article-toggle[aria-checked='true'] .weread-journal-toggle-track {
-	background: var(--interactive-accent);
-}
-.weread-journal-article-toggle[aria-checked='true'] .weread-journal-toggle-track::after {
-	transform: translateX(12px);
-}
-
 .weread-journal-anniversary-year + .weread-journal-anniversary-year {
 	margin-top: 24px;
 }

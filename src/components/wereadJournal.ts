@@ -600,32 +600,6 @@ export class WereadJournalPanel extends WereadPanel {
 			setIcon(blacklist, 'ban');
 			blacklist.querySelector('svg')?.setAttribute('aria-hidden', 'true');
 			blacklist.disabled = !this.quote;
-			const articleToggle = actions.createEl('button', {
-				cls: 'weread-journal-article-toggle',
-				attr: {
-					type: 'button',
-					role: 'switch',
-					'aria-label': '旧句重逢包含公众号',
-					'aria-checked': String(includeArticles),
-					title: '是否随机推荐公众号划线'
-				}
-			});
-			articleToggle.createSpan({
-				cls: 'weread-journal-toggle-track',
-				attr: { 'aria-hidden': 'true' }
-			});
-			articleToggle.createSpan({ text: '包含公众号' });
-			articleToggle.onclick = () => {
-				if (!this.active) return;
-				const focused = articleToggle.ownerDocument.activeElement === articleToggle;
-				settingsStore.actions.setJournalIncludeArticles(
-					get(settingsStore).journalIncludeArticles === false
-				);
-				if (focused)
-					this.body
-						.querySelector<HTMLButtonElement>('.weread-journal-article-toggle')
-						?.focus();
-			};
 		}
 		const change = section.querySelector<HTMLButtonElement>('button[aria-label="换一句"]')!;
 		const book = section.querySelector<HTMLButtonElement>('button[aria-label="换一本"]')!;
@@ -647,9 +621,6 @@ export class WereadJournalPanel extends WereadPanel {
 		blacklist.title = this.quote
 			? `不再推荐《${this.quote.bookTitle}》的划线`
 			: '加入旧句重逢黑名单';
-		section
-			.querySelector('.weread-journal-article-toggle')
-			?.setAttribute('aria-checked', String(includeArticles));
 		const empty =
 			!includeArticles &&
 			this.state.notes.some(
@@ -1099,6 +1070,17 @@ export class WereadJournalPanel extends WereadPanel {
 			this.updateFavoriteStars(star);
 		};
 		updateStar();
+		if (parent.classList.contains('weread-journal-quote')) {
+			const share = actions.createEl('button', {
+				cls: 'clickable-icon weread-journal-note-action weread-journal-share',
+				attr: { type: 'button', title: '分享划线', 'aria-label': '分享划线' }
+			});
+			setIcon(share, 'share-2');
+			share.onclick = () => {
+				if (this.active && card.isConnected)
+					this.plugin.shareJournalNote(note);
+			};
+		}
 		const text = content.createEl('p', { text: note.text, cls: 'weread-journal-note-text' });
 		const source = content.createEl('button', {
 			text: `《${note.bookTitle}》 · ${note.author || '未知作者'}`,

@@ -6,6 +6,15 @@ import wereadOfficialTemplate from './themes/wereadOfficialTemplate.njk';
 import separatedTemplate from './themes/separatedTemplate.njk';
 import WereadPlugin from '../main';
 import type { SyncLogEntry, Theme } from './models';
+import type { QuoteShareTemplate } from './quoteShareCard';
+
+function normalizeQuoteShareTemplate(value: unknown): QuoteShareTemplate {
+	return value === 'cover' || value === 'night' ? value : 'paper';
+}
+
+function normalizeQuoteShareUsername(value: unknown): string {
+	return typeof value === 'string' ? value.trim() : '';
+}
 
 export function normalizeJournalExcludedBookIds(value: unknown): string[] {
 	if (!Array.isArray(value)) return [];
@@ -113,6 +122,8 @@ export interface WereadPluginSettings {
 	journalRefreshHours: number;
 	journalExcludedBookIds: string[];
 	journalIncludeArticles: boolean;
+	quoteShareTemplate: QuoteShareTemplate;
+	quoteShareUsername: string;
 	favoritesViewMode: 'cards' | 'list';
 	favoritesCanvasFolder: string;
 	favoritesCanvasLocationVersion: 0 | 1;
@@ -180,6 +191,8 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 	journalRefreshHours: 24,
 	journalExcludedBookIds: [],
 	journalIncludeArticles: true,
+	quoteShareTemplate: 'paper',
+	quoteShareUsername: '',
 	favoritesViewMode: 'cards',
 	favoritesCanvasFolder: '',
 	favoritesCanvasLocationVersion: 0,
@@ -221,6 +234,8 @@ const createSettingsStore = () => {
 		const { manualSyncMode, ...restData } = data;
 		const settings: WereadPluginSettings = {
 			...restData,
+			quoteShareTemplate: normalizeQuoteShareTemplate(data.quoteShareTemplate),
+			quoteShareUsername: normalizeQuoteShareUsername(data.quoteShareUsername),
 			journalExcludedBookIds: normalizeJournalExcludedBookIds(data.journalExcludedBookIds),
 			journalIncludeArticles:
 				typeof rawData.journalIncludeArticles === 'boolean'
@@ -847,6 +862,14 @@ const createSettingsStore = () => {
 		store.update((state) => ({ ...state, journalIncludeArticles: value }));
 	};
 
+	const setQuoteShareTemplate = (value: QuoteShareTemplate) => {
+		store.update((state) => ({ ...state, quoteShareTemplate: normalizeQuoteShareTemplate(value) }));
+	};
+
+	const setQuoteShareUsername = (value: string) => {
+		store.update((state) => ({ ...state, quoteShareUsername: normalizeQuoteShareUsername(value) }));
+	};
+
 	const setFavoritesViewMode = (mode: 'cards' | 'list') => {
 		store.update((state) => ({ ...state, favoritesViewMode: mode === 'list' ? 'list' : 'cards' }));
 	};
@@ -861,6 +884,8 @@ const createSettingsStore = () => {
 			setJournalRefreshHours,
 			setJournalExcludedBookIds,
 			setJournalIncludeArticles,
+			setQuoteShareTemplate,
+			setQuoteShareUsername,
 			setLoginMethod,
 			setNoteLocationFolder,
 			setCookies,
