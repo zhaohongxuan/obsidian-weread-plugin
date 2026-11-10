@@ -179,6 +179,91 @@ const cards = (root = document) => [...root.querySelectorAll('article')].map((no
 const results = () => document.querySelector('.weread-journal-day-notes');
 window.smoke = {
   assertions,
+  async importProgress() {
+    const previousState=state, previousFavorites=favoriteState, previousSettings=settingsStore.current();
+    const frame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+    try {
+      for(const mode of ['today','review']) {
+        settingsStore.set({...settingsStore.current(), journalExcludedBookIds:[], journalIncludeArticles:true});
+        favorites.publish({favorites:[],loaded:true,loading:false,writable:true,pendingIds:[],error:'',warning:''});
+        const anniversary=note('progress-anniversary','a','highlight','Initial anniversary highlight','2025-11-06T03:00:00Z');
+        journal.publish({...previousState,notes:[...baseNotes,anniversary],hasCache:false,syncing:true,scannedBooks:142,totalBooks:565,error:'',failedBooks:0});
+        await mount(mode);
+        const region=()=>view.contentEl.querySelector(mode==='today'?'.weread-journal-today-notes':'.weread-journal-day-notes');
+        const article=()=>region().querySelector('[data-favorite-id="'+baseNotes[0].id+'"]').closest('article');
+        const initialArticle=article();
+        const copy=initialArticle.querySelector('.weread-journal-note-actions button');
+        const star=initialArticle.querySelector('.weread-journal-favorite');
+        const sort=region().querySelector('.weread-journal-sort');
+        const quote=view.contentEl.querySelector('.weread-journal-quote article');
+        const anniversarySort=mode==='review'?view.contentEl.querySelector('.weread-journal-sort[data-sort-scope="anniversary"]'):undefined;
+        const anniversaryCard=mode==='review'?view.contentEl.querySelector('[data-favorite-id="'+anniversary.id+'"]').closest('article'):undefined;
+        const originalSvgs=[copy,star,sort].map(button=>button.querySelector('svg'));
+        const query=mode==='review'?view.contentEl.querySelector('input[type="search"]'):undefined;
+        if(query) query.focus();
+        const assertStable=label=>{
+          check(article()===initialArticle&&copy.isConnected&&star.isConnected&&region().querySelector('.weread-journal-sort')===sort,mode+': '+label+' retains existing note and copy/star/sort controls');
+          check([copy,star,sort].every((button,index)=>button.querySelector('svg')===originalSvgs[index]),mode+': '+label+' retains existing SVG nodes');
+          check(view.contentEl.querySelector('.weread-journal-quote article')===quote,mode+': '+label+' retains the selected old quote');
+          if(anniversarySort) check(anniversarySort.isConnected&&view.contentEl.querySelector('.weread-journal-sort[data-sort-scope="anniversary"]')===anniversarySort&&anniversaryCard.isConnected, 'Review: '+label+' retains anniversary controls and existing year cards');
+          if(query) check(query.isConnected&&document.activeElement===query,mode+': '+label+' preserves focused search');
+        };
+        for(let i=0;i<12;i++) {
+          journal.publish({...state,notes:state.notes.map(entry=>({...entry})),scannedBooks:143+i});
+          await frame();assertStable('progress-only update '+i);
+        }
+        check(view.contentEl.querySelector('.weread-journal-status').textContent.includes('154/565'),mode+': progress remains live without body replacement');
+        for(let i=0;i<4;i++) {
+          journal.publish({...state,scannedBooks:155+i,notes:[...state.notes,
+            note('import-visible-'+i,'a','highlight','IMPORTED VISIBLE '+i,'2026-11-06T04:00:0'+i+'Z'),
+            note('import-same-'+i,'a','highlight','IMPORTED SAME BOOK '+i,'2026-11-04T04:00:00Z'),
+            note('import-other-'+i,'new-'+i,'highlight','IMPORTED OTHER BOOK '+i,'2026-11-03T04:00:00Z'),
+            note('import-anniversary-'+i,'a','highlight','IMPORTED ANNIVERSARY '+i,'2024-11-06T04:00:00Z')
+          ]});
+          await frame();assertStable('new book result '+i);
+          check(region().textContent.includes('IMPORTED VISIBLE '+i),mode+': new visible notes appear during import');
+          if(mode==='review') {
+            check(view.contentEl.querySelector('.weread-journal-day[data-note-count="'+(3+i)+'"]').getAttribute('aria-label').startsWith('2026-11-06，'), 'Review: heatmap counts update during import');
+            check(view.contentEl.querySelector('.weread-journal-anniversary-year[data-year="2024"]').textContent.includes('IMPORTED ANNIVERSARY '+i), 'Review: new anniversary year groups appear during import');
+          }
+        }
+        journal.publish({...state,notes:state.notes.map(entry=>entry.id===baseNotes[0].id?{...entry,text:'UPDATED IMPORT HIGHLIGHT'}:entry)});
+        await frame();assertStable('same-ID note edit');
+        check(initialArticle.textContent.includes('UPDATED IMPORT HIGHLIGHT'),mode+': existing note text updates without stale cached cards');
+        journal.publish({...state,hasCache:true,syncing:false,updatedAt:NOW});
+        await frame();assertStable('import completion');
+        check(!view.contentEl.querySelector('.weread-journal-refresh').disabled,mode+': completion enables refresh');
+        if(mode==='today') {
+          check(view.contentEl.querySelector('.weread-journal-today-metrics').textContent.includes('5 条'), 'Today: imported highlight counts update');
+          check(!view.contentEl.querySelector('.weread-journal-metric-status'), 'Today: completion removes partial-result explanations');
+        }
+        journal.publish({...state,notes:state.notes.filter(entry=>!entry.id.includes('import-anniversary-')&&!entry.id.includes('import-other-0'))});
+        await frame();assertStable('removed cached notes');
+        if(mode==='review') check(!view.contentEl.querySelector('.weread-journal-anniversary-year[data-year="2024"]'), 'Review: obsolete anniversary year groups disappear incrementally');
+        copy.click();await tick();
+        check(clipboardWrites.at(-1)==='UPDATED IMPORT HIGHLIGHT',mode+': retained copy handler uses the latest note text');
+        favoriteWriteGate=gate();star.click();await tick();
+        check(star.disabled,mode+': retained star reflects pending persistence');
+        journal.publish({...state,notes:state.notes.map(entry=>({...entry})),syncing:true,scannedBooks:160});await frame();
+        check(star.isConnected&&star.disabled&&article()===initialArticle,mode+': import progress preserves the pending favorite control');
+        favoriteWriteGate.resolve();await tick();favoriteWriteGate=undefined;
+        check(star.isConnected&&!star.disabled&&star.getAttribute('aria-pressed')==='true',mode+': retained star completes persistence');
+        check(favoriteState.favorites.find(entry=>entry.id===baseNotes[0].id)?.note.text==='UPDATED IMPORT HIGHLIGHT',mode+': retained star saves the latest note snapshot');
+        Math.random=()=>0.999999;
+        click('换一句');await tick();
+        check(view.contentEl.querySelector('.weread-journal-quote').textContent.includes('IMPORTED SAME BOOK 3'),mode+': retained quote actions include newly imported same-book candidates');
+        click('换一本');await tick();
+        check(view.contentEl.querySelector('.weread-journal-quote').textContent.includes('IMPORTED OTHER BOOK 3'),mode+': quote actions include newly imported other books');
+        Math.random=()=>0;
+        await view.onClose();view.contentEl.remove();view=undefined;
+      }
+    } finally {
+      favoriteWriteGate?.resolve();favoriteWriteGate=undefined;Math.random=()=>0;
+      if(view){await view.onClose();view.contentEl.remove();view=undefined;}
+      state=previousState;favoriteState=previousFavorites;settingsStore.set(previousSettings);
+    }
+    return assertions.length;
+  },
   async originalNavigation() {
     const previousState = state;
     const located = {...baseNotes[0], sourceUrl: 'weread://bestbookmark?bookId=a&chapterUid=42&rangeStart=10&rangeEnd=28'};
@@ -1216,6 +1301,9 @@ test(
 			}
 		}
 		await evaluate('smoke.iconCleanup()');
+		t.diagnostic(
+			`${await evaluate('smoke.importProgress()')} cumulative assertions after incremental import regression`
+		);
 		await evaluate('document.body.className = ""');
 		await send('Emulation.setDeviceMetricsOverride', {
 			width: 1180,

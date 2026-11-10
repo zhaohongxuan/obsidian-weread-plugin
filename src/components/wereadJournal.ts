@@ -128,6 +128,9 @@ export class WereadJournalPanel extends WereadPanel {
 	private noteSortOrder: 'desc' | 'asc' = 'desc';
 	private quote?: JournalNote;
 	private state: JournalState;
+	private updateContent?: () => void;
+	private renderedNotes = new WeakMap<HTMLElement, HTMLElement[]>();
+	private noteUpdates = new WeakMap<HTMLElement, (note: JournalNote) => void>();
 	private todaySeconds?: number;
 	private statsError = '';
 	private statsLoading = true;
@@ -235,7 +238,13 @@ export class WereadJournalPanel extends WereadPanel {
 		}
 		this.unsubscribe = this.journal.subscribe((state) => {
 			this.state = state;
-			if (this.active) this.render();
+			if (this.active) {
+				if (!this.updateContent) this.render();
+				else {
+					this.renderHeader();
+					this.updateContent();
+				}
+			}
 		});
 		this.credentialKey = this.readCredentialKey();
 		this.exclusionsKey = this.readExclusionsKey();
@@ -247,7 +256,7 @@ export class WereadJournalPanel extends WereadPanel {
 			if (key === this.credentialKey) {
 				// Only replace the quote: Review controls, focus and scroll stay intact.
 				if (exclusionsChanged && this.active) {
-					this.renderQuote();
+					this.renderQuote(true);
 					if (
 						get(settingsStore).journalIncludeArticles === false &&
 						this.state.notes.some((note) => note.bookType === undefined)
@@ -299,6 +308,7 @@ export class WereadJournalPanel extends WereadPanel {
 	}
 	async onClose(): Promise<void> {
 		this.active = false;
+		this.updateContent = undefined;
 		this.favoritesGeneration += 1;
 		this.unsubscribe?.();
 		this.unsubscribeSettings?.();
@@ -349,7 +359,7 @@ export class WereadJournalPanel extends WereadPanel {
 			this.render();
 		}
 	}
-	private render(): void {
+	private renderHeader(): void {
 		if (!this.body) return;
 		const state = this.state;
 		this.status.setText(
@@ -367,6 +377,11 @@ export class WereadJournalPanel extends WereadPanel {
 		);
 		this.headerDate.setAttribute('datetime', this.date);
 		this.refreshButton.disabled = this.pendingLoads > 0 || state.syncing;
+	}
+	private render(): void {
+		if (!this.body) return;
+		this.renderHeader();
+		this.updateContent = undefined;
 		const focused = this.body.ownerDocument.activeElement;
 		const search =
 			focused instanceof HTMLInputElement &&
@@ -394,44 +409,50 @@ export class WereadJournalPanel extends WereadPanel {
 		}
 	}
 	private renderToday(): void {
-		const today = this.date;
-		const notes = this.state.notes.filter((note) => noteDay(note) === today);
 		const summary = this.body.createDiv({ cls: 'weread-journal-summary' });
-		const seconds = this.todaySeconds;
-		const duration = this.statsLoading
-			? '加载中…'
-			: seconds === undefined
-				? this.statsError || '今日暂无时长记录'
-				: `${Math.floor(seconds / 3600)}小时${Math.floor((seconds % 3600) / 60)}分钟`;
-		const count = (kind: JournalNote['kind']) =>
-			!this.state.hasCache && this.state.notes.length === 0
-				? this.state.syncing
-					? '加载中…'
-					: '暂不可用'
-				: `${notes.filter((n) => n.kind === kind).length} 条`;
-		const countStatus = this.state.syncing
-			? '统计中，当前为部分结果'
-			: this.state.failedBooks
-				? '部分书籍加载失败，当前为部分结果'
-				: '';
 		const metrics = summary.createDiv({ cls: 'weread-journal-today-metrics' });
 		metrics.createEl('h2', { text: '今日数据', cls: 'weread-journal-summary-title' });
 		const metricsGrid = metrics.createDiv({ cls: 'weread-journal-today-metrics-grid' });
-		for (const [label, value] of [
-			['阅读时长', duration],
-			['今日划线', count('highlight')],
-			['今日想法', count('thought')]
-		]) {
+		const metricCards = ['阅读时长', '今日划线', '今日想法'].map((label) => {
 			const card = metricsGrid.createDiv();
 			card.createEl('span', { text: label });
-			card.createEl('strong', { text: value });
-			if (label !== '阅读时长' && countStatus) {
-				card.createEl('small', {
-					text: countStatus,
-					cls: 'weread-journal-metric-status'
-				});
+			card.createEl('strong');
+			return card;
+		});
+		const updateMetrics = () => {
+			const notes = this.state.notes.filter((note) => noteDay(note) === this.date);
+			const seconds = this.todaySeconds;
+			const duration = this.statsLoading
+				? '加载中…'
+				: seconds === undefined
+					? this.statsError || '今日暂无时长记录'
+					: `${Math.floor(seconds / 3600)}小时${Math.floor((seconds % 3600) / 60)}分钟`;
+			const count = (kind: JournalNote['kind']) =>
+				!this.state.hasCache && this.state.notes.length === 0
+					? this.state.syncing
+						? '加载中…'
+						: '暂不可用'
+					: `${notes.filter((n) => n.kind === kind).length} 条`;
+			const countStatus = this.state.syncing
+				? '统计中，当前为部分结果'
+				: this.state.failedBooks
+					? '部分书籍加载失败，当前为部分结果'
+					: '';
+			for (const [index, value] of [
+				duration,
+				count('highlight'),
+				count('thought')
+			].entries()) {
+				const card = metricCards[index];
+				const strong = card.querySelector('strong')!;
+				if (strong.textContent !== value) strong.setText(value);
+				let status = card.querySelector<HTMLElement>('.weread-journal-metric-status');
+				if (index && countStatus) {
+					status ??= card.createEl('small', { cls: 'weread-journal-metric-status' });
+					if (status.textContent !== countStatus) status.setText(countStatus);
+				} else status?.remove();
 			}
-		}
+		};
 		const booksSummary = summary.createDiv({ cls: 'weread-journal-today-books' });
 		booksSummary.createEl('h2', {
 			text: '今天翻开的书',
@@ -483,22 +504,27 @@ export class WereadJournalPanel extends WereadPanel {
 		this.renderQuote();
 		const traces = this.body.createDiv({ cls: 'weread-journal-today-notes' });
 		this.renderNotesHeading(traces, '今天留下的痕迹', 'today');
-		this.renderNotes(
-			notes,
-			this.state.hasCache &&
-				!this.state.syncing &&
-				!this.state.failedBooks &&
-				!this.state.error
-				? '今天还没有留下笔记，先读几页也很好。'
-				: '已加载范围内暂无今日笔记；请留意上方缓存覆盖状态。',
-			traces
-		);
+		this.updateContent = () => {
+			updateMetrics();
+			this.renderQuote();
+			this.renderNotes(
+				this.state.notes.filter((note) => noteDay(note) === this.date),
+				this.state.hasCache &&
+					!this.state.syncing &&
+					!this.state.failedBooks &&
+					!this.state.error
+					? '今天还没有留下笔记，先读几页也很好。'
+					: '已加载范围内暂无今日笔记；请留意上方缓存覆盖状态。',
+				traces
+			);
+		};
+		this.updateContent();
 	}
-	private renderQuote(): void {
+	private quoteCandidates(): JournalNote[] {
 		const today = this.date;
 		const excluded = this.readExcludedBookIds();
 		const includeArticles = get(settingsStore)?.journalIncludeArticles !== false;
-		const highlights = this.state.notes.filter(
+		return this.state.notes.filter(
 			(note) =>
 				note.kind === 'highlight' &&
 				note.text.trim() &&
@@ -506,64 +532,110 @@ export class WereadJournalPanel extends WereadPanel {
 				!excluded.has(note.bookId) &&
 				(includeArticles || (typeof note.bookType === 'number' && !isJournalArticle(note)))
 		);
+	}
+	private renderQuote(replace = false): void {
+		const today = this.date;
+		const excluded = this.readExcludedBookIds();
+		const includeArticles = get(settingsStore)?.journalIncludeArticles !== false;
+		const highlights = this.quoteCandidates();
 		const candidates = highlights;
-		if (
-			this.quote &&
-			!highlights.some(
-				(note) => note.bookId === this.quote.bookId && note.id === this.quote.id
-			)
-		)
-			this.quote = undefined;
-		if (!this.quote) this.quote = this.randomQuote(candidates);
-		const previous = this.body.querySelector('.weread-journal-quote');
-		const section = this.body.createDiv({ cls: 'weread-journal-quote' });
+		this.quote =
+			highlights.find(
+				(note) => note.bookId === this.quote?.bookId && note.id === this.quote?.id
+			) ?? this.randomQuote(candidates);
+		const previous = this.body.querySelector<HTMLElement>('.weread-journal-quote');
+		const section =
+			!replace && previous ? previous : this.body.createDiv({ cls: 'weread-journal-quote' });
+		if (section !== previous) previous?.replaceWith(section);
 		section.classList.toggle('is-empty', !this.quote);
-		previous?.replaceWith(section);
-		const header = section.createDiv({
-			cls: 'weread-journal-heading weread-journal-quote-heading'
-		});
-		header.createEl('h2', { text: '旧句重逢' });
-		const actions = header.createDiv({ cls: 'weread-journal-actions' });
-		const sameBook = highlights.filter(
-			(n) => n.bookId === this.quote?.bookId && n.id !== this.quote?.id
+		if (!section.querySelector('.weread-journal-quote-heading')) {
+			const header = section.createDiv({
+				cls: 'weread-journal-heading weread-journal-quote-heading'
+			});
+			header.createEl('h2', { text: '旧句重逢' });
+			const actions = header.createDiv({ cls: 'weread-journal-actions' });
+			const sameBook = highlights.filter(
+				(n) => n.bookId === this.quote?.bookId && n.id !== this.quote?.id
+			);
+			const otherBooks = highlights.filter((n) => n.bookId !== this.quote?.bookId);
+			const change = actions.createEl('button', {
+				attr: { type: 'button', title: '换一句', 'aria-label': '换一句' }
+			});
+			setIcon(change, 'shuffle');
+			change.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+			change.createSpan({ text: '换一句' });
+			change.disabled = sameBook.length === 0;
+			change.onclick = () => {
+				this.quote = this.randomQuote(
+					this.quoteCandidates().filter(
+						(note) => note.bookId === this.quote?.bookId && note.id !== this.quote?.id
+					)
+				);
+				this.render();
+			};
+			const book = actions.createEl('button', {
+				attr: { type: 'button', title: '换一本', 'aria-label': '换一本' }
+			});
+			setIcon(book, 'book-open');
+			book.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+			book.createSpan({ text: '换一本' });
+			book.disabled = otherBooks.length === 0;
+			book.onclick = () => {
+				this.quote = this.randomQuote(
+					this.quoteCandidates().filter((note) => note.bookId !== this.quote?.bookId)
+				);
+				this.render();
+			};
+
+			const blacklist = actions.createEl('button', {
+				cls: 'clickable-icon weread-journal-blacklist',
+				attr: {
+					type: 'button',
+					'aria-label': '加入旧句重逢黑名单',
+					title: this.quote
+						? `不再推荐《${this.quote.bookTitle}》的划线`
+						: '加入旧句重逢黑名单'
+				}
+			});
+			setIcon(blacklist, 'ban');
+			blacklist.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+			blacklist.disabled = !this.quote;
+			const articleToggle = actions.createEl('button', {
+				cls: 'weread-journal-article-toggle',
+				attr: {
+					type: 'button',
+					role: 'switch',
+					'aria-label': '旧句重逢包含公众号',
+					'aria-checked': String(includeArticles),
+					title: '是否随机推荐公众号划线'
+				}
+			});
+			articleToggle.createSpan({
+				cls: 'weread-journal-toggle-track',
+				attr: { 'aria-hidden': 'true' }
+			});
+			articleToggle.createSpan({ text: '包含公众号' });
+			articleToggle.onclick = () => {
+				if (!this.active) return;
+				const focused = articleToggle.ownerDocument.activeElement === articleToggle;
+				settingsStore.actions.setJournalIncludeArticles(
+					get(settingsStore).journalIncludeArticles === false
+				);
+				if (focused)
+					this.body
+						.querySelector<HTMLButtonElement>('.weread-journal-article-toggle')
+						?.focus();
+			};
+		}
+		const change = section.querySelector<HTMLButtonElement>('button[aria-label="换一句"]')!;
+		const book = section.querySelector<HTMLButtonElement>('button[aria-label="换一本"]')!;
+		change.disabled = !highlights.some(
+			(note) => note.bookId === this.quote?.bookId && note.id !== this.quote?.id
 		);
-		const otherBooks = highlights.filter((n) => n.bookId !== this.quote?.bookId);
-		const change = actions.createEl('button', {
-			attr: { type: 'button', title: '换一句', 'aria-label': '换一句' }
-		});
-		setIcon(change, 'shuffle');
-		change.querySelector('svg')?.setAttribute('aria-hidden', 'true');
-		change.createSpan({ text: '换一句' });
-		change.disabled = sameBook.length === 0;
-		change.onclick = () => {
-			this.quote = this.randomQuote(sameBook);
-			this.render();
-		};
-		const book = actions.createEl('button', {
-			attr: { type: 'button', title: '换一本', 'aria-label': '换一本' }
-		});
-		setIcon(book, 'book-open');
-		book.querySelector('svg')?.setAttribute('aria-hidden', 'true');
-		book.createSpan({ text: '换一本' });
-		book.disabled = otherBooks.length === 0;
-		book.onclick = () => {
-			this.quote = this.randomQuote(otherBooks);
-			this.render();
-		};
+		book.disabled = !highlights.some((note) => note.bookId !== this.quote?.bookId);
+		const blacklist = section.querySelector<HTMLButtonElement>('.weread-journal-blacklist')!;
+		blacklist.disabled = !this.quote;
 		const blockedQuote = this.quote;
-		const blacklist = actions.createEl('button', {
-			cls: 'clickable-icon weread-journal-blacklist',
-			attr: {
-				type: 'button',
-				'aria-label': '加入旧句重逢黑名单',
-				title: blockedQuote
-					? `不再推荐《${blockedQuote.bookTitle}》的划线`
-					: '加入旧句重逢黑名单'
-			}
-		});
-		setIcon(blacklist, 'ban');
-		blacklist.querySelector('svg')?.setAttribute('aria-hidden', 'true');
-		blacklist.disabled = !blockedQuote;
 		blacklist.onclick = () => {
 			if (!this.active || !blockedQuote || this.quote?.bookId !== blockedQuote.bookId) return;
 			const ids = this.readExcludedBookIds();
@@ -572,49 +644,26 @@ export class WereadJournalPanel extends WereadPanel {
 			settingsStore.actions.setJournalExcludedBookIds([...ids]);
 			new Notice('已加入旧句重逢黑名单，可在设置中的「旧句重逢排除书籍」恢复');
 		};
-		const articleToggle = actions.createEl('button', {
-			cls: 'weread-journal-article-toggle',
-			attr: {
-				type: 'button',
-				role: 'switch',
-				'aria-label': '旧句重逢包含公众号',
-				'aria-checked': String(includeArticles),
-				title: '是否随机推荐公众号划线'
-			}
-		});
-		articleToggle.createSpan({
-			cls: 'weread-journal-toggle-track',
-			attr: { 'aria-hidden': 'true' }
-		});
-		articleToggle.createSpan({ text: '包含公众号' });
-		articleToggle.onclick = () => {
-			if (!this.active) return;
-			const focused = articleToggle.ownerDocument.activeElement === articleToggle;
-			settingsStore.actions.setJournalIncludeArticles(
-				get(settingsStore).journalIncludeArticles === false
-			);
-			if (focused)
-				this.body
-					.querySelector<HTMLButtonElement>('.weread-journal-article-toggle')
-					?.focus();
-		};
-		if (this.quote) this.renderNote(section, this.quote);
-		else
-			section.createEl('p', {
-				text:
-					!includeArticles &&
-					this.state.notes.some(
-						(note) =>
-							note.kind === 'highlight' &&
-							note.bookType === undefined &&
-							!excluded.has(note.bookId) &&
-							noteDay(note) < today
-					)
-						? '部分书籍类型尚未获取，关闭公众号时暂不参与随机；可刷新笔记缓存后重试。'
-						: excluded.size || !includeArticles
-							? '当前没有符合条件的往日划线，可调整公众号开关或在设置中的「旧句重逢排除书籍」恢复书籍。'
-							: '暂时没有可回顾的往日划线。'
-			});
+		blacklist.title = this.quote
+			? `不再推荐《${this.quote.bookTitle}》的划线`
+			: '加入旧句重逢黑名单';
+		section
+			.querySelector('.weread-journal-article-toggle')
+			?.setAttribute('aria-checked', String(includeArticles));
+		const empty =
+			!includeArticles &&
+			this.state.notes.some(
+				(note) =>
+					note.kind === 'highlight' &&
+					note.bookType === undefined &&
+					!excluded.has(note.bookId) &&
+					noteDay(note) < today
+			)
+				? '部分书籍类型尚未获取，关闭公众号时暂不参与随机；可刷新笔记缓存后重试。'
+				: excluded.size || !includeArticles
+					? '当前没有符合条件的往日划线，可调整公众号开关或在设置中的「旧句重逢排除书籍」恢复书籍。'
+					: '暂时没有可回顾的往日划线。';
+		this.renderNotes(this.quote ? [this.quote] : [], empty, section);
 	}
 	private randomQuote(notes: readonly JournalNote[]): JournalNote | undefined {
 		const ids = [...new Set(notes.map((note) => note.bookId))];
@@ -644,9 +693,30 @@ export class WereadJournalPanel extends WereadPanel {
 		});
 		const results = layout.createDiv({ cls: 'weread-journal-day-notes' });
 		const past = this.body.createDiv({ cls: 'weread-journal-anniversaries' });
+		this.renderNotesHeading(past, '那年今日', 'anniversary', () => updateResults());
+		this.renderNotesHeading(results, '', 'review', () => updateResults());
+		const list = results.createDiv({
+			cls: 'weread-journal-day-list',
+			attr: { role: 'region', tabindex: '0' }
+		});
 		const updateResults = () => {
-			results.empty();
-			past.empty();
+			for (const button of Array.from(
+				this.body.querySelectorAll<HTMLButtonElement>('.weread-journal-sort')
+			)) {
+				if (button.dataset.sortOrder === this.noteSortOrder) continue;
+				const label = `时间排序：${this.noteSortOrder === 'desc' ? '最新在前' : '最早在前'}`;
+				button.dataset.sortOrder = this.noteSortOrder;
+				button.title = label;
+				button.setAttribute('aria-label', label);
+				button.empty();
+				setIcon(
+					button,
+					this.noteSortOrder === 'desc'
+						? 'arrow-down-wide-narrow'
+						: 'arrow-up-wide-narrow'
+				);
+				button.querySelector('svg')?.setAttribute('aria-hidden', 'true');
+			}
 			const matches = (note: JournalNote) =>
 				(this.kind === 'all' || note.kind === this.kind) &&
 				`${note.bookTitle} ${note.author} ${note.text}`
@@ -662,20 +732,19 @@ export class WereadJournalPanel extends WereadPanel {
 					matches(note)
 				);
 			});
-			this.renderNotesHeading(past, '那年今日', 'anniversary', updateResults);
 			this.renderNotes(anniversaries, '往年今日暂无符合筛选的笔记。', past, true);
 			const label = this.query.trim() ? '搜索全部已缓存笔记' : `${this.selectedDay} · 笔记`;
-			this.renderNotesHeading(results, label, 'review', updateResults);
-			const list = results.createDiv({
-				cls: 'weread-journal-day-list',
-				attr: { role: 'region', 'aria-label': label, tabindex: '0' }
-			});
-			list.dataset.scrollKey = JSON.stringify([
+			const heading = results.querySelector('h2')!;
+			if (heading.firstChild?.textContent !== label) heading.firstChild!.textContent = label;
+			list.setAttribute('aria-label', label);
+			const scrollKey = JSON.stringify([
 				this.selectedDay,
 				this.query,
 				this.kind,
 				this.noteSortOrder
 			]);
+			if (list.dataset.scrollKey !== scrollKey) list.scrollTop = 0;
+			list.dataset.scrollKey = scrollKey;
 			this.renderNotes(
 				this.state.notes.filter(
 					(note) =>
@@ -780,22 +849,46 @@ export class WereadJournalPanel extends WereadPanel {
 			() => {
 				jumpTo(new Date());
 			};
-		const latest = this.state.notes.reduce<JournalNote | undefined>(
+		const latest = footer.createEl('button', {
+			text: '最近笔记日',
+			cls: 'weread-journal-latest'
+		});
+		latest.onclick = () => {
+			const note = this.latestNote();
+			if (note) jumpTo(new Date(note.createTime));
+		};
+		this.updateContent = () => {
+			updateResults();
+			const counts = new Map<string, number>();
+			for (const note of this.state.notes)
+				counts.set(noteDay(note), (counts.get(noteDay(note)) ?? 0) + 1);
+			for (const button of Array.from(
+				grid.querySelectorAll<HTMLButtonElement>('.weread-journal-day')
+			)) {
+				const key = button.getAttribute('aria-label')!.slice(0, 10);
+				const count = counts.get(key) ?? 0;
+				const label = `${key}，${count}条笔记`;
+				button.classList.toggle('has-notes', count > 0);
+				button.setAttribute('aria-label', label);
+				button.title = label;
+				button.dataset.noteCount = String(count);
+				button.dataset.noteIntensity = String(
+					count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 10 ? 3 : 4
+				);
+			}
+			latest.hidden = !this.latestNote();
+			this.renderQuote();
+		};
+		this.updateContent();
+	}
+	private latestNote(): JournalNote | undefined {
+		return this.state.notes.reduce<JournalNote | undefined>(
 			(result, note) =>
 				noteDay(note) <= this.date && (!result || note.createTime > result.createTime)
 					? note
 					: result,
 			undefined
 		);
-		if (latest)
-			footer.createEl('button', {
-				text: '最近笔记日',
-				cls: 'weread-journal-latest'
-			}).onclick = () => {
-				jumpTo(new Date(latest.createTime));
-			};
-		updateResults();
-		this.renderQuote();
 	}
 	private renderNotesHeading(
 		parent: HTMLElement,
@@ -804,7 +897,7 @@ export class WereadJournalPanel extends WereadPanel {
 		onSort = () => this.render()
 	): void {
 		const heading = parent.createEl('h2', {
-			text: title,
+			text: title || ' ',
 			cls: 'weread-journal-notes-heading'
 		});
 		const label = `时间排序：${this.noteSortOrder === 'desc' ? '最新在前' : '最早在前'}`;
@@ -842,74 +935,123 @@ export class WereadJournalPanel extends WereadPanel {
 					?.focus({ preventScroll: true });
 		};
 	}
+	/** Keep each region's own keyed articles connected while cache snapshots are cloned. */
+	private reconcileNotes(parent: HTMLElement, nodes: HTMLElement[]): void {
+		const previous = this.renderedNotes.get(parent) ?? [];
+		const wanted = new Set(nodes);
+		for (const node of previous) if (!wanted.has(node)) node.remove();
+		let cursor =
+			Array.from(parent.children).find((node) => wanted.has(node as HTMLElement)) ?? null;
+		for (const node of nodes) {
+			if (node === cursor) cursor = cursor.nextElementSibling;
+			else parent.insertBefore(node, cursor);
+		}
+		this.renderedNotes.set(parent, nodes);
+	}
 	private renderNotes(
 		notes: readonly JournalNote[],
 		empty: string,
 		parent = this.body,
 		groupByYear = false
 	): void {
+		const previous = this.renderedNotes.get(parent) ?? [];
+		const nodes: HTMLElement[] = [];
 		if (!notes.length) {
-			parent.createEl('p', { text: empty, cls: 'weread-journal-muted' });
-			return;
-		}
-		const ordered = [...notes].sort((left, right) =>
-			this.noteSortOrder === 'desc'
-				? right.createTime - left.createTime
-				: left.createTime - right.createTime
-		);
-		const visible = ordered.slice(0, this.limit);
-		if (groupByYear) {
-			const totals = new Map<number, number>();
-			const groups = new Map<number, JournalNote[]>();
-			for (const note of ordered) {
-				const year = new Date(note.createTime).getFullYear();
-				totals.set(year, (totals.get(year) ?? 0) + 1);
-			}
-			for (const note of visible) {
-				const year = new Date(note.createTime).getFullYear();
-				const group = groups.get(year) ?? [];
-				group.push(note);
-				groups.set(year, group);
-			}
-			for (const [year, entries] of groups) {
-				const section = parent.createEl('section', {
-					cls: 'weread-journal-anniversary-year',
-					attr: { 'data-year': String(year), 'aria-label': `${year} 年的那年今日` }
-				});
-				const heading = section.createEl('h3', {
-					cls: 'weread-journal-anniversary-year-heading',
-					text: `${year} 年`
-				});
-				const total = totals.get(year)!;
-				heading.createSpan({
-					cls: 'weread-journal-anniversary-year-count',
-					text: entries.length < total ? `${entries.length} / ${total} 条` : `${total} 条`
-				});
-				for (const note of entries) this.renderNote(section, note);
-			}
+			const message =
+				previous.find((node) => node.tagName === 'P') ??
+				parent.createEl('p', { cls: 'weread-journal-muted' });
+			if (message.textContent !== empty) message.setText(empty);
+			nodes.push(message);
 		} else {
-			for (const note of visible) this.renderNote(parent, note);
+			const ordered = [...notes].sort((left, right) =>
+				this.noteSortOrder === 'desc'
+					? right.createTime - left.createTime
+					: left.createTime - right.createTime
+			);
+			const visible = ordered.slice(0, this.limit);
+			if (groupByYear) {
+				const totals = new Map<number, number>();
+				const groups = new Map<number, JournalNote[]>();
+				for (const note of ordered) {
+					const year = new Date(note.createTime).getFullYear();
+					totals.set(year, (totals.get(year) ?? 0) + 1);
+				}
+				for (const note of visible) {
+					const year = new Date(note.createTime).getFullYear();
+					const group = groups.get(year) ?? [];
+					group.push(note);
+					groups.set(year, group);
+				}
+				const sections = new Map(previous.map((node) => [node.dataset.year, node]));
+				for (const [year, entries] of groups) {
+					let section = sections.get(String(year));
+					if (!section) {
+						section = parent.createEl('section', {
+							cls: 'weread-journal-anniversary-year',
+							attr: {
+								'data-year': String(year),
+								'aria-label': `${year} 年的那年今日`
+							}
+						});
+						section
+							.createEl('h3', {
+								cls: 'weread-journal-anniversary-year-heading',
+								text: `${year} 年`
+							})
+							.createSpan({ cls: 'weread-journal-anniversary-year-count' });
+					}
+					const total = totals.get(year)!;
+					const count = section.querySelector('.weread-journal-anniversary-year-count')!;
+					const label =
+						entries.length < total ? `${entries.length} / ${total} 条` : `${total} 条`;
+					if (count.textContent !== label) count.setText(label);
+					this.renderNotes(entries, '', section);
+					nodes.push(section);
+				}
+			} else {
+				const cards = new Map(previous.map((node) => [node.dataset.noteKey, node]));
+				for (const note of visible)
+					nodes.push(
+						this.renderNote(parent, note, cards.get(`${note.bookId}:${note.id}`))
+					);
+			}
+			if (notes.length > this.limit) {
+				const more =
+					previous.find((node) => node.tagName === 'BUTTON') ?? parent.createEl('button');
+				more.setText(`再看 ${Math.min(100, notes.length - this.limit)} 条`);
+				more.onclick = () => {
+					this.limit += 100;
+					this.render();
+				};
+				nodes.push(more);
+			}
 		}
-		if (notes.length > this.limit)
-			parent.createEl('button', {
-				text: `再看 ${Math.min(100, notes.length - this.limit)} 条`
-			}).onclick = () => {
-				this.limit += 100;
-				this.render();
-			};
+		this.reconcileNotes(parent, nodes);
 	}
-	private renderNote(parent: HTMLElement, note: JournalNote): void {
+	private renderNote(
+		parent: HTMLElement,
+		note: JournalNote,
+		existing?: HTMLElement
+	): HTMLElement {
+		if (existing) {
+			this.noteUpdates.get(existing)?.(note);
+			return existing;
+		}
+		note = { ...note };
 		const card = parent.createEl('article', { cls: `weread-journal-note is-${note.kind}` });
+		card.dataset.noteKey = `${note.bookId}:${note.id}`;
+		let image: HTMLImageElement | undefined;
 		if (note.cover && /^https?:\/\//.test(note.cover)) {
-			const image = card.createEl('img', {
+			image = card.createEl('img', {
 				cls: 'weread-journal-note-cover',
 				attr: { src: note.cover, alt: '', loading: 'lazy' }
 			});
-			image.onerror = () => image.remove();
+			const createdImage = image;
+			image.onerror = () => createdImage.remove();
 		}
 		const content = card.createDiv();
 		const metadata = content.createDiv({ cls: 'weread-journal-note-meta' });
-		metadata.createEl('small', {
+		const timestamp = metadata.createEl('small', {
 			text: `${note.kind === 'highlight' ? '划线' : '想法'} · ${formatNoteTimestamp(note.createTime)}`
 		});
 		const actions = metadata.createDiv({ cls: 'weread-journal-note-actions' });
@@ -939,8 +1081,15 @@ export class WereadJournalPanel extends WereadPanel {
 				new Notice('复制失败，请重试');
 			}
 		};
-		if (note.kind === 'highlight' && this.favorites) {
-			const star = actions.createEl('button', {
+		let star: HTMLButtonElement | undefined;
+		const updateStar = () => {
+			if (note.kind !== 'highlight') {
+				star?.remove();
+				star = undefined;
+				return;
+			}
+			if (star || !this.favorites) return;
+			star = actions.createEl('button', {
 				cls: 'clickable-icon weread-journal-note-action weread-journal-favorite',
 				attr: { type: 'button', 'aria-label': '收藏', 'aria-pressed': 'false' }
 			});
@@ -948,8 +1097,9 @@ export class WereadJournalPanel extends WereadPanel {
 			setIcon(star, 'star');
 			star.onclick = () => void this.toggleFavorite(note);
 			this.updateFavoriteStars(star);
-		}
-		content.createEl('p', { text: note.text, cls: 'weread-journal-note-text' });
+		};
+		updateStar();
+		const text = content.createEl('p', { text: note.text, cls: 'weread-journal-note-text' });
 		const source = content.createEl('button', {
 			text: `《${note.bookTitle}》 · ${note.author || '未知作者'}`,
 			cls: 'weread-journal-source'
@@ -957,7 +1107,49 @@ export class WereadJournalPanel extends WereadPanel {
 		source.onclick = () => {
 			void this.plugin.activateBookDetailView(note.bookId, note.bookTitle, note.cover);
 		};
-		if (note.chapterTitle) content.createEl('small', { text: note.chapterTitle });
+		const chapter = content.createEl('small', { text: note.chapterTitle || '' });
+		chapter.hidden = !note.chapterTitle;
+		this.noteUpdates.set(card, (next) => {
+			const keys = Object.keys(next) as (keyof JournalNote)[];
+			if (
+				Object.keys(note).length === keys.length &&
+				keys.every((key) => note[key] === next[key])
+			)
+				return;
+			const previousCover = note.cover;
+			note = { ...next };
+			card.className = `weread-journal-note is-${note.kind}`;
+			timestamp.setText(
+				`${note.kind === 'highlight' ? '划线' : '想法'} · ${formatNoteTimestamp(note.createTime)}`
+			);
+			const label = getJournalNoteBookmark(note) ? '回到原文' : '打开书籍';
+			original.href = getPcUrl(note.bookId);
+			original.title = label;
+			original.setAttribute('aria-label', label);
+			if (previousCover !== note.cover) {
+				if (note.cover && /^https?:\/\//.test(note.cover)) {
+					if (!image?.isConnected) {
+						image = card.createEl('img', {
+							cls: 'weread-journal-note-cover',
+							attr: { alt: '', loading: 'lazy' }
+						});
+						card.prepend(image);
+						const createdImage = image;
+						image.onerror = () => createdImage.remove();
+					}
+					image.src = note.cover;
+				} else {
+					image?.remove();
+					image = undefined;
+				}
+			}
+			text.setText(note.text);
+			source.setText(`《${note.bookTitle}》 · ${note.author || '未知作者'}`);
+			chapter.setText(note.chapterTitle || '');
+			chapter.hidden = !note.chapterTitle;
+			updateStar();
+		});
+		return card;
 	}
 }
 
