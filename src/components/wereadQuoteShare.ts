@@ -76,6 +76,7 @@ export class WereadQuoteShareModal extends Modal {
 	private generation = 0;
 	private closed = true;
 	private saving = false;
+	private copying = false;
 	private inputTimer?: number;
 
 	constructor(app: App, note: QuoteShareContent) {
@@ -90,7 +91,7 @@ export class WereadQuoteShareModal extends Modal {
 		this.closed = false;
 		this.modalEl.addClass('weread-quote-share-shell');
 		this.contentEl.addClass('weread-quote-share-modal');
-		this.contentEl.createEl('h2', { text: '分享卡片' });
+		this.contentEl.createEl('h2', { text: '分享阅读卡片' });
 		const layout = this.contentEl.createDiv({ cls: 'weread-quote-share-layout' });
 		this.preview = layout.createDiv({
 			cls: 'weread-quote-share-preview',
@@ -161,6 +162,9 @@ export class WereadQuoteShareModal extends Modal {
 		});
 		const actions = controls.createDiv({ cls: 'weread-quote-share-export' });
 		this.addExportButton(actions, '保存图片', () => this.saveLocal(), 'mod-cta');
+		this.addExportButton(actions, '复制图片', () => {
+			void this.copyImage();
+		});
 		this.addExportButton(actions, '保存到笔记库', () => {
 			void this.saveToVault();
 		});
@@ -231,7 +235,7 @@ export class WereadQuoteShareModal extends Modal {
 			this.previewUrl = url;
 			this.canvas = canvas;
 			this.blob = blob;
-			for (const button of this.exportButtons) button.disabled = this.saving;
+			for (const button of this.exportButtons) button.disabled = this.saving || this.copying;
 			this.nativeButton.hidden = !this.canShare(blob);
 			this.status.setText(
 				`${canvas.width} × ${canvas.height} · PNG${this.note.cover && !cover ? ' · 使用文字书封' : ''}`
@@ -239,6 +243,33 @@ export class WereadQuoteShareModal extends Modal {
 		} catch (error) {
 			if (this.closed || generation !== this.generation) return;
 			this.status.setText(error instanceof Error ? error.message : '图片生成失败，请重试');
+		}
+	}
+
+	private async copyImage(): Promise<void> {
+		if (!this.blob || this.closed || this.saving || this.copying) return;
+		if (
+			typeof navigator.clipboard?.write !== 'function' ||
+			typeof ClipboardItem === 'undefined'
+		) {
+			new Notice('当前环境不支持复制图片，请使用保存图片或保存到笔记库');
+			return;
+		}
+		const generation = this.generation;
+		this.copying = true;
+		for (const button of this.exportButtons) button.disabled = true;
+		try {
+			// Write the prepared PNG in the original click stack, preserving Safari/iOS activation.
+			await navigator.clipboard.write([new ClipboardItem({ 'image/png': this.blob })]);
+			if (!this.closed && generation === this.generation) new Notice('图片已复制');
+		} catch {
+			if (!this.closed && generation === this.generation)
+				new Notice('图片复制失败，请允许剪贴板访问，或使用保存图片、保存到笔记库');
+		} finally {
+			this.copying = false;
+			if (!this.closed)
+				for (const button of this.exportButtons)
+					button.disabled = this.saving || !this.blob;
 		}
 	}
 
@@ -285,7 +316,9 @@ export class WereadQuoteShareModal extends Modal {
 			new Notice(error instanceof Error ? error.message : '图片保存失败，请重试');
 		} finally {
 			this.saving = false;
-			if (!this.closed) for (const button of this.exportButtons) button.disabled = !this.blob;
+			if (!this.closed)
+				for (const button of this.exportButtons)
+					button.disabled = this.copying || !this.blob;
 		}
 	}
 
@@ -326,6 +359,7 @@ export class WereadQuoteShareModal extends Modal {
 		this.previewUrl = undefined;
 		this.blob = undefined;
 		this.canvas = undefined;
+		for (const button of this.exportButtons) button.disabled = true;
 		this.contentEl.empty();
 	}
 }

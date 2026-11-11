@@ -130,20 +130,39 @@ export function renderQuoteShareCard(
 	ctx.font = `${fontSize}px ${SERIF}`;
 	const quote = wrap(ctx, note.text, textWidth);
 	const metadataWidth = WIDTH - x - 340;
-	ctx.font = `30px ${SERIF}`;
-	const title = wrap(ctx, `《${note.bookTitle || '未命名书籍'}》`, metadataWidth);
+	ctx.textBaseline = 'top';
+	// Measure each source row in its final font; reserve the same advances and gaps when painting.
+	const sourceRows: { value: string; size: number; serif: boolean; top: number }[] = [];
+	let sourceBottom = 0;
+	const sourceField = (
+		value: string,
+		size: number,
+		advance: number,
+		gap: number,
+		serif = false
+	): void => {
+		ctx.font = `${size}px ${serif ? SERIF : SANS}`;
+		if (sourceRows.length) sourceBottom += gap;
+		for (const row of wrap(ctx, value, metadataWidth)) {
+			const metrics = ctx.measureText(row);
+			sourceRows.push({ value: row, size, serif, top: sourceBottom });
+			sourceBottom += Math.max(advance, Math.ceil(metrics.actualBoundingBoxDescent));
+		}
+	};
+	sourceField(`《${note.bookTitle || '未命名书籍'}》`, 34, 48, 0, true);
+	if (note.author?.trim()) sourceField(note.author, 23, 34, 10);
+	if (note.chapterTitle?.trim()) sourceField(note.chapterTitle, 21, 32, 18);
 	ctx.font = `23px ${SANS}`;
-	const author = note.author ? wrap(ctx, note.author, metadataWidth) : [];
-	const chapter = note.chapterTitle ? wrap(ctx, note.chapterTitle, metadataWidth) : [];
 	const username = wrap(ctx, options.username?.trim() || '阅读者', textWidth);
 	const date = new Date(note.createTime ?? NaN);
 	const dateText =
-		typeof note.createTime === 'number' && note.createTime > 0 && Number.isFinite(date.getTime())
+		typeof note.createTime === 'number' &&
+		note.createTime > 0 &&
+		Number.isFinite(date.getTime())
 			? `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
 			: '';
-	const metadataHeight =
-		title.length * 47 + (author.length + chapter.length) * 36 + (dateText ? 41 : 0);
-	const sourceHeight = Math.max(250, metadataHeight);
+	const dateHeight = 28;
+	const sourceHeight = Math.max(250, sourceBottom + (dateText ? 22 + dateHeight : 0));
 	const footerHeight = sourceHeight + 90 + username.length * 35 + 76;
 	ctx.font = `54px ${SERIF}`;
 	const spine = editorial ? wrap(ctx, note.bookTitle || '未命名书籍', 234) : [];
@@ -217,21 +236,10 @@ export function renderQuoteShareCard(
 	}
 	quote.forEach((value, i) => text(value, x, bodyY + i * lineHeight, fontSize, ink, true));
 	const sourceY = height - footerHeight;
-	let y = sourceY;
-	title.forEach((value) => {
-		text(value, x, y, 30, ink, true);
-		y += 47;
-	});
-	if (author.length) y += 10;
-	author.forEach((value) => {
-		text(value, x, y, 23, muted);
-		y += 36;
-	});
-	chapter.forEach((value) => {
-		text(value, x, y, 23, muted);
-		y += 36;
-	});
-	if (dateText) text(dateText, x, y + 5, 21, muted);
+	sourceRows.forEach((row) =>
+		text(row.value, x, sourceY + row.top, row.size, row.serif ? ink : muted, row.serif)
+	);
+	if (dateText) text(dateText, x, sourceY + sourceHeight - dateHeight, 20, muted);
 	const box = { x: 802, y: sourceY + sourceHeight - 250, width: 180, height: 250 };
 	let drawn = false;
 	if (options.cover) {

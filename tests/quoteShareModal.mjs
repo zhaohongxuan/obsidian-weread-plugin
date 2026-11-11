@@ -15,6 +15,14 @@ test('production share modal previews and exports PNGs while preserving defaults
  await browser.send('Input.dispatchMouseEvent',{type:'mouseReleased',...nativeTarget,button:'left',clickCount:1});
  assert.equal(await browser.evaluate('shareFixture.shares.length'),2);
  assert.equal(await browser.evaluate('shareFixture.shares.at(-1).active'),true,'native share uses the original trusted click user activation');
+ const copies=await browser.evaluate('shareSmoke.copy()');
+ assert.deepEqual(copies.map(copy=>copy.id),['paper','cover','night']);
+ for(const copy of copies){assert.equal(copy.width,1080);assert(copy.height>=1440);assert(copy.size>1000);}
+ const copyTarget=await browser.evaluate('shareSmoke.prepareTrustedCopy()');
+ await browser.send('Input.dispatchMouseEvent',{type:'mousePressed',...copyTarget,button:'left',clickCount:1});
+ await browser.send('Input.dispatchMouseEvent',{type:'mouseReleased',...copyTarget,button:'left',clickCount:1});
+ const trustedCopy=await browser.evaluate('shareSmoke.finishTrustedCopy()');
+ assert.equal(trustedCopy.active,true,'PNG clipboard.write uses the original trusted click user activation');
  for(const width of [390,768]){await browser.viewport(width,1000);await browser.evaluate('shareSmoke.geometry()');}
  await browser.evaluate('shareSmoke.closePending()');
  const minimal=await browser.evaluate('shareSmoke.minimal()');

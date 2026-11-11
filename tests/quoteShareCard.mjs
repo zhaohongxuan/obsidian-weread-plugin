@@ -97,14 +97,30 @@ test(
 			const brand = snapshot.calls.find((call) => call.value === 'OBSIDIAN WEREAD');
 			assert(heading && brand, snapshot.template + ' has generic heading and exact brand');
 			assert.equal(snapshot.calls.filter((call) => call.value === '分享此刻').length, 1);
-			assert.equal(snapshot.calls.filter((call) => call.value === 'OBSIDIAN WEREAD').length, 1);
-			assert(!snapshot.calls.some((call) => /旧句重逢|READ & REMEMBER|READING NOTES/.test(call.value)));
+			assert.equal(
+				snapshot.calls.filter((call) => call.value === 'OBSIDIAN WEREAD').length,
+				1
+			);
+			assert(
+				!snapshot.calls.some((call) =>
+					/旧句重逢|READ & REMEMBER|READING NOTES/.test(call.value)
+				)
+			);
 			assert(heading.y < 110 && brand.y <= 110, 'branding stays in upper header');
 			assert(heading.x < 200 && brand.x > 395, 'branding occupies upper left and right');
 			assert(heading.right + 30 < brand.left, 'header text has a clear horizontal gap');
-			assert(Math.abs(brand.x + brand.width - 982) < 0.01, 'brand aligns to the 982px right edge');
-			assert(brand.left >= 395 && brand.right <= 984, 'actual brand glyphs stay in right header');
-			assert(brand.top >= 0 && brand.bottom < 174, 'actual brand glyphs stay inside header height');
+			assert(
+				Math.abs(brand.x + brand.width - 982) < 0.01,
+				'brand aligns to the 982px right edge'
+			);
+			assert(
+				brand.left >= 395 && brand.right <= 984,
+				'actual brand glyphs stay in right header'
+			);
+			assert(
+				brand.top >= 0 && brand.bottom < 174,
+				'actual brand glyphs stay inside header height'
+			);
 			assert(snapshot.png.startsWith('data:image/png;base64,'));
 			assert.deepEqual(snapshot.pixel, [255, 0, 255, 255]);
 			assert.equal(snapshot.images.length, 1);
@@ -122,11 +138,19 @@ test(
 			);
 		}
 		for (const snapshot of result.minimalSnapshots) {
-			const body = snapshot.calls.filter((call) => call.font.startsWith(snapshot.template === 'cover' ? '48px' : '56px'));
-			assert.equal(body.map((call) => call.value).join(''), result.minimal.text.replaceAll('\n', ''));
+			const body = snapshot.calls.filter((call) =>
+				call.font.startsWith(snapshot.template === 'cover' ? '48px' : '56px')
+			);
+			assert.equal(
+				body.map((call) => call.value).join(''),
+				result.minimal.text.replaceAll('\n', '')
+			);
 			assert(snapshot.calls.some((call) => call.value === '《只有书名的来源》'));
 			assert(snapshot.calls.some((call) => call.value === '社区读者'));
-			assert(!snapshot.calls.some((call) => /^\d{4}\.\d{2}\.\d{2}$/.test(call.value)), 'absent/invalid date omitted');
+			assert(
+				!snapshot.calls.some((call) => /^\d{4}\.\d{2}\.\d{2}$/.test(call.value)),
+				'absent/invalid date omitted'
+			);
 			assert(!snapshot.calls.some((call) => /Invalid Date|undefined|NaN/.test(call.value)));
 			assert(snapshot.png.startsWith('data:image/png;base64,'));
 		}
@@ -174,6 +198,102 @@ test(
 				if (index < snapshot.lines.length - 1)
 					assert(!/[（《「『【〈]$/.test(line.value), JSON.stringify(snapshot));
 			}
+		}
+	}
+);
+
+test(
+	'source hierarchy measures complete rows and clears cover/footer across metadata shapes',
+	{ skip: !chromeAvailable },
+	async (t) => {
+		const browser = await browserHarness(t);
+		await browser.evaluate(
+			await bundleFixture(
+				`import { renderQuoteShareCard } from './src/quoteShareCard'; window.renderShareCard=renderQuoteShareCard;`
+			)
+		);
+		const snapshots = await browser.evaluate(String.raw`(() => {
+  const original = CanvasRenderingContext2D.prototype.fillText;
+  const stroke = CanvasRenderingContext2D.prototype.moveTo;
+  let calls=[], rules=[];
+  CanvasRenderingContext2D.prototype.fillText=function(value,x,y){const m=this.measureText(value); calls.push({value,x,y,font:this.font,color:this.fillStyle,left:x-m.actualBoundingBoxLeft,right:x+m.actualBoundingBoxRight,top:y-m.actualBoundingBoxAscent,bottom:y+m.actualBoundingBoxDescent});return original.apply(this,arguments)};
+  CanvasRenderingContext2D.prototype.moveTo=function(x,y){rules.push({x,y});return stroke.apply(this,arguments)};
+  const cases=[
+   {bookTitle:'创造行为：存在即答案',author:'[美]里克·鲁宾',chapterTitle:'我们对自己说的话',createTime:new Date('2026-11-11T12:00:00+08:00').getTime()},
+   {bookTitle:'关于日常生活、创造与时间的漫长讨论：在世界的角落寻找答案'.repeat(3),author:'[美]合成作者甲、[英]合成作者乙、合成作者丙与研究小组'.repeat(3),chapterTitle:'第一部分「我们对自己说的话」：如何认真地观察生活，并保持好奇心。'.repeat(4),createTime:1794369600000},
+   {bookTitle:'仅有书名'},
+   {bookTitle:'缺少作者',chapterTitle:'仍然保留完整章节'},
+   {bookTitle:'缺少章节',author:'合成作者',createTime:1794369600000}
+  ];
+  const result=[];
+  for(const template of ['paper','cover','night']) for(const note of cases){
+   calls=[];rules=[];const canvas=window.renderShareCard({...note,text:'这是一段合成的短句。'},{template,username:'合成读者'});
+   const x=template==='cover'?395:template==='night'?178:98;
+   const title=calls.filter(c=>c.x===x&&c.font.startsWith('34px'));
+   const start=title[0].y;
+   const footer=rules.findLast(r=>r.x===x).y;
+   const source=calls.filter(c=>c.x===x&&c.y>=start&&c.y<footer);
+   result.push({template,note,title,source,footer,height:canvas.height,username:calls.find(c=>c.value==='合成读者')});
+  }return result;
+ })()`);
+		for (const s of snapshots) {
+			const rows = (size) => s.source.filter((c) => c.font.startsWith(size + 'px'));
+			assert.equal(
+				rows(34)
+					.map((c) => c.value)
+					.join(''),
+				'《' + s.note.bookTitle + '》'
+			);
+			assert.equal(
+				rows(23)
+					.map((c) => c.value)
+					.join(''),
+				s.note.author || ''
+			);
+			assert.equal(
+				rows(21)
+					.map((c) => c.value)
+					.join(''),
+				s.note.chapterTitle || ''
+			);
+			assert.equal(rows(20).length, s.note.createTime ? 1 : 0);
+			if (s.note.createTime) assert.match(rows(20)[0].value, /^2026\.11\.11$/);
+			for (let i = 0; i < s.source.length; i++) {
+				const row = s.source[i];
+				assert(row.right < 780 && row.left >= row.x - 3, 'source clears cover column');
+				assert(row.bottom < s.footer - 40, 'actual source glyphs clear footer');
+				assert(!row.value.includes('…'), 'metadata never gets an ellipsis');
+				if (i) assert(row.top > s.source[i - 1].bottom + 5, 'visible row separation');
+			}
+			assert(
+				s.username.top > s.footer + 20 && s.username.bottom < s.height,
+				'username clears footer and card bottom'
+			);
+			const title = rows(34),
+				author = rows(23),
+				chapter = rows(21),
+				date = rows(20);
+			for (const field of [title, author, chapter])
+				for (let i = 1; i < field.length; i++)
+					assert.equal(
+						field[i].y - field[i - 1].y,
+						field === title ? 48 : field === author ? 34 : 32,
+						'consistent measured row advances'
+					);
+			if (author.length) assert.equal(author[0].y - title.at(-1).y, 58);
+			if (chapter.length)
+				assert.equal(
+					chapter[0].y - (author.at(-1) || title.at(-1)).y,
+					author.length ? 52 : 66,
+					'missing author adds no orphan spacing'
+				);
+			if (date.length)
+				assert.equal(s.footer - date[0].y, 74, 'date anchors near cover bottom');
+			assert(
+				title[0].color !== (author[0] || chapter[0] || title[0]).color ||
+					(!author.length && !chapter.length),
+				'title has darker ink than secondary metadata'
+			);
 		}
 	}
 );

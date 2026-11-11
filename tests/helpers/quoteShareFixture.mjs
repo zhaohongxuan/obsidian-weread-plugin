@@ -56,13 +56,99 @@ state.request=async options=>{state.requests.push(options);if(state.coverMode===
 const note={id:'synthetic:bookmark',bookId:'synthetic',kind:'highlight',text:'把日子过成一首慢慢读的诗。\n\n在平凡的生活里，仍然记得看见光。',bookTitle:'阅读与生活',author:'示例作者',chapterTitle:'第三章 日常的微光',createTime:1700000000000,cover:'https://synthetic.invalid/cover.png'};
 const app={fileManager:{async getAvailablePathForAttachment(name){state.resolutions.push(name);return 'attachments/'+name}},vault:{getAbstractFileByPath(path){return state.occupied?.(path)?{path}:undefined},async createBinary(path,bytes){state.writes.push({path,bytes:Array.from(new Uint8Array(bytes)),length:bytes.byteLength})}}};
 let modal;
+let restoreClipboard;
+function mockClipboard(){
+ const clipboardDescriptor=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+ const itemDescriptor=Object.getOwnPropertyDescriptor(window,'ClipboardItem');
+ const calls=[];
+ class PNGItem {constructor(data){this.data=data;this.types=Object.keys(data)}async getType(type){return this.data[type]}}
+ Object.defineProperty(window,'ClipboardItem',{configurable:true,value:PNGItem});
+ Object.defineProperty(navigator,'clipboard',{configurable:true,value:{write(items){
+  calls.push({items,blob:items[0].data['image/png'],active:navigator.userActivation?.isActive});
+  if(state.copyMode==='throw')throw new DOMException('Denied','NotAllowedError');
+  if(state.copyMode==='reject')return Promise.reject(new DOMException('Denied','NotAllowedError'));
+  if(state.copyMode==='pending')return new Promise((resolve,reject)=>{state.resolveCopy=resolve;state.rejectCopy=reject});
+  return Promise.resolve();
+ }}});
+ restoreClipboard=()=>{if(clipboardDescriptor)Object.defineProperty(navigator,'clipboard',clipboardDescriptor);else delete navigator.clipboard;if(itemDescriptor)Object.defineProperty(window,'ClipboardItem',itemDescriptor);else delete window.ClipboardItem;state.copyMode=undefined;state.resolveCopy=undefined;state.rejectCopy=undefined;restoreClipboard=undefined};
+ return calls;
+}
+async function verifyCopy(call){
+ check(call.items.length===1&&call.items[0].types.join(',')==='image/png','clipboard receives one PNG ClipboardItem');
+ check(call.blob instanceof Blob&&call.blob.type==='image/png'&&call.blob===modal.blob,'clipboard uses exact prepared Blob');
+ const bytes=new Uint8Array(await call.blob.arrayBuffer()),preview=new Uint8Array(await fetch(image().src).then(r=>r.arrayBuffer()));
+ check(bytes.length===preview.length&&bytes.every((value,index)=>value===preview[index]),'copied PNG bytes exactly match current preview');
+ check(Array.from(bytes.slice(0,8)).join(',')==='137,80,78,71,13,10,26,10','clipboard binary has PNG signature');
+ const bitmap=await createImageBitmap(call.blob);check(bitmap.width===image().naturalWidth&&bitmap.height===image().naturalHeight&&bitmap.width===1080&&bitmap.height>=1440,'copied PNG dimensions match preview');bitmap.close();
+ return{width:image().naturalWidth,height:image().naturalHeight,size:bytes.length,active:call.active};
+}
 const root=()=>modal.contentEl,button=text=>[...root().querySelectorAll('button')].find(el=>el.textContent===text),image=()=>root().querySelector('.weread-quote-share-preview img');
 async function ready(previous){await wait(()=>image()&&image().src!==previous&&root().querySelector('.weread-quote-share-status').textContent.includes('PNG'));await image().decode();return image()}
 async function open(options={},base=note){if(modal)modal.close();state.texts=[];state.draws=[];modal=new WereadQuoteShareModal(app,{...base,...options});modal.open();await ready();return modal}
 async function template(id){const previous=image().src;root().querySelector('[data-template='+id+']').click();await ready(previous)}
 async function username(value){const previous=image().src;const input=root().querySelector('input');input.value=value;input.dispatchEvent(new Event('input'));input.dispatchEvent(new Event('change'));await ready(previous)}
 window.shareSmoke={
- async basics(){await open();check(root().querySelector('h2').textContent==='分享卡片','generic modal heading');check(modal.note.id===note.id&&modal.note.bookId===note.bookId&&modal.note.kind===note.kind,'full journal snapshot retains runtime fields');check(state.texts.includes('示例读者'),'canonical WeRead username rendered');check(root().querySelector('[data-template=paper]').getAttribute('aria-pressed')==='true','paper is default');check(state.requests.length===1&&state.requests[0].url===note.cover,'cover fetched through native requestUrl');check(state.draws.length===1,'real cover rendered');check(button('系统分享').hidden,'unsupported native share hidden');
+ async copy(){
+  const calls=mockClipboard(),snapshots=[],savedSettings={...window.shareSettings.current()};
+  const toBlob=HTMLCanvasElement.prototype.toBlob;
+  let encodings=0;
+  HTMLCanvasElement.prototype.toBlob=function(){encodings++;return toBlob.apply(this,arguments)};
+  try{
+   await open();
+   for(const id of ['paper','cover','night']){
+    await template(id);await username('复制署名-'+id);
+    const count=calls.length,notices=state.notices.length,encoded=encodings;
+    button('复制图片').click();
+    check(calls.length===count+1,'clipboard write starts synchronously in click handler');
+    await wait(()=>state.notices.length===notices+1);
+    check(state.notices.at(-1)==='图片已复制','copy success notice follows fulfilled write');
+    check(encodings===encoded,'copy never re-encodes the PNG');
+    snapshots.push({id,...await verifyCopy(calls.at(-1))});
+   }
+   const clipboard=navigator.clipboard,Item=window.ClipboardItem;
+   for(const missing of ['clipboard','write','ClipboardItem']){
+    if(missing==='clipboard')Object.defineProperty(navigator,'clipboard',{configurable:true,value:undefined});
+    else if(missing==='write')Object.defineProperty(navigator,'clipboard',{configurable:true,value:{}});
+    else Object.defineProperty(window,'ClipboardItem',{configurable:true,value:undefined});
+    const count=calls.length;button('复制图片').click();
+    check(calls.length===count&&state.notices.at(-1).includes('不支持复制图片')&&state.notices.at(-1).includes('保存图片'),'unsupported '+missing+' explains save fallback');
+    check(!button('保存图片').disabled&&!button('保存到笔记库').disabled,'save actions remain available without clipboard support');
+    Object.defineProperty(navigator,'clipboard',{configurable:true,value:clipboard});Object.defineProperty(window,'ClipboardItem',{configurable:true,value:Item});
+   }
+   for(const mode of ['reject','throw']){
+    state.copyMode=mode;const notices=state.notices.length;button('复制图片').click();await wait(()=>state.notices.length>notices);
+    check(state.notices.at(-1).includes('图片复制失败')&&state.notices.at(-1).includes('保存到笔记库'),'clipboard denial explains recovery');
+    check(!state.notices.slice(notices).includes('图片已复制')&&!button('保存图片').disabled,'denied write never reports success or blocks saving');
+   }
+   state.copyMode='pending';let count=calls.length,notices=state.notices.length;button('复制图片').click();button('复制图片').click();void modal.copyImage();
+   check(calls.length===count+1&&[...root().querySelectorAll('.weread-quote-share-export button')].every(el=>el.disabled),'rapid pending copy is deduplicated and exports stay busy');
+   check(state.notices.length===notices,'pending copy does not claim success');state.resolveCopy();await wait(()=>!button('复制图片').disabled);
+   check(state.notices.at(-1)==='图片已复制','resolved pending write reports success');
+   notices=state.notices.length;button('复制图片').click();await template('paper');
+   check(button('复制图片').disabled&&button('保存图片').disabled,'new preview cannot enable exports during pending copy');
+   state.resolveCopy();await wait(()=>!button('复制图片').disabled);check(state.notices.length===notices,'old template copy has no misleading completion notice');
+   button('复制图片').click();state.blobGate={};const gate=state.blobGate,previous=image().src;
+   root().querySelector('[data-template=cover]').click();await wait(()=>gate.release);
+   notices=state.notices.length;state.resolveCopy();await new Promise(resolve=>setTimeout(resolve,0));
+   check(button('复制图片').disabled&&button('保存图片').disabled&&!modal.blob,'copy settlement cannot enable stale exports during encoding');
+   count=calls.length;button('复制图片').click();void modal.copyImage();check(calls.length===count,'no copy while PNG is unprepared');
+   gate.release();await ready(previous);check(!button('复制图片').disabled&&state.notices.length===notices,'prepared replacement restores exports without stale notice');
+   state.copyMode=undefined;
+   const input=root().querySelector('input');input.value='输入中';input.dispatchEvent(new Event('input'));count=calls.length;
+   check(button('复制图片').disabled&&!modal.blob,'username edit invalidates prepared image immediately');button('复制图片').click();void modal.copyImage();check(calls.length===count,'debounced username change cannot copy old template');await ready(image().src);
+   const createBinary=app.vault.createBinary;let releaseWrite;
+   try{app.vault.createBinary=()=>new Promise(resolve=>releaseWrite=resolve);button('保存到笔记库').click();await wait(()=>releaseWrite);count=calls.length;void modal.copyImage();check(button('复制图片').disabled&&calls.length===count,'copy respects vault export busy guard');releaseWrite();await wait(()=>!button('复制图片').disabled)}finally{app.vault.createBinary=createBinary}
+   modal.close();state.coverMode='pending';state.releaseCover=undefined;modal=new WereadQuoteShareModal(app,note);modal.open();await wait(()=>state.releaseCover);
+   count=calls.length;check(button('复制图片').disabled&&!image(),'initial cover preparation disables copy');button('复制图片').click();void modal.copyImage();check(calls.length===count,'unprepared initial modal performs no clipboard write');state.coverMode='ok';state.releaseCover();await ready();
+   state.copyMode='pending';button('复制图片').click();const detachedButton=button('复制图片');notices=state.notices.length;modal.close();count=calls.length;void modal.copyImage();state.resolveCopy();await new Promise(resolve=>setTimeout(resolve,0));
+   check(calls.length===count&&detachedButton.disabled&&state.notices.length===notices,'normal close prevents late notice, copy, and detached re-enabling');
+   await open();state.copyMode='pending';button('复制图片').click();notices=state.notices.length;modal.close();state.rejectCopy(new DOMException('Denied','NotAllowedError'));await new Promise(resolve=>setTimeout(resolve,0));check(state.notices.length===notices,'closed copy rejection is handled silently');
+   await open();return snapshots;
+  }finally{HTMLCanvasElement.prototype.toBlob=toBlob;state.coverMode='ok';state.blobGate=undefined;window.shareSettings.set(savedSettings);restoreClipboard?.()}
+ },
+ async prepareTrustedCopy(){await open();state.trustedCopies=mockClipboard();state.trustedNoticeCount=state.notices.length;const rect=button('复制图片').getBoundingClientRect();return{x:rect.x+rect.width/2,y:rect.y+rect.height/2}},
+ async finishTrustedCopy(){try{await wait(()=>state.notices.length>state.trustedNoticeCount);check(state.trustedCopies.length===1,'trusted click writes one PNG');const result=await verifyCopy(state.trustedCopies[0]);check(state.notices.at(-1)==='图片已复制','trusted copy succeeds');return result}finally{restoreClipboard?.()}},
+ async basics(){await open();check(root().querySelector('h2').textContent==='分享阅读卡片','generic modal heading');check(modal.note.id===note.id&&modal.note.bookId===note.bookId&&modal.note.kind===note.kind,'full journal snapshot retains runtime fields');check(state.texts.includes('示例读者'),'canonical WeRead username rendered');check(root().querySelector('[data-template=paper]').getAttribute('aria-pressed')==='true','paper is default');check(state.requests.length===1&&state.requests[0].url===note.cover,'cover fetched through native requestUrl');check(state.draws.length===1,'real cover rendered');check(button('系统分享').hidden,'unsupported native share hidden');
  const snapshots=[];for(const id of ['paper','cover','night']){if(id!=='paper')await template(id);const img=image();const blob=await fetch(img.src).then(r=>r.blob());const bitmap=await createImageBitmap(blob);const pixels=document.createElement('canvas');pixels.width=bitmap.width;pixels.height=bitmap.height;pixels.getContext('2d').drawImage(bitmap,0,0);const d=state.draws.at(-2)||state.draws[0];const pixel=Array.from(pixels.getContext('2d').getImageData(Math.floor(d.x+d.w/2),Math.floor(d.y+d.h/2),1,1).data);snapshots.push({id,width:img.naturalWidth,height:img.naturalHeight,mime:blob.type,size:blob.size,pixel});check(img.alt.includes({paper:'纸间',cover:'书封',night:'夜读'}[id]),'preview label matches template');check(state.saves.length===0,'preview selection does not persist global default')}
  button('设为默认模板').click();check(state.saves.length===1&&state.saves[0].key==='quoteShareTemplate'&&window.shareSettings.current().quoteShareTemplate==='night','only explicit default action persists selected template');
  await username('  分享笔名  ');check(state.texts.includes('分享笔名'),'edited nickname renders');check(window.shareSettings.current().quoteShareUsername==='分享笔名'&&window.shareSettings.current().user==='示例读者','nickname override saves without changing canonical username');
@@ -77,7 +163,7 @@ window.shareSmoke={
  async minimal(){
   const content={text:'来自社区的完整想法。👩🏽‍💻\n书评同样可以分享。',bookTitle:'社区书评',context:{source:'community'}};
   const requests=state.requests.length;await open({},content);
-  check(root().querySelector('h2').textContent==='分享卡片','minimal content uses generic modal title');
+  check(root().querySelector('h2').textContent==='分享阅读卡片','minimal content uses generic modal title');
   check(!('id' in modal.note)&&!('bookId' in modal.note)&&!('kind' in modal.note)&&!('createTime' in modal.note)&&!('author' in modal.note),'minimal snapshot fabricates no identifiers, author or date');
   check(modal.note.context===content.context,'runtime extras survive spread snapshot');
   check(state.requests.length===requests,'minimal share does not fetch a fabricated cover');
@@ -97,7 +183,7 @@ window.shareSmoke={
  },
  async closePending(){const writes=state.writes.length;modal.close();state.coverMode='pending';modal=new WereadQuoteShareModal(app,note);modal.open();const detached=root();await wait(()=>state.releaseCover);modal.close();state.releaseCover();await new Promise(resolve=>setTimeout(resolve,60));check(!detached.querySelector('img')&&state.writes.length===writes,'close during cover request prevents late preview and vault writes');state.coverMode='ok';
  state.blobGate={};const gate=state.blobGate;modal=new WereadQuoteShareModal(app,note);modal.open();await wait(()=>gate.release);const content=root();modal.close();gate.release();await new Promise(resolve=>setTimeout(resolve,30));check(!content.querySelector('img')&&state.writes.length===writes,'close during PNG encoding discards later result');check(state.created.every(url=>state.revoked.includes(url)),'cover and preview object URLs revoked on replacement and close');return state.assertions},
- async geometry(){await open();await template('paper');const shell=modal.modalEl.getBoundingClientRect();check(document.documentElement.scrollWidth<=innerWidth,'modal does not overflow viewport');check(root().scrollWidth<=root().clientWidth,'modal content has no horizontal overflow');check(image().getBoundingClientRect().width>100,'production PNG preview remains visible');return{shellWidth:shell.width,viewport:innerWidth,assertions:state.assertions}},
+ async geometry(){await open();await template('paper');const shell=modal.modalEl.getBoundingClientRect();check(document.documentElement.scrollWidth<=innerWidth,'modal does not overflow viewport');check(root().scrollWidth<=root().clientWidth,'modal content has no horizontal overflow');check(image().getBoundingClientRect().width>100,'production PNG preview remains visible');const controls=root().querySelector('.weread-quote-share-controls').getBoundingClientRect();for(const el of root().querySelectorAll('.weread-quote-share-export button:not([hidden])')){const rect=el.getBoundingClientRect();check(rect.width>40&&rect.left>=controls.left-1&&rect.right<=controls.right+1&&el.scrollWidth<=el.clientWidth,'visible export action fits controls at '+innerWidth)}return{shellWidth:shell.width,viewport:innerWidth,assertions:state.assertions}},
  async capture(){window.shareSettings.set({quoteShareUsername:'',quoteShareTemplate:'paper'});await open();return image().src},
  nativeTarget(){const rect=button('系统分享').getBoundingClientRect();return{x:rect.x+rect.width/2,y:rect.y+rect.height/2}},
  png:async()=>Array.from(new Uint8Array(await fetch(image().src).then(r=>r.arrayBuffer())))
