@@ -1,4 +1,14 @@
-import type { JournalNote } from './journalHelpers';
+export interface QuoteShareContent {
+	text: string;
+	bookTitle: string;
+	author?: string;
+	cover?: string;
+	chapterTitle?: string;
+	createTime?: number;
+}
+
+export const QUOTE_SHARE_HEADING = '分享此刻';
+export const QUOTE_SHARE_BRAND = 'OBSIDIAN WEREAD';
 
 export const QUOTE_SHARE_TEMPLATES = [
 	{ id: 'paper', name: '纸间', description: '纸本留白，以文字为主角' },
@@ -97,7 +107,7 @@ function wrap(context: CanvasRenderingContext2D, text: string, width: number): s
 
 /** Fixed export colors are intentional: previews and downloaded PNGs share one artifact. */
 export function renderQuoteShareCard(
-	note: JournalNote,
+	note: QuoteShareContent,
 	options: { template?: QuoteShareTemplate; username?: string; cover?: CanvasImageSource } = {}
 ): HTMLCanvasElement {
 	// DOM access stays inside this function so settings can import the template catalog in Node.
@@ -126,9 +136,9 @@ export function renderQuoteShareCard(
 	const author = note.author ? wrap(ctx, note.author, metadataWidth) : [];
 	const chapter = note.chapterTitle ? wrap(ctx, note.chapterTitle, metadataWidth) : [];
 	const username = wrap(ctx, options.username?.trim() || '阅读者', textWidth);
-	const date = new Date(note.createTime);
+	const date = new Date(note.createTime ?? NaN);
 	const dateText =
-		Number.isFinite(date.getTime()) && note.createTime > 0
+		typeof note.createTime === 'number' && note.createTime > 0 && Number.isFinite(date.getTime())
 			? `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`
 			: '';
 	const metadataHeight =
@@ -159,6 +169,10 @@ export function renderQuoteShareCard(
 		ctx.font = `${size}px ${serif ? SERIF : SANS}`;
 		ctx.fillText(value, left, top);
 	};
+	const brand = (top: number, size: number): void => {
+		ctx.font = `${size}px ${SANS}`;
+		text(QUOTE_SHARE_BRAND, 982 - ctx.measureText(QUOTE_SHARE_BRAND).width, top, size, muted);
+	};
 	const line = (left: number, top: number, right: number, color = rule): void => {
 		ctx.strokeStyle = color;
 		ctx.lineWidth = 1.5;
@@ -175,8 +189,8 @@ export function renderQuoteShareCard(
 		text('COLLECTION', 48, 169, 17, '#526647');
 		spine.forEach((value, i) => text(value, 48, 290 + i * 86, 54, '#34412e', true));
 		line(48, height - 115, 282, '#7c8c6f');
-		text('旧句重逢', 48, height - 87, 23, '#526647');
-		text('READING NOTES', x, 92, 19, muted);
+		text(QUOTE_SHARE_HEADING, 48, 62, 23, '#526647');
+		brand(92, 19);
 		text('书页有尽，回响悠长。', x, 165, 25, muted, true);
 	} else if (night) {
 		ctx.fillStyle = '#c4b28b';
@@ -187,7 +201,8 @@ export function renderQuoteShareCard(
 		ctx.beginPath();
 		ctx.arc(106, 107, 18, 0, Math.PI * 2);
 		ctx.fill();
-		text('旧句重逢 / 夜读', 158, 98, 21, '#c4c9b4');
+		text(QUOTE_SHARE_HEADING, 158, 98, 21, '#c4c9b4');
+		brand(102, 19);
 		text('留一盏灯，给心里的句子。', 98, 267, 22, muted, true);
 		ctx.strokeStyle = '#899271';
 		ctx.beginPath();
@@ -195,8 +210,8 @@ export function renderQuoteShareCard(
 		ctx.lineTo(129, bodyY + quote.length * lineHeight);
 		ctx.stroke();
 	} else {
-		text('旧句重逢', 98, 105, 24, muted, true);
-		text('READ & REMEMBER', 700, 110, 15, muted);
+		text(QUOTE_SHARE_HEADING, 98, 105, 24, muted, true);
+		brand(110, 15);
 		line(98, 174, 982);
 		text('“', 98, 266, 116, '#a2a58b', true);
 	}

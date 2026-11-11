@@ -43,7 +43,7 @@ test(
 		const originalText=CanvasRenderingContext2D.prototype.fillText;
 		const originalImage=CanvasRenderingContext2D.prototype.drawImage;
 		let calls=[],images=[];
-		CanvasRenderingContext2D.prototype.fillText=function(value,x,y){calls.push({value,x,y,font:this.font});return originalText.apply(this,arguments)};
+		CanvasRenderingContext2D.prototype.fillText=function(value,x,y){const metrics=this.measureText(value);calls.push({value,x,y,font:this.font,width:metrics.width,left:x-metrics.actualBoundingBoxLeft,right:x+metrics.actualBoundingBoxRight,top:y-metrics.actualBoundingBoxAscent,bottom:y+metrics.actualBoundingBoxDescent});return originalText.apply(this,arguments)};
 		CanvasRenderingContext2D.prototype.drawImage=function(){images.push(Array.from(arguments).slice(1));return originalImage.apply(this,arguments)};
 		const snapshots=[];
 		for(const template of ['paper','cover','night']) {
@@ -59,8 +59,16 @@ test(
 		const longCanvas=window.renderShareCard({...note,text:longText},{username:'长句测试'});
 		const longCalls=calls.filter(call=>call.font.startsWith('56px'));
 		const fallback=calls.some(call=>call.value==='书');
+		const minimal={text:'不需要标识的完整分享内容。👨‍👩‍👧‍👦\nCommunity thought and review.',bookTitle:'只有书名的来源'};
+		const minimalSnapshots=[];
+		for(const template of ['paper','cover','night']) {
+			for(const createTime of [undefined,NaN,Infinity,-1,0,1e20]) {
+				calls=[];const canvas=window.renderShareCard({...minimal,...(createTime===undefined?{}:{createTime})},{template,username:'社区读者'});
+				minimalSnapshots.push({template,calls,height:canvas.height,png:canvas.toDataURL().slice(0,30)});
+			}
+		}
 		let oversized='';try{window.renderShareCard({...note,text:'不应静默裁切'.repeat(20000)})}catch(e){oversized=e.message}
-		return {snapshots,expected:note.text,longText,longHeight:longCanvas.height,longCalls,fallback,oversized};
+		return {snapshots,minimal,minimalSnapshots,expected:note.text,longText,longHeight:longCanvas.height,longCalls,fallback,oversized};
 	})()`);
 		for (const snapshot of result.snapshots) {
 			assert.equal(snapshot.width, 1080);
@@ -85,6 +93,18 @@ test(
 					snapshot.calls.some((call) => call.value === value),
 					value
 				);
+			const heading = snapshot.calls.find((call) => call.value === '分享此刻');
+			const brand = snapshot.calls.find((call) => call.value === 'OBSIDIAN WEREAD');
+			assert(heading && brand, snapshot.template + ' has generic heading and exact brand');
+			assert.equal(snapshot.calls.filter((call) => call.value === '分享此刻').length, 1);
+			assert.equal(snapshot.calls.filter((call) => call.value === 'OBSIDIAN WEREAD').length, 1);
+			assert(!snapshot.calls.some((call) => /旧句重逢|READ & REMEMBER|READING NOTES/.test(call.value)));
+			assert(heading.y < 110 && brand.y <= 110, 'branding stays in upper header');
+			assert(heading.x < 200 && brand.x > 395, 'branding occupies upper left and right');
+			assert(heading.right + 30 < brand.left, 'header text has a clear horizontal gap');
+			assert(Math.abs(brand.x + brand.width - 982) < 0.01, 'brand aligns to the 982px right edge');
+			assert(brand.left >= 395 && brand.right <= 984, 'actual brand glyphs stay in right header');
+			assert(brand.top >= 0 && brand.bottom < 174, 'actual brand glyphs stay inside header height');
 			assert(snapshot.png.startsWith('data:image/png;base64,'));
 			assert.deepEqual(snapshot.pixel, [255, 0, 255, 255]);
 			assert.equal(snapshot.images.length, 1);
@@ -100,6 +120,15 @@ test(
 				snapshot.body.every((call) => call.y + 106 < y),
 				'body clears source/cover footer'
 			);
+		}
+		for (const snapshot of result.minimalSnapshots) {
+			const body = snapshot.calls.filter((call) => call.font.startsWith(snapshot.template === 'cover' ? '48px' : '56px'));
+			assert.equal(body.map((call) => call.value).join(''), result.minimal.text.replaceAll('\n', ''));
+			assert(snapshot.calls.some((call) => call.value === '《只有书名的来源》'));
+			assert(snapshot.calls.some((call) => call.value === '社区读者'));
+			assert(!snapshot.calls.some((call) => /^\d{4}\.\d{2}\.\d{2}$/.test(call.value)), 'absent/invalid date omitted');
+			assert(!snapshot.calls.some((call) => /Invalid Date|undefined|NaN/.test(call.value)));
+			assert(snapshot.png.startsWith('data:image/png;base64,'));
 		}
 		assert(result.longHeight > 1440 && result.longHeight <= 12000);
 		assert.equal(

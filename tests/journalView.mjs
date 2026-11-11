@@ -199,7 +199,15 @@ window.smoke = {
         const sort=region().querySelector('.weread-journal-sort');
         const quote=view.contentEl.querySelector('.weread-journal-quote article');
         const share=quote.querySelector('.weread-journal-share'), shareSvg=share?.querySelector('svg');
-        check(share&&share.classList.contains('clickable-icon')&&!region().querySelector('.weread-journal-share'),mode+': sharing is an accessible quote-only icon');
+        check(share&&share.classList.contains('clickable-icon')&&region().querySelector('.weread-journal-share'),mode+': shared accessible controls cover quotes and ordinary notes');
+        for(const card of view.contentEl.querySelectorAll('article.weread-journal-note')) {
+          const expected=state.notes.find(note=>note.text===card.querySelector('.weread-journal-note-text').textContent);
+          const control=card.querySelector('.weread-share-button');
+          check(control?.getAttribute('aria-label')==='分享卡片',mode+': each rendered sentence has the common share component');
+          control.click();const snapshot=sharedNotes.at(-1);
+          check(snapshot.id===expected.id&&snapshot.text===expected.text&&snapshot.bookTitle===expected.bookTitle&&snapshot.createTime===expected.createTime&&snapshot.kind===expected.kind,mode+': note/anniversary/thought sharing retains full content and source');
+        }
+        const entryShare=initialArticle.querySelector('.weread-share-button'),entryShareSvg=entryShare.querySelector('svg');
         const anniversarySort=mode==='review'?view.contentEl.querySelector('.weread-journal-sort[data-sort-scope="anniversary"]'):undefined;
         const anniversaryCard=mode==='review'?view.contentEl.querySelector('[data-favorite-id="'+anniversary.id+'"]').closest('article'):undefined;
         const originalSvgs=[copy,star,sort].map(button=>button.querySelector('svg'));
@@ -208,7 +216,7 @@ window.smoke = {
         const assertStable=label=>{
           check(article()===initialArticle&&copy.isConnected&&star.isConnected&&region().querySelector('.weread-journal-sort')===sort,mode+': '+label+' retains existing note and copy/star/sort controls');
           check([copy,star,sort].every((button,index)=>button.querySelector('svg')===originalSvgs[index]),mode+': '+label+' retains existing SVG nodes');
-          check(share.isConnected&&share.querySelector('svg')===shareSvg,mode+': '+label+' retains the share icon');
+          check(share.isConnected&&share.querySelector('svg')===shareSvg&&entryShare.isConnected&&entryShare.querySelector('svg')===entryShareSvg,mode+': '+label+' retains quote and ordinary-note share icons');
           check(view.contentEl.querySelector('.weread-journal-quote article')===quote,mode+': '+label+' retains the selected old quote');
           if(anniversarySort) check(anniversarySort.isConnected&&view.contentEl.querySelector('.weread-journal-sort[data-sort-scope="anniversary"]')===anniversarySort&&anniversaryCard.isConnected, 'Review: '+label+' retains anniversary controls and existing year cards');
           if(query) check(query.isConnected&&document.activeElement===query,mode+': '+label+' preserves focused search');
@@ -247,6 +255,7 @@ window.smoke = {
         if(mode==='review') check(!view.contentEl.querySelector('.weread-journal-anniversary-year[data-year="2024"]'), 'Review: obsolete anniversary year groups disappear incrementally');
         copy.click();await tick();
         check(clipboardWrites.at(-1)==='UPDATED IMPORT HIGHLIGHT',mode+': retained copy handler uses the latest note text');
+        entryShare.click();check(sharedNotes.at(-1).text==='UPDATED IMPORT HIGHLIGHT',mode+': retained ordinary-note sharing reads the latest text');
         favoriteWriteGate=gate();star.click();await tick();
         check(star.disabled,mode+': retained star reflects pending persistence');
         journal.publish({...state,notes:state.notes.map(entry=>({...entry})),syncing:true,scannedBooks:160});await frame();

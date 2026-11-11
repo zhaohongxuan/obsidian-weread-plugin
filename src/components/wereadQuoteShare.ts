@@ -1,22 +1,23 @@
 /** Quote sharing owns its snapshot and preview; it never mutates journal or favorites data. */
 import { App, Modal, Notice, requestUrl } from 'obsidian';
 import { get } from 'svelte/store';
-import type { JournalNote } from '../journalHelpers';
 import { settingsStore } from '../settings';
 import {
+	QUOTE_SHARE_HEADING,
 	QUOTE_SHARE_TEMPLATES,
 	renderQuoteShareCard,
 	resolveQuoteShareTemplate,
+	type QuoteShareContent,
 	type QuoteShareTemplate
 } from '../quoteShareCard';
 import './wereadQuoteShare.css';
 
-export function quoteShareFilename(note: JournalNote, template: QuoteShareTemplate): string {
+export function quoteShareFilename(note: QuoteShareContent, template: QuoteShareTemplate): string {
 	const title =
 		Array.from(note.bookTitle.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim())
 			.slice(0, 28)
 			.join('') || '书摘';
-	return `旧句重逢-${title}-${Date.now()}-${template}.png`;
+	return `${QUOTE_SHARE_HEADING}-${title}-${Date.now()}-${template}.png`;
 }
 
 async function loadCover(url?: string): Promise<HTMLImageElement | undefined> {
@@ -59,7 +60,7 @@ function pngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 export class WereadQuoteShareModal extends Modal {
-	private readonly note: JournalNote;
+	private readonly note: QuoteShareContent;
 	private template: QuoteShareTemplate;
 	private username: string;
 	private cover?: Promise<HTMLImageElement | undefined>;
@@ -77,7 +78,7 @@ export class WereadQuoteShareModal extends Modal {
 	private saving = false;
 	private inputTimer?: number;
 
-	constructor(app: App, note: JournalNote) {
+	constructor(app: App, note: QuoteShareContent) {
 		super(app);
 		this.note = { ...note };
 		const settings = get(settingsStore);
@@ -89,7 +90,7 @@ export class WereadQuoteShareModal extends Modal {
 		this.closed = false;
 		this.modalEl.addClass('weread-quote-share-shell');
 		this.contentEl.addClass('weread-quote-share-modal');
-		this.contentEl.createEl('h2', { text: '分享这段划线' });
+		this.contentEl.createEl('h2', { text: '分享卡片' });
 		const layout = this.contentEl.createDiv({ cls: 'weread-quote-share-layout' });
 		this.preview = layout.createDiv({
 			cls: 'weread-quote-share-preview',

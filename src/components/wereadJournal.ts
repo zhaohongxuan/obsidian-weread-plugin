@@ -15,6 +15,7 @@ import { getPcUrl } from '../parser/parseResponse';
 import { getJournalNoteBookmark, openJournalNoteOriginal } from '../utils/openWereadUrl';
 import { setOriginalReadingIcon } from '../utils/readingActionIcon';
 import { formatNoteTimestamp } from '../utils/noteTime';
+import { createQuoteShareButton } from './quoteShareButton';
 
 export const WEREAD_TODAY_VIEW_ID = 'weread-today-view';
 export const WEREAD_REVIEW_VIEW_ID = 'weread-review-view';
@@ -1070,17 +1071,12 @@ export class WereadJournalPanel extends WereadPanel {
 			this.updateFavoriteStars(star);
 		};
 		updateStar();
-		if (parent.classList.contains('weread-journal-quote')) {
-			const share = actions.createEl('button', {
-				cls: 'clickable-icon weread-journal-note-action weread-journal-share',
-				attr: { type: 'button', title: '分享划线', 'aria-label': '分享划线' }
-			});
-			setIcon(share, 'share-2');
-			share.onclick = () => {
-				if (this.active && card.isConnected)
-					this.plugin.shareJournalNote(note);
-			};
-		}
+		createQuoteShareButton(actions, {
+			cls: 'weread-journal-note-action weread-journal-share',
+			getContent: () => note,
+			onShare: (content) => this.plugin.shareJournalNote(content),
+			isActive: () => this.active
+		});
 		const text = content.createEl('p', { text: note.text, cls: 'weread-journal-note-text' });
 		const source = content.createEl('button', {
 			text: `《${note.bookTitle}》 · ${note.author || '未知作者'}`,

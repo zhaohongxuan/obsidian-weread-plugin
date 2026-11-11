@@ -51,6 +51,7 @@ HTMLElement.prototype.toggleClass=function(name,enabled){this.classList.toggle(n
 HTMLElement.prototype.setText=function(text){this.textContent=text;};
 HTMLElement.prototype.setAttr=function(name,value){this.setAttribute(name,value);};
 const style=document.createElement('style');style.textContent='*{box-sizing:border-box} body{margin:0;padding:24px;background:#f8f7f4;color:#292d29;font-family:-apple-system,BlinkMacSystemFont,sans-serif;--background-primary:#fff;--background-secondary:#f3f1ec;--background-modifier-border:#dddcd5;--text-normal:#292d29;--text-muted:#72756d;--text-faint:#8a8e83;--interactive-accent:#5f765c;--text-accent:#5f765c;--color-yellow:#c9a34a;--color-blue:#5b91c3;--color-green:#719768;--color-red:#c77c77;--color-purple:#a38aba;--interactive-normal:#fff;--background-modifier-hover:#e8eddf} main{max-width:1050px;margin:auto}button,input,select{font:inherit;padding:7px 11px;border:1px solid var(--background-modifier-border);background:var(--background-primary);border-radius:6px;color:inherit}button{cursor:pointer}button:disabled{opacity:.45}svg{width:18px;height:18px}body.theme-dark{background:#20231f;color:#e4e6dd;--background-primary:#282c26;--background-secondary:#222620;--background-modifier-border:#444b3f;--text-normal:#e4e6dd;--text-muted:#b1b8a9;--text-faint:#a0aa97;--interactive-accent:#a5bd8b;--text-accent:#a5bd8b;--interactive-normal:#282c26;--background-modifier-hover:#343d2e}@media(max-width:500px){body{padding:12px}}';document.head.append(style);
+const tabletStyle=document.createElement('style');tabletStyle.textContent='.is-tablet button:not(.clickable-icon){padding:var(--size-4-2) var(--size-4-3)}';document.head.append(tabletStyle);document.body.style.setProperty('--size-4-2','8px');document.body.style.setProperty('--size-4-3','12px');
 const clipboard=[];let clipboardFails=false;
 Object.defineProperty(navigator,'clipboard',{configurable:true,value:{async writeText(text){if(clipboardFails)throw new Error('clipboard denied');clipboard.push(text);}}});
 const TEXT='晨光穿过树叶，阅读让平凡的一天有了新的层次。 <img src=x onerror="window.injected=true"> & 原样保留';
@@ -63,8 +64,8 @@ const data=(id='42')=>[
  {book:{progress:67,readingTime:7200}},
  {book:{bookId:id,title:'山间的阅读',author:'林间',cover:COVER},chapters,updated:[highlight('remote-2',{chapterUid:2,markText:'山与水之间，有一种安静。'}),highlight('remote-1'),highlight('invalid-time',{createTime:0,markText:'缺失创建时间的真实划线'}),highlight('invalid-id',{bookmarkId:'',markText:'缺失原始标识'}),highlight('deleted',{type:0,markText:'DELETED SENTINEL'})],removed:[]},
  {reviews:[{review:{type:1,reviewId:'note-1',content:'我的笔记：慢下来，看见被忽略的细节。',abstract:'读书的片刻',chapterUid:1,range:'12-40',createTime:CREATED}},{review:{type:4,reviewId:'review-1',title:'我的书评',content:'MY BOOK REVIEW SENTINEL',createTime:CREATED}}]},
- {items:[highlight('community',{markText:'COMMUNITY HIGHLIGHT SENTINEL',totalCount:123})],chapters},
- {reviews:[{review:{content:'COMMUNITY REVIEW SENTINEL',author:{name:'另一位读者'},createTime:CREATED}}]}
+ {items:[highlight('community',{markText:'COMMUNITY HIGHLIGHT SENTINEL',totalCount:123,createTime:undefined})],chapters},
+ {reviews:[{review:{title:'社区书评标题',content:'COMMUNITY REVIEW SENTINEL',author:{name:'另一位读者'},createTime:CREATED}}]}
 ];
 const methods=['getBook','getProgress','getNotebookHighlights','getNotebookReviews','getBestBookmarks','getPublicReviews'];
 const router=(transform)=>Object.fromEntries(methods.map((name,index)=>[name,async id=>{const response=data(id)[index];return transform?transform(index,id,response):response;}]));
@@ -72,7 +73,7 @@ let activeFixture;
 function persistence(initial=[]) {
  const files=new Map(initial);const faults={};const operations=[];
  const adapter={async exists(path){return files.has(path);},async mkdir(path){files.set(path,'<directory>');},async read(path){if(!files.has(path))throw new Error('missing');return files.get(path);},async write(path,raw){operations.push(path);if(faults.gate)await faults.gate.promise;if(faults.fail)throw new Error('FIXTURE DISK WRITE FAILED');files.set(path,raw);}};
- const plugin={app:{vault:{adapter,getAbstractFileByPath:path=>path==='fixture.md'?new TFile(path):null,async read(){return faults.markdown ?? '## 本地章节\n> 📌 [LOCAL QUOTE SENTINEL](<weread://bestbookmark?bookId=42&chapterUid=1&rangeStart=12&rangeEnd=40>)\n⏱ 2026-11-06 08:00:00';}},workspace:{getLeavesOfType:()=>[],requestSaveLayout(){},getLeaf(){throw new Error('Unexpected new workspace leaf');}}},async openPreferredReadingView(...args){plugin.opened.push(args);},opened:[],syncCalls:[],async syncBookById(id){plugin.syncCalls.push(id);if(faults.syncGate)await faults.syncGate.promise;if(faults.syncFail)throw new Error('SYNC SECRET SENTINEL');},async activateBookDetailView(){}};
+ const plugin={app:{vault:{adapter,getAbstractFileByPath:path=>path==='fixture.md'?new TFile(path):null,async read(){return faults.markdown ?? '## 本地章节\n> 📌 [LOCAL QUOTE SENTINEL](<weread://bestbookmark?bookId=42&chapterUid=1&rangeStart=12&rangeEnd=40>)\n⏱ 2026-11-06 08:00:00';}},workspace:{getLeavesOfType:()=>[],requestSaveLayout(){},getLeaf(){throw new Error('Unexpected new workspace leaf');}}},async openPreferredReadingView(...args){plugin.opened.push(args);},opened:[],shared:[],shareJournalNote(content){plugin.shared.push(content);},syncCalls:[],async syncBookById(id){plugin.syncCalls.push(id);if(faults.syncGate)await faults.syncGate.promise;if(faults.syncFail)throw new Error('SYNC SECRET SENTINEL');},async activateBookDetailView(){}};
  const service=new WereadFavoritesService(plugin);plugin.favoritesService=service;
  let subscriptions=0;const subscribe=service.subscribe.bind(service);service.subscribe=listener=>{subscriptions++;const off=subscribe(listener);let active=true;return ()=>{if(active){active=false;subscriptions--;off();}};};
  let writes=0;const setFavorite=service.setFavorite.bind(service);service.setFavorite=(...args)=>{writes++;return setFavorite(...args);};
@@ -118,6 +119,38 @@ window.smoke={assertions,
   click('复制正文',root.querySelector('.weread-detail-review'));await tick();check(clipboard.at(-1)==='MY BOOK REVIEW SENTINEL','Review copy preserves exact content after action grouping');
   check(!root.querySelector('.weread-detail-favorite'),'Reviews have no personal-highlight favorite action');
   tab('highlights');check(panel.getState().currentTab==='highlights','Tab changes persist in detail state');
+ },
+ async sharing(){
+  const f=await mount();
+  const article=quote().closest('article');click('分享卡片',article);
+  const shared=f.plugin.shared.at(-1);
+  check(shared.text===TEXT&&shared.bookTitle==='山间的阅读'&&shared.author==='林间'&&shared.cover===COVER&&shared.chapterTitle==='第一章 · 日常的光'&&shared.createTime===CREATED*1000,'Personal share preserves exact text, current book metadata, chapter and milliseconds');
+  const missingTime=root.querySelector('[data-bookmark-id="invalid-time"]');click('分享卡片',missingTime);check(f.plugin.shared.at(-1).text==='缺失创建时间的真实划线'&&f.plugin.shared.at(-1).createTime===undefined,'Missing timestamp shares without an artificial date');
+  click('分享卡片',root.querySelector('[data-bookmark-id=""]'));check(f.plugin.shared.at(-1).text==='缺失原始标识','Missing source ID does not prevent read-only sharing');
+  tab('notes');click('分享卡片');check(f.plugin.shared.at(-1).text==='读书的片刻\n\n我的笔记：慢下来，看见被忽略的细节。'&&f.plugin.shared.at(-1).chapterTitle==='第一章 · 日常的光','Thought sharing preserves quoted abstract, full thought and paragraph boundary');
+  tab('popular');click('分享卡片');check(f.plugin.shared.at(-1).text==='COMMUNITY HIGHLIGHT SENTINEL'&&f.plugin.shared.at(-1).createTime===undefined,'Popular highlight shares visible original text without inventing a date');
+  tab('reviews');const reviews=root.querySelectorAll('.weread-detail-review');click('分享卡片',reviews[0]);check(f.plugin.shared.at(-1).text==='我的书评\n\nMY BOOK REVIEW SENTINEL'&&f.plugin.shared.at(-1).chapterTitle==='我的书评','Personal review shares full title and body with review source');click('分享卡片',reviews[1]);check(f.plugin.shared.at(-1).text==='社区书评标题\n\nCOMMUNITY REVIEW SENTINEL'&&f.plugin.shared.at(-1).chapterTitle==='社区书评 · 另一位读者'&&f.plugin.shared.at(-1).author==='林间','Community review retains original reviewer in source and book author in metadata');
+  const stale=button('分享卡片');await panel.setState({...state,bookId:'B'});const count=f.plugin.shared.length;stale.click();check(f.plugin.shared.length===count,'Detached previous-book share ignores stale click');root.append(stale);stale.click();check(f.plugin.shared.length===count,'Captured book and generation reject reconnected stale share');stale.remove();check(f.writes===0&&f.plugin.syncCalls.length===0,'Sharing does not write favorites or synchronize notes');
+  tab('highlights');const closed=button('分享卡片');await panel.onClose();closed.click();check(f.plugin.shared.length===count,'Still-connected share ignores click after detail unmount');
+  const local=await mount(router(()=>undefined),[],{state:{localFilePath:'fixture.md'},markdown:'## 离线章节\n> 📌 [无日期的本地划线](<weread://bestbookmark?bookId=42&chapterUid=1&rangeStart=12&rangeEnd=40>)'});click('分享卡片');check(local.plugin.shared.at(-1).text==='无日期的本地划线'&&local.plugin.shared.at(-1).createTime===undefined&&local.plugin.shared.at(-1).bookTitle==='书架临时标题','Offline local fallback shares without original IDs, timestamp or login');
+ },
+ async favoriteSharing(){
+  const f=await mount();const longText=('完整长句与段落。'.repeat(35))+'\n\n最后一段必须完整保留';
+  await f.service.setFavorite({id:'42:highlight:long-share',kind:'highlight',bookId:'42',bookTitle:'收藏的原始书名',author:'收藏的作者',cover:COVER,chapterTitle:'收藏章节',text:longText,createTime:CREATED*1000},true);
+  favoritesRoot=host();favorites=new WereadFavoritesPanel(favoritesRoot,f.plugin,f.service);await favorites.onOpen();
+  const verify=mode=>{const current=favoritesRoot.querySelector('.weread-favorites-entry');click('分享卡片',current);const snapshot=f.plugin.shared.at(-1);check(snapshot.text===longText&&snapshot.bookTitle==='收藏的原始书名'&&snapshot.author==='收藏的作者'&&snapshot.cover===COVER&&snapshot.chapterTitle==='收藏章节'&&snapshot.createTime===CREATED*1000,'Favorites '+mode+' shares the full original snapshot and metadata');return button('分享卡片',current);};
+  const stale=verify('cards');click('列表视图',favoritesRoot);const count=f.plugin.shared.length;stale.click();check(f.plugin.shared.length===count,'Favorites detached card cannot share after list rerender');check(favoritesRoot.querySelector('.weread-favorites-summary').textContent.length===120&&favoritesRoot.querySelector('.weread-favorites-text').hidden,'Long favorite is collapsed to a 120-character list summary');verify('collapsed list');
+  favorites.state={...favorites.state,writable:false};favorites.render();check(button('取消收藏',favoritesRoot).disabled&&!button('分享卡片',favoritesRoot).disabled,'Read-only favorites disable mutations while sharing stays available');verify('read-only list');
+  const closed=button('分享卡片',favoritesRoot),before=f.plugin.shared.length;await favorites.onClose();closed.click();check(f.plugin.shared.length===before,'Favorites share ignores stale event after close');
+ },
+ async favoriteLayout(){
+  await favorites.onOpen();
+  for(const mode of ['卡片视图','列表视图']) {
+   click(mode,favoritesRoot);
+   check(document.documentElement.scrollWidth<=innerWidth,'Favorites '+mode+' shares fit viewport '+innerWidth);
+   check([...favoritesRoot.querySelectorAll('.weread-share-button')].every(b=>{const r=b.getBoundingClientRect(),svg=b.querySelector('svg').getBoundingClientRect(),actions=b.parentElement.getBoundingClientRect(),card=b.closest('article').getBoundingClientRect();return b.classList.contains('clickable-icon')&&svg.width>0&&svg.height>0&&svg.left>=r.left&&svg.right<=r.right+1&&actions.left>=card.left&&actions.right<=card.right&&b.scrollWidth<=b.clientWidth;}),'Favorites '+mode+' share icon and actions fit without content overflow at viewport '+innerWidth);
+  }
+  await favorites.onClose();
  },
  async header(){
   const f=await mount(router(),[],{state:{localFilePath:'fixture.md'}});
@@ -187,7 +220,7 @@ window.smoke={assertions,
   check(root.textContent.includes('联网读取原始划线后可收藏'),'Local-only quote explains how to enable favorites');
   const future=JSON.stringify({nodes:[{id:'future',type:'text',x:0,y:0,width:400,height:200,text:'<!-- weread-favorites:'+encodeURIComponent(JSON.stringify({schemaVersion:999,revision:0,tombstones:[]}))+' -->'}],edges:[]});
   const f=await mount(router(),[[FAVORITES_PATH,future]]);check(!f.service.getSnapshot().writable&&quote().textContent===TEXT&&star().disabled,'Unsupported future Canvas keeps detail readable with disabled star');
-  check(f.files.get(FAVORITES_PATH)===future&&root.textContent.includes('只读'),'Read-only Canvas is preserved and explained');
+  check(f.files.get(FAVORITES_PATH)===future&&root.textContent.includes('只读'),'Read-only Canvas is preserved and explained');click('分享卡片',quote().closest('article'));check(f.plugin.shared.at(-1).text===TEXT&&f.files.get(FAVORITES_PATH)===future,'Detail sharing remains available with read-only favorites and preserves Canvas bytes');
  },
  async localPopularOffline(){
   const markdown='## 离线章节\n> 🔥 [First paragraph\n   Second paragraph](<weread://bestbookmark?bookId=42&chapterUid=11&rangeStart=10&rangeEnd=19>)\n📊 37人共读';
@@ -197,7 +230,7 @@ window.smoke={assertions,
    check(recovered?.textContent==='First paragraph\nSecond paragraph','Popular-only multiline Markdown recovers when all remote APIs are '+mode);
    check(/37\s*人划线/.test(recovered.closest('article').textContent),'Recovered popular highlight retains count 37 when all remote APIs are '+mode);
    check(root.textContent.includes('当前显示本地已同步划线')&&!root.textContent.includes('OFFLINE API SECRET'),'Popular-only local fallback keeps readable content and banner without a fatal error when APIs are '+mode);
-   check(!root.querySelector('.weread-detail-favorite'),'Local community fallback never exposes personal favorite stars');
+   check(!root.querySelector('.weread-detail-favorite'),'Local community fallback never exposes personal favorite stars');click('分享卡片',recovered.closest('article'));check(activeFixture.plugin.shared.at(-1).text==='First paragraph\nSecond paragraph'&&activeFixture.plugin.shared.at(-1).createTime===undefined,'Offline popular sharing keeps full paragraphs without invented timestamp');
    tab('highlights');check(!root.querySelector('.weread-detail-highlight')&&!root.textContent.includes('First paragraph')&&root.textContent.includes('还没有划线'),'Popular-only Markdown does not invent a personal highlight');
   }
  },
@@ -263,6 +296,8 @@ test(
 		for (const scenario of [
 			'content',
 			'header',
+			'sharing',
+			'favoriteSharing',
 			'stateValidation',
 			'explicitSync',
 			'sync',
@@ -274,6 +309,16 @@ test(
 			'races'
 		]) {
 			await browser.evaluate(`smoke.${scenario}()`);
+			if (scenario === 'favoriteSharing') {
+				for (const width of [1180, 375, 320, 768]) {
+					await browser.viewport(width, 844);
+					await browser.evaluate(
+						'document.body.classList.toggle("is-tablet",innerWidth===768);smoke.favoriteLayout()'
+					);
+				}
+				await browser.viewport(1180);
+				await browser.evaluate('document.body.classList.remove("is-tablet")');
+			}
 			t.diagnostic(`Passed detail scenario: ${scenario}`);
 		}
 		await browser.evaluate('smoke.preview()');
@@ -281,7 +326,8 @@ test(
 		for (const label of ['去阅读', '本地笔记', '刷新', '同步笔记']) {
 			assert(
 				accessibility.nodes.some(
-					(node) => !node.ignored && node.role?.value === 'button' && node.name?.value === label
+					(node) =>
+						!node.ignored && node.role?.value === 'button' && node.name?.value === label
 				),
 				`Chrome exposes the header button with its visible accessible name: ${label}`
 			);
@@ -295,6 +341,8 @@ test(
 			await browser.viewport(width, 844);
 			await browser.evaluate('smoke.layout()');
 		}
+		await browser.viewport(768);
+		await browser.evaluate('document.body.classList.add("is-tablet"); smoke.layout()');
 		await browser.viewport(1180);
 		await browser.evaluate('document.body.classList.add("theme-dark"); smoke.layout()');
 		await screenshot('/tmp/obsidian-weread-book-detail-dark.png');
