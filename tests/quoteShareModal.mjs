@@ -5,6 +5,11 @@ import { browserHarness, chromeAvailable } from './helpers/detailBrowserHarness.
 import { bundleQuoteShareFixture } from './helpers/quoteShareFixture.mjs';
 export { bundleQuoteShareFixture } from './helpers/quoteShareFixture.mjs';
 
+test('production share modal waits for a slow native PNG encoder', {skip:!chromeAvailable}, async t=>{
+ const browser=await browserHarness(t);await browser.viewport(1180);await browser.evaluate(await bundleQuoteShareFixture());await browser.evaluate('shareFixtureReady');
+ await browser.evaluate('shareSmoke.slowEncoding()');
+});
+
 test('production share signature persists input-only edits on close and debounce', {skip:!chromeAvailable}, async t=>{
  const browser=await browserHarness(t);await browser.viewport(1180);await browser.evaluate(await bundleQuoteShareFixture());await browser.evaluate('shareFixtureReady');
  await browser.evaluate('shareSmoke.signaturePersistence()');
