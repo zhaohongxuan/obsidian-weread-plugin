@@ -13,10 +13,11 @@ export class Modal {
 const settings = `
 let value={user:'示例读者',quoteShareTemplate:'paper',quoteShareUsername:'',journalIncludeArticles:false};
 const listeners=new Set();
-function update(key,next) { value={...value,[key]:next};window.shareFixture.saves.push({key,value:next});for(const fn of listeners)fn(value); }
+let saved={...value},queue=Promise.resolve();
+function update(key,next) { value={...value,[key]:next};window.shareFixture.saves.push({key,value:next});for(const fn of listeners)fn(value);const gate=window.shareFixture.settingsGate;window.shareFixture.settingsGate=undefined;const receipt=queue.then(async()=>{if(gate)await new Promise((resolve,reject)=>{gate.resolve=resolve;gate.reject=reject});saved={...saved,[key]:next}});queue=receipt.catch(()=>{});return receipt; }
 export const settingsStore={subscribe(fn){listeners.add(fn);fn(value);return()=>listeners.delete(fn)},
- actions:{setQuoteShareTemplate(value){update('quoteShareTemplate',value)},setQuoteShareUsername(value){update('quoteShareUsername',value.trim())}}};
-window.shareSettings={current:()=>value,set(next){value={...value,...next};for(const fn of listeners)fn(value)}};
+ actions:{setQuoteShareTemplate(value){return update('quoteShareTemplate',value)},setQuoteShareUsername(value){return update('quoteShareUsername',value.trim())}}};
+window.shareSettings={current:()=>value,saved:()=>saved,reload(){value={...saved};for(const fn of listeners)fn(value)},set(next){value={...value,...next};for(const fn of listeners)fn(value)},saveUsername:next=>settingsStore.actions.setQuoteShareUsername(next)};
 `;
 
 // Exported so another browser engine can replay the same production modal fixture.
@@ -88,6 +89,25 @@ async function open(options={},base=note){if(modal)modal.close();state.texts=[];
 async function template(id){const previous=image().src;root().querySelector('[data-template='+id+']').click();await ready(previous)}
 async function username(value){const previous=image().src;const input=root().querySelector('input');input.value=value;input.dispatchEvent(new Event('input'));input.dispatchEvent(new Event('change'));await ready(previous)}
 window.shareSmoke={
+ async signaturePersistence(){
+  const savedSettings={...window.shareSettings.current()};
+  const type=value=>{const input=root().querySelector('input');input.value=value;input.dispatchEvent(new Event('input'))};
+  try{
+   window.shareSettings.set({quoteShareUsername:''});await open();
+   const before=state.saves.length;modal.close();check(state.saves.length===before,'untouched canonical fallback never becomes an override');
+   await open();type('关闭前署名');modal.close();await wait(()=>window.shareSettings.saved().quoteShareUsername==='关闭前署名');
+   window.shareSettings.reload();await open();check(root().querySelector('input').value==='关闭前署名'&&state.texts.includes('关闭前署名'),'input-only close persists through settings reload and reopen');
+   type('自动保存署名');await wait(()=>window.shareSettings.saved().quoteShareUsername==='自动保存署名');await wait(()=>state.texts.includes('自动保存署名'));
+   check(state.texts.includes('自动保存署名'),'input-only debounce updates preview and disk');
+   type('   ');modal.close();await wait(()=>window.shareSettings.saved().quoteShareUsername==='');window.shareSettings.reload();await open();check(state.texts.includes('示例读者'),'clear-only close persists empty override and canonical fallback');
+   await window.shareSettings.saveUsername('设置页署名');await open();check(root().querySelector('input').value==='设置页署名'&&state.texts.includes('设置页署名'),'global settings override is used by modal');
+   const gate={};state.settingsGate=gate;type('较早署名');await wait(()=>gate.resolve);type('最新署名');modal.close();gate.resolve();await wait(()=>window.shareSettings.saved().quoteShareUsername==='最新署名');window.shareSettings.reload();await open();check(root().querySelector('input').value==='最新署名','pending serialized writes preserve last typed value');
+   const failure={};state.settingsGate=failure;type('重试署名');await wait(()=>failure.reject);const notices=state.notices.length;failure.reject(new Error('Synthetic disk failure'));await wait(()=>state.notices.length>notices);check(state.notices.at(-1).includes('分享署名保存失败'),'disk failure is visible');modal.close();await wait(()=>window.shareSettings.saved().quoteShareUsername==='重试署名');check(window.shareSettings.current().user===savedSettings.user,'retry never changes canonical username');
+   await open();const olderFailure={};state.settingsGate=olderFailure;type('过期失败');await wait(()=>olderFailure.reject);type('失败后的新署名');modal.close();const afterCloseNotices=state.notices.length;olderFailure.reject(new Error('Older synthetic failure'));await wait(()=>window.shareSettings.saved().quoteShareUsername==='失败后的新署名');check(state.notices.length>afterCloseNotices&&state.notices.at(-1).includes('分享署名保存失败'),'closed persistence failure remains visible');
+   await open();const externalFailure={};state.settingsGate=externalFailure;type('外部变更前');await wait(()=>externalFailure.reject);const externalSave=window.shareSettings.saveUsername('全局最新署名');externalFailure.reject(new Error('Obsolete failure'));await externalSave;await new Promise(resolve=>setTimeout(resolve,0));const saveCount=state.saves.length;modal.close();check(state.saves.length===saveCount&&window.shareSettings.saved().quoteShareUsername==='全局最新署名','obsolete failure and close never overwrite later global setting');
+   return state.assertions;
+  }finally{modal.close();window.shareSettings.set(savedSettings)}
+ },
  async copy(){
   const calls=mockClipboard(),snapshots=[],savedSettings={...window.shareSettings.current()};
   const toBlob=HTMLCanvasElement.prototype.toBlob;

@@ -215,6 +215,7 @@ const createSettingsStore = () => {
 
 	let _plugin!: WereadPlugin;
 	let persistence: Promise<void> | undefined;
+	let lastSaveOperation: Promise<void> | undefined;
 	let publishingLocation = false;
 	const enqueueSave = (save: () => Promise<void>): Promise<void> => {
 		const operation = persistence ? persistence.then(save, save) : save();
@@ -365,11 +366,12 @@ const createSettingsStore = () => {
 	store.subscribe((settings) => {
 		if (_plugin && !publishingLocation) {
 			const data = { ...settings };
-			void enqueueSave(() => _plugin.saveData({
+			lastSaveOperation = enqueueSave(() => _plugin.saveData({
 				...data,
 				favoritesCanvasFolder: get(store).favoritesCanvasFolder,
 				favoritesCanvasLocationVersion: get(store).favoritesCanvasLocationVersion
-			})).catch(() => console.error('[weread plugin] 设置保存失败'));
+			}));
+			void lastSaveOperation.catch(() => console.error('[weread plugin] 设置保存失败'));
 		}
 	});
 
@@ -866,8 +868,11 @@ const createSettingsStore = () => {
 		store.update((state) => ({ ...state, quoteShareTemplate: normalizeQuoteShareTemplate(value) }));
 	};
 
-	const setQuoteShareUsername = (value: string) => {
+	const setQuoteShareUsername = (value: string): Promise<void> => {
+		if (!_plugin) return Promise.reject(new Error('分享署名设置尚未加载'));
 		store.update((state) => ({ ...state, quoteShareUsername: normalizeQuoteShareUsername(value) }));
+		// Svelte subscribers run synchronously; return this update's actual save, not the settled queue.
+		return lastSaveOperation!;
 	};
 
 	const setFavoritesViewMode = (mode: 'cards' | 'list') => {

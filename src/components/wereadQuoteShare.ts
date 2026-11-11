@@ -78,6 +78,8 @@ export class WereadQuoteShareModal extends Modal {
 	private saving = false;
 	private copying = false;
 	private inputTimer?: number;
+	private usernameDirty = false;
+	private usernameRevision = 0;
 
 	constructor(app: App, note: QuoteShareContent) {
 		super(app);
@@ -130,20 +132,23 @@ export class WereadQuoteShareModal extends Modal {
 		name.value = this.username;
 		name.oninput = () => {
 			this.username = name.value;
+			this.usernameDirty = true;
+			this.usernameRevision += 1;
 			window.clearTimeout(this.inputTimer);
 			this.setBusy();
 			this.inputTimer = window.setTimeout(() => {
 				this.inputTimer = undefined;
+				void this.persistUsername();
 				void this.refreshPreview();
 			}, 150);
 		};
-		name.onchange = async () => {
-			try {
-				await settingsStore.actions.setQuoteShareUsername(name.value);
-			} catch {
-				new Notice('分享署名保存失败，请重试');
-			}
+		name.onchange = () => {
+			void this.persistUsername();
 		};
+		nameLabel.createEl('small', {
+			cls: 'weread-quote-share-hint',
+			text: '全局分享署名，自动保存；留空使用微信读书用户名'
+		});
 		this.defaultButton = controls.createEl('button', {
 			cls: 'weread-quote-share-default',
 			attr: { type: 'button' }
@@ -351,7 +356,26 @@ export class WereadQuoteShareModal extends Modal {
 		}
 	}
 
+	private async persistUsername(): Promise<void> {
+		if (!this.usernameDirty) return;
+		const revision = this.usernameRevision;
+		const value = this.username;
+		this.usernameDirty = false;
+		try {
+			await settingsStore.actions.setQuoteShareUsername(value);
+		} catch {
+			// An older receipt must never mark a newer edit dirty or rewrite global settings.
+			if (
+				revision === this.usernameRevision &&
+				get(settingsStore).quoteShareUsername === value.trim()
+			)
+				this.usernameDirty = true;
+			new Notice('分享署名保存失败，请重试');
+		}
+	}
+
 	onClose(): void {
+		void this.persistUsername();
 		this.closed = true;
 		this.generation += 1;
 		window.clearTimeout(this.inputTimer);

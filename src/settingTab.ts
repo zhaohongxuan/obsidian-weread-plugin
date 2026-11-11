@@ -311,11 +311,17 @@ export class WereadSettingsTab extends PluginSettingTab {
 				.onChange((value) => settingsStore.actions.setQuoteShareTemplate(value as QuoteShareTemplate)));
 		new Setting(this.containerEl)
 			.setName('分享署名')
-			.setDesc('留空使用微信读书用户名，API Key 用户可自填昵称。')
+			.setDesc('用于所有分享卡片，修改后自动保存，重新加载后仍保留；留空使用微信读书用户名，API Key 用户可自填昵称。')
 			.addText((text) => text
 				.setPlaceholder('微信读书用户名')
 				.setValue(get(settingsStore).quoteShareUsername)
-				.onChange((value) => settingsStore.actions.setQuoteShareUsername(value)));
+				.onChange(async (value) => {
+					try {
+						await settingsStore.actions.setQuoteShareUsername(value);
+					} catch {
+						new Notice('分享署名保存失败，请重试');
+					}
+				}));
 		new Setting(this.containerEl)
 			.setName('旧句重逢排除书籍')
 			.setDesc('选中的书籍将从「今日」与「回顾」的旧句重逢中排除，仅影响旧句推荐。')
