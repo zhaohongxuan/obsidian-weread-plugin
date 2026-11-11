@@ -8,6 +8,7 @@ import { settingsStore } from '../settings';
 import { WereadPanel } from './wereadPanel';
 import { getPcUrl } from '../parser/parseResponse';
 import { getJournalNoteBookmark, openJournalNoteOriginal } from '../utils/openWereadUrl';
+import { createQuoteShareButton } from './quoteShareButton';
 import { setOriginalReadingIcon } from '../utils/readingActionIcon';
 
 /** A single five-second undo opportunity, owned by the currently open panel. */
@@ -388,6 +389,12 @@ export class WereadFavoritesPanel extends WereadPanel {
 				if (this.active) new Notice('复制失败，请重试');
 			}
 		};
+		createQuoteShareButton(actions, {
+			getContent: () => entry.note,
+			onShare: (content) => this.plugin.shareJournalNote(content),
+			isActive: () => this.active,
+			cls: 'weread-favorites-action weread-favorites-share'
+		});
 		const remove = actions.createEl('button', {
 			cls: 'clickable-icon weread-favorites-action',
 			attr: { type: 'button', 'aria-label': '取消收藏', title: '取消收藏' }

@@ -18,6 +18,8 @@ import { WEREAD_BOOKSHELF_VIEW_ID } from './src/components/wereadBookshelf';
 import { WEREAD_READING_STATS_VIEW_ID } from './src/components/wereadReadingStats';
 import { WEREAD_BOOK_DETAIL_VIEW_ID, WereadBookDetailView } from './src/components/wereadBookDetailView';
 import { WereadJournalService } from './src/journal';
+import type { QuoteShareContent } from './src/quoteShareCard';
+import { WereadQuoteShareModal } from './src/components/wereadQuoteShare';
 import { WereadFavoritesService } from './src/favorites';
 import { WEREAD_TODAY_VIEW_ID, WEREAD_REVIEW_VIEW_ID } from './src/components/wereadJournal';
 import { WereadLibraryView, WEREAD_LIBRARY_VIEW_ID } from './src/components/wereadLibrary';
@@ -391,6 +393,10 @@ export default class WereadPlugin extends Plugin {
 			await workspace.revealLeaf(leaf);
 		});
 		return this.libraryNavigation;
+	}
+
+	shareJournalNote(note: QuoteShareContent): void {
+		new WereadQuoteShareModal(this.app, note).open();
 	}
 
 	async activateJournalView(mode: JournalMode) { await this.activateLibraryTab(mode); }

@@ -1,0 +1,158 @@
+.modal.weread-quote-share-shell {
+	width: min(1040px, 94vw);
+	max-height: 92vh;
+}
+.weread-quote-share-modal h2 {
+	margin: 0 0 18px;
+	font-size: 20px;
+}
+.weread-quote-share-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 280px;
+	gap: 24px;
+}
+.weread-quote-share-preview {
+	min-width: 0;
+	min-height: 300px;
+	max-height: 72vh;
+	overflow: auto;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 18px;
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+.weread-quote-share-preview img {
+	display: block;
+	width: 100%;
+	max-width: 480px;
+	height: auto;
+	box-shadow: 0 8px 28px #00000018;
+}
+.weread-quote-share-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+.weread-quote-share-controls h3 {
+	margin: 0;
+	font-size: 15px;
+}
+.weread-quote-share-templates {
+	display: grid;
+	gap: 8px;
+}
+.weread-quote-share-modal button.weread-quote-share-template {
+	width: 100%;
+	height: auto;
+	min-height: 62px;
+	padding: 10px 12px;
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	gap: 12px;
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none;
+	background: var(--background-primary);
+	text-align: left;
+}
+.weread-quote-share-modal button.weread-quote-share-template.is-selected {
+	border-color: var(--interactive-accent);
+	background: var(--background-secondary);
+}
+.weread-quote-share-template strong,
+.weread-quote-share-template small {
+	display: block;
+}
+.weread-quote-share-template small {
+	margin-top: 3px;
+	font-size: 11px;
+	color: var(--text-muted);
+	white-space: normal;
+}
+.weread-quote-share-swatch {
+	flex: 0 0 28px;
+	width: 28px;
+	height: 38px;
+	border-radius: 2px;
+	background: #f5f0e5;
+	border: 1px solid #ded6c2;
+}
+.weread-quote-share-swatch.is-cover {
+	background: linear-gradient(90deg, #b6c1a7 35%, #efeee3 35%);
+}
+.weread-quote-share-swatch.is-night {
+	background: #22332e;
+	border-color: #71856b;
+}
+.weread-quote-share-name {
+	display: grid;
+	gap: 7px;
+	font-size: 13px;
+}
+.weread-quote-share-name input {
+	width: 100%;
+	min-width: 0;
+}
+.weread-quote-share-status {
+	min-height: 2.6em;
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--text-muted);
+}
+.weread-quote-share-export {
+	display: grid;
+	gap: 8px;
+}
+.weread-quote-share-export button {
+	min-height: 38px;
+}
+.weread-quote-share-export button[hidden] {
+	display: none;
+}
+.weread-quote-share-hint {
+	margin: 0;
+	color: var(--text-faint);
+	font-size: 11px;
+	line-height: 1.6;
+}
+@media (max-width: 700px) {
+	.weread-quote-share-layout {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 16px;
+	}
+	.weread-quote-share-preview {
+		max-height: 48vh;
+		min-height: 180px;
+		padding: 12px;
+	}
+	.weread-quote-share-preview img {
+		max-width: 360px;
+	}
+	.weread-quote-share-templates {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 6px;
+	}
+	.weread-quote-share-modal button.weread-quote-share-template {
+		padding: 8px 4px;
+		justify-content: center;
+		gap: 5px;
+		min-height: 48px;
+	}
+	.weread-quote-share-template small,
+	.weread-quote-share-swatch {
+		display: none;
+	}
+	.weread-quote-share-controls {
+		gap: 11px;
+	}
+	.weread-quote-share-export {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.weread-quote-share-hint {
+		font-size: 10px;
+	}
+}
