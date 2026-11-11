@@ -35,7 +35,9 @@ const fixture=String.raw`
 import { WereadQuoteShareModal } from './src/components/wereadQuoteShare';
 window.shareFixtureReady=(async()=>{
 const check=(value,message)=>{if(!value)throw new Error(message);window.shareFixture.assertions++};
-const wait=async predicate=>{for(let i=0;i<300;i++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,10))}throw new Error('Timed out waiting for production modal')};
+// Native canvas encoding can wait for Chrome idle work for over 6s under CPU pressure.
+// Keep each wait below the CDP harness's 15s command budget and report the stalled phase.
+const wait=async(predicate,phase='fixture condition')=>{const deadline=performance.now()+10000;while(performance.now()<deadline){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,25))}throw new Error('Timed out waiting for production modal: '+phase+' '+JSON.stringify({status:modal?.status?.textContent,generation:modal?.generation,closed:modal?.closed,hasCanvas:!!modal?.canvas,hasBlob:!!modal?.blob,blobGate:!!window.shareFixture.blobGate,condition:String(predicate)}))};
 function createEl(tag,options={}){const el=document.createElement(tag);if(options.cls)el.className=options.cls;if(options.text)el.textContent=options.text;if(options.type)el.type=options.type;for(const [key,value]of Object.entries(options.attr||{}))el.setAttribute(key,value);this.append(el);return el}
 HTMLElement.prototype.createEl=createEl;HTMLElement.prototype.createDiv=function(options){return this.createEl('div',options)};HTMLElement.prototype.createSpan=function(options){return this.createEl('span',options)};
 HTMLElement.prototype.addClass=function(...names){this.classList.add(...names)};HTMLElement.prototype.empty=function(){this.replaceChildren()};HTMLElement.prototype.setText=function(value){this.textContent=value};
@@ -84,11 +86,25 @@ async function verifyCopy(call){
  return{width:image().naturalWidth,height:image().naturalHeight,size:bytes.length,active:call.active};
 }
 const root=()=>modal.contentEl,button=text=>[...root().querySelectorAll('button')].find(el=>el.textContent===text),image=()=>root().querySelector('.weread-quote-share-preview img');
-async function ready(previous){await wait(()=>image()&&image().src!==previous&&root().querySelector('.weread-quote-share-status').textContent.includes('PNG'));await image().decode();return image()}
+async function ready(previous){await wait(()=>image()&&image().src!==previous&&root().querySelector('.weread-quote-share-status').textContent.includes('PNG'),'PNG preview');await image().decode();return image()}
 async function open(options={},base=note){if(modal)modal.close();state.texts=[];state.draws=[];modal=new WereadQuoteShareModal(app,{...base,...options});modal.open();await ready();return modal}
 async function template(id){const previous=image().src;root().querySelector('[data-template='+id+']').click();await ready(previous)}
 async function username(value){const previous=image().src;const input=root().querySelector('input');input.value=value;input.dispatchEvent(new Event('input'));input.dispatchEvent(new Event('change'));await ready(previous)}
 window.shareSmoke={
+  async slowEncoding(){
+   const toBlob=HTMLCanvasElement.prototype.toBlob;let held=false;
+   HTMLCanvasElement.prototype.toBlob=function(callback,...args){return toBlob.call(this,blob=>{held=true;setTimeout(()=>callback(blob),3500)},...args)};
+   try{
+    const opening=open();await wait(()=>held);
+    check(!modal.blob&&button('复制图片').disabled&&button('保存图片').disabled,'pending native PNG callback keeps exports disabled');
+    await opening;
+    check(image().naturalWidth===1080&&image().naturalHeight>=1440&&modal.blob.type==='image/png','slow native encoding produces the real PNG preview');
+    const before=state.downloads.length;button('保存图片').click();
+    check(state.downloads.length===before+1&&state.downloads.at(-1).url===modal.canvas.toDataURL('image/png'),'slow preview exports the current rendered PNG');
+    check(!button('复制图片').disabled,'copy enables only after delayed PNG preparation');
+    return state.assertions;
+   }finally{HTMLCanvasElement.prototype.toBlob=toBlob;modal?.close()}
+  },
  async signaturePersistence(){
   const savedSettings={...window.shareSettings.current()};
   const type=value=>{const input=root().querySelector('input');input.value=value;input.dispatchEvent(new Event('input'))};
