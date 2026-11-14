@@ -170,7 +170,7 @@ test('reviews fetch all pages using returned synckey and deduplicate review IDs'
 		f.calls.map((call) => call.synckey),
 		[0, 45]
 	);
-	assert.ok(f.calls.every((call) => call.count === 100 && call.bookid === 'book'));
+	assert.ok(f.calls.every((call) => call.count === undefined && call.bookid === 'book'));
 });
 
 test('reviews reject truncation, failed pages and cycling cursors', async () => {
