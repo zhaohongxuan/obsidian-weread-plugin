@@ -108,7 +108,7 @@ class ApiV2Manager {
 				hasMore?: number | string | boolean;
 				synckey?: number | string;
 				totalCount?: number;
-			}>('/review/list/mine', { bookid: bookId, synckey, count: 100 }, true);
+			}>('/review/list/mine', { bookid: bookId, synckey }, true);
 			if (!page || !Array.isArray(page.reviews))
 				throw new Error('想法列表加载失败，未返回完整数据');
 			for (const item of page.reviews) {
