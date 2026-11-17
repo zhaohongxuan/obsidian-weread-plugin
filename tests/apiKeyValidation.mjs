@@ -116,11 +116,11 @@ test('direct V2 validation without an API key is false and makes no request', as
 
 test('a required gateway upgrade still rejects with plugin-specific guidance', async () => {
 	const f = fixture({
-		upgrade_info: { latest_version: '1.0.6', message: 'download SKILL.md' }
+		upgrade_info: { latest_version: '1.0.7', message: 'download SKILL.md' }
 	});
 	await assert.rejects(f.router.validateApiKey(), (error) => {
 		assert.ok(error instanceof f.protocol.WereadUpgradeRequiredError);
-		assert.match(error.message, /1\.0\.6/);
+		assert.match(error.message, /1\.0\.7/);
 		assert.match(error.message, /更新微信读书插件/);
 		assert.doesNotMatch(error.message, /SKILL\.md/);
 		return true;

@@ -93,13 +93,13 @@ function fixture(pages) {
 const notebook = (id, sort) => ({ bookId: id, book: { bookId: id }, sort });
 const review = (id) => ({ review: { reviewId: id, content: id } });
 
-test('both gateway paths report verified skill version 1.0.5', async () => {
+test('both gateway paths report verified skill version 1.0.6', async () => {
 	const f = fixture([{ books: [] }, { readTimes: {} }]);
 	await f.api.getShelf();
 	await f.legacyGateway.callAgentGateway('/readdata/detail', { mode: 'monthly' });
 	assert.deepEqual(
 		f.calls.map((call) => call.skill_version),
-		['1.0.5', '1.0.5']
+		['1.0.6', '1.0.6']
 	);
 });
 
@@ -107,8 +107,8 @@ test('future upgrades give plugin-specific guidance and are not swallowed as emp
 	const response = {
 		books: [],
 		upgrade_info: {
-			current_version: '1.0.5',
-			latest_version: '1.0.6',
+			current_version: '1.0.6',
+			latest_version: '1.0.7',
 			message: 'download SKILL.md from upgrade_url'
 		}
 	};
@@ -121,7 +121,7 @@ test('future upgrades give plugin-specific guidance and are not swallowed as emp
 		await assert.rejects(
 			call(),
 			(error) =>
-				error.message.includes('1.0.6') &&
+				error.message.includes('1.0.7') &&
 				error.message.includes('更新微信读书插件') &&
 				!error.message.includes('SKILL.md')
 		);

@@ -1,8 +1,8 @@
-/** Agent protocol version verified against the official weread-skills 1.0.5 archive.
+/** Agent protocol version verified against the official weread-skills 1.0.6 archive.
  * Both gateway entry points must advance together; do not infer or auto-accept
  * a server version without reviewing its matching capability documentation.
  */
-export const WEREAD_SKILL_VERSION = '1.0.5';
+export const WEREAD_SKILL_VERSION = '1.0.6';
 
 export class WereadUpgradeRequiredError extends Error {
 	constructor(latestVersion?: string) {
