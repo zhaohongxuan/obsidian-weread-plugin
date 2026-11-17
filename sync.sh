@@ -1,3 +1,13 @@
 #!/bin/sh
-rsync -av --delete --include={"main.js","style.css","manifest.json"} --exclude='*' ./dist/ ~/Library/Mobile\ Documents/iCloud~md~obsidian/Documents/xuan/.obsidian/plugins/obsidian-weread-plugin
-rsync -av --delete --include={"main.js","style.css","manifest.json"} --exclude='*' ./dist/ ~/Developer/Weread/.obsidian/plugins/obsidian-weread-plugin
+set -eu
+
+for target in \
+    "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/xuan/.obsidian/plugins/obsidian-weread-plugin" \
+    "$HOME/Developer/Weread/.obsidian/plugins/obsidian-weread-plugin"; do
+    rsync -av \
+        --include='/main.js' \
+        --include='/manifest.json' \
+        --include='/style.css' \
+        --exclude='*' \
+        ./dist/ "$target/"
+done

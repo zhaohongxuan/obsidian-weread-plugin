@@ -75,12 +75,13 @@ V1（Cookie 认证）和 V2（Agent Gateway — Bearer Token）接口对照表�
 curl -X POST "https://i.weread.qq.com/api/agent/gateway" \
   -H "Authorization: Bearer wrk-xxxxxxxx" \
   -H "Content-Type: application/json" \
-  -d '{"api_name": "/store/search", "keyword": "三体", "skill_version": "1.0.3"}'
+  -d '{"api_name": "/store/search", "keyword": "三体", "context": "帮我搜一下三体", "skill_version": "1.0.6"}'
 ```
 
 ### 通用规则
 
-- 每次请求必须带 `skill_version`（当前为 `"1.0.3"`）
+- 每次请求必须带 `skill_version`（当前为 `"1.0.6"`）
+- 搜索、推荐请求必须带本次用户问题的必要上下文 `context`；不要包含凭据或无关对话
 - 所有业务参数**平铺在 body 顶层**，不要嵌套在 `params`/`data` 等对象内
 - 时间戳字段单位均为 Unix 秒，阅读时长字段单位均为秒
 - `errcode` 非 0 时表示错误
@@ -635,7 +636,7 @@ curl -X POST "https://i.weread.qq.com/api/agent/gateway" \
   "bookId": "695233",
   "chapterUid": 94,
   "reviews": [{"range": "389-528", "count": 2}],
-  "skill_version": "1.0.3"
+  "skill_version": "1.0.6"
 }
 ```
 
@@ -805,13 +806,13 @@ curl -X POST "https://i.weread.qq.com/api/agent/gateway" \
 
 ```json
 // 查询 2025 年全年
-{"api_name": "/readdata/detail", "mode": "annually", "baseTime": 1735689600, "skill_version": "1.0.3"}
+{"api_name": "/readdata/detail", "mode": "annually", "baseTime": 1735689600, "skill_version": "1.0.6"}
 
 // 查询 2024 年 3 月
-{"api_name": "/readdata/detail", "mode": "monthly", "baseTime": 1709222400, "skill_version": "1.0.3"}
+{"api_name": "/readdata/detail", "mode": "monthly", "baseTime": 1709222400, "skill_version": "1.0.6"}
 
 // 查询全部历史
-{"api_name": "/readdata/detail", "mode": "overall", "skill_version": "1.0.3"}
+{"api_name": "/readdata/detail", "mode": "overall", "skill_version": "1.0.6"}
 ```
 
 ---
