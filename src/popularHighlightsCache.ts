@@ -31,11 +31,11 @@ export default class PopularHighlightsCacheManager {
 			const cache: PopularHighlightCache = JSON.parse(content);
 
 			if (this.isCacheExpired(cache)) {
-				console.log(`[weread plugin] 热门划线缓存已过期: ${bookId}`);
+				console.debug(`[weread plugin] 热门划线缓存已过期: ${bookId}`);
 				return null;
 			}
 
-			console.log(`[weread plugin] 热门划线缓存命中: ${bookId}`);
+			console.debug(`[weread plugin] 热门划线缓存命中: ${bookId}`);
 			return cache;
 		} catch (e) {
 			console.error(`[weread plugin] 读取热门划线缓存失败: ${bookId}`, e);
@@ -62,7 +62,7 @@ export default class PopularHighlightsCacheManager {
 			await this.ensureCacheDir();
 			// 使用 adapter.write，它会自动覆盖已存在的文件
 			await this.vault.adapter.write(cachePath, JSON.stringify(cache, null, 2));
-			console.log(`[weread plugin] 热门划线缓存已写入: ${bookId}`);
+			console.debug(`[weread plugin] 热门划线缓存已写入: ${bookId}`);
 		} catch (e) {
 			console.error(`[weread plugin] 写入热门划线缓存失败: ${bookId}`, e);
 		}
@@ -76,7 +76,7 @@ export default class PopularHighlightsCacheManager {
 				const file = this.vault.getAbstractFileByPath(cachePath);
 				if (file instanceof TFile) {
 					await this.vault.delete(file);
-					console.log(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
+					console.debug(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
 				}
 			}
 		} catch (e) {
@@ -113,7 +113,7 @@ export default class PopularHighlightsCacheManager {
 			}
 
 			if (cleared > 0) {
-				console.log(`[weread plugin] 已清除 ${cleared} 个过期热门划线缓存`);
+				console.debug(`[weread plugin] 已清除 ${cleared} 个过期热门划线缓存`);
 			}
 			return cleared;
 		} catch (e) {

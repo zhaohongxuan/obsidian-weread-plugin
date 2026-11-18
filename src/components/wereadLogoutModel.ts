@@ -24,7 +24,7 @@ export default class WereadLoginModel {
 		};
 		session.webRequest.onCompleted(filter, (details: any) => {
 			if (details.statusCode == 200 || details.statusCode == 204) {
-				console.log('weread logout success, clear cookies...');
+				console.debug('weread logout success, clear cookies...');
 				settingsStore.actions.clearCookies();
 				this.settingTab.display();
 				this.modal.close();

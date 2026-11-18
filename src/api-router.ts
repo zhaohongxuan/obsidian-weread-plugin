@@ -138,7 +138,7 @@ class ApiRouter {
 	): Promise<HighlightResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
-			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取划线');
+			console.debug('[weread plugin] 公众号类型，强制使用 V1 接口获取划线');
 			return this.v1Manager.getNotebookHighlights(bookId);
 		}
 
@@ -163,7 +163,7 @@ class ApiRouter {
 	): Promise<BookReviewResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
-			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取笔记');
+			console.debug('[weread plugin] 公众号类型，强制使用 V1 接口获取笔记');
 			return this.v1Manager.getNotebookReviews(bookId);
 		}
 
@@ -176,7 +176,7 @@ class ApiRouter {
 	async getChapters(bookId: string, isArticle = false): Promise<ChapterResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
-			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取章节');
+			console.debug('[weread plugin] 公众号类型，强制使用 V1 接口获取章节');
 			return this.v1Manager.getChapters(bookId);
 		}
 

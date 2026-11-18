@@ -268,6 +268,7 @@ function validateBookFiles(bookFiles?: FavoriteBookFiles): void {
 
 function coverUrl(value: string | undefined): string | undefined {
 	 
+	// eslint-disable-next-line no-control-regex -- reject control chars in user-provided canvas text
 	if (!value || /[\u0000-\u0020\u007f<>\\\\]/.test(value)) return undefined;
 	const candidate = value.startsWith('//') ? `https:${value}` : value;
 	if (!/^https?:\/\//i.test(candidate)) return undefined;
@@ -355,6 +356,7 @@ function bookText(entry: FavoriteEntry, local?: string): string {
 function quoteHeight(text: string): number {
 	const lines = text.split(/\r?\n/).reduce((count, line) => {
 		 
+		// eslint-disable-next-line no-control-regex -- count non-latin glyphs as double-width
 		const width = line.replace(/[^\u0000-\u00ff]/g, 'xx').length;
 		return count + Math.max(1, Math.ceil(width / 38));
 	}, 0);

@@ -43,7 +43,7 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	onload() {
-		console.log('load weread plugin');
+		console.debug('load weread plugin');
 		void settingsStore.initialise(this)
 			.then(() => {
 				this.initializePlugin();
@@ -99,7 +99,7 @@ export default class WereadPlugin extends Plugin {
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
 		if (settings.cookies && settings.cookies.length > 0) {
-			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
+			console.debug('[weread plugin] 初始化时检验 Cookie 有效性');
 			apiRouter.verifyCookieValidity().catch((e) => {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
 			});
@@ -312,7 +312,7 @@ export default class WereadPlugin extends Plugin {
 			const settings = get(settingsStore);
 			const bookTitles = settings.lastSyncBookTitles || [];
 			settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
-			console.log('syncing Weread note finish');
+			console.debug('syncing Weread note finish');
 			return syncedCount;
 		} catch (e) {
 			if (Platform.isDesktopApp) {
@@ -480,7 +480,7 @@ export default class WereadPlugin extends Plugin {
 			}
 
 			hiddenWindow.close();
-			console.log('[weread plugin] startup cookie sync complete');
+			console.debug('[weread plugin] startup cookie sync complete');
 		} catch (e) {
 			console.error('[weread plugin] startup cookie sync failed', e);
 		}
@@ -538,7 +538,7 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	onunload() {
-		console.log('unloading weread plugin', new Date().toLocaleString());
+		console.debug('unloading weread plugin', new Date().toLocaleString());
 		this.journalService?.dispose();
 		this.favoritesService?.dispose();
 		this.clearScheduledSyncTimer();
@@ -553,10 +553,10 @@ export default class WereadPlugin extends Plugin {
 			return;
 		}
 		const intervalMs = Math.max(1, scheduledSyncInterval) * 60 * 1000;
-		console.log(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
+		console.debug(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
 		this.scheduledSyncTimer = window.setInterval(() => {
 			void (async () => {
-				console.log('[weread plugin] 执行定时同步');
+				console.debug('[weread plugin] 执行定时同步');
 				try {
 					const syncedCount = await this.syncNotebooks.syncNotebooks(
 						false,

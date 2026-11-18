@@ -15,6 +15,7 @@ import './wereadQuoteShare.css';
 export function quoteShareFilename(note: QuoteShareContent, template: QuoteShareTemplate): string {
 	const title =
 		 
+		// eslint-disable-next-line no-control-regex -- sanitize control chars from a title for filesystem safety
 		Array.from(note.bookTitle.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim())
 			.slice(0, 28)
 			.join('') || '书摘';

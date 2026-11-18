@@ -240,9 +240,9 @@ export default class SyncNotebooks {
 		let chapterHighlightReview;
 		if (metaData.bookType === 3) {
 			//公众号文章
-			console.log('sync 公众号：', metaData.title);
+			console.debug('sync 公众号：', metaData.title);
 			chapterHighlightReview = parseArticleHighlightReview(chapters, highlights, reviews);
-			console.log('sync 公众号 result', metaData.title, chapterHighlightReview);
+			console.debug('sync 公众号 result', metaData.title, chapterHighlightReview);
 		} else {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
@@ -469,7 +469,7 @@ export default class SyncNotebooks {
 		if (!signal?.cancelled && get(settingsStore).dailyNotesToggle) {
 			const dailyNoteRefereneces = parseDailyNoteReferences(notebooksInDate);
 			const dailyNotePath = this.fileManager.getDailyNotePath(window.moment());
-			console.log(
+			console.debug(
 				'get daily note path',
 				dailyNotePath,
 				' size:',

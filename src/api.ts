@@ -52,7 +52,7 @@ export default class ApiManager {
 						return cookie.name + '=' + encodeURIComponent(cookie.value);
 					})
 					.join(';');
-				console.log('[weread plugin] iOS 端使用 URL 编码的 Cookie');
+				console.debug('[weread plugin] iOS 端使用 URL 编码的 Cookie');
 			}
 
 			headers['Cookie'] = cookieString;
@@ -115,7 +115,7 @@ export default class ApiManager {
 	async verifyCookieValidity(): Promise<boolean> {
 		const cookies = get(settingsStore).cookies;
 		if (!cookies || cookies.length === 0) {
-			console.log('[weread plugin] Cookie 为空，标记无效');
+			console.debug('[weread plugin] Cookie 为空，标记无效');
 			settingsStore.actions.setIsCookieValid(false);
 			return false;
 		}
@@ -132,12 +132,12 @@ export default class ApiManager {
 			// Absorb any session-cookie refresh the server sends back
 			const respCookie: string = resp.headers['set-cookie'] || resp.headers['Set-Cookie'];
 			if (respCookie) {
-				console.log('[weread plugin] 收到新的 set-cookie 响应头，更新 Cookie');
+				console.debug('[weread plugin] 收到新的 set-cookie 响应头，更新 Cookie');
 				this.updateCookies(respCookie);
 			}
 
 			if (resp.json && resp.json.books !== undefined) {
-				console.log('[weread plugin] Cookie 有效，书籍数:', resp.json.books.length);
+				console.debug('[weread plugin] Cookie 有效，书籍数:', resp.json.books.length);
 				settingsStore.actions.setIsCookieValid(true);
 				// 只有在未配置 API Key 时才自动获取
 				if (!get(settingsStore).wereadApiKey) {
@@ -147,7 +147,7 @@ export default class ApiManager {
 			}
 
 			if (resp.json && resp.json.errcode === -2012) {
-				console.log('[weread plugin] Cookie 超时错误 (-2012)');
+				console.debug('[weread plugin] Cookie 超时错误 (-2012)');
 				settingsStore.actions.setIsCookieValid(false);
 				return false;
 			}
@@ -155,7 +155,7 @@ export default class ApiManager {
 			console.error('[weread plugin] 验证异常 - 错误信息:', e.message);
 			if (e.status === 401) {
 				if (Platform.isDesktopApp) {
-					console.log('[weread plugin] 桌面端 401，标记 Cookie 无效');
+					console.debug('[weread plugin] 桌面端 401，标记 Cookie 无效');
 					settingsStore.actions.setIsCookieValid(false);
 				} else {
 					settingsStore.actions.markCookiesInvalid();
@@ -205,7 +205,7 @@ export default class ApiManager {
 			if (resp.status === 401) {
 				if (resp.json.errcode == -2012) {
 					// 登录超时 -2012
-					console.log('weread cookie expire retry refresh cookie... ');
+					console.debug('weread cookie expire retry refresh cookie... ');
 					await this.refreshCookie();
 				} else {
 					if (Platform.isDesktopApp) {
@@ -213,7 +213,7 @@ export default class ApiManager {
 					} else {
 						new Notice('微信读书未登录或者用户异常，请在电脑端重新登录！');
 					}
-					console.log(
+					console.debug(
 						'微信读书未登录或者用户异常，请重新登录, http status code:',
 						resp.json.errcode
 					);
@@ -225,7 +225,7 @@ export default class ApiManager {
 				}
 			} else {
 				if (resp.json.errcode == -2012) {
-					console.log('weread cookie expire retry refresh cookie... ');
+					console.debug('weread cookie expire retry refresh cookie... ');
 					await this.refreshCookie();
 				}
 			}
@@ -239,7 +239,7 @@ export default class ApiManager {
 			noteBooks = resp.json.books;
 		} catch (e: any) {
 			if (e.status == 401) {
-				console.log(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
+				console.debug(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
 				await this.refreshCookie();
 			} else {
 				throw e;
@@ -302,7 +302,7 @@ export default class ApiManager {
 			const resp = await requestUrl(req);
 			if (resp.json.errCode == -2012) {
 				// 登录超时 -2012
-				console.log('weread cookie expire retry refresh cookie... ');
+				console.debug('weread cookie expire retry refresh cookie... ');
 				await this.refreshCookie();
 			}
 			return resp.json;
@@ -433,9 +433,9 @@ export default class ApiManager {
 				headers: this.getHeaders()
 			};
 			const resp = await requestUrl(req);
-			console.log('[weread plugin] /api/skills/apikeyGet 完整响应:', JSON.stringify(resp.json));
+			console.debug('[weread plugin] /api/skills/apikeyGet 完整响应:', JSON.stringify(resp.json));
 			if (resp.json?.apikey) {
-				console.log('[weread plugin] 自动获取/创建 API Key 成功');
+				console.debug('[weread plugin] 自动获取/创建 API Key 成功');
 				settingsStore.actions.setWereadApiKey(resp.json.apikey);
 				return {
 					apikey: resp.json.apikey,

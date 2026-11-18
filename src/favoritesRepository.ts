@@ -20,6 +20,7 @@ export function validateFavoritesCanvasFolder(value: unknown): string {
 	if (
 		folder &&
 		 
+		// eslint-disable-next-line no-control-regex -- reject control chars in a folder path
 		(/[\\\u0000-\u001f\u007f]/.test(folder) ||
 			/^([/~]|[a-z][a-z0-9+.-]*:)/i.test(folder) ||
 			folder.split('/').some((part) => !part || part === '.' || part === '..'))

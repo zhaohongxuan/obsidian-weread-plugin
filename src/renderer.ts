@@ -76,7 +76,7 @@ export class Renderer {
 			popularHighlights,
 			syncPopularHighlightsToggle: settings.syncPopularHighlightsToggle
 		};
-		console.log('[weread renderer] popularHighlights in context:', popularHighlights?.length ?? 'undefined');
+		console.debug('[weread renderer] popularHighlights in context:', popularHighlights?.length ?? 'undefined');
 		// Use active theme's template and trimBlocks, fallback to legacy settings
 		const activeTheme = settings.themes?.find((t) => t.id === settings.activeThemeId);
 		// For legacy themes (source === 'legacy' or id === 'legacy_template'), always use the top-level settings.template

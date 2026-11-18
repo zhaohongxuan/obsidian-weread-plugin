@@ -197,9 +197,9 @@ export class TemplateEditorWindow extends Modal {
 				// 渲染模式：使用 Obsidian 的 Markdown 渲染器
 				this.previewEl.addClass('markdown-preview-view');
 				this.previewEl.removeClass('preview-source-mode');
-				console.log('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
+				console.debug('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
 				void MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this as any);
-				console.log('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
+				console.debug('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
 			} else {
 				// 源码模式：显示原始文本
 				this.previewEl.removeClass('markdown-preview-view');

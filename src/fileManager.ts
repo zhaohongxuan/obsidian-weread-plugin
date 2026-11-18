@@ -224,7 +224,7 @@ export default class FileManager {
 			notebook.metaData
 		)}`;
 		if (!(await this.vault.adapter.exists(folderPath))) {
-			console.info(`Folder ${folderPath} not found. Will be created`);
+			console.debug(`Folder ${folderPath} not found. Will be created`);
 			await this.vault.createFolder(folderPath);
 		}
 		const fileName = this.getFileName(notebook.metaData);

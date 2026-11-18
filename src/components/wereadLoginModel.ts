@@ -45,7 +45,7 @@ export default class WereadLoginModel {
 
 		session.webRequest.onCompleted(loginFilter, (details: any) => {
 			if (details.statusCode == 200) {
-				console.log('weread login success, redirect to weread shelf');
+				console.debug('weread login success, redirect to weread shelf');
 				this.modal.loadURL('https://weread.qq.com/web/shelf');
 				void trySyncCookiesAndClose();
 			}
@@ -87,7 +87,7 @@ export default class WereadLoginModel {
 			await this.modal.loadURL('https://weread.qq.com/#login');
 			await this.syncCookiesFromSession();
 		} catch (error) {
-			console.log(error);
+			console.debug(error);
 			new Notice('加载微信读书登录页面失败');
 		}
 	}
