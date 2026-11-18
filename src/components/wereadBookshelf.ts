@@ -175,7 +175,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				.setTitle('刷新书架')
 				.setIcon('refresh-ccw')
 				.onClick(() => {
-					this.loadBookshelf(true);
+					void this.loadBookshelf(true);
 				})
 		);
 		menu.addSeparator();
@@ -1209,6 +1209,6 @@ export class WereadBookshelfPanel extends WereadPanel {
 		}
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(book.localFile.file);
-		this.app.workspace.revealLeaf(leaf);
+		void this.app.workspace.revealLeaf(leaf);
 	}
 }

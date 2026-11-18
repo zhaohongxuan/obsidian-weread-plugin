@@ -349,7 +349,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				.setIcon('refresh-ccw')
 				.onClick(() => {
 					this.data = null;
-					this.loadData();
+					void this.loadData();
 				})
 		);
 		menu.addSeparator();
@@ -361,7 +361,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		this.contentEl.addClass('weread-stats-view');
 		this.statsEl = this.contentEl.createDiv({ cls: 'weread-stats-container' });
 		this.render();
-		this.loadData();
+		void this.loadData();
 	}
 
 	async onClose() {
@@ -593,7 +593,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				this.currentOffset = 0;
 				this.data = null;
 				this.render();
-				this.loadData();
+				void this.loadData();
 			});
 		}
 
@@ -603,13 +603,13 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const prevBtn = timePicker.createEl('button', { cls: 'clickable-icon weread-stats-timepicker-btn' });
 			setIcon(prevBtn, 'chevron-left');
 			prevBtn.setAttribute('aria-label', '上一时段');
-			prevBtn.addEventListener('click', () => { this.currentOffset--; this.data = null; this.render(); this.loadData(); });
+			prevBtn.addEventListener('click', () => { this.currentOffset--; this.data = null; this.render(); void this.loadData(); });
 			timePicker.createSpan({ cls: 'weread-stats-timepicker-label', text: periodLabel(this.currentMode, this.currentOffset) });
 			const nextBtn = timePicker.createEl('button', { cls: 'clickable-icon weread-stats-timepicker-btn' + (this.currentOffset >= 0 ? ' is-disabled' : '') });
 			setIcon(nextBtn, 'chevron-right');
 			nextBtn.setAttribute('aria-label', '下一时段');
 			if (this.currentOffset >= 0) nextBtn.setAttribute('disabled', 'true');
-			nextBtn.addEventListener('click', () => { if (this.currentOffset >= 0) return; this.currentOffset++; this.data = null; this.render(); this.loadData(); });
+			nextBtn.addEventListener('click', () => { if (this.currentOffset >= 0) return; this.currentOffset++; this.data = null; this.render(); void this.loadData(); });
 		}
 		this.renderExportButton(periodControls);
 	}
@@ -897,7 +897,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
 			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
 			placeholder.createDiv({ text: '正在加载全年日数据…', cls: 'weread-stats-empty-text' });
-			this.loadAnnualDailyData(data);
+			void this.loadAnnualDailyData(data);
 		}
 	}
 
@@ -987,7 +987,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
 			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
 			placeholder.createDiv({ text: '正在加载全部阅读数据…', cls: 'weread-stats-empty-text' });
-			this.loadOverallDailyData(data);
+			void this.loadOverallDailyData(data);
 		}
 	}
 

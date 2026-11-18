@@ -978,7 +978,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			// 进入设置页时自动校验一次，结果更新到状态图标
 			statusBtn.setIcon('loader-2').setTooltip('验证中...');
 			statusBtn.extraSettingsEl.addClass('weread-status-muted');
-			new ApiRouter().validateApiKey().then((result) => {
+			void new ApiRouter().validateApiKey().then((result) => {
 				settingsStore.actions.setApiKeyValid(result.valid);
 				applyStatus(result.valid);
 			});

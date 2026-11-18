@@ -44,9 +44,13 @@ export default class WereadPlugin extends Plugin {
 
 	onload() {
 		console.log('load weread plugin');
-		settingsStore.initialise(this).then(() => {
-			this.initializePlugin();
-		});
+		void settingsStore.initialise(this)
+			.then(() => {
+				this.initializePlugin();
+			})
+			.catch((e) => {
+				console.error('[weread plugin] 初始化失败', e);
+			});
 	}
 
 	private initializePlugin() {
@@ -102,11 +106,11 @@ export default class WereadPlugin extends Plugin {
 		}
 
 		// 启动时同步 Cookie 到 partition，供 webview 使用（非阻塞）
-		this.syncCookiesToPartition();
+		void this.syncCookiesToPartition();
 
 		const ribbonEl = this.addRibbonIcon('book-open', '打开微信读书书架', (event) => {
 			if (event.button === 0) {
-				this.activateBookshelfView();
+				void this.activateBookshelfView();
 			}
 		});
 
@@ -127,7 +131,7 @@ export default class WereadPlugin extends Plugin {
 					.setTitle('同步微信读书笔记')
 					.setIcon('refresh-ccw')
 					.onClick(() => {
-						this.startSync();
+						void this.startSync();
 					})
 			);
 
@@ -136,7 +140,7 @@ export default class WereadPlugin extends Plugin {
 					.setTitle('强制同步微信读书笔记')
 					.setIcon('refresh-ccw-dot')
 					.onClick(() => {
-						this.startSync(true);
+						void this.startSync(true);
 					})
 			);
 
@@ -145,7 +149,7 @@ export default class WereadPlugin extends Plugin {
 					.setTitle('打开微信读书书架')
 					.setIcon('library')
 					.onClick(() => {
-						this.activateBookshelfView();
+						void this.activateBookshelfView();
 					})
 			);
 
@@ -159,7 +163,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'sync-weread-notes-command',
 			name: '同步微信读书笔记',
 			callback: () => {
-				this.startSync();
+				void this.startSync();
 			}
 		});
 
@@ -167,7 +171,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'Force-sync-weread-notes-command',
 			name: '强制同步微信读书笔记',
 			callback: () => {
-				this.startSync(true);
+				void this.startSync(true);
 			}
 		});
 
@@ -202,7 +206,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'open-weread-reading-view-tab',
 			name: '在新标签页打开微信读书',
 			callback: () => {
-				this.activateReadingView('TAB');
+				void this.activateReadingView('TAB');
 			}
 		});
 
@@ -210,7 +214,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'open-weread-reading-view-window',
 			name: '在新窗口打开微信读书',
 			callback: () => {
-				this.activateReadingView('WINDOW');
+				void this.activateReadingView('WINDOW');
 			}
 		});
 
@@ -218,7 +222,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'open-weread-bookshelf-view',
 			name: '打开微信读书书架',
 			callback: () => {
-				this.activateBookshelfView();
+				void this.activateBookshelfView();
 			}
 		});
 
@@ -232,7 +236,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'sync-weread-reading-stats',
 			name: '同步阅读统计数据',
 			callback: () => {
-				this.syncReadingStats.sync();
+				void this.syncReadingStats.sync();
 			}
 		});
 
@@ -375,7 +379,7 @@ export default class WereadPlugin extends Plugin {
 			}
 		});
 
-		workspace.revealLeaf(leaf);
+		void workspace.revealLeaf(leaf);
 	}
 
 	private activateLibraryTab(tab: WereadTab): Promise<void> {
@@ -520,7 +524,7 @@ export default class WereadPlugin extends Plugin {
 				setIcon(btn, 'book-open');
 				btn.setAttr('aria-label', '查看微信读书详情');
 				btn.addEventListener('click', () => {
-					this.activateBookDetailView(
+					void this.activateBookDetailView(
 						annotation.bookId,
 						annotation.title || '',
 						annotation.cover || '',
