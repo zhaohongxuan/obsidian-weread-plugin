@@ -66,7 +66,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		this.syncSettingsHeadingEl = null;
-		containerEl.createEl('h2', { text: '设置微信读书插件' });
+		new Setting(containerEl).setName('设置微信读书插件').setHeading();
 		this.preloadSelectableBooks();
 
 		// API Key 设置始终可见（桌面端和移动端）
@@ -401,7 +401,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private syncModeSettings(): void {
-		this.syncSettingsHeadingEl = this.containerEl.createEl('h3', { text: '同步设置' });
+		this.syncSettingsHeadingEl = new Setting(this.containerEl).setName('同步设置').setHeading().settingEl;
 
 		new Setting(this.containerEl)
 			.setName('同步模式')

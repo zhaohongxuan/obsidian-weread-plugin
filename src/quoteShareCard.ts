@@ -64,7 +64,7 @@ function graphemes(text: string): string[] {
 function wrap(context: CanvasRenderingContext2D, text: string, width: number): string[] {
 	const lines: string[] = [];
 	const closing = /^[，。！？、；：）》」』】〉〕］｝,.!?;:%‰…—)\]}”’]/;
-	const opening = /^[（《「『【〈〔［｛(\[{“‘]/;
+	const opening = /^[（《「『【〈〔［｛([{“‘]/;
 	const latin = /^[a-zA-Z0-9_'’-]+$/;
 	for (const paragraph of text.replace(/\r\n?/g, '\n').split('\n')) {
 		const parts = graphemes(paragraph);

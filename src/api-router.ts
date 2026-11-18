@@ -287,7 +287,10 @@ class ApiRouter {
 					return { chapterUid, items: resp?.items ?? [] };
 				} catch (e) {
 					if (e instanceof WereadUpgradeRequiredError) throw e;
-					throw { chapterUid, error: e };
+					throw Object.assign(new Error(`获取章节热门划线失败: chapterUid=${chapterUid}`), {
+						chapterUid,
+						error: e
+					});
 				}
 			});
 

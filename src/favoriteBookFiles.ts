@@ -8,6 +8,7 @@ export function isFavoriteBookPath(path: unknown): path is string {
 	return (
 		typeof path === 'string' &&
 		/\.md$/i.test(path) &&
+		// eslint-disable-next-line no-control-regex -- control chars validated/sanitized on purpose
 		!/[\\\u0000-\u001f\u007f]/.test(path) &&
 		!/^([/ ~]|[a-z][a-z0-9+.-]*:)/i.test(path) &&
 		path.split('/').every((part) => !!part && part !== '.' && part !== '..')

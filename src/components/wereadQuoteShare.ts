@@ -14,6 +14,7 @@ import './wereadQuoteShare.css';
 
 export function quoteShareFilename(note: QuoteShareContent, template: QuoteShareTemplate): string {
 	const title =
+		// eslint-disable-next-line no-control-regex -- control chars validated/sanitized on purpose
 		Array.from(note.bookTitle.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim())
 			.slice(0, 28)
 			.join('') || '书摘';
@@ -153,9 +154,9 @@ export class WereadQuoteShareModal extends Modal {
 			cls: 'weread-quote-share-default',
 			attr: { type: 'button' }
 		});
-		this.defaultButton.onclick = async () => {
+		this.defaultButton.onclick = () => {
 			try {
-				await settingsStore.actions.setQuoteShareTemplate(this.template);
+				settingsStore.actions.setQuoteShareTemplate(this.template);
 				if (!this.closed) this.updateControls();
 			} catch {
 				new Notice('默认模板保存失败，请重试');
