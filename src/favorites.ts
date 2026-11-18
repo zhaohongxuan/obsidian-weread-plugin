@@ -108,7 +108,7 @@ export class WereadFavoritesService {
 					file.path !== this.repository.paths.primary ||
 					this.writingCanvas ||
 					this.disposed ||
-					(!this.state.loaded && !this.hydration)
+					(!this.state.loaded && this.hydration === undefined)
 				)
 					return;
 				if (this.reloadTimer) clearTimeout(this.reloadTimer);
@@ -129,7 +129,7 @@ export class WereadFavoritesService {
 						changed({ path: this.repository.paths.primary });
 					return;
 				}
-				if (this.disposed || (!this.state.loaded && !this.hydration)) return;
+				if (this.disposed || (!this.state.loaded && this.hydration === undefined)) return;
 				this.state.writable = false;
 				this.state.error = '收藏主画布已移走或删除，请恢复画布后重新读取';
 				this.emit();
@@ -266,7 +266,7 @@ export class WereadFavoritesService {
 		if (force) {
 			const refresh = this.tail.then(async () => {
 				// A native edit must not reset a repository while hydration or an accepted write is active.
-				if (this.hydration) await this.hydration;
+				if (this.hydration !== undefined) await this.hydration;
 				this.hydration = undefined;
 				await this.hydrate();
 				return this.getSnapshot();
@@ -278,7 +278,7 @@ export class WereadFavoritesService {
 		return this.getSnapshot();
 	}
 	private hydrate(): Promise<void> {
-		if (!this.hydration) {
+		if (this.hydration === undefined) {
 			this.state.loading = true;
 			// Install the flight before notifying listeners, which may call load again.
 			this.hydration = Promise.resolve().then(async () => {

@@ -551,22 +551,24 @@ export default class WereadPlugin extends Plugin {
 		}
 		const intervalMs = Math.max(1, scheduledSyncInterval) * 60 * 1000;
 		console.log(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
-		this.scheduledSyncTimer = window.setInterval(async () => {
-			console.log('[weread plugin] 执行定时同步');
-			try {
-				const syncedCount = await this.syncNotebooks.syncNotebooks(
-					false,
-					window.moment().format('YYYY-MM-DD')
-				);
-				// 获取同步的书籍信息并更新设置
-				const settings = get(settingsStore);
-				const bookTitles = settings.lastSyncBookTitles || [];
-				settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
-				new Notice(`定时同步结束，共更新 ${syncedCount || 0} 本书`);
-			} catch (e) {
-				console.error('[weread plugin] 定时同步失败', e);
-				new Notice('定时同步失败，请查看控制台');
-			}
+		this.scheduledSyncTimer = window.setInterval(() => {
+			void (async () => {
+				console.log('[weread plugin] 执行定时同步');
+				try {
+					const syncedCount = await this.syncNotebooks.syncNotebooks(
+						false,
+						window.moment().format('YYYY-MM-DD')
+					);
+					// 获取同步的书籍信息并更新设置
+					const settings = get(settingsStore);
+					const bookTitles = settings.lastSyncBookTitles || [];
+					settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
+					new Notice(`定时同步结束，共更新 ${syncedCount || 0} 本书`);
+				} catch (e) {
+					console.error('[weread plugin] 定时同步失败', e);
+					new Notice('定时同步失败，请查看控制台');
+				}
+			})();
 		}, intervalMs);
 	}
 

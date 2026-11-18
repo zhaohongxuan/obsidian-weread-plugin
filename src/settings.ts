@@ -218,7 +218,8 @@ const createSettingsStore = () => {
 	let lastSaveOperation: Promise<void> | undefined;
 	let publishingLocation = false;
 	const enqueueSave = (save: () => Promise<void>): Promise<void> => {
-		const operation = persistence ? persistence.then(save, save) : save();
+		const operation =
+			persistence !== undefined ? persistence.then(save, save) : save();
 		const settled = operation.catch((): void => undefined);
 		persistence = settled;
 		void settled.then(() => { if (persistence === settled) persistence = undefined; });

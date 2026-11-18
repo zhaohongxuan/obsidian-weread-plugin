@@ -121,7 +121,7 @@ export class WereadJournalService {
 			this.emit();
 			return this.getSnapshot();
 		}
-		if (!this.hydration) {
+		if (this.hydration === undefined) {
 			this.hydration = this.hydrate(generation, this.identity);
 		}
 		await this.hydration;
@@ -146,7 +146,7 @@ export class WereadJournalService {
 			!this.articleMetadataAttempted &&
 			this.state.notes.some((note) => note.bookType === undefined);
 		if (
-			!this.inflight &&
+			this.inflight === undefined &&
 			(force ||
 				needsArticleMetadata ||
 				((!fresh || incomplete) && now - this.lastAttempt >= RETRY_MS))

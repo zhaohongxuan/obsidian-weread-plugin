@@ -220,19 +220,21 @@ class ExportPreviewModal extends Modal {
 		const vaultBtn = actions.createEl('button', { cls: 'weread-export-action-btn mod-cta' });
 		setIcon(vaultBtn.createSpan(), 'vault');
 		vaultBtn.createSpan({ text: '保存到 Vault' });
-		vaultBtn.addEventListener('click', async () => {
-			try {
-				const base64 = this.dataUrl.split(',')[1];
-				const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-				const settings = get(settingsStore);
-				const folder = settings.noteLocation || '/';
-				const filePath = folder.replace(/\/$/, '') + '/' + this.filename;
-				await this.vault.adapter.writeBinary(filePath, binary.buffer);
-				new Notice(`✅ 已保存到 Vault：${filePath}`);
-				this.close();
-			} catch (e) {
-				new Notice('❌ 保存失败：' + e.message);
-			}
+		vaultBtn.addEventListener('click', () => {
+			void (async () => {
+				try {
+					const base64 = this.dataUrl.split(',')[1];
+					const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+					const settings = get(settingsStore);
+					const folder = settings.noteLocation || '/';
+					const filePath = folder.replace(/\/$/, '') + '/' + this.filename;
+					await this.vault.adapter.writeBinary(filePath, binary.buffer);
+					new Notice(`✅ 已保存到 Vault：${filePath}`);
+					this.close();
+				} catch (e) {
+					new Notice('❌ 保存失败：' + e.message);
+				}
+			})();
 		});
 
 		// 2. Save to local disk
@@ -240,7 +242,7 @@ class ExportPreviewModal extends Modal {
 		setIcon(localBtn.createSpan(), 'download');
 		localBtn.createSpan({ text: '保存到本地' });
 		localBtn.addEventListener('click', () => {
-			const link = document.createElement('a');
+			const link = createEl('a');
 			link.download = this.filename;
 			link.href = this.dataUrl;
 			link.click();
@@ -251,19 +253,21 @@ class ExportPreviewModal extends Modal {
 		const copyBtn = actions.createEl('button', { cls: 'weread-export-action-btn' });
 		setIcon(copyBtn.createSpan(), 'copy');
 		copyBtn.createSpan({ text: '复制到剪切板' });
-		copyBtn.addEventListener('click', async () => {
-			try {
-				const base64 = this.dataUrl.split(',')[1];
-				const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-				const blob = new Blob([binary], { type: 'image/png' });
-				await navigator.clipboard.write([
-					new ClipboardItem({ 'image/png': blob })
-				]);
-				new Notice('✅ 已复制到剪切板');
-				this.close();
-			} catch (e) {
-				new Notice('❌ 复制失败：' + e.message);
-			}
+		copyBtn.addEventListener('click', () => {
+			void (async () => {
+				try {
+					const base64 = this.dataUrl.split(',')[1];
+					const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+					const blob = new Blob([binary], { type: 'image/png' });
+					await navigator.clipboard.write([
+						new ClipboardItem({ 'image/png': blob })
+					]);
+					new Notice('✅ 已复制到剪切板');
+					this.close();
+				} catch (e) {
+					new Notice('❌ 复制失败：' + e.message);
+				}
+			})();
 		});
 	}
 
@@ -437,7 +441,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			});
 			setIcon(exportBtn, 'image-down');
 			exportBtn.createSpan({ text: '导出图片' });
-			exportBtn.addEventListener('click', () => this.exportAsImage(exportBtn));
+			exportBtn.addEventListener('click', () => void this.exportAsImage(exportBtn));
 		}
 	}
 
@@ -1410,7 +1414,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 						await this.app.workspace.getLeaf(false).openFile(f.file);
 					}
 				};
-				row.addEventListener('click', openLocalBook);
+				row.addEventListener('click', () => void openLocalBook());
 				row.addEventListener('keydown', event => {
 					if (event.key === 'Enter' || event.key === ' ') {
 						event.preventDefault();
@@ -1609,6 +1613,6 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		setIcon(wrap.createDiv({ cls: 'weread-stats-empty-icon' }), 'alert-circle');
 		wrap.createDiv({ text: '数据加载失败，请检查 API Key 或网络', cls: 'weread-stats-empty-text' });
 		const retryBtn = wrap.createEl('button', { text: '重试', cls: 'weread-stats-btn' });
-		retryBtn.addEventListener('click', () => this.loadData());
+		retryBtn.addEventListener('click', () => void this.loadData());
 	}
 }

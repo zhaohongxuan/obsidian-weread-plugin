@@ -1,6 +1,7 @@
 import WereadPlugin from '../main';
 import {
 	App,
+	ButtonComponent,
 	ExtraButtonComponent,
 	FuzzySuggestModal,
 	Modal,
@@ -525,7 +526,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const settings = get(settingsStore);
 		if (
 			this.selectableBooksCache.length > 0 ||
-			this.selectableBooksLoadingPromise
+			this.selectableBooksLoadingPromise !== null
 		) {
 			return;
 		}
@@ -575,11 +576,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cls: 'weread-action-button weread-login-btn',
 			text: '登录'
 		});
-		loginBtn.addEventListener('click', async () => {
-			loginBtn.disabled = true;
-			const loginModel = new WereadLoginModel(this);
-			await loginModel.doLogin();
-			this.display();
+		loginBtn.addEventListener('click', () => {
+			void (async () => {
+				loginBtn.disabled = true;
+				const loginModel = new WereadLoginModel(this);
+				await loginModel.doLogin();
+				this.display();
+			})();
 		});
 	}
 
@@ -990,7 +993,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		}
 	}
 
-	private async handleScanApiKey(button: any): Promise<void> {
+	private async handleScanApiKey(button: ButtonComponent): Promise<void> {
 		if (!Platform.isDesktopApp) {
 			new Notice('扫码登录仅支持桌面端，请在移动端手动粘贴 API Key');
 			return;
