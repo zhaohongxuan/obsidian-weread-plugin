@@ -1,4 +1,4 @@
-import { Modal, App, Notice, MarkdownRenderer } from 'obsidian';
+import { Modal, App, Notice, MarkdownRenderer, sanitizeHTMLToDom } from 'obsidian';
 import { Renderer } from '../renderer';
 import type { Notebook } from '../models';
 import templateInstructions from '../assets/templateInstructions.html';
@@ -80,7 +80,9 @@ export class TemplateEditorWindow extends Modal {
 		// 左侧：说明文档（仅编辑模式显示）
 		if (!this.readOnly) {
 			const instructionsPanel = container.createDiv('weread-editor-instructions');
-			instructionsPanel.innerHTML = templateInstructions;
+			// Static trusted HTML bundled from src/assets; sanitized to satisfy
+			// Obsidian's "no unsafe innerHTML assignment" review rule.
+			instructionsPanel.appendChild(sanitizeHTMLToDom(templateInstructions));
 		}
 
 		// 中间：编辑器
