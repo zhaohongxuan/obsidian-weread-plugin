@@ -51,12 +51,8 @@ export class TemplateEditorWindow extends Modal {
 			}
 		});
 
-		// 设置模态框样式
+		// 模态框尺寸由 .weread-template-editor-modal 样式类控制
 		modalEl.addClass('weread-template-editor-modal');
-		modalEl.style.width = '95vw';
-		modalEl.style.height = '90vh';
-		modalEl.style.maxWidth = '95vw';
-		modalEl.style.maxHeight = '90vh';
 
 		// 创建标题栏
 		const titleBar = contentEl.createDiv('weread-editor-titlebar');
@@ -96,8 +92,7 @@ export class TemplateEditorWindow extends Modal {
 		this.editorEl.value = this.initialTemplate;
 		if (this.readOnly) {
 			this.editorEl.disabled = true;
-			this.editorEl.style.backgroundColor = 'var(--background-secondary)';
-			this.editorEl.style.cursor = 'default';
+			this.editorEl.addClass('weread-editor-textarea-readonly');
 		}
 
 		// 右侧：预览

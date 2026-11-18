@@ -8,9 +8,9 @@ import {
 	WorkspaceLeaf,
 	moment,
 	setIcon,
-	setTooltip,
 	Menu
 } from 'obsidian';
+import { applyTooltip } from '../utils/tooltip';
 import WereadPlugin from '../../main';
 import WereadBookshelfService, { getBookshelfCategory } from '../bookshelf';
 import type { BookshelfCollection, BookshelfSourceMode, ShelfBook } from '../bookshelf';
@@ -314,15 +314,15 @@ export class WereadBookshelfPanel extends WereadPanel {
 				setIcon(syncButton, 'refresh-ccw-dot');
 				syncButton.addClass('mod-warning');
 				syncButton.removeClass('mod-cta');
-				setTooltip(syncButton, '强制同步（重新同步所有书籍）');
+				applyTooltip(syncButton, '强制同步（重新同步所有书籍）');
 			} else {
 				setIcon(syncButton, 'refresh-ccw');
 				syncButton.addClass('mod-cta');
 				syncButton.removeClass('mod-warning');
-				setTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
+				applyTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
 			}
 		};
-		setTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
+		applyTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
 		syncButton.addEventListener('mouseenter', () => {
 			isHovering = true;
 			updateSyncButton(isAltPressed);
@@ -359,7 +359,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			isSyncing = true;
 			const signal = { cancelled: false };
 			setIcon(syncButton, 'square');
-			setTooltip(syncButton, '取消同步');
+			applyTooltip(syncButton, '取消同步');
 			syncButton.removeClass('mod-cta');
 			syncButton.addClass('mod-warning');
 
@@ -765,7 +765,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 					? `书籍 ${this.collection.books.filter((book) => book.remoteExists).length} 本`
 					: `${filteredBooks.length} 本书`
 		});
-		setTooltip(
+		applyTooltip(
 			bookSection,
 			this.sourceMode === 'bookshelf'
 				? `书籍 ${this.collection.books.filter((book) => book.remoteExists).length} · 文件夹 ${this.collection.folders.length}；本地笔记 ${this.shelfBooks.filter((book) => book.isLocalOnly).length}；筛选匹配 ${filteredBooks.length} 本`
@@ -787,7 +787,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 					? `${totalNotes} 个本地笔记`
 					: `${totalNotes} 个笔记`
 		});
-		setTooltip(noteSection, `笔记总数: ${totalNotes}`);
+		applyTooltip(noteSection, `笔记总数: ${totalNotes}`);
 
 		// Year groups section (only show when grouping by year)
 		if (this.shouldGroupByYear()) {
@@ -799,7 +799,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				cls: 'weread-bookshelf-summary-value',
 				text: `${groupedBooks.length} 年`
 			});
-			setTooltip(yearSection, `年份分组: ${groupedBooks.length} 年`);
+			applyTooltip(yearSection, `年份分组: ${groupedBooks.length} 年`);
 		}
 
 		// Last sync time section
@@ -819,7 +819,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			cls: 'weread-bookshelf-summary-value',
 			text: syncText
 		});
-		setTooltip(syncSection, syncTooltip);
+		applyTooltip(syncSection, syncTooltip);
 
 		// Updated books count section
 		const updateSection = card.createDiv({ cls: 'weread-bookshelf-summary-item' });
@@ -829,7 +829,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			cls: 'weread-bookshelf-summary-value',
 			text: `${settings.lastSyncBookCount} 本`
 		});
-		setTooltip(updateSection, `更新数量: ${settings.lastSyncBookCount} 本`);
+		applyTooltip(updateSection, `更新数量: ${settings.lastSyncBookCount} 本`);
 	}
 
 	private renderCoverCard(book: BookshelfBook, container: HTMLElement): void {

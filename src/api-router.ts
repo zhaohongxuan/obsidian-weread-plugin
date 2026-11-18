@@ -113,7 +113,6 @@ class ApiRouter {
 	 * 公众号类型必须使用 V1 接口（依赖 Cookie）
 	 */
 	private isArticleBook(bookId: string): boolean {
-		const settings = get(settingsStore);
 		// 通过书架缓存或实时检查判断是否为公众号
 		// 这里简单通过 bookId 特征判断，公众号 bookId 通常以特定格式存在
 		// 实际使用时通过 metaData.bookType 判断

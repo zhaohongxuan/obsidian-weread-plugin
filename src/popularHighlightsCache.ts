@@ -107,7 +107,7 @@ export default class PopularHighlightsCacheManager {
 						}
 						cleared++;
 					}
-				} catch (e) {
+				} catch {
 					// 忽略解析失败的文件
 				}
 			}
@@ -128,7 +128,7 @@ export default class PopularHighlightsCacheManager {
 			if (!exists) {
 				await this.vault.createFolder(this.cacheDir);
 			}
-		} catch (e) {
+		} catch {
 			// 目录已存在或其他错误，忽略
 		}
 	}
@@ -140,7 +140,7 @@ export default class PopularHighlightsCacheManager {
 			return folder.children
 				.filter((f) => f instanceof TFile)
 				.map((f) => (f as TFile).name);
-		} catch (e) {
+		} catch {
 			return [];
 		}
 	}

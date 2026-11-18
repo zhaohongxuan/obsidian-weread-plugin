@@ -14,10 +14,6 @@ export class ThemeManagerModal extends Modal {
 		contentEl.empty();
 
 		modalEl.classList.add('weread-theme-manager-modal');
-		modalEl.style.width = '80vw';
-		modalEl.style.maxWidth = '800px';
-		modalEl.style.height = '70vh';
-		modalEl.style.maxHeight = '70vh';
 
 		// Header
 		const header = contentEl.createDiv('theme-manager-header');
@@ -321,7 +317,7 @@ class RenameModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 
-		modalEl.style.width = '400px';
+		modalEl.addClass('weread-theme-modal-narrow');
 
 		const header = contentEl.createDiv('theme-rename-header');
 		header.createEl('h3', { text: '重命名主题' });
@@ -329,7 +325,7 @@ class RenameModal extends Modal {
 		const inputContainer = contentEl.createDiv('theme-rename-input');
 		const input = new TextComponent(inputContainer);
 		input.setValue(this.currentName);
-		input.inputEl.style.width = '100%';
+		input.inputEl.addClass('weread-theme-input-full');
 		input.setPlaceholder('请输入新的主题名称');
 
 		const actions = contentEl.createDiv('theme-rename-actions');
@@ -362,7 +358,7 @@ class ImportUrlModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 
-		modalEl.style.width = '500px';
+		modalEl.addClass('weread-theme-modal-medium');
 
 		const header = contentEl.createDiv('theme-import-url-header');
 		header.createEl('h3', { text: '从 URL 导入主题' });
@@ -370,7 +366,7 @@ class ImportUrlModal extends Modal {
 		const inputContainer = contentEl.createDiv('theme-import-url-input');
 		const input = new TextComponent(inputContainer);
 		input.setValue('');
-		input.inputEl.style.width = '100%';
+		input.inputEl.addClass('weread-theme-input-full');
 		input.setPlaceholder('请输入主题 JSON 的 URL 地址');
 
 		const actions = contentEl.createDiv('theme-import-url-actions');
@@ -438,7 +434,7 @@ class CreateThemeModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 
-		modalEl.style.width = '600px';
+		modalEl.addClass('weread-theme-modal-wide');
 
 		const header = contentEl.createDiv('theme-create-header');
 		header.createEl('h3', { text: '新增主题' });
@@ -450,9 +446,7 @@ class CreateThemeModal extends Modal {
 		nameRow.createEl('label', { text: '主题名称', cls: 'theme-create-label' });
 		const nameInput = new TextComponent(nameRow);
 		nameInput.setValue('');
-		nameInput.inputEl.style.flex = '1';
-		nameInput.inputEl.style.width = '100%';
-		nameInput.inputEl.style.boxSizing = 'border-box';
+		nameInput.inputEl.addClass('weread-theme-input-field');
 		nameInput.setPlaceholder('请输入主题名称');
 
 		// Description
@@ -460,9 +454,7 @@ class CreateThemeModal extends Modal {
 		descRow.createEl('label', { text: '主题描述', cls: 'theme-create-label' });
 		const descInput = new TextComponent(descRow);
 		descInput.setValue('');
-		descInput.inputEl.style.flex = '1';
-		descInput.inputEl.style.width = '100%';
-		descInput.inputEl.style.boxSizing = 'border-box';
+		descInput.inputEl.addClass('weread-theme-input-field');
 		descInput.setPlaceholder('请输入主题描述（可选）');
 
 		const actions = form.createDiv('theme-create-actions');

@@ -18,7 +18,6 @@ import { settingsStore } from './settings';
 import type { QuoteShareTemplate } from './quoteShareCard';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
-import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { ThemeManagerModal } from './components/themeManagerModal';
 import { WereadReencounterBooksModal } from './components/wereadReencounterBooksModal';
@@ -716,7 +715,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 				});
 			})
 			.addButton((btn) => {
-				return (btn.setButtonText('至').buttonEl.style.borderStyle = 'none');
+				btn.setButtonText('至');
+				btn.buttonEl.addClass('weread-range-sep-btn');
+				return btn;
 			})
 			.addText((input) => {
 				input.setValue(get(settingsStore).insertBefore).onChange((value: string) => {
@@ -879,13 +880,13 @@ export class WereadSettingsTab extends PluginSettingTab {
 			if (!b) return;
 			if (valid === true) {
 				b.setIcon('check-circle').setTooltip('API Key 有效');
-				b.extraSettingsEl.style.color = 'var(--color-green)';
+				b.extraSettingsEl.addClass('weread-status-ok');
 			} else if (valid === false) {
 				b.setIcon('x-circle').setTooltip('API Key 无效，请检查或重新获取');
-				b.extraSettingsEl.style.color = 'var(--color-red)';
+				b.extraSettingsEl.addClass('weread-status-error');
 			} else {
 				b.setIcon('help-circle').setTooltip('API Key 状态未知，点击验证');
-				b.extraSettingsEl.style.color = 'var(--text-muted)';
+				b.extraSettingsEl.addClass('weread-status-muted');
 			}
 		};
 
@@ -907,7 +908,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 						applyStatus(null);
 					});
 				text.inputEl.type = 'password';
-				text.inputEl.style.width = '220px';
+				text.inputEl.addClass('weread-apikey-input');
 				apiKeyText = text;
 				return text;
 			})
@@ -939,10 +940,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 				setting.addExtraButton((button) => {
 					if (isCookieValid) {
 						button.setIcon('cookie').setTooltip('Cookie 有效');
-						button.extraSettingsEl.style.color = 'var(--color-green)';
+						button.extraSettingsEl.addClass('weread-status-ok');
 					} else {
 						button.setIcon('cookie').setTooltip('Cookie 已失效');
-						button.extraSettingsEl.style.color = 'var(--color-red)';
+						button.extraSettingsEl.addClass('weread-status-error');
 					}
 					return button;
 				});
@@ -976,7 +977,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 			// 进入设置页时自动校验一次，结果更新到状态图标
 			statusBtn.setIcon('loader-2').setTooltip('验证中...');
-			statusBtn.extraSettingsEl.style.color = 'var(--text-muted)';
+			statusBtn.extraSettingsEl.addClass('weread-status-muted');
 			new ApiRouter().validateApiKey().then((result) => {
 				settingsStore.actions.setApiKeyValid(result.valid);
 				applyStatus(result.valid);
@@ -1038,7 +1039,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		const keys = this.containerEl.createDiv();
 		keys.setAttr('align', 'center');
-		keys.style.margin = '10px';
+		keys.addClass('weread-shortcuts-keys');
 		if (Platform.isMacOS === true) {
 			keys.createEl('kbd', { text: 'CMD (⌘) + OPTION (⌥) + I' });
 		} else {
@@ -1298,10 +1299,6 @@ class ManualSyncBookSelectorModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 		modalEl.addClass('weread-book-selector-modal');
-		modalEl.style.width = '90vw';
-		modalEl.style.maxWidth = '960px';
-		modalEl.style.height = '80vh';
-		modalEl.style.maxHeight = '80vh';
 		const isBlacklistMode = this.syncMode === 'blacklist';
 		if (isBlacklistMode) {
 			for (const book of this.books) {

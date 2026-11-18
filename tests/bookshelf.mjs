@@ -284,6 +284,7 @@ const Panel = load('src/components/wereadBookshelf.ts', {
 	'./wereadPanel': { WereadPanel: class {} },
 	'svelte/store': mocks['svelte/store'],
 	'./syncLogModal': { SyncLogModal: class {} },
+	'../utils/tooltip': { applyTooltip: () => {} },
 	'../parser/parseResponse': {}
 }).WereadBookshelfPanel;
 

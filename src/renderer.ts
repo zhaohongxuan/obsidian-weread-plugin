@@ -34,7 +34,7 @@ const addDateFilters = (env: nunjucks.Environment) => {
 				} else {
 					return str.replaceAll(pattern, replacement);
 				}
-			} catch (e) {
+			} catch {
 				// 如果正则表达式无效，回退到字符串替换
 				return String(str).replaceAll(pattern, replacement);
 			}

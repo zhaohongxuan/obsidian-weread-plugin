@@ -516,7 +516,6 @@ export default class WereadPlugin extends Plugin {
 				const viewContentEl = (view as any).contentEl as HTMLElement | undefined;
 				if (!viewContentEl) return;
 
-				viewContentEl.style.position = 'relative';
 				const btn = viewContentEl.createDiv({ cls: 'weread-floating-btn' });
 				setIcon(btn, 'book-open');
 				btn.setAttr('aria-label', '查看微信读书详情');

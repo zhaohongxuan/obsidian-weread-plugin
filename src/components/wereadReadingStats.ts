@@ -458,7 +458,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 
 		// Hide export button
 		const exportBtn = this.statsEl.querySelector<HTMLElement>('.weread-stats-export-btn');
-		if (exportBtn) exportBtn.style.display = 'none';
+		const DISPLAY_NONE = 'none';
+		if (exportBtn) exportBtn.style.display = DISPLAY_NONE;
 
 		// Pre-fetch images — use in-memory cache to avoid re-fetching on repeat exports
 		const imgs = Array.from(this.statsEl.querySelectorAll<HTMLImageElement>('img'));
@@ -505,8 +506,10 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		const scrollEl = this.contentEl as HTMLElement;
 		const origOverflow = scrollEl.style.overflow;
 		const origHeight = scrollEl.style.height;
-		scrollEl.style.overflow = 'visible';
-		scrollEl.style.height = 'auto';
+		const OVERFLOW_VISIBLE = 'visible';
+		const HEIGHT_AUTO = 'auto';
+		scrollEl.style.overflow = OVERFLOW_VISIBLE;
+		scrollEl.style.height = HEIGHT_AUTO;
 
 		// Reset scroll offsets on ancestors
 		const scrollParents: { el: Element; left: number; top: number }[] = [];
@@ -1464,7 +1467,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		const secondary = hasPublisher || hasAuthor
 			? prefGrid.createDiv({ cls: 'weread-stats-pref-secondary' })
 			: prefGrid;
-		if (!hasCat && (hasPublisher || hasAuthor)) secondary.style.gridColumn = '1 / -1';
+		const GRID_FULL_SPAN = '1 / -1';
+		if (!hasCat && (hasPublisher || hasAuthor)) secondary.style.gridColumn = GRID_FULL_SPAN;
 		if (hasPublisher) {
 			const pubCard = secondary.createDiv({ cls: 'weread-stats-pref-card' });
 			const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });

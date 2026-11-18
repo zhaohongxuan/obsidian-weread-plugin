@@ -181,8 +181,10 @@ export default class SyncNotebooks {
 		const icon = wasCancelled ? '🚫' : lastError ? '⚠️' : '✅';
 		const verb = wasCancelled ? '已取消，已更新' : lastError ? '结束，更新' : '完成！更新';
 		headerEl.setText(`${icon} 同步${verb} ${syncedNotebooks} 本书`);
-		barFill.style.width = '100%';
-		if (wasCancelled) barFill.style.background = 'var(--text-muted)';
+		const WIDTH_COMPLETE = '100%';
+		const BG_CANCELLED = 'var(--text-muted)';
+		barFill.style.width = WIDTH_COMPLETE;
+		if (wasCancelled) barFill.style.background = BG_CANCELLED;
 		const summaryParts = [
 			`📚 书架共 ${metaDataArr.length} 本 · 本次处理 ${total} 本`,
 			failures.length > 0 ? `⚠️ ${failures.length} 本同步失败` : '',
