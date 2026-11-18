@@ -1,5 +1,6 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
+import depend from 'eslint-plugin-depend';
 
 // Official Obsidian community-plugin review lint.
 //
@@ -48,6 +49,16 @@ export default defineConfig([
             'obsidianmd/validate-license': 'off',
             'obsidianmd/commands/no-command-in-command-id': 'off',
             'obsidianmd/commands/no-plugin-id-in-command-id': 'off'
+        }
+    },
+    {
+        // crypto-js provides MD5/AES that neither WebCrypto nor Node crypto
+        // cover inside Obsidian's renderer; replacing it would risk breaking
+        // CookieCloud AES decryption and stable ID hashing, so allow it explicitly.
+        files: ['package.json'],
+        plugins: { depend },
+        rules: {
+            'depend/ban-dependencies': ['error', { allowed: ['crypto-js'] }]
         }
     }
 ]);
