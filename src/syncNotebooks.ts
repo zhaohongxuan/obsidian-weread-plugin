@@ -371,10 +371,10 @@ export default class SyncNotebooks {
 			chapterIdx: c.chapterIdx,
 			title: c.title
 		}));
-		await this.cacheManager.set(bookId, items as PopularHighlight[], cacheChapters);
+		await this.cacheManager.set(bookId, items, cacheChapters);
 
 		// 5. 按章节分组返回
-		return this.groupPopularByChapter(items as PopularHighlight[], cacheChapters);
+		return this.groupPopularByChapter(items, cacheChapters);
 	}
 
 	/**

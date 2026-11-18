@@ -46,7 +46,7 @@ export class WereadJournalPanel extends WereadPanel {
 					this.contentEl.querySelectorAll<HTMLButtonElement>('.weread-journal-favorite')
 				);
 		for (const star of stars) {
-			const id = star.dataset.favoriteId!;
+			const id = star.dataset.favoriteId;
 			const favorite = ids.has(id);
 			const label = favorite ? '取消收藏' : '收藏';
 			const pressed = String(favorite);
@@ -445,7 +445,7 @@ export class WereadJournalPanel extends WereadPanel {
 				count('thought')
 			].entries()) {
 				const card = metricCards[index];
-				const strong = card.querySelector('strong')!;
+				const strong = card.querySelector('strong');
 				if (strong.textContent !== value) strong.setText(value);
 				let status = card.querySelector<HTMLElement>('.weread-journal-metric-status');
 				if (index && countStatus) {
@@ -602,13 +602,13 @@ export class WereadJournalPanel extends WereadPanel {
 			blacklist.querySelector('svg')?.setAttribute('aria-hidden', 'true');
 			blacklist.disabled = !this.quote;
 		}
-		const change = section.querySelector<HTMLButtonElement>('button[aria-label="换一句"]')!;
-		const book = section.querySelector<HTMLButtonElement>('button[aria-label="换一本"]')!;
+		const change = section.querySelector<HTMLButtonElement>('button[aria-label="换一句"]');
+		const book = section.querySelector<HTMLButtonElement>('button[aria-label="换一本"]');
 		change.disabled = !highlights.some(
 			(note) => note.bookId === this.quote?.bookId && note.id !== this.quote?.id
 		);
 		book.disabled = !highlights.some((note) => note.bookId !== this.quote?.bookId);
-		const blacklist = section.querySelector<HTMLButtonElement>('.weread-journal-blacklist')!;
+		const blacklist = section.querySelector<HTMLButtonElement>('.weread-journal-blacklist');
 		blacklist.disabled = !this.quote;
 		const blockedQuote = this.quote;
 		blacklist.onclick = () => {
@@ -706,8 +706,8 @@ export class WereadJournalPanel extends WereadPanel {
 			});
 			this.renderNotes(anniversaries, '往年今日暂无符合筛选的笔记。', past, true);
 			const label = this.query.trim() ? '搜索全部已缓存笔记' : `${this.selectedDay} · 笔记`;
-			const heading = results.querySelector('h2')!;
-			if (heading.firstChild?.textContent !== label) heading.firstChild!.textContent = label;
+			const heading = results.querySelector('h2');
+			if (heading.firstChild?.textContent !== label) heading.firstChild.textContent = label;
 			list.setAttribute('aria-label', label);
 			const scrollKey = JSON.stringify([
 				this.selectedDay,
@@ -837,7 +837,7 @@ export class WereadJournalPanel extends WereadPanel {
 			for (const button of Array.from(
 				grid.querySelectorAll<HTMLButtonElement>('.weread-journal-day')
 			)) {
-				const key = button.getAttribute('aria-label')!.slice(0, 10);
+				const key = button.getAttribute('aria-label').slice(0, 10);
 				const count = counts.get(key) ?? 0;
 				const label = `${key}，${count}条笔记`;
 				button.classList.toggle('has-notes', count > 0);
@@ -972,8 +972,8 @@ export class WereadJournalPanel extends WereadPanel {
 							})
 							.createSpan({ cls: 'weread-journal-anniversary-year-count' });
 					}
-					const total = totals.get(year)!;
-					const count = section.querySelector('.weread-journal-anniversary-year-count')!;
+					const total = totals.get(year);
+					const count = section.querySelector('.weread-journal-anniversary-year-count');
 					const label =
 						entries.length < total ? `${entries.length} / ${total} 条` : `${total} 条`;
 					if (count.textContent !== label) count.setText(label);

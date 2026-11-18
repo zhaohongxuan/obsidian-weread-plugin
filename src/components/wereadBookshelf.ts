@@ -225,7 +225,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			attr: { 'aria-label': '筛选书籍分类' }
 		});
 		this.genreSelect.onchange = () => {
-			this.genreFilter = this.genreSelect!.value;
+			this.genreFilter = this.genreSelect.value;
 			this.activeFolderId = null;
 			this.renderBooks();
 		};

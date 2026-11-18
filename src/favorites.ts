@@ -88,7 +88,7 @@ export class WereadFavoritesService {
 				const value = Reflect.get(target, key);
 				return typeof value === 'function' ? value.bind(target) : value;
 			}
-		}) as DataAdapter;
+		});
 		this.adapter = wrapped;
 		this.locationVersion = options.locationVersion ?? (options.commitLocation ? 0 : 1);
 		let folder = '';

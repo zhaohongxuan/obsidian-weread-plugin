@@ -503,7 +503,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		const captureHeight = this.statsEl.scrollHeight;
 
 		// Expand scroll container
-		const scrollEl = this.contentEl as HTMLElement;
+		const scrollEl = this.contentEl;
 		const origOverflow = scrollEl.style.overflow;
 		const origHeight = scrollEl.style.height;
 		const OVERFLOW_VISIBLE = 'visible';
@@ -717,7 +717,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 	private renderRhythm(el: HTMLElement, data: ReadingStatsResponse) {
 		if (this.currentMode !== 'weekly' && this.currentMode !== 'monthly') return;
 		const insights = getDailyReadingInsights(data.readTimes, this.currentMode,
-			calcBaseTime(this.currentMode, this.currentOffset)!);
+			calcBaseTime(this.currentMode, this.currentOffset));
 		const section = el.createDiv({ cls: 'weread-stats-section weread-stats-rhythm' });
 		section.createEl('h3', { cls: 'weread-stats-section-title', text: '阅读节奏' });
 		if (!insights.hasData) {
@@ -789,7 +789,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			let labels: string[];
 			if (this.currentMode === 'weekly' || this.currentMode === 'monthly') {
 				const insights = getDailyReadingInsights(data.readTimes, this.currentMode,
-					calcBaseTime(this.currentMode, this.currentOffset)!);
+					calcBaseTime(this.currentMode, this.currentOffset));
 				values = insights.days.map(day => day.seconds);
 				labels = insights.days.map(day => `${day.date.getMonth() + 1}月${day.date.getDate()}日`);
 			} else {
@@ -830,7 +830,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 
 		// Reuse validated, summed daily buckets so calendar and rhythm agree.
 		const dayMap: Record<number, number> = {};
-		const insights = getDailyReadingInsights(readTimes, 'monthly', baseTime!);
+		const insights = getDailyReadingInsights(readTimes, 'monthly', baseTime);
 		for (const day of insights.days) dayMap[day.date.getDate()] = day.seconds;
 		const dayValues = Object.values(dayMap).filter(v => v > 0);
 		const maxVal = percentile(dayValues, 95);
@@ -953,7 +953,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				if (!res?.readTimes) continue;
 				for (const [dayTs, secs] of Object.entries(res.readTimes)) {
 					const dd = new Date(Number(dayTs) * 1000);
-					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
+					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs;
 				}
 				// 已过完的月份才算抓全：当前月只能拿到「截至今天」的数据，
 				// 此时打标记会让该月跨月后永不补全
@@ -1056,7 +1056,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				if (!res?.readTimes) continue;
 				for (const [dayTs, secs] of Object.entries(res.readTimes)) {
 					const dd = new Date(Number(dayTs) * 1000);
-					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
+					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs;
 				}
 				// 同 loadAnnualDailyData：未过完的当月不打标记，避免跨月后无法补全
 				if (isMonthOver(d, today) && !cache.fetchedMonths.includes(monthKey)) {
@@ -1312,7 +1312,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				rect.addEventListener(event, () => selectBar(i));
 			}
 			rect.addEventListener('keydown', event => {
-				const key = (event as KeyboardEvent).key;
+				const key = (event).key;
 				let next = i;
 				if (key === 'ArrowRight') next = Math.min(n - 1, i + 1);
 				else if (key === 'ArrowLeft') next = Math.max(0, i - 1);
@@ -1449,7 +1449,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (data.preferTimeWord) {
 				timeCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferTimeWord });
 			}
-			this.renderHourBarChart(timeCard, data.preferTime!);
+			this.renderHourBarChart(timeCard, data.preferTime);
 		}
 
 		// 分类在左，出版方与作者在右侧纵向排列。
@@ -1474,7 +1474,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });
 			setIcon(pubHeader.createSpan(), 'building-2');
 			pubHeader.createSpan({ text: '偏好出版方' });
-			this.renderTagCloud(pubCard, data.preferPublisher!.slice(0, 20));
+			this.renderTagCloud(pubCard, data.preferPublisher.slice(0, 20));
 		}
 
 		// ── 偏好作者（进度条）
@@ -1483,8 +1483,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const authorHeader = authorCard.createDiv({ cls: 'weread-stats-pref-card-header' });
 			setIcon(authorHeader.createSpan(), 'user');
 			authorHeader.createSpan({ text: '偏好作者' });
-			const maxCount = Math.max(...data.preferAuthor!.map(a => a.count), 1);
-			data.preferAuthor!.slice(0, 6).forEach(a => {
+			const maxCount = Math.max(...data.preferAuthor.map(a => a.count), 1);
+			data.preferAuthor.slice(0, 6).forEach(a => {
 				const row = authorCard.createDiv({ cls: 'weread-stats-pref-row weread-stats-pref-row-author' });
 				row.createSpan({ cls: 'weread-stats-pref-name', text: a.name });
 				const barWrap = row.createDiv({ cls: 'weread-stats-pref-bar-track' });

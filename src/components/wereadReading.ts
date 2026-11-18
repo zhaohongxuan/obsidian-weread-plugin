@@ -51,7 +51,7 @@ export class WereadReadingView extends ItemView {
 	}
 
 	async onOpen() {
-		this.webviewEl = this.contentEl.doc.createElement('webview') as WebviewElement;
+		this.webviewEl = this.contentEl.doc.createElement('webview');
 		this.webviewEl.setAttribute('partition', WEREAD_PARTITION);
 		this.webviewEl.setAttribute('allowpopups', '');
 		this.webviewEl.addClass('weread-frame');

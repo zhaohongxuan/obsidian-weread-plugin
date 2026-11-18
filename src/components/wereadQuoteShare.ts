@@ -14,7 +14,7 @@ import './wereadQuoteShare.css';
 
 export function quoteShareFilename(note: QuoteShareContent, template: QuoteShareTemplate): string {
 	const title =
-		// eslint-disable-next-line no-control-regex -- control chars validated/sanitized on purpose
+		 
 		Array.from(note.bookTitle.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim())
 			.slice(0, 28)
 			.join('') || '书摘';
@@ -234,7 +234,7 @@ export class WereadQuoteShareModal extends Modal {
 			if (this.closed || generation !== this.generation) return;
 			const url = URL.createObjectURL(blob);
 			const image = this.preview.ownerDocument.createElement('img');
-			image.alt = `${QUOTE_SHARE_TEMPLATES.find((entry) => entry.id === this.template)!.name}分享卡片预览`;
+			image.alt = `${QUOTE_SHARE_TEMPLATES.find((entry) => entry.id === this.template).name}分享卡片预览`;
 			image.src = url;
 			this.preview.replaceChildren(image);
 			if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);

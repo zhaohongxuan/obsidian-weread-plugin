@@ -164,7 +164,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 			this.pending.clear();
 		}
 		for (const key of ['bookTitle', 'bookCover', 'localFilePath'] as const) {
-			if (typeof state[key] === 'string') this[key] = state[key] as string;
+			if (typeof state[key] === 'string') this[key] = state[key];
 			else if (changed) this[key] = '';
 		}
 		this.currentTab = TABS.some(([tab]) => tab === state.currentTab)
@@ -506,7 +506,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 		for (const item of items) {
 			const key = String(item.chapterUid);
 			if (!groups.has(key)) groups.set(key, []);
-			groups.get(key)!.push(item);
+			groups.get(key).push(item);
 		}
 		const ordered = [...groups].sort(
 			([a], [b]) =>

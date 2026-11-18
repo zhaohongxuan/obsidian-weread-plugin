@@ -126,7 +126,7 @@ export default class WereadBookshelfService {
 		});
 		const hasArticleCollection =
 			Boolean(shelf.mp) &&
-			(typeof shelf.mp !== 'object' || Object.keys(shelf.mp as object).length > 0);
+			(typeof shelf.mp !== 'object' || Object.keys(shelf.mp).length > 0);
 		return {
 			books,
 			folders,

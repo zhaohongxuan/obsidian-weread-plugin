@@ -211,7 +211,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 };
 
 const createSettingsStore = () => {
-	const store = writable(DEFAULT_SETTINGS as WereadPluginSettings);
+	const store = writable(DEFAULT_SETTINGS);
 
 	let _plugin!: WereadPlugin;
 	let persistence: Promise<void> | undefined;
@@ -288,8 +288,8 @@ const createSettingsStore = () => {
 		if (!settings.themes || settings.themes.length === 0) {
 			settings.themes = [...BUILT_IN_THEMES];
 			// Migrate user's legacy template to a custom theme
-			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
-			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			const legacyTemplate = (rawData).template;
+			const legacyTrimBlocks = (rawData).trimBlocks ?? false;
 
 			if (legacyTemplate) {
 				const userTheme: Theme = {
@@ -324,8 +324,8 @@ const createSettingsStore = () => {
 			});
 
 			// Add a virtual "旧模板" theme if settings.template is non-empty
-			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
-			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			const legacyTemplate = (rawData).template;
+			const legacyTrimBlocks = (rawData).trimBlocks ?? false;
 			if (legacyTemplate) {
 				// Check if there's already a legacy theme
 				const hasLegacyTheme = userThemes.some((t) => t.source === 'legacy');
@@ -873,7 +873,7 @@ const createSettingsStore = () => {
 		if (!_plugin) return Promise.reject(new Error('分享署名设置尚未加载'));
 		store.update((state) => ({ ...state, quoteShareUsername: normalizeQuoteShareUsername(value) }));
 		// Svelte subscribers run synchronously; return this update's actual save, not the settled queue.
-		return lastSaveOperation!;
+		return lastSaveOperation;
 	};
 
 	const setFavoritesViewMode = (mode: 'cards' | 'list') => {

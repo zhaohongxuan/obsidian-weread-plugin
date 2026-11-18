@@ -183,7 +183,7 @@ class ApiRouter {
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getChapters(bookId);
-				if (result) return result as ChapterResponse;
+				if (result) return result;
 			} catch (e) {
 				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getChapters 调用失败，回退到 V1', e);
@@ -240,7 +240,7 @@ class ApiRouter {
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getCurrentUser();
-				if (result) return result as Record<string, unknown>;
+				if (result) return result;
 			} catch (e) {
 				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getCurrentUser 调用失败', e);
@@ -387,7 +387,7 @@ class ApiRouter {
 		apiName: string,
 		params: Record<string, unknown> = {}
 	): Promise<T | undefined> {
-		return this.v1Manager.callAgentGateway<T>(apiName, params) as Promise<T | undefined>;
+		return this.v1Manager.callAgentGateway<T>(apiName, params);
 	}
 }
 

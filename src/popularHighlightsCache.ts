@@ -139,7 +139,7 @@ export default class PopularHighlightsCacheManager {
 			if (!(folder instanceof TFolder)) return [];
 			return folder.children
 				.filter((f) => f instanceof TFile)
-				.map((f) => (f as TFile).name);
+				.map((f) => (f).name);
 		} catch {
 			return [];
 		}
