@@ -1,4 +1,5 @@
 import { App, Modal, Notice, TextComponent, requestUrl } from 'obsidian';
+import { confirmAction } from '../utils/confirmModal';
 import { settingsStore } from '../settings';
 import { TemplateEditorWindow } from './templateEditorWindow';
 import type { Theme } from '../models';
@@ -186,7 +187,9 @@ export class ThemeManagerModal extends Modal {
 					cls: 'theme-btn mod-danger'
 				});
 				deleteBtn.onclick = () => {
-					if (confirm(`确定要删除 "${theme.name}" 吗？`)) {
+					void (async () => {
+						const ok = await confirmAction(this.app, `确定要删除 "${theme.name}" 吗？`);
+						if (!ok) return;
 						// For legacy themes, also clear the settings.template
 						if (theme.source === 'legacy' || theme.id === 'legacy_template') {
 							settingsStore.actions.clearLegacyTemplate();
@@ -194,7 +197,7 @@ export class ThemeManagerModal extends Modal {
 						settingsStore.actions.deleteTheme(theme.id);
 						new Notice('主题已删除');
 						this.onOpen(); // Refresh
-					}
+					})();
 				};
 			}
 

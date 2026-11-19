@@ -1,4 +1,4 @@
-import { Vault, TFile, TFolder } from 'obsidian';
+import { Vault, TFile, TFolder, type FileManager } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import type { PopularHighlight, PopularHighlightCache } from './models';
@@ -6,9 +6,19 @@ import type { PopularHighlight, PopularHighlightCache } from './models';
 export default class PopularHighlightsCacheManager {
 	private cacheDir: string = '.weread-cache';
 	private vault: Vault;
+	private fileManager?: FileManager;
 
-	constructor(vault: Vault) {
+	constructor(vault: Vault, fileManager?: FileManager) {
 		this.vault = vault;
+		this.fileManager = fileManager;
+	}
+
+	private async removeFile(file: TFile): Promise<void> {
+		if (this.fileManager) {
+			await this.fileManager.trashFile(file);
+		} else {
+			await this.vault.delete(file);
+		}
 	}
 
 	private getCachePath(bookId: string): string {
@@ -75,7 +85,7 @@ export default class PopularHighlightsCacheManager {
 			if (exists) {
 				const file = this.vault.getAbstractFileByPath(cachePath);
 				if (file instanceof TFile) {
-					await this.vault.delete(file);
+					await this.removeFile(file);
 					console.debug(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
 				}
 			}
@@ -103,7 +113,7 @@ export default class PopularHighlightsCacheManager {
 						const filePath = `${cacheDirPath}/${file}`;
 						const abstractFile = this.vault.getAbstractFileByPath(filePath);
 						if (abstractFile instanceof TFile) {
-							await this.vault.delete(abstractFile);
+							await this.removeFile(abstractFile);
 						}
 						cleared++;
 					}

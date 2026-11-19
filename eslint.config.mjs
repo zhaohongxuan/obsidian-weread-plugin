@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import depend from 'eslint-plugin-depend';
+import tseslint from 'typescript-eslint';
 
 // Official Obsidian community-plugin review lint.
 //
@@ -49,6 +50,31 @@ export default defineConfig([
             'obsidianmd/validate-license': 'off',
             'obsidianmd/commands/no-command-in-command-id': 'off',
             'obsidianmd/commands/no-plugin-id-in-command-id': 'off'
+        }
+    },
+    {
+        // Rules the community scanner promotes/enables for newer submissions,
+        // enforced here so `npm run lint` reflects the strict scorecard layer.
+        files: ['**/*.ts'],
+        languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: {
+                projectService: { allowDefaultProject: ['eslint.config.*', 'webpack.config.js', 'version-bump.mjs'] }
+            }
+        },
+        plugins: { '@typescript-eslint': tseslint.plugin },
+        rules: {
+            '@typescript-eslint/restrict-plus-operands': 'error',
+            '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+            '@typescript-eslint/only-throw-error': 'error',
+            '@typescript-eslint/no-require-imports': 'error',
+            '@typescript-eslint/no-misused-promises': 'off',
+            'obsidianmd/no-unsupported-api': 'error',
+            'obsidianmd/prefer-create-el': 'error',
+            'obsidianmd/no-static-styles-assignment': 'error',
+            'obsidianmd/prefer-file-manager-trash-file': 'error',
+            'obsidianmd/no-misused-promises': 'error',
+            'no-alert': 'error'
         }
     },
     {

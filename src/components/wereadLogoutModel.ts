@@ -7,6 +7,7 @@ export default class WereadLoginModel {
 	private settingTab: WereadSettingsTab;
 	constructor(settingTab: WereadSettingsTab) {
 		this.settingTab = settingTab;
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- electron.remote is only available in the desktop (Electron) runtime
 		const { remote } = require('electron') as unknown as {
 			remote: { BrowserWindow: typeof BrowserWindow; getCurrentWindow: () => BrowserWindow };
 		};

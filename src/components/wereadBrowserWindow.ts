@@ -17,6 +17,7 @@ export default class WereadBrowserWindow {
 	private bookmarkNavigationTimer: number | null = null;
 
 	constructor() {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- electron.remote is only available in the desktop (Electron) runtime
 		const { remote } = require('electron') as unknown as {
 			remote: { BrowserWindow: typeof BrowserWindow; getCurrentWindow: () => BrowserWindow };
 		};

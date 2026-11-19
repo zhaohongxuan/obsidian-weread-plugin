@@ -24,6 +24,7 @@ export async function openWereadDeepLink(url: string): Promise<boolean> {
 
 	if (Platform.isDesktopApp) {
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-require-imports -- electron.shell is only available in the desktop (Electron) runtime
 			const { shell } = require('electron') as {
 				shell: { openExternal(url: string): Promise<void> };
 			};

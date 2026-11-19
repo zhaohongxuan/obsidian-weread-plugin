@@ -33,7 +33,10 @@ export default class SyncNotebooks {
 	constructor(fileManager: FileManager, apiManager: ApiRouter, vault: Vault) {
 		this.fileManager = fileManager;
 		this.apiManager = apiManager;
-		this.cacheManager = new PopularHighlightsCacheManager(vault);
+		this.cacheManager = new PopularHighlightsCacheManager(
+			vault,
+			fileManager.appInstance?.fileManager
+		);
 	}
 
 	async syncNotebook(noteFile: AnnotationFile) {

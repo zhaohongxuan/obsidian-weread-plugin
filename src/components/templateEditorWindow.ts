@@ -1,4 +1,5 @@
 import { Modal, App, Notice, MarkdownRenderer, sanitizeHTMLToDom, type Component } from 'obsidian';
+import { confirmAction } from '../utils/confirmModal';
 import { Renderer } from '../renderer';
 import type { Notebook } from '../models';
 import templateInstructions from '../assets/templateInstructions.html';
@@ -62,7 +63,7 @@ export class TemplateEditorWindow extends Modal {
 
 		const buttonGroup = titleBar.createDiv('weread-editor-buttons');
 		const cancelBtn = buttonGroup.createEl('button', { text: '关闭', cls: 'mod-cancel' });
-		cancelBtn.onclick = () => this.handleCancel();
+		cancelBtn.onclick = () => void this.handleCancel();
 
 		// 仅在非只读模式下显示保存按钮
 		if (!this.readOnly) {
@@ -215,10 +216,10 @@ export class TemplateEditorWindow extends Modal {
 		}
 	}
 
-	private handleCancel(): void {
+	private async handleCancel(): Promise<void> {
 		// 检查是否有未保存的更改
 		if (this.editorEl.value !== this.initialTemplate) {
-			const confirmed = confirm('模板已修改但未保存，确定要关闭吗？');
+			const confirmed = await confirmAction(this.app, '模板已修改但未保存，确定要关闭吗？');
 			if (!confirmed) {
 				return;
 			}

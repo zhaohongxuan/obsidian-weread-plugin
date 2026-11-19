@@ -1,6 +1,6 @@
 import './wereadReadingStats.css';
 import { getDailyReadingInsights, niceTickLabel } from '../statsInsights';
-import { App, ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
+import { App, ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault, requestUrl } from 'obsidian';
 import ApiRouter from '../api-router';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
@@ -451,8 +451,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (this.closed) return;
 		const generation = this.loadGeneration;
 		const isCurrent = () => !this.closed && generation === this.loadGeneration;
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- html-to-image is a heavy, lazily-loaded export-only dependency
 		const { toPng } = require('html-to-image');
-		const { requestUrl } = require('obsidian');
 
 		// Show loading modal immediately
 		const loadingModal = new ExportLoadingModal(this.app);

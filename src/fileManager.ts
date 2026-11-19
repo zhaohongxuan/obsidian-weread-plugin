@@ -20,6 +20,10 @@ export default class FileManager {
 		this.renderer = new Renderer();
 	}
 
+	get appInstance(): App {
+		return this.app;
+	}
+
 	public async saveDailyNotes(dailyNotePath: string, dailyNoteRefs: DailyNoteReferenece[]) {
 		const fileExist = await this.fileExists(dailyNotePath);
 		const toInsertContent = this.buildAppendContent(dailyNoteRefs);
@@ -213,10 +217,8 @@ export default class FileManager {
 	}
 
 	public async deleteNotebookFile(file: TFile): Promise<void> {
-		// `vault.trash` exists since Obsidian 0.9.7 and prefers the system
-		// trash, falling back to local trash. `fileManager.trashFile` needs
-		// 1.6.6, above our supported minimum (1.1.9).
-		await this.app.vault.trash(file, true);
+		// Respect the user's file-deletion preference (system vs. local trash).
+		await this.app.fileManager.trashFile(file);
 	}
 
 	private async getNewNotebookFilePath(notebook: Notebook): Promise<string> {
