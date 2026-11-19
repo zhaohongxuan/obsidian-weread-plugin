@@ -255,6 +255,9 @@ class Element {
 		element.tag = tag;
 		return element;
 	}
+	createSpan(options = {}) {
+		return this.createEl('span', options);
+	}
 	setAttr(name, value) {
 		this.options.attr = { ...this.options.attr, [name]: value };
 	}

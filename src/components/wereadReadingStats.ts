@@ -514,7 +514,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		// Reset scroll offsets on ancestors
 		const scrollParents: { el: Element; left: number; top: number }[] = [];
 		let ancestor: Element | null = this.statsEl.parentElement;
-		while (ancestor && ancestor !== document.body) {
+		while (ancestor && ancestor !== activeDocument.body) {
 			if (ancestor.scrollLeft !== 0 || ancestor.scrollTop !== 0) {
 				scrollParents.push({ el: ancestor, left: ancestor.scrollLeft, top: ancestor.scrollTop });
 				(ancestor as HTMLElement).scrollLeft = 0;
@@ -963,7 +963,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				dirty = true;
 			}
 			if (i + BATCH < toFetch.length) {
-				await new Promise(r => setTimeout(r, 200));
+				await new Promise(r => window.setTimeout(r, 200));
 			}
 		}
 
@@ -1065,7 +1065,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				dirty = true;
 			}
 			if (i + BATCH < toFetch.length) {
-				await new Promise(r => setTimeout(r, 200));
+				await new Promise(r => window.setTimeout(r, 200));
 				if (!this.isCurrentData(data, generation)) return;
 			}
 		}

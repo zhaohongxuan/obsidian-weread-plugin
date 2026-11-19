@@ -385,7 +385,7 @@ export class WereadJournalPanel extends WereadPanel {
 		this.updateContent = undefined;
 		const focused = this.body.ownerDocument.activeElement;
 		const search =
-			focused instanceof HTMLInputElement &&
+			focused.instanceOf(HTMLInputElement) &&
 			this.body.contains(focused) &&
 			focused.type === 'search'
 				? focused
@@ -416,7 +416,7 @@ export class WereadJournalPanel extends WereadPanel {
 		const metricsGrid = metrics.createDiv({ cls: 'weread-journal-today-metrics-grid' });
 		const metricCards = ['阅读时长', '今日划线', '今日想法'].map((label) => {
 			const card = metricsGrid.createDiv();
-			card.createEl('span', { text: label });
+			card.createSpan({ text: label });
 			card.createEl('strong');
 			return card;
 		});
@@ -780,7 +780,7 @@ export class WereadJournalPanel extends WereadPanel {
 		};
 		const grid = calendar.createDiv({ cls: 'weread-journal-calendar-grid' });
 		for (const day of ['一', '二', '三', '四', '五', '六', '日'])
-			grid.createEl('span', { text: day });
+			grid.createSpan({ text: day });
 		const counts = new Map<string, number>();
 		for (const note of this.state.notes)
 			counts.set(noteDay(note), (counts.get(noteDay(note)) ?? 0) + 1);
@@ -805,7 +805,7 @@ export class WereadJournalPanel extends WereadPanel {
 				}
 			});
 			button.disabled = key > this.date;
-			button.createEl('span', { text: String(day) });
+			button.createSpan({ text: String(day) });
 			button.onclick = () => {
 				this.selectedDay = key;
 				this.limit = 100;

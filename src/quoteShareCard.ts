@@ -111,7 +111,7 @@ export function renderQuoteShareCard(
 	options: { template?: QuoteShareTemplate; username?: string; cover?: CanvasImageSource } = {}
 ): HTMLCanvasElement {
 	// DOM access stays inside this function so settings can import the template catalog in Node.
-	const canvas = document.createElement('canvas');
+	const canvas = createEl('canvas');
 	canvas.width = WIDTH;
 	const ctx = canvas.getContext('2d');
 	if (!ctx) throw new Error('无法创建分享图片，请稍后重试。');

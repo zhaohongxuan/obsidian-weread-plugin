@@ -291,7 +291,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 		});
 
 		// 点击外部关闭popover
-		this.registerDomEvent(document, 'click', (event) => {
+		this.registerDomEvent(activeDocument, 'click', (event) => {
 			if (!toolbarFilters.contains(event.target as Node)) {
 				filterDropdowns.classList.remove('is-open');
 			}
@@ -332,13 +332,13 @@ export class WereadBookshelfPanel extends WereadPanel {
 			updateSyncButton(false);
 		});
 		// 用 e.code 追踪 Alt 键，比 e.key 在 macOS Electron 下更可靠
-		this.registerDomEvent(document, 'keydown', (e: KeyboardEvent) => {
+		this.registerDomEvent(activeDocument, 'keydown', (e: KeyboardEvent) => {
 			if (e.code === 'AltLeft' || e.code === 'AltRight') {
 				isAltPressed = true;
 				if (isHovering) updateSyncButton(true);
 			}
 		});
-		this.registerDomEvent(document, 'keyup', (e: KeyboardEvent) => {
+		this.registerDomEvent(activeDocument, 'keyup', (e: KeyboardEvent) => {
 			if (e.code === 'AltLeft' || e.code === 'AltRight') {
 				isAltPressed = false;
 				if (isHovering) updateSyncButton(false);
@@ -374,7 +374,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				if ((updatedCount ?? 0) > 0) {
 					this.bookshelfService.clearProgressCache();
 					// 等待 Obsidian 的 metadataCache 更新新创建的文件
-					await new Promise((resolve) => setTimeout(resolve, 500));
+					await new Promise((resolve) => window.setTimeout(resolve, 500));
 					await this.loadBookshelf();
 				}
 			} catch (error: unknown) {
@@ -714,7 +714,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				attr: { 'data-count': String(previews.length), 'aria-hidden': 'true' }
 			});
 			for (const book of previews) {
-				const cell = collage.createEl('span', { cls: 'weread-bookshelf-folder-cell' });
+				const cell = collage.createSpan({ cls: 'weread-bookshelf-folder-cell' });
 				const image = cell.createEl('img', {
 					cls: 'weread-bookshelf-folder-cover',
 					attr: { src: book.cover, alt: '', loading: 'lazy', decoding: 'async' }
@@ -725,20 +725,20 @@ export class WereadBookshelfPanel extends WereadPanel {
 				};
 			}
 			if (!previews.length) {
-				const fallback = collage.createEl('span', {
+				const fallback = collage.createSpan({
 					cls: 'weread-bookshelf-folder-placeholder'
 				});
 				setIcon(fallback, 'folder');
 			}
-			const mark = collage.createEl('span', { cls: 'weread-bookshelf-folder-mark' });
+			const mark = collage.createSpan({ cls: 'weread-bookshelf-folder-mark' });
 			setIcon(mark, 'folder');
-			collage.createEl('span', {
+			collage.createSpan({
 				cls: 'weread-bookshelf-folder-count',
 				text: String(availableCount)
 			});
 			button.createEl('strong', { cls: 'weread-bookshelf-folder-title', text: folder.name });
 			if (hasFilter) {
-				button.createEl('span', {
+				button.createSpan({
 					cls: 'weread-bookshelf-folder-caption',
 					text: `匹配 ${members.length} 本`
 				});
@@ -954,7 +954,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				try {
 					await this.plugin.syncBookById(book.bookId);
 					// 等待 Obsidian 的 metadataCache 更新新创建的文件
-					await new Promise((resolve) => setTimeout(resolve, 500));
+					await new Promise((resolve) => window.setTimeout(resolve, 500));
 					await this.loadBookshelf();
 				} catch (error: unknown) {
 					new Notice(error instanceof Error ? error.message : '同步失败');

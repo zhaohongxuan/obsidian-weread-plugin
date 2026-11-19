@@ -1,5 +1,6 @@
 // Run: node --test tests/statsCache.mjs
 // Real cache/loader code with an isolated clock and in-memory Vault adapter.
+import './helpers/nodeGlobals.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';

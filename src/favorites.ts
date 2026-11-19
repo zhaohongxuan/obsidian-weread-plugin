@@ -15,6 +15,12 @@ import {
 import type { FavoritesDocument } from './favoritesRepository';
 import { resolveFavoriteBookFiles } from './favoriteBookFiles';
 
+// Guard a vault entry as a TFile without importing TFile as a value (keeps the
+// esbuild test build free of an 'obsidian' runtime dependency).
+const isFileEntry = (f: unknown): f is TFile =>
+	typeof f === 'object' && f !== null && 'extension' in f;
+
+
 export type { FavoriteEntry, FavoritesState } from './models';
 type Listener = (state: FavoritesState) => void;
 export interface FavoritesStorageOptions {
@@ -43,7 +49,7 @@ export class WereadFavoritesService {
 	private pending = new Map<string, number>();
 	private disposed = false;
 	private writingCanvas = 0;
-	private reloadTimer?: ReturnType<typeof setTimeout>;
+	private reloadTimer?: number;
 	private eventDisposers: (() => void)[] = [];
 
 	private adapter: DataAdapter;
@@ -73,8 +79,7 @@ export class WereadFavoritesService {
 						this.writingCanvas += 1;
 						try {
 							const file = vault.getAbstractFileByPath(path);
-							// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- value import of TFile would break the esbuild mock build
-							if (file && 'extension' in file) await vault.modify(file as TFile, raw);
+							if (isFileEntry(file)) await vault.modify(file, raw);
 							else if (!file) await vault.create(path, raw);
 							else throw new Error('收藏画布路径被目录占用');
 						} finally {
@@ -112,8 +117,8 @@ export class WereadFavoritesService {
 					(!this.state.loaded && this.hydration === undefined)
 				)
 					return;
-				if (this.reloadTimer) clearTimeout(this.reloadTimer);
-				this.reloadTimer = setTimeout(() => {
+				if (this.reloadTimer) window.clearTimeout(this.reloadTimer);
+				this.reloadTimer = window.setTimeout(() => {
 					this.reloadTimer = undefined;
 					void this.load(true).catch((): void => undefined);
 				}, 80);
@@ -187,7 +192,7 @@ export class WereadFavoritesService {
 		await transfer.destination.verifyCurrent();
 		this.requireClosedCanvas(transfer.source.paths.primary);
 		await this.options.commitLocation?.(transfer.destination.paths.folder, 1);
-		if (this.reloadTimer) clearTimeout(this.reloadTimer);
+		if (this.reloadTimer) window.clearTimeout(this.reloadTimer);
 		this.reloadTimer = undefined;
 		this.repository = transfer.destination;
 		this.locationVersion = 1;
@@ -464,7 +469,7 @@ export class WereadFavoritesService {
 
 	dispose(): void {
 		this.disposed = true;
-		if (this.reloadTimer) clearTimeout(this.reloadTimer);
+		if (this.reloadTimer) window.clearTimeout(this.reloadTimer);
 		this.eventDisposers.splice(0).forEach((dispose) => dispose());
 		this.listeners.clear();
 		// Accepted operations retain their queue and complete persistence consistently.

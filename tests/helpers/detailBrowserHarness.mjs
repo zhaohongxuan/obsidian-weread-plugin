@@ -142,6 +142,22 @@ export async function browserHarness(t) {
 		frameId: (await send('Page.getFrameTree')).frameTree.frame.id,
 		html: '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body></body></html>'
 	});
+	// Obsidian injects these globals in the real app; provide them in the harness.
+	await send('Runtime.evaluate', {
+		expression: `(() => {
+			globalThis.activeWindow = globalThis.window;
+			globalThis.activeDocument = document;
+			globalThis.createEl = (tag, options = {}) => {
+				const el = document.createElement(tag);
+				if (options.cls) el.className = options.cls;
+				if (options.text) el.textContent = options.text;
+				if (options.type) el.type = options.type;
+				if (options.attr) for (const [k, v] of Object.entries(options.attr)) el.setAttribute(k, v);
+				return el;
+			};
+			globalThis.createFragment = () => document.createDocumentFragment();
+		})();`
+	});
 	return {
 		send,
 		async evaluate(expression) {

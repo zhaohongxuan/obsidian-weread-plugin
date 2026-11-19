@@ -561,7 +561,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cls: 'weread-login-title',
 			text: '微信读书未登录'
 		});
-		const desc = document
+		const desc = activeDocument
 			.createRange()
 			.createContextualFragment(`点击【登录】按钮，在弹出页面【扫码登录】`);
 		textInfo
@@ -889,8 +889,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 				b.extraSettingsEl.addClass('weread-status-muted');
 			}
 		};
-
-		const descFrag = document
+		const descFrag = activeDocument
 			.createRange()
 			.createContextualFragment(
 				`点击「扫码获取」扫码登录后自动获取API Key，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请,格式：wrk-xxxxxxxx。<br><strong>注意：</strong> 一些额外的功能需要依赖Cookie，建议使用扫码登录！！`

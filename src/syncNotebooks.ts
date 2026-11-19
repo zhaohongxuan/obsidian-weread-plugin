@@ -92,7 +92,7 @@ export default class SyncNotebooks {
 		let lastError: string | undefined;
 
 		// 一次性建好固定尺寸骨架，后续只更新内容，不触发 reflow
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		const container = frag.createDiv({ cls: 'weread-notice-progress' });
 		const headerEl = container.createDiv({ cls: 'weread-notice-progress-header' });
 		const barTrack = container.createDiv({ cls: 'weread-notice-progress-track' });
@@ -192,7 +192,7 @@ export default class SyncNotebooks {
 			`⏱ 耗时 ${syncTimeInSeconds.toFixed(1)} 秒`
 		].filter(Boolean);
 		titleEl.setText(summaryParts.join(' · '));
-		setTimeout(() => progressNotice.hide(), 5000);
+		window.setTimeout(() => progressNotice.hide(), 5000);
 		return syncedNotebooks;
 	}
 

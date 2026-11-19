@@ -1,7 +1,7 @@
 /** Draw the compact book-and-arrow action used for returning to a reading location. */
 export function setOriginalReadingIcon(element: HTMLElement): void {
 	const namespace = 'http://www.w3.org/2000/svg';
-	const svg = document.createElementNS(namespace, 'svg');
+	const svg = activeDocument.createElementNS(namespace, 'svg');
 	svg.classList.add('svg-icon');
 	svg.setAttribute('viewBox', '0 0 24 24');
 	svg.setAttribute('fill', 'none');
@@ -15,7 +15,7 @@ export function setOriginalReadingIcon(element: HTMLElement): void {
 		'M12 7v14M12 7C9 5 6 5 3 6v13c3-1 6-1 9 2 3-3 6-3 9-2v-6',
 		'M16 3h5v5M21 3l-6 6'
 	]) {
-		const path = document.createElementNS(namespace, 'path');
+		const path = activeDocument.createElementNS(namespace, 'path');
 		path.setAttribute('d', d);
 		svg.append(path);
 	}

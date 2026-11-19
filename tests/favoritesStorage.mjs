@@ -1,4 +1,5 @@
 // All persistence is synthetic and in memory; never connect to an installed vault.
+import './helpers/nodeGlobals.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import test from 'node:test';

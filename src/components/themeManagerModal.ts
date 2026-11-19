@@ -218,7 +218,7 @@ export class ThemeManagerModal extends Modal {
 					type: 'application/json'
 				});
 				const url = URL.createObjectURL(blob);
-				const a = document.createElement('a');
+				const a = createEl('a');
 				a.href = url;
 				a.download = `${theme.name.replace(/\s+/g, '_')}_theme.json`;
 				a.click();
@@ -242,7 +242,7 @@ export class ThemeManagerModal extends Modal {
 			cls: 'theme-btn mod-cta'
 		});
 		importBtn.onclick = () => {
-			const input = document.createElement('input');
+			const input = createEl('input');
 			input.type = 'file';
 			input.accept = '.json';
 			input.onchange = async () => {

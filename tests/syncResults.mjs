@@ -1,5 +1,6 @@
 // Run: node --test tests/syncResults.mjs
 // Real orchestration -> FileManager -> frontmatter -> synthetic vault; no credentials/network.
+import './helpers/nodeGlobals.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -38,6 +39,11 @@ class Element {
 		return this.text + this.children.map((el) => el.textContent).join(' ');
 	}
 }
+// Production code uses Obsidian globals; back them with the lightweight Element mock.
+globalThis.createFragment = () => new Element();
+globalThis.createEl = (tag, options) => new Element(options);
+if (!globalThis.document) globalThis.document = {};
+globalThis.activeDocument = globalThis.document;
 const notices = [];
 class Notice {
 	constructor(message) {
@@ -250,8 +256,15 @@ function fixture({
 			},
 			module,
 			module.exports,
-			{ createDocumentFragment: () => new Element() },
-			{ moment: () => ({ format: () => '2026-11-07' }) },
+			{
+				createDocumentFragment: () => new Element(),
+				createElement: (tag) => new Element(tag)
+			},
+			{
+				moment: () => ({ format: () => '2026-11-07' }),
+				setTimeout: (fn, ms) => setTimeout(fn, ms),
+				clearTimeout: (id) => clearTimeout(id)
+			},
 			() => 0,
 			{
 				log() {},

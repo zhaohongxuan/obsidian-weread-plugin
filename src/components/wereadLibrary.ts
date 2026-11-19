@@ -156,7 +156,7 @@ export class WereadLibraryView extends ItemView {
 					'aria-controls': `${this.instanceId}-panel-${tab}`
 				}
 			});
-			const icon = button.createEl('span', {
+			const icon = button.createSpan({
 				cls: 'weread-library-tab-icon',
 				attr: { 'aria-hidden': 'true' }
 			});
