@@ -26,6 +26,149 @@ import { FavoritesUndoToast } from './wereadFavorites';
 import { createQuoteShareButton } from './quoteShareButton';
 import type { QuoteShareContent } from '../quoteShareCard';
 
+const DETAIL_PAGE_SIZE = 50;
+const DETAIL_CACHE_MAX = 5;
+const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CachedBookDetail {
+	credentialKey: string;
+	cachedAt: number;
+	detail?: BookDetailResponse;
+	progress?: BookProgressResponse;
+	highlights?: HighlightResponse;
+	reviews?: BookReviewResponse;
+	popular?: PopularResponse;
+	publicReviews?: BookReviewResponse;
+}
+
+const detailCache = new WeakMap<object, Map<string, CachedBookDetail>>();
+
+function detailCredentialKey(): string {
+	const settings = get(settingsStore);
+	const cookies = Array.isArray(settings?.cookies)
+		? settings.cookies.map((c) => `${c?.name ?? ''}=${c?.value ?? ''}`).join(';')
+		: '';
+	return JSON.stringify([
+		settings?.wereadApiKey ?? '',
+		Boolean(settings?.isCookieValid),
+		cookies
+	]);
+}
+
+function getCachedDetail(
+	api: object,
+	bookId: string,
+	credentialKey: string
+): CachedBookDetail | undefined {
+	const map = detailCache.get(api);
+	const entry = map?.get(bookId);
+	if (!entry) return undefined;
+	if (entry.credentialKey !== credentialKey) {
+		map!.clear();
+		return undefined;
+	}
+	if (Date.now() - entry.cachedAt > DETAIL_CACHE_TTL_MS) {
+		map!.delete(bookId);
+		return undefined;
+	}
+	map!.delete(bookId);
+	map!.set(bookId, entry);
+	return entry;
+}
+
+function setCachedDetail(api: object, bookId: string, entry: CachedBookDetail): void {
+	let map = detailCache.get(api);
+	if (!map) {
+		map = new Map();
+		detailCache.set(api, map);
+	}
+	if (map.size > 0) {
+		const first = map.values().next().value;
+		if (first && first.credentialKey !== entry.credentialKey) map.clear();
+	}
+	map.delete(bookId);
+	map.set(bookId, entry);
+	while (map.size > DETAIL_CACHE_MAX) {
+		const oldest = map.keys().next().value;
+		if (oldest === undefined) break;
+		map.delete(oldest);
+	}
+}
+
+function compactHighlightResponse(
+	resp: HighlightResponse | undefined
+): HighlightResponse | undefined {
+	if (!resp || !Array.isArray(resp.updated)) return resp;
+	return {
+		synckey: resp.synckey,
+		chapters: Array.isArray(resp.chapters)
+			? resp.chapters.map((ch) => ({
+					bookId: ch.bookId,
+					chapterUid: ch.chapterUid,
+					chapterIdx: ch.chapterIdx,
+					title: ch.title
+				}))
+			: [],
+		updated: resp.updated.map((h) => ({
+			bookId: h.bookId,
+			bookmarkId: h.bookmarkId,
+			chapterUid: h.chapterUid,
+			chapterName: h.chapterName,
+			colorStyle: h.colorStyle,
+			contextAbstract: h.contextAbstract,
+			markText: h.markText,
+			range: h.range,
+			style: h.style,
+			type: h.type,
+			createTime: h.createTime
+		})),
+		removed: [],
+		book: resp.book
+			? ({
+					bookId: resp.book.bookId,
+					title: resp.book.title,
+					author: resp.book.author,
+					cover: resp.book.cover,
+					...((resp.book as any).type !== undefined
+						? { type: (resp.book as any).type }
+						: {})
+				} as HighlightResponse['book'])
+			: resp.book
+	} as HighlightResponse;
+}
+
+function compactReviewResponse(resp: BookReviewResponse | undefined): BookReviewResponse | undefined {
+	if (!resp || !Array.isArray(resp.reviews)) return resp;
+	return {
+		synckey: resp.synckey,
+		totalCount: resp.totalCount,
+		hasMore: resp.hasMore,
+		reviews: resp.reviews.map((wrapper) => {
+			const raw = ((wrapper?.review as any)?.review || wrapper?.review || wrapper) as any;
+			return {
+				reviewId: wrapper?.reviewId ?? raw?.reviewId,
+				review: {
+					reviewId: raw?.reviewId,
+					type: raw?.type,
+					abstract: raw?.abstract,
+					content: raw?.content,
+					title: raw?.title,
+					chapterName: raw?.chapterName,
+					chapterTitle: raw?.chapterTitle,
+					chapterUid: raw?.chapterUid,
+					range: raw?.range,
+					createTime: raw?.createTime,
+					...(raw?.author?.name ? { author: { name: raw.author.name } } : {})
+				}
+			};
+		}),
+		removed: [],
+		atUsers: [],
+		refUsers: [],
+		columns: []
+	} as unknown as BookReviewResponse;
+}
+
 const HIGHLIGHT_COLORS: Record<number, { name: string; label: string }> = {
 	1: { name: 'yellow', label: '黄色' },
 	2: { name: 'blue', label: '蓝色' },
@@ -76,6 +219,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 	private favoriteState?: FavoritesState;
 	private stars = new Map<HTMLButtonElement, JournalNote>();
 	private pending = new Set<string>();
+	private batchObserver?: IntersectionObserver;
+	private renderEpoch = 0;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -124,15 +269,27 @@ export class WereadBookDetailPanel extends WereadPanel {
 		// Data requests belong to setState; opening the panel only creates its scaffold.
 		this.connectFavorites();
 	}
+	private disconnectBatchObserver(): void {
+		this.batchObserver?.disconnect();
+		this.batchObserver = undefined;
+	}
 	async onClose(): Promise<void> {
 		this.active = false;
 		this.generation += 1;
+		this.renderEpoch += 1;
+		this.disconnectBatchObserver();
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.undo?.clear();
 		this.syncing = false;
 		this.stars.clear();
 		this.pending.clear();
+		this.detail = undefined;
+		this.progress = undefined;
+		this.highlightResp = undefined;
+		this.reviewResp = undefined;
+		this.popularResp = undefined;
+		this.publicReviewResp = undefined;
 	}
 	getState(): Record<string, unknown> {
 		return {
@@ -148,6 +305,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 		const changed = bookId !== this.bookId;
 		if (changed) {
 			this.generation += 1;
+			this.renderEpoch += 1;
+			this.disconnectBatchObserver();
 			this.undo?.clear();
 			this.bookId = bookId;
 			this.syncing = false;
@@ -177,43 +336,72 @@ export class WereadBookDetailPanel extends WereadPanel {
 	private valid(generation: number, bookId: string): boolean {
 		return this.active && generation === this.generation && bookId === this.bookId;
 	}
-	private async loadData(): Promise<void> {
+	private async loadData(force = false): Promise<void> {
 		if (this.syncing) return;
 		const bookId = this.bookId;
 		const path = this.localFilePath;
+		const credentialKey = detailCredentialKey();
+		if (force) detailCache.get(this.api)?.delete(bookId);
+		const cached = !force ? getCachedDetail(this.api, bookId, credentialKey) : undefined;
 		const generation = ++this.generation;
-		this.loading = true;
 		this.pending.clear();
 		this.undo?.clear();
-		this.render();
-		const results = await Promise.allSettled([
-			Promise.resolve().then(() => this.api.getBook(bookId)),
-			Promise.resolve().then(() => this.api.getProgress(bookId)),
-			Promise.resolve().then(() => this.api.getNotebookHighlights(bookId)),
-			Promise.resolve().then(() => this.api.getNotebookReviews(bookId)),
-			Promise.resolve().then(() => this.api.getBestBookmarks(bookId)),
-			Promise.resolve().then(() => this.api.getPublicReviews(bookId))
-		]);
-		if (!this.valid(generation, bookId)) return;
-		const value = (index: number): any => {
-			const result = results[index];
-			return result.status === 'fulfilled' && result.value && !(result.value as any).errcode
-				? result.value
-				: undefined;
-		};
-		const detail = value(0) as BookDetailResponse | undefined;
-		const progress = value(1) as BookProgressResponse | undefined;
-		let highlights = value(2) as HighlightResponse | undefined;
-		const reviews = value(3) as BookReviewResponse | undefined;
-		let popular = value(4) as PopularResponse | undefined;
-		const publicReviews = value(5) as BookReviewResponse | undefined;
+
+		let detail = cached?.detail;
+		let progress = cached?.progress;
+		let highlights = cached?.highlights;
+		let reviews = cached?.reviews;
+		let popular = cached?.popular;
+		let publicReviews = cached?.publicReviews;
 		const failures = new Set<string>();
-		if (!detail) failures.add('detail');
-		if (!progress) failures.add('progress');
-		if (!Array.isArray(highlights?.updated)) failures.add('highlights');
-		if (!Array.isArray(reviews?.reviews)) failures.add('notes');
-		if (!Array.isArray(popular?.items)) failures.add('popular');
-		if (!Array.isArray(publicReviews?.reviews)) failures.add('reviews');
+
+		if (!cached) {
+			this.loading = true;
+			this.render();
+			const results = await Promise.allSettled([
+				Promise.resolve().then(() => this.api.getBook(bookId)),
+				Promise.resolve().then(() => this.api.getProgress(bookId)),
+				Promise.resolve().then(() => this.api.getNotebookHighlights(bookId)),
+				Promise.resolve().then(() => this.api.getNotebookReviews(bookId)),
+				Promise.resolve().then(() => this.api.getBestBookmarks(bookId)),
+				Promise.resolve().then(() => this.api.getPublicReviews(bookId))
+			]);
+			if (!this.valid(generation, bookId)) return;
+			const value = (index: number): any => {
+				const result = results[index];
+				return result.status === 'fulfilled' && result.value && !(result.value as any).errcode
+					? result.value
+					: undefined;
+			};
+			detail = value(0) as BookDetailResponse | undefined;
+			progress = value(1) as BookProgressResponse | undefined;
+			highlights = compactHighlightResponse(value(2) as HighlightResponse | undefined);
+			reviews = compactReviewResponse(value(3) as BookReviewResponse | undefined);
+			popular = value(4) as PopularResponse | undefined;
+			publicReviews = compactReviewResponse(value(5) as BookReviewResponse | undefined);
+			if (!detail) failures.add('detail');
+			if (!progress) failures.add('progress');
+			if (!Array.isArray(highlights?.updated)) failures.add('highlights');
+			if (!Array.isArray(reviews?.reviews)) failures.add('notes');
+			if (!Array.isArray(popular?.items)) failures.add('popular');
+			if (!Array.isArray(publicReviews?.reviews)) failures.add('reviews');
+			if (failures.size === 0) {
+				setCachedDetail(this.api, bookId, {
+					credentialKey,
+					cachedAt: Date.now(),
+					detail,
+					progress,
+					highlights,
+					reviews,
+					popular,
+					publicReviews
+				});
+			}
+		} else if (path && (!highlights?.updated?.length || !popular?.items?.length)) {
+			this.loading = true;
+			this.render();
+		}
+
 		let localHighlights = false,
 			localPopular = false;
 		if (path && (!highlights?.updated?.length || !popular?.items?.length)) {
@@ -387,7 +575,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 			actions,
 			this.loading ? '正在刷新…' : '刷新',
 			'refresh-cw',
-			() => void this.loadData()
+			() => void this.loadData(true)
 		);
 		refresh.disabled = this.loading || this.syncing || !this.bookId;
 		if (typeof this.plugin.syncBookById === 'function') {
@@ -425,7 +613,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 			await this.plugin.syncBookById(bookId);
 			if (!this.valid(generation, bookId)) return;
 			this.syncing = false;
-			await this.loadData();
+			await this.loadData(true);
 		} catch (error) {
 			if (this.valid(generation, bookId)) {
 				this.syncing = false;
@@ -439,6 +627,8 @@ export class WereadBookDetailPanel extends WereadPanel {
 		return (this.highlightResp?.updated || []).filter((h) => String(h.type) !== '0');
 	}
 	private renderContent(): void {
+		this.disconnectBatchObserver();
+		this.renderEpoch += 1;
 		this.stars.clear();
 		this.body.empty();
 		this.body.setAttribute('aria-busy', String(this.loading));
@@ -465,7 +655,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 				attr: { role: 'status' }
 			});
 			warning.createSpan({ text: '此项远程数据暂不可用，请检查登录或 API 配置后重试。' });
-			this.button(warning, '重试', () => void this.loadData());
+			this.button(warning, '重试', () => void this.loadData(true));
 		}
 		if (this.failures.has('local'))
 			this.status('本地笔记暂时无法读取。', 'weread-detail-warning');
@@ -496,6 +686,46 @@ export class WereadBookDetailPanel extends WereadPanel {
 	private status(text: string, cls = 'weread-detail-empty'): void {
 		this.body.createEl('p', { text, cls });
 	}
+	private renderMoreBar(
+		remaining: number,
+		epoch: number,
+		appendNext: (count: number) => void
+	): HTMLElement | undefined {
+		if (remaining <= 0) return undefined;
+		const bar = this.body.createDiv({ cls: 'weread-detail-more-bar' });
+		this.button(
+			bar,
+			`加载更多（剩余 ${remaining} 条）`,
+			() => {
+				if (this.active && this.renderEpoch === epoch) appendNext(DETAIL_PAGE_SIZE);
+			},
+			'weread-detail-action weread-detail-more-btn'
+		);
+		this.button(
+			bar,
+			'显示全部',
+			() => {
+				if (this.active && this.renderEpoch === epoch) appendNext(remaining);
+			},
+			'weread-detail-action weread-detail-more-btn'
+		);
+		if (typeof IntersectionObserver !== 'undefined') {
+			this.batchObserver = new IntersectionObserver(
+				(entries) => {
+					if (
+						this.active &&
+						this.renderEpoch === epoch &&
+						entries.some((entry) => entry.isIntersecting)
+					) {
+						appendNext(DETAIL_PAGE_SIZE);
+					}
+				},
+				{ rootMargin: '400px 0px' }
+			);
+			this.batchObserver.observe(bar);
+		}
+		return bar;
+	}
 	private renderHighlights(items: any[], chapters: any[], personal: boolean): void {
 		if (!items.length) {
 			this.status(personal ? '还没有划线，读到喜欢的句子时留下印记。' : '暂无热门划线。');
@@ -513,14 +743,48 @@ export class WereadBookDetailPanel extends WereadPanel {
 				(chapterMap.get(a)?.chapterIdx ?? Number.MAX_SAFE_INTEGER) -
 				(chapterMap.get(b)?.chapterIdx ?? Number.MAX_SAFE_INTEGER)
 		);
+		const flatEntries: Array<{
+			key: string;
+			chapter: string;
+			chapterObj: unknown;
+			item: any;
+		}> = [];
 		for (const [key, highlights] of ordered) {
-			const chapter = chapterMap.get(key)?.title || highlights[0]?.chapterName || '未分章节';
-			const section = this.body.createEl('section', { cls: 'weread-detail-chapter' });
-			section.createEl('h2', { text: chapter, cls: 'weread-detail-chapter-title' });
-			for (const h of [...highlights].sort(
+			const chapterObj = chapterMap.get(key);
+			const chapter = chapterObj?.title || highlights[0]?.chapterName || '未分章节';
+			const sortedHighlights = [...highlights].sort(
 				(a, b) => (parseInt(a.range, 10) || 0) - (parseInt(b.range, 10) || 0)
-			)) {
-				const card = section.createEl('article', {
+			);
+			for (const h of sortedHighlights) {
+				flatEntries.push({ key, chapter, chapterObj, item: h });
+			}
+		}
+		const epoch = this.renderEpoch;
+		let rendered = 0;
+		let currentKey: string | null = null;
+		let currentSection: HTMLElement | null = null;
+		let moreBar: HTMLElement | undefined;
+		const appendNext = (count: number, isInitial = false): void => {
+			if (!this.active || this.renderEpoch !== epoch) return;
+			moreBar?.remove();
+			moreBar = undefined;
+			this.disconnectBatchObserver();
+			const addedStars: Array<[HTMLButtonElement, JournalNote]> = [];
+			const end = Math.min(rendered + count, flatEntries.length);
+			for (; rendered < end; rendered++) {
+				const entry = flatEntries[rendered];
+				if (entry.key !== currentKey || !currentSection) {
+					currentKey = entry.key;
+					currentSection = this.body.createEl('section', {
+						cls: 'weread-detail-chapter'
+					});
+					currentSection.createEl('h2', {
+						text: entry.chapter,
+						cls: 'weread-detail-chapter-title'
+					});
+				}
+				const h = entry.item;
+				const card = currentSection.createEl('article', {
 					cls: personal ? 'weread-detail-highlight' : 'weread-detail-popular'
 				});
 				if (personal) card.dataset.bookmarkId = String(h.bookmarkId || '');
@@ -548,11 +812,16 @@ export class WereadBookDetailPanel extends WereadPanel {
 				if (h.range) meta.createSpan({ text: `位置 ${String(h.range).split('-')[0]}` });
 				if (!personal && h.totalCount) meta.createSpan({ text: `${h.totalCount} 人划线` });
 				const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
-				this.sourceAndCopy(actions, h.chapterUid, h.range, chapter, h.markText || '');
-				this.shareButton(actions, h.markText || '', chapter, h.createTime);
-				if (personal) this.favoriteButton(actions, h);
+				this.sourceAndCopy(actions, h.chapterUid, h.range, entry.chapter, h.markText || '');
+				this.shareButton(actions, h.markText || '', entry.chapter, h.createTime);
+				if (personal) this.favoriteButton(actions, h, entry.chapterObj, addedStars);
 			}
-		}
+			if (!isInitial && addedStars.length) this.updateStarButtons(addedStars);
+			moreBar = this.renderMoreBar(flatEntries.length - rendered, epoch, (nextCount) =>
+				appendNext(nextCount)
+			);
+		};
+		appendNext(DETAIL_PAGE_SIZE, true);
 	}
 	private renderNotes(): void {
 		const entries = [...(this.reviewResp?.reviews || [])]
@@ -562,31 +831,43 @@ export class WereadBookDetailPanel extends WereadPanel {
 			this.status('还没有笔记，留一点自己的思考。');
 			return;
 		}
-		for (const wrapper of entries) {
-			const r = wrapper.review;
-			const card = this.body.createEl('article', { cls: 'weread-detail-note' });
-			if (r?.abstract)
-				card.createEl('blockquote', { text: r.abstract, cls: 'weread-detail-quote' });
-			card.createEl('p', { text: r?.content || '', cls: 'weread-detail-note-text' });
-			const meta = card.createDiv({ cls: 'weread-detail-entry-meta' });
-			const chapter =
-				r?.chapterName ||
-				this.highlightResp?.chapters?.find((ch) => ch.chapterUid === r?.chapterUid)
-					?.title ||
-				'';
-			if (chapter) meta.createSpan({ text: chapter });
-			if (r?.createTime)
-				meta.createSpan({ text: formatNoteTimestamp(Number(r.createTime) * 1000) });
-			const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
-			this.sourceAndCopy(actions, r?.chapterUid, r?.range, chapter, r?.content || '');
-			this.shareButton(
-				actions,
-				[r?.abstract, r?.content].filter(Boolean).join('\n\n'),
-				chapter,
-				r?.createTime
-			);
-			if (this.localFilePath) this.button(actions, '本地笔记', () => void this.openLocal());
-		}
+		const chapterMap = new Map(
+			(this.highlightResp?.chapters || []).map((ch) => [String(ch.chapterUid), ch.title])
+		);
+		const epoch = this.renderEpoch;
+		let rendered = 0;
+		let moreBar: HTMLElement | undefined;
+		const appendNext = (count: number): void => {
+			if (!this.active || this.renderEpoch !== epoch) return;
+			moreBar?.remove();
+			moreBar = undefined;
+			this.disconnectBatchObserver();
+			const end = Math.min(rendered + count, entries.length);
+			for (; rendered < end; rendered++) {
+				const wrapper = entries[rendered];
+				const r = wrapper.review;
+				const card = this.body.createEl('article', { cls: 'weread-detail-note' });
+				if (r?.abstract)
+					card.createEl('blockquote', { text: r.abstract, cls: 'weread-detail-quote' });
+				card.createEl('p', { text: r?.content || '', cls: 'weread-detail-note-text' });
+				const meta = card.createDiv({ cls: 'weread-detail-entry-meta' });
+				const chapter = r?.chapterName || chapterMap.get(String(r?.chapterUid)) || '';
+				if (chapter) meta.createSpan({ text: chapter });
+				if (r?.createTime)
+					meta.createSpan({ text: formatNoteTimestamp(Number(r.createTime) * 1000) });
+				const actions = meta.createDiv({ cls: 'weread-detail-entry-actions' });
+				this.sourceAndCopy(actions, r?.chapterUid, r?.range, chapter, r?.content || '');
+				this.shareButton(
+					actions,
+					[r?.abstract, r?.content].filter(Boolean).join('\n\n'),
+					chapter,
+					r?.createTime
+				);
+				if (this.localFilePath) this.button(actions, '本地笔记', () => void this.openLocal());
+			}
+			moreBar = this.renderMoreBar(entries.length - rendered, epoch, appendNext);
+		};
+		appendNext(DETAIL_PAGE_SIZE);
 	}
 	private renderReviews(): void {
 		const mine = (this.reviewResp?.reviews || []).filter((row) => row.review?.type === 4);
@@ -756,7 +1037,12 @@ export class WereadBookDetailPanel extends WereadPanel {
 			}
 		});
 	}
-	private favoriteButton(parent: HTMLElement, highlight: unknown): void {
+	private favoriteButton(
+		parent: HTMLElement,
+		highlight: unknown,
+		chapterObj?: unknown,
+		addedStars?: Array<[HTMLButtonElement, JournalNote]>
+	): void {
 		const note = bookDetailFavoriteNote(
 			{
 				bookId: this.bookId,
@@ -765,7 +1051,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 				cover: this.detail?.cover || this.highlightResp?.book?.cover || this.bookCover
 			},
 			highlight,
-			this.highlightResp?.chapters || [],
+			chapterObj ? [chapterObj] : [],
 			this.usingLocalHighlights
 		);
 		const button = this.button(
@@ -788,6 +1074,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 		}
 		button.dataset.favoriteId = note.id;
 		this.stars.set(button, note);
+		addedStars?.push([button, note]);
 	}
 	private updateStars(): void {
 		if (!this.active || !this.favoriteStatus) return;
@@ -811,9 +1098,16 @@ export class WereadBookDetailPanel extends WereadPanel {
 				});
 			});
 		}
-		for (const [button, note] of this.stars) {
-			const saved = state?.favorites.some((entry) => entry.id === note.id) || false;
-			const pending = this.pending.has(note.id) || !!state?.pendingIds.includes(note.id);
+		this.updateStarButtons(this.stars);
+	}
+	private updateStarButtons(entries: Iterable<[HTMLButtonElement, JournalNote]>): void {
+		if (!this.active) return;
+		const state = this.favoriteState;
+		const savedIds = new Set(state?.favorites.map((entry) => entry.id) || []);
+		const pendingIds = new Set(state?.pendingIds || []);
+		for (const [button, note] of entries) {
+			const saved = savedIds.has(note.id);
+			const pending = this.pending.has(note.id) || pendingIds.has(note.id);
 			const label = saved ? '取消收藏' : '收藏';
 			button.setAttribute('aria-pressed', String(saved));
 			button.setAttribute('aria-label', label);
