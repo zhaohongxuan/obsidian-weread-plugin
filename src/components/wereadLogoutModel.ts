@@ -1,12 +1,15 @@
 import { settingsStore } from '../settings';
 import { WereadSettingsTab } from '../settingTab';
+import type { BrowserWindow, OnCompletedListenerDetails } from 'electron';
 
 export default class WereadLoginModel {
-	private modal: any;
+	private modal: BrowserWindow;
 	private settingTab: WereadSettingsTab;
 	constructor(settingTab: WereadSettingsTab) {
 		this.settingTab = settingTab;
-		const { remote } = require('electron');
+		const { remote } = require('electron') as unknown as {
+			remote: { BrowserWindow: typeof BrowserWindow; getCurrentWindow: () => BrowserWindow };
+		};
 		const { BrowserWindow: RemoteBrowserWindow } = remote;
 		this.modal = new RemoteBrowserWindow({
 			parent: remote.getCurrentWindow(),
@@ -22,7 +25,7 @@ export default class WereadLoginModel {
 		const filter = {
 			urls: ['https://weread.qq.com/api/auth/logout']
 		};
-		session.webRequest.onCompleted(filter, (details: any) => {
+		session.webRequest.onCompleted(filter, (details: OnCompletedListenerDetails) => {
 			if (details.statusCode == 200 || details.statusCode == 204) {
 				console.debug('weread logout success, clear cookies...');
 				settingsStore.actions.clearCookies();
@@ -35,7 +38,7 @@ export default class WereadLoginModel {
 	async doLogout() {
 		await this.modal.loadURL('https://weread.qq.com');
 		// 页面加载完成后，自动调用注销接口
-		this.modal.webContents.executeJavaScript(`
+		void this.modal.webContents.executeJavaScript(`
 			// 自动调用微信读书注销接口
 			fetch('https://weread.qq.com/api/auth/logout', {
 				method: 'POST',

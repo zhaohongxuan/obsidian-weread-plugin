@@ -270,7 +270,7 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	openWereadSettingsTab(section?: 'sync') {
-		const settingManager = (this.app as any).setting as
+		const settingManager = (this.app as unknown as { setting?: unknown }).setting as
 			| {
 					open: () => void;
 					openTabById?: (id: string) => void;
@@ -448,7 +448,18 @@ export default class WereadPlugin extends Plugin {
 		}
 
 		try {
-			const { remote } = window.require('electron');
+			type HiddenSession = {
+				cookies: { set: (opts: Record<string, unknown>) => Promise<void> };
+			};
+			type HiddenWindow = {
+				webContents: { session: HiddenSession; isDestroyed?: () => boolean };
+				loadURL(u: string): Promise<void>;
+				destroy(): void;
+				close(): void;
+			};
+			const { remote } = window.require('electron') as unknown as {
+				remote: { BrowserWindow: new (opts: unknown) => HiddenWindow; getCurrentWindow?: () => unknown };
+			};
 			const { BrowserWindow: RemoteBrowserWindow } = remote;
 			const WEREAD_PARTITION = 'persist:weread-plugin-browser';
 
@@ -517,7 +528,7 @@ export default class WereadPlugin extends Plugin {
 				removeBtn();
 				currentBookId = annotation.bookId;
 
-				const viewContentEl = (view as any).contentEl as HTMLElement | undefined;
+				const viewContentEl = (view as unknown as { contentEl?: HTMLElement }).contentEl;
 				if (!viewContentEl) return;
 
 				const btn = viewContentEl.createDiv({ cls: 'weread-floating-btn' });

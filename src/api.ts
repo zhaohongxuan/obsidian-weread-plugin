@@ -151,9 +151,10 @@ export default class ApiManager {
 				settingsStore.actions.setIsCookieValid(false);
 				return false;
 			}
-		} catch (e: any) {
-			console.error('[weread plugin] 验证异常 - 错误信息:', e.message);
-			if (e.status === 401) {
+		} catch (e) {
+			const err = e as { message?: string; status?: number };
+			console.error('[weread plugin] 验证异常 - 错误信息:', err.message);
+			if (err.status === 401) {
 				if (Platform.isDesktopApp) {
 					console.debug('[weread plugin] 桌面端 401，标记 Cookie 无效');
 					settingsStore.actions.setIsCookieValid(false);
@@ -237,8 +238,9 @@ export default class ApiManager {
 			}
 
 			noteBooks = resp.json.books;
-		} catch (e: any) {
-			if (e.status == 401) {
+		} catch (e) {
+			const err = e as { status?: number };
+			if (err.status == 401) {
 				console.debug(`parse request to cURL for debug: ${this.parseToCurl(req)}`);
 				await this.refreshCookie();
 			} else {

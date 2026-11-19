@@ -5,7 +5,7 @@ import ApiRouter from '../api-router';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
-import type { ReadingStatsResponse, ReadingStatsMode } from '../models';
+import type { ReadingStatsResponse, ReadingStatsResponseWithCache, ReadingStatsMode } from '../models';
 import { WereadPanel } from './wereadPanel';
 
 export const WEREAD_READING_STATS_VIEW_ID = 'weread-reading-stats-view';
@@ -191,7 +191,7 @@ class ExportPreviewModal extends Modal {
 	private filename: string;
 	private vault: Vault;
 
-	constructor(app: any, dataUrl: string, filename: string, vault: Vault) {
+	constructor(app: App, dataUrl: string, filename: string, vault: Vault) {
 		super(app);
 		this.dataUrl = dataUrl;
 		this.filename = filename;
@@ -386,7 +386,9 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (settings.userVid) {
 				const userInfo = await this.apiManager.getUserInfo(settings.userVid);
 				if (this.closed || generation !== this.loadGeneration) return;
-				const parts = [(userInfo as any)?.signature, (userInfo as any)?.vDesc].filter(Boolean);
+				const signature = typeof userInfo?.signature === 'string' ? userInfo.signature : '';
+				const vDesc = typeof userInfo?.vDesc === 'string' ? userInfo.vDesc : '';
+				const parts = [signature, vDesc].filter(Boolean);
 				const sig = parts.join(' ｜ ');
 				if (sig) settingsStore.actions.setUserSignature(sig);
 			}
@@ -890,9 +892,9 @@ export class WereadReadingStatsPanel extends WereadPanel {
 	}
 
 	// ── Year Heatmap via cal-heatmap ──────────────────────────────────
-	private renderYearHeatmap(parent: HTMLElement, data: ReadingStatsResponse) {
-		if ((data as any)._dailyReadTimes) {
-			this.renderCalHeatmap(parent, (data as any)._dailyReadTimes, data.readDays);
+	private renderYearHeatmap(parent: HTMLElement, data: ReadingStatsResponseWithCache) {
+		if (data._dailyReadTimes) {
+			this.renderCalHeatmap(parent, data._dailyReadTimes, data.readDays);
 		} else {
 			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
 			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
@@ -901,7 +903,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		}
 	}
 
-	private async loadAnnualDailyData(data: ReadingStatsResponse) {
+	private async loadAnnualDailyData(data: ReadingStatsResponseWithCache) {
 		const generation = this.loadGeneration;
 		if (!this.isCurrentData(data, generation)) return;
 		const baseTime = calcBaseTime('annually', this.currentOffset);
@@ -924,7 +926,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (k.startsWith(`${year}-`)) cachedYearData[k] = v;
 		}
 		if (Object.keys(cachedYearData).length > 0) {
-			(data as any)._dailyReadTimes = cachedYearData;
+			data._dailyReadTimes = cachedYearData;
 			this.render();
 		}
 
@@ -975,14 +977,14 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		for (const [k, v] of Object.entries(cache.data)) {
 			if (k.startsWith(`${year}-`)) dailyMap[k] = v;
 		}
-		(data as any)._dailyReadTimes = dailyMap;
+		data._dailyReadTimes = dailyMap;
 		this.render();
 	}
 
 	// ── Overall Heatmap (all years) ────────────────────────────────────
-	private renderOverallHeatmap(parent: HTMLElement, data: ReadingStatsResponse) {
-		if ((data as any)._allDailyReadTimes) {
-			this.renderAllYearsHeatmap(parent, (data as any)._allDailyReadTimes, data);
+	private renderOverallHeatmap(parent: HTMLElement, data: ReadingStatsResponseWithCache) {
+		if (data._allDailyReadTimes) {
+			this.renderAllYearsHeatmap(parent, data._allDailyReadTimes, data);
 		} else {
 			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
 			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
@@ -991,7 +993,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		}
 	}
 
-	private async loadOverallDailyData(data: ReadingStatsResponse) {
+	private async loadOverallDailyData(data: ReadingStatsResponseWithCache) {
 		const generation = this.loadGeneration;
 		if (!this.isCurrentData(data, generation)) return;
 		const today = new Date();
@@ -1019,8 +1021,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		// If cache has data, render immediately with cached data, then refresh current month in background
 		const hasCachedData = Object.keys(cache.data).length > 0;
 		if (hasCachedData) {
-			(data as any)._allDailyReadTimes = { ...cache.data };
-			(data as any)._statsStartYear = startYear;
+			data._allDailyReadTimes = { ...cache.data };
+			data._statsStartYear = startYear;
 			this.render();
 		}
 
@@ -1036,8 +1038,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (toFetch.length === 0) {
 			// Everything cached, just ensure rendered
 			if (!hasCachedData) {
-				(data as any)._allDailyReadTimes = cache.data;
-				(data as any)._statsStartYear = startYear;
+				data._allDailyReadTimes = cache.data;
+				data._statsStartYear = startYear;
 				this.render();
 			}
 			return;
@@ -1073,16 +1075,16 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (dirty) await saveDailyCache(this.app.vault, cache);
 		if (!this.isCurrentData(data, generation)) return;
 
-		(data as any)._allDailyReadTimes = cache.data;
-		(data as any)._statsStartYear = startYear;
+		data._allDailyReadTimes = cache.data;
+		data._statsStartYear = startYear;
 		this.render();
 	}
 
-	private renderAllYearsHeatmap(parent: HTMLElement, dailyMap: Record<string, number>, data: ReadingStatsResponse) {
+	private renderAllYearsHeatmap(parent: HTMLElement, dailyMap: Record<string, number>, data: ReadingStatsResponseWithCache) {
 		const today = new Date();
 		const endYear = today.getFullYear();
 		const settings = get(settingsStore);
-		const startYear = (data as any)._statsStartYear
+		const startYear = data._statsStartYear
 			?? (settings.statsStartYear && settings.statsStartYear > 2000
 				? settings.statsStartYear
 				: data.registTime

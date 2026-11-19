@@ -1,4 +1,4 @@
-import { Modal, App, Notice, MarkdownRenderer, sanitizeHTMLToDom } from 'obsidian';
+import { Modal, App, Notice, MarkdownRenderer, sanitizeHTMLToDom, type Component } from 'obsidian';
 import { Renderer } from '../renderer';
 import type { Notebook } from '../models';
 import templateInstructions from '../assets/templateInstructions.html';
@@ -198,7 +198,7 @@ export class TemplateEditorWindow extends Modal {
 				this.previewEl.addClass('markdown-preview-view');
 				this.previewEl.removeClass('preview-source-mode');
 				console.debug('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
-				void MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this as any);
+				void MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this as unknown as Component);
 				console.debug('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
 			} else {
 				// 源码模式：显示原始文本
@@ -207,10 +207,11 @@ export class TemplateEditorWindow extends Modal {
 				const preEl = this.previewEl.createEl('pre');
 				preEl.textContent = preview;
 			}
-		} catch (error: any) {
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			this.previewEl.empty();
 			this.errorEl.addClass('weread-error-visible');
-			this.errorEl.textContent = '❌ ' + (error.message || String(error));
+			this.errorEl.textContent = '❌ ' + message;
 		}
 	}
 

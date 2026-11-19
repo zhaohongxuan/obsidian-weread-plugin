@@ -1,3 +1,4 @@
+import type { BrowserWindow } from 'electron';
 import { get } from 'svelte/store';
 import { Notice } from 'obsidian';
 import { settingsStore } from '../settings';
@@ -8,7 +9,7 @@ const WEREAD_HOME_URL = 'https://weread.qq.com/web/shelf';
 const WEREAD_PARTITION = 'persist:weread-plugin-browser';
 
 export default class WereadBrowserWindow {
-	private modal: any;
+	private modal: BrowserWindow;
 	private closed = false;
 	private generation = 0;
 	private currentUrl = WEREAD_HOME_URL;
@@ -16,7 +17,9 @@ export default class WereadBrowserWindow {
 	private bookmarkNavigationTimer: number | null = null;
 
 	constructor() {
-		const { remote } = require('electron');
+		const { remote } = require('electron') as unknown as {
+			remote: { BrowserWindow: typeof BrowserWindow; getCurrentWindow: () => BrowserWindow };
+		};
 		const { BrowserWindow: RemoteBrowserWindow } = remote;
 		this.modal = new RemoteBrowserWindow({
 			parent: remote.getCurrentWindow(),
@@ -157,6 +160,6 @@ export default class WereadBrowserWindow {
 		}
 
 		// Force persist cookies to disk before loading URL
-		await session.cookies.flush();
+		await (session.cookies as unknown as { flush: () => Promise<void> }).flush();
 	}
 }
