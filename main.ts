@@ -500,7 +500,7 @@ export default class WereadPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('active-leaf-change', (leaf) => {
 				const view = leaf?.view;
-				const file = (view as any)?.file as TFile | undefined;
+				const file: unknown = (view as { file?: unknown } | undefined)?.file;
 				if (!(file instanceof TFile)) {
 					removeBtn();
 					return;

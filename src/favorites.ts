@@ -73,6 +73,7 @@ export class WereadFavoritesService {
 						this.writingCanvas += 1;
 						try {
 							const file = vault.getAbstractFileByPath(path);
+							// eslint-disable-next-line obsidianmd/no-tfile-tfolder-cast -- value import of TFile would break the esbuild mock build
 							if (file && 'extension' in file) await vault.modify(file as TFile, raw);
 							else if (!file) await vault.create(path, raw);
 							else throw new Error('收藏画布路径被目录占用');

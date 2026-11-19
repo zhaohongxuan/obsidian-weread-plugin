@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TextComponent } from 'obsidian';
+import { App, Modal, Notice, TextComponent, requestUrl } from 'obsidian';
 import { settingsStore } from '../settings';
 import { TemplateEditorWindow } from './templateEditorWindow';
 import type { Theme } from '../models';
@@ -383,11 +383,11 @@ class ImportUrlModal extends Modal {
 
 			try {
 				new Notice('正在下载...');
-				const response = await fetch(url);
-				if (!response.ok) {
+				const response = await requestUrl({ url });
+				if (response.status < 200 || response.status >= 300) {
 					throw new Error(`HTTP ${response.status}`);
 				}
-				const text = await response.text();
+				const text = response.text;
 				const data = JSON.parse(text);
 
 				if (!data.manifest || !data.theme) {
