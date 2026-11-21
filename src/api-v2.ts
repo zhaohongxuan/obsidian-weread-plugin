@@ -212,10 +212,14 @@ class ApiV2Manager {
 		for (let pageIndex = 0; pageIndex < 1000; pageIndex++) {
 			const params: Record<string, unknown> = { count: 300 };
 			if (lastSort !== undefined) params.lastSort = lastSort;
+			const pageStart = Date.now();
 			const page = await this.callAgent<{
 				books: any[];
 				hasMore?: number | string | boolean;
 			}>('/user/notebooks', params, true);
+			console.log(
+				`[weread journal] /user/notebooks 第 ${pageIndex + 1} 页耗时 ${Date.now() - pageStart}ms`
+			);
 			if (!page || !Array.isArray(page.books))
 				throw new Error('笔记本列表加载失败，未返回完整数据');
 			for (const item of page.books) {

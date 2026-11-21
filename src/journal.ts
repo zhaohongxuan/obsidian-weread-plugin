@@ -9,7 +9,7 @@ import {
 	journalMetadata,
 	journalObject,
 	journalRevision,
-	journalSourceComplete,
+	journalSourceFailureReason,
 	parseJournalNotes,
 	sameJournalRevision,
 	sortJournalNotes,
@@ -19,11 +19,22 @@ import type { JournalNote, JournalObject, JournalRevision } from './journalHelpe
 
 export type { JournalNote } from './journalHelpers';
 
+/** One book whose latest fetch was incomplete, with a plain-language reason. */
+export interface JournalFailure {
+	bookId: string;
+	title: string;
+	reason: string;
+}
+
 export interface JournalState {
 	notes: JournalNote[];
 	totalBooks: number;
 	scannedBooks: number;
 	failedBooks: number;
+	/** Details for the most recent incomplete books, so users can see *why*. */
+	failures: JournalFailure[];
+	/** Wall-clock duration of the most recent refresh, in milliseconds; 0 if unknown. */
+	lastDurationMs: number;
 	updatedAt: number;
 	syncing: boolean;
 	error: string;
@@ -35,6 +46,10 @@ interface CachedBook {
 	revision?: JournalRevision;
 	notes: JournalNote[];
 	complete: boolean;
+	/** Plain-language reason when incomplete; absent for complete books. */
+	reason?: string;
+	/** Book title at last fetch, for the failure breakdown UI. */
+	title?: string;
 }
 interface JournalRecord {
 	version: 1;
@@ -43,11 +58,38 @@ interface JournalRecord {
 }
 type Listener = (state: JournalState) => void;
 const RETRY_MS = 5 * 60 * 1000;
+/** Minimum gap between progress emits while scanning books, to avoid re-sorting
+ * and re-cloning the whole note array (and re-rendering the view) per book. */
+const PROGRESS_EMIT_MS = 150;
+
+/**
+ * Article (公众号) notebooks can only be read through the V1 cookie-based API.
+ * When this session authenticates with an API key but has no valid cookie, V1
+ * cannot serve them, so every such book would fail on every refresh. Skip them
+ * instead of requesting an endpoint that is guaranteed to fail.
+ */
+function skipArticleBook(book: JournalObject, cookieAvailable: boolean): boolean {
+	if (cookieAvailable) return false;
+	return journalMetadata(book).bookType === 3;
+}
+
+/** Turn incomplete cache entries into user-facing failure rows (title + reason). */
+function journalFailures(books: CachedBook[]): JournalFailure[] {
+	return books
+		.map((book) => ({
+			bookId: book.bookId,
+			title: book.title || book.notes[0]?.bookTitle || book.bookId,
+			reason: book.reason || '笔记未完整获取'
+		}))
+		.sort((a, b) => a.title.localeCompare(b.title));
+}
 const emptyState = (): JournalState => ({
 	notes: [],
 	totalBooks: 0,
 	scannedBooks: 0,
 	failedBooks: 0,
+	failures: [],
+	lastDurationMs: 0,
 	updatedAt: 0,
 	syncing: false,
 	error: '',
@@ -237,20 +279,26 @@ export class WereadJournalService {
 					bookId: book.bookId,
 					complete: book.complete,
 					notes: book.notes,
-					revision: journalRevision(journalObject(book.revision))
+					revision: journalRevision(journalObject(book.revision)),
+					...(typeof book.reason === 'string' && book.reason
+						? { reason: book.reason }
+						: {}),
+					...(typeof book.title === 'string' && book.title ? { title: book.title } : {})
 				});
 			}
 			if (!this.current(generation)) return;
 			this.books = books;
-			const failedBooks = [...books.values()].filter((book) => !book.complete).length;
+			const failed = [...books.values()].filter((book) => !book.complete);
 			this.state = {
 				notes: sortJournalNotes([...books.values()].flatMap((book) => book.notes)),
 				totalBooks: books.size,
 				scannedBooks: books.size,
-				failedBooks,
+				failedBooks: failed.length,
+				failures: journalFailures(failed),
+				lastDurationMs: 0,
 				updatedAt: raw.updatedAt,
 				syncing: false,
-				error: failedBooks ? `${failedBooks} 本书的笔记未完整同步，请稍后重试` : '',
+				error: failed.length ? `${failed.length} 本书的笔记未完整同步，请稍后重试` : '',
 				hasCache: true
 			};
 			this.emit();
@@ -267,16 +315,30 @@ export class WereadJournalService {
 		identity: string,
 		previous: JournalState
 	): Promise<void> {
+		const startedAt = Date.now();
+		console.log('[weread journal] 开始刷新笔记…');
 		try {
 			if (!this.current(generation)) return;
+			const listStart = Date.now();
 			const response: unknown = await this.api.getNotebooksWithRetry();
+			const listMs = Date.now() - listStart;
+			console.log(`[weread journal] 笔记本列表请求耗时 ${listMs}ms`);
 			if (!this.current(generation)) return;
 			if (!Array.isArray(response)) throw new Error('Missing notebooks');
 			const books = journalBooks(response);
+			const settings = get(settingsStore) as { isCookieValid?: boolean };
+			const cookieAvailable = Boolean(settings.isCookieValid);
 			const next = new Map<string, CachedBook>();
 			let scannedBooks = 0;
 			let failedBooks = 0;
+			// Diagnostics: how many books were reused from cache vs refetched vs
+			// skipped (articles without a cookie), to explain refresh duration.
+			let reusedBooks = 0;
+			let refetchedBooks = 0;
+			let skippedArticles = 0;
+			const failed = new Map<string, CachedBook>();
 			let index = 0;
+			let lastProgressEmit = 0;
 			this.state = { ...this.state, totalBooks: books.length };
 			this.emit();
 			// Two book workers, at most four detail requests at a time.
@@ -288,33 +350,63 @@ export class WereadJournalService {
 						const bookId = journalBookId(book);
 						const revision = journalRevision(book);
 						const old = this.books.get(bookId);
+						// 公众号 only works over the cookie API; without a cookie it is
+						// guaranteed to fail, so skip it instead of retrying every time.
+						if (skipArticleBook(book, cookieAvailable)) {
+							skippedArticles += 1;
+							failed.delete(bookId);
+							scannedBooks += 1;
+							const now = Date.now();
+							if (
+								scannedBooks >= books.length ||
+								now - lastProgressEmit >= PROGRESS_EMIT_MS
+							) {
+								lastProgressEmit = now;
+								this.state = {
+									...this.state,
+									scannedBooks,
+									failedBooks,
+									failures: journalFailures([...failed.values()])
+								};
+								this.emit();
+							}
+							continue;
+						}
 						let entry: CachedBook;
 						if (old?.complete && sameJournalRevision(old.revision, revision)) {
+							reusedBooks += 1;
 							const metadata = journalMetadata(book);
 							entry = {
 								...old,
 								notes: old.notes.map((note) => ({ ...note, ...metadata }))
 							};
 						} else {
+							refetchedBooks += 1;
 							entry = await this.fetchBook(book, old);
 						}
 						if (!this.current(generation)) return;
 						next.set(bookId, entry);
 						scannedBooks += 1;
-						if (!entry.complete) failedBooks += 1;
-						this.state = {
-							...this.state,
-							// Keep old books visible until all current book identities are known.
-							notes: sortJournalNotes([
-								...[...this.books.values()]
-									.filter((cached) => !next.has(cached.bookId))
-									.flatMap((cached) => cached.notes),
-								...[...next.values()].flatMap((cached) => cached.notes)
-							]),
-							scannedBooks,
-							failedBooks
-						};
-						this.emit();
+						if (!entry.complete) {
+							failedBooks += 1;
+							failed.set(bookId, entry);
+						} else failed.delete(bookId);
+						// Progress only: keep the previous note array (no full re-sort) and
+						// emit at most every ~150ms or on the final book. Rebuilding and
+						// re-sorting all notes (plus cloning them for every subscriber) on
+						// every one of hundreds of books was the real cause of slow refreshes.
+						const now = Date.now();
+						const last = scannedBooks >= books.length;
+						if (last || now - lastProgressEmit >= PROGRESS_EMIT_MS) {
+							lastProgressEmit = now;
+							this.state = {
+								...this.state,
+								scannedBooks,
+								failedBooks,
+								failures: journalFailures([...failed.values()])
+							};
+							this.emit();
+						}
 					}
 				})
 			);
@@ -325,11 +417,16 @@ export class WereadJournalService {
 				totalBooks: books.length,
 				scannedBooks,
 				failedBooks,
+				failures: journalFailures([...failed.values()]),
+				lastDurationMs: Date.now() - startedAt,
 				updatedAt: failedBooks ? previous.updatedAt : Date.now(),
 				syncing: false,
 				error: failedBooks ? `${failedBooks} 本书的笔记未完整同步，请稍后重试` : '',
 				hasCache: true
 			};
+			console.log(
+				`[weread journal] 刷新完成：共 ${books.length} 本，复用 ${reusedBooks} 本，重取 ${refetchedBooks} 本，跳过公众号 ${skippedArticles} 本，失败 ${failedBooks} 本，耗时 ${Date.now() - startedAt}ms`
+			);
 			const record: JournalRecord = {
 				version: 1,
 				updatedAt: this.state.updatedAt,
@@ -358,6 +455,7 @@ export class WereadJournalService {
 			if (this.current(generation)) this.emit();
 		} catch {
 			if (!this.current(generation)) return;
+			console.warn(`[weread journal] 刷新失败，耗时 ${Date.now() - startedAt}ms`);
 			this.state = {
 				...previous,
 				syncing: false,
@@ -370,6 +468,7 @@ export class WereadJournalService {
 	private async fetchBook(book: JournalObject, old?: CachedBook): Promise<CachedBook> {
 		const bookId = journalBookId(book);
 		const revision = journalRevision(book);
+		const { bookTitle } = journalMetadata(book);
 		const article = journalMetadata(book).bookType === 3;
 		const [highlights, reviews] = await Promise.allSettled([
 			book.noteCount === 0
@@ -381,13 +480,17 @@ export class WereadJournalService {
 		]);
 		const h = highlights.status === 'fulfilled' ? highlights.value : undefined;
 		const r = reviews.status === 'fulfilled' ? reviews.value : undefined;
-		const complete =
-			journalSourceComplete(h, 'highlight', revision?.noteCount) &&
-			journalSourceComplete(r, 'thought', revision?.reviewCount);
+		const reasons = [
+			journalSourceFailureReason(h, 'highlight', revision?.noteCount),
+			journalSourceFailureReason(r, 'thought', revision?.reviewCount)
+		].filter(Boolean);
+		const complete = reasons.length === 0;
 		return {
 			bookId,
 			revision,
 			complete,
+			...(bookTitle ? { title: bookTitle } : {}),
+			...(complete ? {} : { reason: reasons.join('；') }),
 			notes: !complete && old ? old.notes : parseJournalNotes(book, h, r)
 		};
 	}

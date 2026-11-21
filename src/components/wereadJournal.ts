@@ -1,12 +1,11 @@
 /** Native Obsidian journal views share one persisted note cache across navigation. */
 import './wereadJournal.css';
-import { ItemView, Notice, WorkspaceLeaf, setIcon } from 'obsidian';
-import { settingsStore } from '../settings';
+import { ItemView, Modal, Notice, WorkspaceLeaf, setIcon } from 'obsidian';import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
 import type WereadPlugin from '../../main';
 import type ApiRouter from '../api-router';
 import { isJournalArticle } from '../journalHelpers';
-import type { JournalNote, JournalState, WereadJournalService } from '../journal';
+import type { JournalFailure, JournalNote, JournalState, WereadJournalService } from '../journal';
 import { WereadPanel } from './wereadPanel';
 import type { WereadFavoritesService } from '../favorites';
 import type { FavoritesState } from '../models';
@@ -26,6 +25,17 @@ function dayKey(date: Date): string {
 }
 function noteDay(note: JournalNote): string {
 	return dayKey(new Date(note.createTime));
+}
+
+/** Human-friendly duration for "上次耗时": sub-second, seconds, or minutes+seconds. */
+function formatJournalDuration(ms: number): string {
+	if (!Number.isFinite(ms) || ms <= 0) return '0 秒';
+	if (ms < 1000) return `${Math.max(1, Math.round(ms))} 毫秒`;
+	const totalSeconds = Math.round(ms / 1000);
+	if (totalSeconds < 60) return `${totalSeconds} 秒`;
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return seconds > 0 ? `${minutes} 分 ${seconds} 秒` : `${minutes} 分`;
 }
 
 export class WereadJournalPanel extends WereadPanel {
@@ -363,11 +373,41 @@ export class WereadJournalPanel extends WereadPanel {
 	private renderHeader(): void {
 		if (!this.body) return;
 		const state = this.state;
+		const durationLabel =
+			!state.syncing && state.lastDurationMs > 0
+				? ` · 上次耗时 ${formatJournalDuration(state.lastDurationMs)}`
+				: '';
 		this.status.setText(
-			`${state.hasCache ? `已缓存 ${state.notes.length} 条笔记` : '首次整理笔记'}${state.syncing ? ` · 正在更新 ${state.scannedBooks}/${state.totalBooks} 本` : ''}${state.updatedAt ? ` · 上次更新 ${new Date(state.updatedAt).toLocaleString('zh-CN')}` : ''}${state.failedBooks ? ` · ${state.failedBooks} 本未完整获取` : ''}${state.error ? ` · ${state.error}` : ''}`
+			`${state.hasCache ? `已缓存 ${state.notes.length} 条笔记` : '首次整理笔记'}${state.syncing ? ` · 正在更新 ${state.scannedBooks}/${state.totalBooks} 本` : ''}${state.updatedAt ? ` · 上次更新 ${new Date(state.updatedAt).toLocaleString('zh-CN')}` : ''}${durationLabel}${state.failedBooks ? ` · ${state.failedBooks} 本未完整获取` : ''}${state.error ? ` · ${state.error}` : ''}`
 		);
-		this.status.title = this.status.textContent ?? '';
-		this.status.setAttribute('aria-label', this.status.textContent ?? '');
+		const failureHint =
+			!state.syncing && state.failedBooks > 0 ? '（点击查看失败原因）' : '';
+		this.status.title = `${this.status.textContent ?? ''}${failureHint}`;
+		this.status.setAttribute(
+			'aria-label',
+			`${this.status.textContent ?? ''}${failureHint}`
+		);
+		const clickable = !state.syncing && state.failedBooks > 0;
+		this.status.classList.toggle('is-clickable', clickable);
+		this.status.setAttribute('role', clickable ? 'button' : 'status');
+		this.status.tabIndex = clickable ? 0 : -1;
+		const openFailures = () => {
+			new JournalFailuresModal(this.app, this.state.failures, () =>
+				void this.loadJournal(true)
+			).open();
+		};
+		if (clickable) {
+			this.status.onclick = openFailures;
+			this.status.onkeydown = (event) => {
+				if (event.key === 'Enter' || event.key === ' ') {
+					event.preventDefault();
+					openFailures();
+				}
+			};
+		} else {
+			this.status.onclick = null;
+			this.status.onkeydown = null;
+		}
 		this.headerDate.setText(
 			new Date().toLocaleDateString('zh-CN', {
 				year: 'numeric',
@@ -434,11 +474,6 @@ export class WereadJournalPanel extends WereadPanel {
 						? '加载中…'
 						: '暂不可用'
 					: `${notes.filter((n) => n.kind === kind).length} 条`;
-			const countStatus = this.state.syncing
-				? '统计中，当前为部分结果'
-				: this.state.failedBooks
-					? '部分书籍加载失败，当前为部分结果'
-					: '';
 			for (const [index, value] of [
 				duration,
 				count('highlight'),
@@ -447,11 +482,7 @@ export class WereadJournalPanel extends WereadPanel {
 				const card = metricCards[index];
 				const strong = card.querySelector('strong');
 				if (strong.textContent !== value) strong.setText(value);
-				let status = card.querySelector<HTMLElement>('.weread-journal-metric-status');
-				if (index && countStatus) {
-					status ??= card.createEl('small', { cls: 'weread-journal-metric-status' });
-					if (status.textContent !== countStatus) status.setText(countStatus);
-				} else status?.remove();
+				card.querySelector<HTMLElement>('.weread-journal-metric-status')?.remove();
 			}
 		};
 		const booksSummary = summary.createDiv({ cls: 'weread-journal-today-books' });
@@ -1159,5 +1190,43 @@ export class WereadJournalView extends ItemView {
 	}
 	async onClose(): Promise<void> {
 		this.removeChild(this.panel);
+	}
+}
+
+/** Shows exactly which books failed to sync and why, with a retry action. */
+export class JournalFailuresModal extends Modal {
+	constructor(
+		app: import('obsidian').App,
+		private failures: JournalFailure[],
+		private onRetry: () => void
+	) {
+		super(app);
+	}
+
+	onOpen(): void {
+		this.contentEl.empty();
+		this.titleEl.setText(`笔记未完整同步（${this.failures.length} 本）`);
+		const list = this.contentEl.createDiv({ cls: 'weread-journal-failures' });
+		if (!this.failures.length) {
+			list.createEl('p', { text: '当前没有同步失败的书籍。' });
+		}
+		for (const failure of this.failures) {
+			const row = list.createDiv({ cls: 'weread-journal-failure-row' });
+			row.createEl('strong', { text: failure.title });
+			row.createEl('small', { text: failure.reason });
+		}
+		const actions = this.contentEl.createDiv({ cls: 'weread-journal-failure-actions' });
+		const retry = actions.createEl('button', { text: '重新同步', cls: 'mod-cta' });
+		retry.onclick = () => {
+			this.close();
+			this.onRetry();
+		};
+		actions
+			.createEl('button', { text: '关闭' })
+			.addEventListener('click', () => this.close());
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
 	}
 }

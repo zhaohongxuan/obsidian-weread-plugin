@@ -26,7 +26,7 @@ const compiled = await build({
 					namespace: 'journal-mock'
 				}));
 				builder.onLoad({ filter: /.*/, namespace: 'journal-mock' }, () => ({
-					contents: `import { writable } from 'svelte/store'; export const settingsStore = writable({cookies:[],wereadApiKey:'',userVid:'',journalRefreshHours:24});`,
+					contents: `import { writable } from 'svelte/store'; export const settingsStore = writable({cookies:[],wereadApiKey:'',userVid:'',journalRefreshHours:24,isCookieValid:true});`,
 					resolveDir: process.cwd()
 				}));
 			}
@@ -85,13 +85,15 @@ function fixture(t, overrides = {}, files = new Map()) {
 		cookies: [],
 		wereadApiKey: 'test-key-a',
 		userVid: '',
-		journalRefreshHours: 24
+		journalRefreshHours: 24,
+		isCookieValid: true
 	});
 	const counts = { books: 0, highlights: 0, reviews: 0, writes: 0 };
+	let listed = [book()];
 	const api = {
 		async getNotebooksWithRetry() {
 			counts.books++;
-			return [book()];
+			return listed;
 		},
 		async getNotebookHighlights(id) {
 			counts.highlights++;
@@ -121,7 +123,12 @@ function fixture(t, overrides = {}, files = new Map()) {
 	const plugin = { manifest: { dir: '.obsidian/plugins/weread' }, app: { vault: { adapter } } };
 	const service = new WereadJournalService(plugin, api);
 	t.after(() => service.dispose());
-	return { service, api, counts, files, plugin };
+	const result = { service, api, counts, files, plugin };
+	return Object.assign(result, {
+		list(books) {
+			listed = books;
+		}
+	});
 }
 async function settled(service) {
 	// Flush only local async fake adapter/API work; never poll the network.
@@ -476,21 +483,19 @@ test('partial failures preserve cached book, persist incomplete marker and retry
 	);
 });
 
-test('changed sort with unchanged counts fetches details; deleted and zero-count books clear old notes', async (t) => {
-	const { service, api, counts } = fixture(t);
+test('changed sort alone skips details; zero-count and deleted books clear old notes', async (t) => {
+	const { service, api, counts, list } = fixture(t);
 	await service.load();
 	await settled(service);
-	api.getNotebooksWithRetry = async () => [book('one', { sort: 1700000100 })];
+	list([book('one', { sort: 1700000100 })]);
 	await service.load(true);
 	await settled(service);
-	assert.equal(counts.highlights, 2);
-	api.getNotebooksWithRetry = async () => [
-		book('one', { noteCount: 0, reviewCount: 0, sort: 1700000200 })
-	];
+	assert.equal(counts.highlights, 1, 'sort-only change must reuse cached details');
+	list([book('one', { noteCount: 0, reviewCount: 0, sort: 1700000200 })]);
 	await service.load(true);
 	assert.equal((await settled(service)).notes.length, 0);
-	assert.equal(counts.highlights, 2);
-	api.getNotebooksWithRetry = async () => [];
+	assert.equal(counts.highlights, 1);
+	list([]);
 	await service.load(true);
 	const empty = await settled(service);
 	assert.equal(empty.totalBooks, 0);
@@ -653,4 +658,199 @@ test('bounded concurrency, missing counts never skip details, disposed service s
 	testSettings.update((state) => ({ ...state, wereadApiKey: 'other' }));
 	await service.load(true);
 	assert.equal(emissions, 1);
+});
+
+test('unchanged noteCount/reviewCount/bookmarkCount reuse cache even when only sort moves', async (t) => {
+	const { service, counts, list } = fixture(t);
+	await service.load();
+	await settled(service);
+	assert.equal(counts.highlights, 1);
+	assert.equal(counts.reviews, 1);
+	// New reading activity bumps sort, but no highlight/review was added or removed.
+	list([book('one', { sort: 1700009999 })]);
+	await service.load(true);
+	const state = await settled(service);
+	assert.equal(counts.highlights, 1, 'unchanged counts must not refetch highlights');
+	assert.equal(counts.reviews, 1, 'unchanged counts must not refetch reviews');
+	assert.equal(state.notes.length, 2);
+	assert.equal(state.failedBooks, 0);
+});
+
+test('counts-only comparison skips refetch when only updatedAt moves, but count changes still refetch', async (t) => {
+	const { service, counts, list } = fixture(t);
+	await service.load();
+	await settled(service);
+	assert.equal(counts.highlights, 1);
+	// An edit that keeps the same number of highlights/thoughts is not detected:
+	// this is the deliberate cost of avoiding a full-detail refresh every read.
+	list([book('one', { updatedAt: 1700000999 })]);
+	await service.load(true);
+	await settled(service);
+	assert.equal(counts.highlights, 1, 'unchanged counts keep the cached details');
+	// Adding one highlight changes noteCount, which must trigger a refetch.
+	list([book('one', { noteCount: 2, updatedAt: 1700001999 })]);
+	await service.load(true);
+	await settled(service);
+	assert.equal(counts.highlights, 2, 'a changed noteCount invalidates the cache');
+});
+
+test('failure reasons explain which source failed and why, per book', async (t) => {
+	const { service, api, list } = fixture(t);
+	await service.load();
+	await settled(service);
+	list([book('one', { noteCount: 2, reviewCount: 1 })]);
+	api.getNotebookHighlights = async () => ({ updated: [], hasMore: 1 });
+	api.getNotebookReviews = async () => {
+		throw new Error('network down');
+	};
+	await service.load(true);
+	const state = await settled(service);
+	assert.equal(state.failedBooks, 1);
+	assert.equal(state.failures.length, 1);
+	const [failure] = state.failures;
+	assert.equal(failure.bookId, 'one');
+	assert.equal(failure.title, 'Book one');
+	assert.match(failure.reason, /划线分页未取完/);
+	assert.match(failure.reason, /想法请求失败/);
+});
+
+test('articles are skipped (not fetched, not failed) when only an API key is available', async (t) => {
+	testSettings.set({ cookies: [], wereadApiKey: 'k', userVid: '', journalRefreshHours: 24, isCookieValid: false });
+	const counts = { books: 0, highlights: 0, reviews: 0, writes: 0 };
+	const api = {
+		async getNotebooksWithRetry() {
+			counts.books++;
+			return [
+				book('one'),
+				book('MP_WXS_123', {
+					book: { bookId: 'MP_WXS_123', title: '某公众号', author: '', type: 3 },
+					noteCount: 5,
+					reviewCount: 0,
+					sort: 1700000001
+				})
+			];
+		},
+		async getNotebookHighlights(id) {
+			counts.highlights++;
+			return highlight(id);
+		},
+		async getNotebookReviews(id) {
+			counts.reviews++;
+			return reviews(id);
+		}
+	};
+	const files = new Map();
+	const adapter = {
+		async exists(p) {
+			return files.has(p);
+		},
+		async read(p) {
+			return files.get(p);
+		},
+		async mkdir(p) {
+			files.set(p, 'directory');
+		},
+		async write(p, v) {
+			counts.writes++;
+			files.set(p, v);
+		}
+	};
+	const plugin = { manifest: { dir: '.obsidian/plugins/weread' }, app: { vault: { adapter } } };
+	const service = new WereadJournalService(plugin, api);
+	t.after(() => service.dispose());
+	await service.load();
+	const state = await settled(service);
+	// Only the ordinary book is fetched; the article is skipped entirely.
+	assert.equal(counts.highlights, 1, 'only the non-article book requests highlights');
+	assert.equal(counts.reviews, 1);
+	assert.equal(state.failedBooks, 0, 'skipped articles are not counted as failures');
+	assert.equal(state.failures.length, 0);
+	assert.equal(state.notes.every((note) => note.bookId === 'one'), true);
+	const record = JSON.parse([...files].find(([path]) => path.endsWith('.json'))[1]);
+	assert.equal(record.books.length, 1, 'the skipped article is not persisted as a cached book');
+});
+
+test('articles are fetched again once a valid cookie makes the V1 channel available', async (t) => {
+	const { service, api, counts } = fixture(t);
+	testSettings.update((s) => ({ ...s, isCookieValid: false }));
+	// With no cookie only the article book is listed; it is skipped.
+	api.getNotebooksWithRetry = async () => [
+		book('one', { book: { ...book().book, type: 3 } })
+	];
+	await service.load();
+	const skipped = await settled(service);
+	assert.equal(counts.highlights, 0, 'article skipped while there is no cookie');
+	assert.equal(skipped.notes.length, 0);
+	assert.equal(skipped.failedBooks, 0);
+	// After the user logs in with a cookie the same book resolves via V1.
+	testSettings.update((s) => ({ ...s, isCookieValid: true }));
+	await service.load(true);
+	const state = await settled(service);
+	assert.equal(state.failedBooks, 0);
+	assert.equal(state.notes.length, 2);
+	assert(state.notes.every((note) => note.bookType === 3));
+	assert.equal(counts.highlights, 1);
+});
+
+test('successful refresh records a non-negative duration, hydration resets it to unknown', async (t) => {
+	const first = fixture(t);
+	await first.service.load();
+	const state = await settled(first.service);
+	assert.equal(typeof state.lastDurationMs, 'number');
+	assert(state.lastDurationMs >= 0);
+	first.service.dispose();
+	const second = fixture(t, {}, first.files);
+	await second.service.load();
+	const hydrated = await settled(second.service);
+	assert.equal(hydrated.lastDurationMs, 0, 'duration is not persisted; restored cache reports unknown');
+});
+
+test('refresh logs reuse/refetch/skip counts so duration can be explained', async (t) => {
+	const { service, api, list } = fixture(t);
+	await service.load();
+	await settled(service);
+	// Skip only happens without a cookie channel; exercise that path here.
+	testSettings.update((s) => ({ ...s, isCookieValid: false }));
+	// Second refresh: one unchanged book (reuse) + one article (skip) + one changed (refetch).
+	list([
+		book('one'),
+		book('MP_WXS_1', {
+			book: { bookId: 'MP_WXS_1', title: '公众号', author: '', type: 3 },
+			noteCount: 2
+		}),
+		book('two', { noteCount: 1, reviewCount: 1 })
+	]);
+	const logs = [];
+	const original = console.log;
+	console.log = (...args) => logs.push(args.join(' '));
+	try {
+		await service.load(true);
+		await settled(service);
+	} finally {
+		console.log = original;
+	}
+	const line = logs.find((l) => l.includes('刷新完成'));
+	assert(line, 'refresh logs a completion line');
+	assert.match(line, /复用 1 本/, 'unchanged book reported as reused');
+	assert.match(line, /跳过公众号 1 本/, 'article reported as skipped');
+	assert.match(line, /重取 1 本/, 'changed book reported as refetched');
+});
+
+test('refresh emits progress at a bounded rate rather than once per book', async (t) => {
+	// 300 unchanged books: previously each triggered a full note re-sort and emit.
+	const many = Array.from({ length: 300 }, (_, i) => book('b' + i));
+	const first = fixture(t, {
+		async getNotebooksWithRetry() {
+			return many;
+		}
+	});
+	await first.service.load();
+	await settled(first.service);
+	let progressEmits = 0;
+	first.service.subscribe(() => progressEmits++);
+	// Second refresh: all unchanged, so 0 refetch; count how many emits happen.
+	await first.service.load(true);
+	await settled(first.service);
+	assert(progressEmits < 50, `expected throttled emits, got ${progressEmits} for 300 books`);
+	assert(progressEmits > 0, 'still emits at least the final completed state');
 });
