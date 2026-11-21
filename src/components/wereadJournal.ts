@@ -313,6 +313,10 @@ export class WereadJournalPanel extends WereadPanel {
 					void this.loadStats();
 					void this.loadTodayBooks();
 				}
+			} else if (this.mode === 'today') {
+				// Reading-time stats settle upstream with a delay; re-poll each minute so
+				// time read since the view opened appears without a manual refresh.
+				void this.loadStats();
 			}
 			void this.loadJournal();
 		}, 60_000);
@@ -483,6 +487,15 @@ export class WereadJournalPanel extends WereadPanel {
 				const strong = card.querySelector('strong');
 				if (strong.textContent !== value) strong.setText(value);
 				card.querySelector<HTMLElement>('.weread-journal-metric-status')?.remove();
+				// Reading time settles upstream with a delay; explain the small print.
+				if (index === 0) {
+					let hint = card.querySelector<HTMLElement>('.weread-journal-metric-hint');
+					const showHint = !this.statsLoading && seconds !== undefined && !this.statsError;
+					if (showHint) {
+						hint ??= card.createEl('small', { cls: 'weread-journal-metric-hint' });
+						hint.setText('微信统计有延迟，稍后会自动更新');
+					} else if (hint) hint.remove();
+				}
 			}
 		};
 		const booksSummary = summary.createDiv({ cls: 'weread-journal-today-books' });

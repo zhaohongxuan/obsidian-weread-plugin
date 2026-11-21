@@ -613,6 +613,7 @@ window.smoke = {
     const metrics = summary.querySelector('.weread-journal-today-metrics');
     check(summary.children.length === 2 && metrics.querySelector('.weread-journal-today-metrics-grid').children.length === 3 && summary.lastElementChild.classList.contains('weread-journal-today-books'), 'Today overview groups three metrics and books into two halves');
     check(metrics.querySelector('span').textContent === '阅读时长', 'Duration uses the requested reading-only label');
+    check(metrics.querySelector('.weread-journal-metric-hint')?.textContent.includes('延迟'), 'Duration card shows a small note that WeRead stats lag');
     const titles = [...summary.querySelectorAll('.weread-journal-today-book-list .weread-journal-source')].map((node) => node.textContent);
     check(JSON.stringify(titles) === JSON.stringify(['《新书》', '《山间的阅读》', '《第三本今日书》']), 'Today books are sorted by recency and limited to the latest three');
     check(!summary.textContent.includes('OLDER BOOK SENTINEL') && !summary.textContent.includes('FOURTH BOOK SENTINEL'), 'Older same-day books are omitted');

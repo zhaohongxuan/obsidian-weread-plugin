@@ -241,6 +241,15 @@
 	overflow-wrap: anywhere;
 }
 
+.weread-journal-metric-hint {
+	display: block;
+	margin-top: 4px;
+	color: var(--text-faint);
+	font-size: 11px;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
 .weread-journal-today-book-list {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
