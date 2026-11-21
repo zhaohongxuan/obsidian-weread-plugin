@@ -43,10 +43,14 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	onload() {
-		console.log('load weread plugin');
-		settingsStore.initialise(this).then(() => {
-			this.initializePlugin();
-		});
+		console.debug('load weread plugin');
+		void settingsStore.initialise(this)
+			.then(() => {
+				this.initializePlugin();
+			})
+			.catch((e) => {
+				console.error('[weread plugin] 初始化失败', e);
+			});
 	}
 
 	private initializePlugin() {
@@ -95,18 +99,18 @@ export default class WereadPlugin extends Plugin {
 		// 初始化时验证 Cookie 有效性
 		const settings = get(settingsStore);
 		if (settings.cookies && settings.cookies.length > 0) {
-			console.log('[weread plugin] 初始化时检验 Cookie 有效性');
+			console.debug('[weread plugin] 初始化时检验 Cookie 有效性');
 			apiRouter.verifyCookieValidity().catch((e) => {
 				console.error('[weread plugin] 初始化 Cookie 验证失败', e);
 			});
 		}
 
 		// 启动时同步 Cookie 到 partition，供 webview 使用（非阻塞）
-		this.syncCookiesToPartition();
+		void this.syncCookiesToPartition();
 
 		const ribbonEl = this.addRibbonIcon('book-open', '打开微信读书书架', (event) => {
 			if (event.button === 0) {
-				this.activateBookshelfView();
+				void this.activateBookshelfView();
 			}
 		});
 
@@ -127,7 +131,7 @@ export default class WereadPlugin extends Plugin {
 					.setTitle('同步微信读书笔记')
 					.setIcon('refresh-ccw')
 					.onClick(() => {
-						this.startSync();
+						void this.startSync();
 					})
 			);
 
@@ -136,7 +140,7 @@ export default class WereadPlugin extends Plugin {
 					.setTitle('强制同步微信读书笔记')
 					.setIcon('refresh-ccw-dot')
 					.onClick(() => {
-						this.startSync(true);
+						void this.startSync(true);
 					})
 			);
 
@@ -145,7 +149,7 @@ export default class WereadPlugin extends Plugin {
 					.setTitle('打开微信读书书架')
 					.setIcon('library')
 					.onClick(() => {
-						this.activateBookshelfView();
+						void this.activateBookshelfView();
 					})
 			);
 
@@ -159,7 +163,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'sync-weread-notes-command',
 			name: '同步微信读书笔记',
 			callback: () => {
-				this.startSync();
+				void this.startSync();
 			}
 		});
 
@@ -167,7 +171,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'Force-sync-weread-notes-command',
 			name: '强制同步微信读书笔记',
 			callback: () => {
-				this.startSync(true);
+				void this.startSync(true);
 			}
 		});
 
@@ -202,7 +206,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'open-weread-reading-view-tab',
 			name: '在新标签页打开微信读书',
 			callback: () => {
-				this.activateReadingView('TAB');
+				void this.activateReadingView('TAB');
 			}
 		});
 
@@ -210,7 +214,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'open-weread-reading-view-window',
 			name: '在新窗口打开微信读书',
 			callback: () => {
-				this.activateReadingView('WINDOW');
+				void this.activateReadingView('WINDOW');
 			}
 		});
 
@@ -218,7 +222,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'open-weread-bookshelf-view',
 			name: '打开微信读书书架',
 			callback: () => {
-				this.activateBookshelfView();
+				void this.activateBookshelfView();
 			}
 		});
 
@@ -232,7 +236,7 @@ export default class WereadPlugin extends Plugin {
 			id: 'sync-weread-reading-stats',
 			name: '同步阅读统计数据',
 			callback: () => {
-				this.syncReadingStats.sync();
+				void this.syncReadingStats.sync();
 			}
 		});
 
@@ -266,7 +270,7 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	openWereadSettingsTab(section?: 'sync') {
-		const settingManager = (this.app as any).setting as
+		const settingManager = (this.app as unknown as { setting?: unknown }).setting as
 			| {
 					open: () => void;
 					openTabById?: (id: string) => void;
@@ -308,7 +312,7 @@ export default class WereadPlugin extends Plugin {
 			const settings = get(settingsStore);
 			const bookTitles = settings.lastSyncBookTitles || [];
 			settingsStore.actions.updateLastSyncInfo(syncedCount || 0, bookTitles);
-			console.log('syncing Weread note finish');
+			console.debug('syncing Weread note finish');
 			return syncedCount;
 		} catch (e) {
 			if (Platform.isDesktopApp) {
@@ -375,7 +379,7 @@ export default class WereadPlugin extends Plugin {
 			}
 		});
 
-		workspace.revealLeaf(leaf);
+		void workspace.revealLeaf(leaf);
 	}
 
 	private activateLibraryTab(tab: WereadTab): Promise<void> {
@@ -444,7 +448,18 @@ export default class WereadPlugin extends Plugin {
 		}
 
 		try {
-			const { remote } = window.require('electron');
+			type HiddenSession = {
+				cookies: { set: (opts: Record<string, unknown>) => Promise<void> };
+			};
+			type HiddenWindow = {
+				webContents: { session: HiddenSession; isDestroyed?: () => boolean };
+				loadURL(u: string): Promise<void>;
+				destroy(): void;
+				close(): void;
+			};
+			const { remote } = window.require('electron') as unknown as {
+				remote: { BrowserWindow: new (opts: unknown) => HiddenWindow; getCurrentWindow?: () => unknown };
+			};
 			const { BrowserWindow: RemoteBrowserWindow } = remote;
 			const WEREAD_PARTITION = 'persist:weread-plugin-browser';
 
@@ -476,7 +491,7 @@ export default class WereadPlugin extends Plugin {
 			}
 
 			hiddenWindow.close();
-			console.log('[weread plugin] startup cookie sync complete');
+			console.debug('[weread plugin] startup cookie sync complete');
 		} catch (e) {
 			console.error('[weread plugin] startup cookie sync failed', e);
 		}
@@ -496,7 +511,7 @@ export default class WereadPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('active-leaf-change', (leaf) => {
 				const view = leaf?.view;
-				const file = (view as any)?.file as TFile | undefined;
+				const file: unknown = (view as { file?: unknown } | undefined)?.file;
 				if (!(file instanceof TFile)) {
 					removeBtn();
 					return;
@@ -513,15 +528,14 @@ export default class WereadPlugin extends Plugin {
 				removeBtn();
 				currentBookId = annotation.bookId;
 
-				const viewContentEl = (view as any).contentEl as HTMLElement | undefined;
+				const viewContentEl = (view as unknown as { contentEl?: HTMLElement }).contentEl;
 				if (!viewContentEl) return;
 
-				viewContentEl.style.position = 'relative';
 				const btn = viewContentEl.createDiv({ cls: 'weread-floating-btn' });
 				setIcon(btn, 'book-open');
 				btn.setAttr('aria-label', '查看微信读书详情');
 				btn.addEventListener('click', () => {
-					this.activateBookDetailView(
+					void this.activateBookDetailView(
 						annotation.bookId,
 						annotation.title || '',
 						annotation.cover || '',
@@ -535,7 +549,7 @@ export default class WereadPlugin extends Plugin {
 	}
 
 	onunload() {
-		console.log('unloading weread plugin', new Date().toLocaleString());
+		console.debug('unloading weread plugin', new Date().toLocaleString());
 		this.journalService?.dispose();
 		this.favoritesService?.dispose();
 		this.clearScheduledSyncTimer();
@@ -550,10 +564,10 @@ export default class WereadPlugin extends Plugin {
 			return;
 		}
 		const intervalMs = Math.max(1, scheduledSyncInterval) * 60 * 1000;
-		console.log(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
+		console.debug(`[weread plugin] 设置定时同步，间隔 ${scheduledSyncInterval} 分钟`);
 		this.scheduledSyncTimer = window.setInterval(() => {
 			void (async () => {
-				console.log('[weread plugin] 执行定时同步');
+				console.debug('[weread plugin] 执行定时同步');
 				try {
 					const syncedCount = await this.syncNotebooks.syncNotebooks(
 						false,

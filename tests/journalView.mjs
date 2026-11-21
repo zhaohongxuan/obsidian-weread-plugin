@@ -1271,6 +1271,7 @@ test(
 			return result.result.value;
 		};
 		await evaluate(await browserBundle());
+		await evaluate('(() => { globalThis.activeDocument = document; globalThis.activeWindow = window; if (!Element.prototype.instanceOf) Element.prototype.instanceOf = function(C){ return this instanceof C; }; })();');
 		await evaluate(
 			`(() => { const style = document.createElement('style'); style.textContent = 'body { margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f8f7f4; color: #292d29; --background-primary: #fff; --background-secondary: #f3f1ec; --background-modifier-border: #dddcd5; --text-normal: #292d29; --text-muted: #72756d; --interactive-accent: #5f765c; } main { max-width: 1050px; margin: auto; } button, input, select { font: inherit; padding: 7px 11px; border: 1px solid #d8d9d0; background: #fff; border-radius: 6px; color: inherit; } button { cursor: pointer; } button.mod-cta { background: #e0e8d9; } button:disabled { opacity: .45; }'; document.head.append(style); })()`
 		);

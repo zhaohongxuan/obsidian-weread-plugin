@@ -1,14 +1,15 @@
 {
 	"name": "obsidian-weread-plugin",
-	"version": "3.5.3",
+	"version": "3.5.6",
 	"description": "This is a community plugin for tencent weread (https://r.qq.com)",
 	"main": "main.ts",
 	"scripts": {
 		"clean": "rimraf dist main.js",
-		"build": "svelte-check && npm run lint && webpack",
+		"build": "svelte-check && webpack",
 		"deploy": "NODE_ENV=development webpack && ./sync.sh",
 		"test": "node --test tests/*.mjs",
-		"lint": "eslint . --ext .ts --fix"
+		"lint": "eslint . --ext .ts",
+		"lint:fix": "eslint . --ext .ts --fix"
 	},
 	"keywords": [],
 	"author": "",
@@ -24,6 +25,7 @@
 		"esbuild-css-modules-plugin": "^3.1.0",
 		"eslint": "^9.39.4",
 		"eslint-config-prettier": "^8.5.0",
+		"eslint-plugin-depend": "^1.5.0",
 		"eslint-plugin-obsidianmd": "^0.6.0",
 		"eslint-plugin-prettier": "^4.0.0",
 		"obsidian": "^1.4.11",

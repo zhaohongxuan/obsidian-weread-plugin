@@ -663,6 +663,14 @@ export type ReadingStatsResponse = {
 	wrListenTime?: number;
 };
 
+// Runtime-only fields the stats view attaches to a ReadingStatsResponse while
+// loading heatmap data. Kept off the wire type above to mirror the API shape.
+export type ReadingStatsResponseWithCache = ReadingStatsResponse & {
+	_dailyReadTimes?: Record<string, number>;
+	_allDailyReadTimes?: Record<string, number>;
+	_statsStartYear?: number;
+};
+
 export interface Theme {
 	id: string;
 	name: string;

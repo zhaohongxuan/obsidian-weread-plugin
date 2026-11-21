@@ -97,7 +97,7 @@ function buildMarkdown(
 		const sorted = Object.entries(overall.readTimes).sort(([a], [b]) => Number(a) - Number(b));
 		for (const [ts, secs] of sorted) {
 			const yr = new Date(Number(ts) * 1000).getFullYear();
-			lines.push(`| ${yr} | ${fmtDuration(secs as number)} |`);
+			lines.push(`| ${yr} | ${fmtDuration(secs)} |`);
 		}
 		lines.push('');
 	}
@@ -123,7 +123,7 @@ function buildMarkdown(
 		lines.push('');
 		const monthEntries = Object.entries(annual.readTimes)
 			.sort(([a], [b]) => Number(a) - Number(b));
-		const monthVals = monthEntries.map(([, v]) => v as number);
+		const monthVals = monthEntries.map(([, v]) => v);
 		const monthLabels = monthEntries.map(([ts]) => {
 			const d = new Date(Number(ts) * 1000);
 			return `${d.getMonth() + 1}月`;
@@ -200,7 +200,7 @@ function buildMarkdown(
 		lines.push('');
 		const dayEntries = Object.entries(monthly.readTimes)
 			.sort(([a], [b]) => Number(a) - Number(b));
-		const dayVals = dayEntries.map(([, v]) => v as number);
+		const dayVals = dayEntries.map(([, v]) => v);
 		const dayLabels = dayEntries.map(([ts]) => {
 			const d = new Date(Number(ts) * 1000);
 			return `${d.getDate()}日`;

@@ -31,6 +31,7 @@ test(
         this.append(node); return node;
       };
       HTMLElement.prototype.createDiv = function(options) { return this.createEl('div', options); };
+      HTMLElement.prototype.createSpan = function(options) { return this.createEl('span', options); };
       HTMLElement.prototype.empty = function() { this.replaceChildren(); };
       HTMLElement.prototype.addClass = function(...names) { this.classList.add(...names); };
       const style = document.createElement('style');
@@ -222,6 +223,9 @@ class Element {
 	}
 	createDiv(options) {
 		return this.createEl('div', options);
+	}
+	createSpan(options) {
+		return this.createEl('span', options);
 	}
 	addClass(...names) {
 		names.forEach((name) => this.classes.add(name));

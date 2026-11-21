@@ -211,7 +211,7 @@ const DEFAULT_SETTINGS: WereadPluginSettings = {
 };
 
 const createSettingsStore = () => {
-	const store = writable(DEFAULT_SETTINGS as WereadPluginSettings);
+	const store = writable(DEFAULT_SETTINGS);
 
 	let _plugin!: WereadPlugin;
 	let persistence: Promise<void> | undefined;
@@ -250,7 +250,7 @@ const createSettingsStore = () => {
 					? 'whitelist'
 					: 'blacklist'
 		};
-		console.log(
+		console.debug(
 			'[weread plugin] Cookie 详情: 数量=' +
 				settings.cookies.length +
 				', 用户=' +
@@ -265,7 +265,7 @@ const createSettingsStore = () => {
 					: '未知')
 		);
 		if (settings.cookies.length > 0) {
-			console.log(
+			console.debug(
 				'[weread plugin] Cookie 详细列表:',
 				settings.cookies.map((c) => c.name).join(', ')
 			);
@@ -288,8 +288,8 @@ const createSettingsStore = () => {
 		if (!settings.themes || settings.themes.length === 0) {
 			settings.themes = [...BUILT_IN_THEMES];
 			// Migrate user's legacy template to a custom theme
-			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
-			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			const legacyTemplate = (rawData).template;
+			const legacyTrimBlocks = (rawData).trimBlocks ?? false;
 
 			if (legacyTemplate) {
 				const userTheme: Theme = {
@@ -324,8 +324,8 @@ const createSettingsStore = () => {
 			});
 
 			// Add a virtual "旧模板" theme if settings.template is non-empty
-			const legacyTemplate = (rawData as LegacyWereadPluginSettings).template;
-			const legacyTrimBlocks = (rawData as LegacyWereadPluginSettings).trimBlocks ?? false;
+			const legacyTemplate = (rawData).template;
+			const legacyTrimBlocks = (rawData).trimBlocks ?? false;
 			if (legacyTemplate) {
 				// Check if there's already a legacy theme
 				const hasLegacyTheme = userThemes.some((t) => t.source === 'legacy');
@@ -395,7 +395,7 @@ const createSettingsStore = () => {
 	};
 
 	const clearCookies = () => {
-		console.log('[weread plugin] cookie已失效，清理cookie...');
+		console.debug('[weread plugin] cookie已失效，清理cookie...');
 		store.update((state) => {
 			state.cookies = [];
 			state.lastCookieTime = new Date().getTime();
@@ -410,7 +410,7 @@ const createSettingsStore = () => {
 
 	// 仅标记 Cookie 无效，不删除（用于移动端）
 	const markCookiesInvalid = () => {
-		console.log('[weread plugin] cookie标记为无效，保留数据等待重新登录...');
+		console.debug('[weread plugin] cookie标记为无效，保留数据等待重新登录...');
 		store.update((state) => {
 			state.isCookieValid = false;
 			return state;
@@ -445,7 +445,7 @@ const createSettingsStore = () => {
 		for (const cookie of cookies) {
 			if (cookie.name == 'wr_name') {
 				if (cookie.value !== '') {
-					console.log('[weread plugin] setting user name=>', cookie.value);
+					console.debug('[weread plugin] setting user name=>', cookie.value);
 					store.update((state) => {
 						state.user = cookie.value;
 						return state;
@@ -454,7 +454,7 @@ const createSettingsStore = () => {
 			}
 			if (cookie.name == 'wr_vid') {
 				if (cookie.value !== '') {
-					console.log('[weread plugin] setting user vid=>', cookie.value);
+					console.debug('[weread plugin] setting user vid=>', cookie.value);
 					store.update((state) => {
 						state.userVid = cookie.value;
 						return state;
@@ -465,7 +465,7 @@ const createSettingsStore = () => {
 				if (cookie.value !== '') {
 					// Cookie 中的值已经是 URL 编码的，需要解码
 					const avatarUrl = decodeURIComponent(cookie.value);
-					console.log('[weread plugin] setting user avatar=>', avatarUrl);
+					console.debug('[weread plugin] setting user avatar=>', avatarUrl);
 					store.update((state) => {
 						state.userAvatar = avatarUrl;
 						return state;
@@ -873,7 +873,7 @@ const createSettingsStore = () => {
 		if (!_plugin) return Promise.reject(new Error('分享署名设置尚未加载'));
 		store.update((state) => ({ ...state, quoteShareUsername: normalizeQuoteShareUsername(value) }));
 		// Svelte subscribers run synchronously; return this update's actual save, not the settled queue.
-		return lastSaveOperation!;
+		return lastSaveOperation;
 	};
 
 	const setFavoritesViewMode = (mode: 'cards' | 'list') => {

@@ -235,7 +235,7 @@ function parseManaged(root: CanvasObject): FavoritesDocument {
 	const records: FavoriteEntry[] = [];
 	for (const node of root.nodes) {
 		if (node.id === graph.header?.id) {
-			const metadata = headerMetadata(node)!;
+			const metadata = headerMetadata(node);
 			const doc = parseLegacyFavorites(
 				JSON.stringify({
 					schemaVersion: 1,
@@ -267,6 +267,8 @@ function validateBookFiles(bookFiles?: FavoriteBookFiles): void {
 }
 
 function coverUrl(value: string | undefined): string | undefined {
+	 
+	// eslint-disable-next-line no-control-regex -- reject control chars in user-provided canvas text
 	if (!value || /[\u0000-\u0020\u007f<>\\\\]/.test(value)) return undefined;
 	const candidate = value.startsWith('//') ? `https:${value}` : value;
 	if (!/^https?:\/\//i.test(candidate)) return undefined;
@@ -301,7 +303,7 @@ function cardText(entry: FavoriteEntry): string {
 
 /** Remove only a positively identified legacy owned cover, retaining native edits and footer. */
 function updateCard(node: CanvasObject, old: FavoriteEntry, next: FavoriteEntry): CanvasObject {
-	const metadata = marker(node.text, CARD)!;
+	const metadata = marker(node.text, CARD);
 	let before = metadata.before;
 	if (metadata.value.cover === true) {
 		const end = before.indexOf(`\n\n${COVER_END}\n\n`, COVER_START.length + 2);
@@ -321,7 +323,7 @@ function stableId(id: string): string {
 	return (
 		'weread-' +
 		Array.from(id)
-			.map((char) => char.codePointAt(0)!.toString(16))
+			.map((char) => char.codePointAt(0).toString(16))
 			.join('-')
 	);
 }
@@ -353,6 +355,8 @@ function bookText(entry: FavoriteEntry, local?: string): string {
 
 function quoteHeight(text: string): number {
 	const lines = text.split(/\r?\n/).reduce((count, line) => {
+		 
+		// eslint-disable-next-line no-control-regex -- count non-latin glyphs as double-width
 		const width = line.replace(/[^\u0000-\u00ff]/g, 'xx').length;
 		return count + Math.max(1, Math.ceil(width / 38));
 	}, 0);
@@ -466,7 +470,7 @@ export function serializeFavoritesCanvas(
 	}
 	for (const id of oldBooks) if (!Object.values(bookNodes).includes(id)) removed.add(id);
 	for (const entry of remaining.values()) {
-		const book = bookObjects.get(entry.note.bookId)!;
+		const book = bookObjects.get(entry.note.bookId);
 		const node: CanvasObject = {
 			id: allocate(stableId(entry.id)),
 			type: 'text',
@@ -524,7 +528,7 @@ export function serializeFavoritesCanvas(
 	for (const [bookId, book] of bookObjects) {
 		for (const entry of valid.records) {
 			if (entry.deletedAt === undefined && entry.note.bookId === bookId)
-				connect(book.id, quotes.get(entry.id)!.id);
+				connect(book.id, quotes.get(entry.id).id);
 		}
 	}
 	const headerText = `# 我的收藏\n\n删除摘录卡片即取消收藏；书籍卡片用于组织收藏。\n\n${comment(
@@ -573,5 +577,5 @@ export function needsFavoriteGraphUpdate(raw: string, bookFiles?: FavoriteBookFi
 export function isLegacyFavoritesCanvas(raw: string): boolean {
 	parseFavoritesCanvas(raw);
 	const header = graphMetadata(canvas(raw)).header;
-	return !header || headerMetadata(header)!.value.schemaVersion !== 2;
+	return !header || headerMetadata(header).value.schemaVersion !== 2;
 }

@@ -97,12 +97,17 @@ export default class CookieCloudConfigModal extends Modal {
 		new Notice(`清除 Cookie`);
 		settingsStore.actions.clearCookies();
 
-		this.cookieCloudManager.getCookie().then(async (refreshSuccess) => {
-			if (refreshSuccess) {
-				this.wereadSettingsTab.display();
-				this.close();
-			}
-		});
+		void this.cookieCloudManager
+			.getCookie()
+			.then((refreshSuccess) => {
+				if (refreshSuccess) {
+					this.wereadSettingsTab.display();
+					this.close();
+				}
+			})
+			.catch((e) => {
+				console.error('[weread plugin] 获取 Cookie 失败', e);
+			});
 	}
 
 	onClose() {

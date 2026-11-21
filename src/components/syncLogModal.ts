@@ -51,9 +51,9 @@ export class SyncLogModal extends Modal {
 			: `${visibleCount} 条有效记录（共 ${totalCount} 次）`;
 
 		// 更新或创建 subtitle
-		let subtitleEl = this.contentEl.querySelector('.sync-log-subtitle') as HTMLElement;
+		let subtitleEl = this.contentEl.querySelector('.sync-log-subtitle');
 		if (!subtitleEl) {
-			const header = this.contentEl.querySelector('.sync-log-header') as HTMLElement;
+			const header = this.contentEl.querySelector('.sync-log-header');
 			subtitleEl = header.createDiv({ cls: 'sync-log-subtitle' });
 			// 移到 header 末尾之前（toggle 之前）
 			header.insertBefore(subtitleEl, header.querySelector('.sync-log-header-right'));

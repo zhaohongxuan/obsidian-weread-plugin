@@ -1,4 +1,5 @@
-import { Modal, App, Notice, MarkdownRenderer, sanitizeHTMLToDom } from 'obsidian';
+import { Modal, App, Notice, MarkdownRenderer, sanitizeHTMLToDom, type Component } from 'obsidian';
+import { confirmAction } from '../utils/confirmModal';
 import { Renderer } from '../renderer';
 import type { Notebook } from '../models';
 import templateInstructions from '../assets/templateInstructions.html';
@@ -51,12 +52,8 @@ export class TemplateEditorWindow extends Modal {
 			}
 		});
 
-		// 设置模态框样式
+		// 模态框尺寸由 .weread-template-editor-modal 样式类控制
 		modalEl.addClass('weread-template-editor-modal');
-		modalEl.style.width = '95vw';
-		modalEl.style.height = '90vh';
-		modalEl.style.maxWidth = '95vw';
-		modalEl.style.maxHeight = '90vh';
 
 		// 创建标题栏
 		const titleBar = contentEl.createDiv('weread-editor-titlebar');
@@ -66,7 +63,7 @@ export class TemplateEditorWindow extends Modal {
 
 		const buttonGroup = titleBar.createDiv('weread-editor-buttons');
 		const cancelBtn = buttonGroup.createEl('button', { text: '关闭', cls: 'mod-cancel' });
-		cancelBtn.onclick = () => this.handleCancel();
+		cancelBtn.onclick = () => void this.handleCancel();
 
 		// 仅在非只读模式下显示保存按钮
 		if (!this.readOnly) {
@@ -96,8 +93,7 @@ export class TemplateEditorWindow extends Modal {
 		this.editorEl.value = this.initialTemplate;
 		if (this.readOnly) {
 			this.editorEl.disabled = true;
-			this.editorEl.style.backgroundColor = 'var(--background-secondary)';
-			this.editorEl.style.cursor = 'default';
+			this.editorEl.addClass('weread-editor-textarea-readonly');
 		}
 
 		// 右侧：预览
@@ -163,9 +159,9 @@ export class TemplateEditorWindow extends Modal {
 		// 监听编辑器输入
 		this.editorEl.addEventListener('input', () => {
 			if (this.debounceTimer) {
-				activeWindow.clearTimeout(this.debounceTimer as unknown as number);
+				window.clearTimeout(this.debounceTimer as unknown as number);
 			}
-			this.debounceTimer = activeWindow.setTimeout(() => {
+			this.debounceTimer = window.setTimeout(() => {
 				this.updatePreview();
 			}, 300);
 		});
@@ -202,9 +198,9 @@ export class TemplateEditorWindow extends Modal {
 				// 渲染模式：使用 Obsidian 的 Markdown 渲染器
 				this.previewEl.addClass('markdown-preview-view');
 				this.previewEl.removeClass('preview-source-mode');
-				console.log('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
-				MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this as any);
-				console.log('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
+				console.debug('[weread preview] calling MarkdownRenderer with preview length:', preview.length);
+				void MarkdownRenderer.renderMarkdown(preview, this.previewEl, '', this as unknown as Component);
+				console.debug('[weread preview] MarkdownRenderer completed, previewEl children:', this.previewEl.children.length);
 			} else {
 				// 源码模式：显示原始文本
 				this.previewEl.removeClass('markdown-preview-view');
@@ -212,17 +208,18 @@ export class TemplateEditorWindow extends Modal {
 				const preEl = this.previewEl.createEl('pre');
 				preEl.textContent = preview;
 			}
-		} catch (error: any) {
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			this.previewEl.empty();
 			this.errorEl.addClass('weread-error-visible');
-			this.errorEl.textContent = '❌ ' + (error.message || String(error));
+			this.errorEl.textContent = '❌ ' + message;
 		}
 	}
 
-	private handleCancel(): void {
+	private async handleCancel(): Promise<void> {
 		// 检查是否有未保存的更改
 		if (this.editorEl.value !== this.initialTemplate) {
-			const confirmed = confirm('模板已修改但未保存，确定要关闭吗？');
+			const confirmed = await confirmAction(this.app, '模板已修改但未保存，确定要关闭吗？');
 			if (!confirmed) {
 				return;
 			}
@@ -246,7 +243,7 @@ export class TemplateEditorWindow extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		if (this.debounceTimer) {
-			activeWindow.clearTimeout(this.debounceTimer as unknown as number);
+			window.clearTimeout(this.debounceTimer as unknown as number);
 		}
 	}
 

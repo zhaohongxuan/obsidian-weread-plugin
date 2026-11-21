@@ -4,14 +4,18 @@ import { settingsStore } from '../settings';
 import { WereadSettingsTab } from '../settingTab';
 import ApiManager from '../api';
 import type { Cookie } from 'set-cookie-parser';
+import type { BrowserWindow, OnCompletedListenerDetails, OnSendHeadersListenerDetails } from 'electron';
 
 export default class WereadLoginModel {
-	private modal: any;
+	private modal: BrowserWindow;
 	private settingTab: WereadSettingsTab;
 	private isHandled = false;
 	constructor(settingTab: WereadSettingsTab) {
 		this.settingTab = settingTab;
-		const { remote } = require('electron');
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- electron.remote is only available in the desktop (Electron) runtime
+		const { remote } = require('electron') as unknown as {
+			remote: { BrowserWindow: typeof BrowserWindow; getCurrentWindow: () => BrowserWindow };
+		};
 		const { BrowserWindow: RemoteBrowserWindow } = remote;
 		this.modal = new RemoteBrowserWindow({
 			parent: remote.getCurrentWindow(),
@@ -43,10 +47,10 @@ export default class WereadLoginModel {
 			urls: ['https://weread.qq.com/api/auth/getLoginInfo?uid=*']
 		};
 
-		session.webRequest.onCompleted(loginFilter, (details: any) => {
+		session.webRequest.onCompleted(loginFilter, (details: OnCompletedListenerDetails) => {
 			if (details.statusCode == 200) {
-				console.log('weread login success, redirect to weread shelf');
-				this.modal.loadURL('https://weread.qq.com/web/shelf');
+				console.debug('weread login success, redirect to weread shelf');
+				void this.modal.loadURL('https://weread.qq.com/web/shelf');
 				void trySyncCookiesAndClose();
 			}
 		});
@@ -54,7 +58,7 @@ export default class WereadLoginModel {
 		const filter = {
 			urls: ['https://weread.qq.com/web/user?userVid=*']
 		};
-		session.webRequest.onSendHeaders(filter, (details: any) => {
+		session.webRequest.onSendHeaders(filter, (details: OnSendHeadersListenerDetails) => {
 			const cookies = details.requestHeaders['Cookie'];
 			const cookieArr = parseCookies(cookies);
 			const wrName = cookieArr.find((cookie) => cookie.name == 'wr_name');
@@ -87,7 +91,7 @@ export default class WereadLoginModel {
 			await this.modal.loadURL('https://weread.qq.com/#login');
 			await this.syncCookiesFromSession();
 		} catch (error) {
-			console.log(error);
+			console.debug(error);
 			new Notice('加载微信读书登录页面失败');
 		}
 	}

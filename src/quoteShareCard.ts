@@ -64,7 +64,7 @@ function graphemes(text: string): string[] {
 function wrap(context: CanvasRenderingContext2D, text: string, width: number): string[] {
 	const lines: string[] = [];
 	const closing = /^[，。！？、；：）》」』】〉〕］｝,.!?;:%‰…—)\]}”’]/;
-	const opening = /^[（《「『【〈〔［｛(\[{“‘]/;
+	const opening = /^[（《「『【〈〔［｛([{“‘]/;
 	const latin = /^[a-zA-Z0-9_'’-]+$/;
 	for (const paragraph of text.replace(/\r\n?/g, '\n').split('\n')) {
 		const parts = graphemes(paragraph);
@@ -111,7 +111,7 @@ export function renderQuoteShareCard(
 	options: { template?: QuoteShareTemplate; username?: string; cover?: CanvasImageSource } = {}
 ): HTMLCanvasElement {
 	// DOM access stays inside this function so settings can import the template catalog in Node.
-	const canvas = document.createElement('canvas');
+	const canvas = createEl('canvas');
 	canvas.width = WIDTH;
 	const ctx = canvas.getContext('2d');
 	if (!ctx) throw new Error('无法创建分享图片，请稍后重试。');

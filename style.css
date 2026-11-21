@@ -4380,3 +4380,67 @@
 	justify-content: center;
 }
 
+.weread-editor-textarea-readonly {
+	background-color: var(--background-secondary);
+	cursor: default;
+}
+
+.weread-theme-manager-modal {
+	width: 80vw;
+	max-width: 800px;
+	height: 70vh;
+	max-height: 70vh;
+}
+
+.weread-theme-modal-narrow {
+	width: 400px;
+}
+
+.weread-theme-modal-medium {
+	width: 500px;
+}
+
+.weread-theme-modal-wide {
+	width: 600px;
+}
+
+.weread-theme-input-full {
+	width: 100%;
+}
+
+.weread-theme-input-field {
+	flex: 1;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.weread-range-sep-btn {
+	border-style: none;
+}
+
+.weread-status-ok {
+	color: var(--color-green);
+}
+
+.weread-status-error {
+	color: var(--color-red);
+}
+
+.weread-status-muted {
+	color: var(--text-muted);
+}
+
+.weread-apikey-input {
+	width: 220px;
+}
+
+.weread-shortcuts-keys {
+	margin: 10px;
+}
+
+.weread-book-selector-modal {
+	width: 90vw;
+	max-width: 960px;
+	height: 80vh;
+	max-height: 80vh;
+}

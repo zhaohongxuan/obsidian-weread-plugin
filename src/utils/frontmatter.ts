@@ -46,8 +46,8 @@ export const buildFrontMatter = (
 	const saveReadingInfoToggle = get(settingsStore).saveReadingInfoToggle;
 
 	if (saveReadingInfoToggle) {
-		(frontMatter.author = noteBook.metaData.author),
-			(frontMatter.cover = noteBook.metaData.cover);
+		frontMatter.author = noteBook.metaData.author;
+		frontMatter.cover = noteBook.metaData.cover;
 
 		const readInfo = noteBook.metaData.readInfo;
 		if (readInfo) {

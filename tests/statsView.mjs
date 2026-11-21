@@ -281,6 +281,7 @@ async function browserBundle() {
      export class Component { addChild(child) { return child; } removeChild(child) { child.onunload?.(); return child; } }
      export class ItemView extends Component {} export class Modal {} export class Notice { constructor(text) { console.info(text); } }
      export class TFile {} export class Vault {} export class App {} export class Menu {} export class WorkspaceLeaf {}
+     export async function requestUrl() { return { status: 200, json: {}, text: '' }; }
      export function setIcon(el, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('class','svg-icon'); svg.setAttribute('width','24'); svg.setAttribute('height','24'); svg.setAttribute('viewBox','0 0 24 24'); svg.setAttribute('fill','none'); svg.setAttribute('stroke','currentColor'); svg.setAttribute('stroke-width','1.7'); svg.setAttribute('aria-hidden','true'); const p = document.createElementNS(svg.namespaceURI,'path'); const paths = {'chevron-left':'m15 18-6-6 6-6','chevron-right':'m9 18 6-6-6-6','image-down':'M13 3H3v18h18V11M17 3v10m-4-4 4 4 4-4M3 16l5-5 8 10','bar-chart-2':'M5 20V10m7 10V4m7 16v-7','calendar-days':'M3 5h18v16H3zM3 10h18M7 3v4m10-4v4','clock':'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'}; p.setAttribute('d', paths[name] || 'M4 5h16v14H4zM8 9h8m-8 4h6'); svg.append(p); el.append(svg); }
     `
 								: name === 'settings'

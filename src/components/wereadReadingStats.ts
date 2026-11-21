@@ -1,11 +1,11 @@
 import './wereadReadingStats.css';
 import { getDailyReadingInsights, niceTickLabel } from '../statsInsights';
-import { App, ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault } from 'obsidian';
+import { App, ItemView, Menu, Modal, Notice, WorkspaceLeaf, setIcon, TFile, Vault, requestUrl } from 'obsidian';
 import ApiRouter from '../api-router';
 import FileManager from '../fileManager';
 import { settingsStore } from '../settings';
 import { get } from 'svelte/store';
-import type { ReadingStatsResponse, ReadingStatsMode } from '../models';
+import type { ReadingStatsResponse, ReadingStatsResponseWithCache, ReadingStatsMode } from '../models';
 import { WereadPanel } from './wereadPanel';
 
 export const WEREAD_READING_STATS_VIEW_ID = 'weread-reading-stats-view';
@@ -191,7 +191,7 @@ class ExportPreviewModal extends Modal {
 	private filename: string;
 	private vault: Vault;
 
-	constructor(app: any, dataUrl: string, filename: string, vault: Vault) {
+	constructor(app: App, dataUrl: string, filename: string, vault: Vault) {
 		super(app);
 		this.dataUrl = dataUrl;
 		this.filename = filename;
@@ -349,7 +349,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				.setIcon('refresh-ccw')
 				.onClick(() => {
 					this.data = null;
-					this.loadData();
+					void this.loadData();
 				})
 		);
 		menu.addSeparator();
@@ -361,7 +361,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		this.contentEl.addClass('weread-stats-view');
 		this.statsEl = this.contentEl.createDiv({ cls: 'weread-stats-container' });
 		this.render();
-		this.loadData();
+		void this.loadData();
 	}
 
 	async onClose() {
@@ -386,7 +386,9 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (settings.userVid) {
 				const userInfo = await this.apiManager.getUserInfo(settings.userVid);
 				if (this.closed || generation !== this.loadGeneration) return;
-				const parts = [(userInfo as any)?.signature, (userInfo as any)?.vDesc].filter(Boolean);
+				const signature = typeof userInfo?.signature === 'string' ? userInfo.signature : '';
+				const vDesc = typeof userInfo?.vDesc === 'string' ? userInfo.vDesc : '';
+				const parts = [signature, vDesc].filter(Boolean);
 				const sig = parts.join(' ｜ ');
 				if (sig) settingsStore.actions.setUserSignature(sig);
 			}
@@ -449,8 +451,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (this.closed) return;
 		const generation = this.loadGeneration;
 		const isCurrent = () => !this.closed && generation === this.loadGeneration;
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- html-to-image is a heavy, lazily-loaded export-only dependency
 		const { toPng } = require('html-to-image');
-		const { requestUrl } = require('obsidian');
 
 		// Show loading modal immediately
 		const loadingModal = new ExportLoadingModal(this.app);
@@ -458,7 +460,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 
 		// Hide export button
 		const exportBtn = this.statsEl.querySelector<HTMLElement>('.weread-stats-export-btn');
-		if (exportBtn) exportBtn.style.display = 'none';
+		const DISPLAY_NONE = 'none';
+		if (exportBtn) exportBtn.style.display = DISPLAY_NONE;
 
 		// Pre-fetch images — use in-memory cache to avoid re-fetching on repeat exports
 		const imgs = Array.from(this.statsEl.querySelectorAll<HTMLImageElement>('img'));
@@ -502,16 +505,18 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		const captureHeight = this.statsEl.scrollHeight;
 
 		// Expand scroll container
-		const scrollEl = this.contentEl as HTMLElement;
+		const scrollEl = this.contentEl;
 		const origOverflow = scrollEl.style.overflow;
 		const origHeight = scrollEl.style.height;
-		scrollEl.style.overflow = 'visible';
-		scrollEl.style.height = 'auto';
+		const OVERFLOW_VISIBLE = 'visible';
+		const HEIGHT_AUTO = 'auto';
+		scrollEl.style.overflow = OVERFLOW_VISIBLE;
+		scrollEl.style.height = HEIGHT_AUTO;
 
 		// Reset scroll offsets on ancestors
 		const scrollParents: { el: Element; left: number; top: number }[] = [];
 		let ancestor: Element | null = this.statsEl.parentElement;
-		while (ancestor && ancestor !== document.body) {
+		while (ancestor && ancestor !== activeDocument.body) {
 			if (ancestor.scrollLeft !== 0 || ancestor.scrollTop !== 0) {
 				scrollParents.push({ el: ancestor, left: ancestor.scrollLeft, top: ancestor.scrollTop });
 				(ancestor as HTMLElement).scrollLeft = 0;
@@ -590,7 +595,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				this.currentOffset = 0;
 				this.data = null;
 				this.render();
-				this.loadData();
+				void this.loadData();
 			});
 		}
 
@@ -600,13 +605,13 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const prevBtn = timePicker.createEl('button', { cls: 'clickable-icon weread-stats-timepicker-btn' });
 			setIcon(prevBtn, 'chevron-left');
 			prevBtn.setAttribute('aria-label', '上一时段');
-			prevBtn.addEventListener('click', () => { this.currentOffset--; this.data = null; this.render(); this.loadData(); });
+			prevBtn.addEventListener('click', () => { this.currentOffset--; this.data = null; this.render(); void this.loadData(); });
 			timePicker.createSpan({ cls: 'weread-stats-timepicker-label', text: periodLabel(this.currentMode, this.currentOffset) });
 			const nextBtn = timePicker.createEl('button', { cls: 'clickable-icon weread-stats-timepicker-btn' + (this.currentOffset >= 0 ? ' is-disabled' : '') });
 			setIcon(nextBtn, 'chevron-right');
 			nextBtn.setAttribute('aria-label', '下一时段');
 			if (this.currentOffset >= 0) nextBtn.setAttribute('disabled', 'true');
-			nextBtn.addEventListener('click', () => { if (this.currentOffset >= 0) return; this.currentOffset++; this.data = null; this.render(); this.loadData(); });
+			nextBtn.addEventListener('click', () => { if (this.currentOffset >= 0) return; this.currentOffset++; this.data = null; this.render(); void this.loadData(); });
 		}
 		this.renderExportButton(periodControls);
 	}
@@ -714,7 +719,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 	private renderRhythm(el: HTMLElement, data: ReadingStatsResponse) {
 		if (this.currentMode !== 'weekly' && this.currentMode !== 'monthly') return;
 		const insights = getDailyReadingInsights(data.readTimes, this.currentMode,
-			calcBaseTime(this.currentMode, this.currentOffset)!);
+			calcBaseTime(this.currentMode, this.currentOffset));
 		const section = el.createDiv({ cls: 'weread-stats-section weread-stats-rhythm' });
 		section.createEl('h3', { cls: 'weread-stats-section-title', text: '阅读节奏' });
 		if (!insights.hasData) {
@@ -786,7 +791,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			let labels: string[];
 			if (this.currentMode === 'weekly' || this.currentMode === 'monthly') {
 				const insights = getDailyReadingInsights(data.readTimes, this.currentMode,
-					calcBaseTime(this.currentMode, this.currentOffset)!);
+					calcBaseTime(this.currentMode, this.currentOffset));
 				values = insights.days.map(day => day.seconds);
 				labels = insights.days.map(day => `${day.date.getMonth() + 1}月${day.date.getDate()}日`);
 			} else {
@@ -827,7 +832,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 
 		// Reuse validated, summed daily buckets so calendar and rhythm agree.
 		const dayMap: Record<number, number> = {};
-		const insights = getDailyReadingInsights(readTimes, 'monthly', baseTime!);
+		const insights = getDailyReadingInsights(readTimes, 'monthly', baseTime);
 		for (const day of insights.days) dayMap[day.date.getDate()] = day.seconds;
 		const dayValues = Object.values(dayMap).filter(v => v > 0);
 		const maxVal = percentile(dayValues, 95);
@@ -887,18 +892,18 @@ export class WereadReadingStatsPanel extends WereadPanel {
 	}
 
 	// ── Year Heatmap via cal-heatmap ──────────────────────────────────
-	private renderYearHeatmap(parent: HTMLElement, data: ReadingStatsResponse) {
-		if ((data as any)._dailyReadTimes) {
-			this.renderCalHeatmap(parent, (data as any)._dailyReadTimes, data.readDays);
+	private renderYearHeatmap(parent: HTMLElement, data: ReadingStatsResponseWithCache) {
+		if (data._dailyReadTimes) {
+			this.renderCalHeatmap(parent, data._dailyReadTimes, data.readDays);
 		} else {
 			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
 			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
 			placeholder.createDiv({ text: '正在加载全年日数据…', cls: 'weread-stats-empty-text' });
-			this.loadAnnualDailyData(data);
+			void this.loadAnnualDailyData(data);
 		}
 	}
 
-	private async loadAnnualDailyData(data: ReadingStatsResponse) {
+	private async loadAnnualDailyData(data: ReadingStatsResponseWithCache) {
 		const generation = this.loadGeneration;
 		if (!this.isCurrentData(data, generation)) return;
 		const baseTime = calcBaseTime('annually', this.currentOffset);
@@ -921,7 +926,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (k.startsWith(`${year}-`)) cachedYearData[k] = v;
 		}
 		if (Object.keys(cachedYearData).length > 0) {
-			(data as any)._dailyReadTimes = cachedYearData;
+			data._dailyReadTimes = cachedYearData;
 			this.render();
 		}
 
@@ -950,7 +955,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				if (!res?.readTimes) continue;
 				for (const [dayTs, secs] of Object.entries(res.readTimes)) {
 					const dd = new Date(Number(dayTs) * 1000);
-					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
+					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs;
 				}
 				// 已过完的月份才算抓全：当前月只能拿到「截至今天」的数据，
 				// 此时打标记会让该月跨月后永不补全
@@ -960,7 +965,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				dirty = true;
 			}
 			if (i + BATCH < toFetch.length) {
-				await new Promise(r => setTimeout(r, 200));
+				await new Promise(r => window.setTimeout(r, 200));
 			}
 		}
 
@@ -972,23 +977,23 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		for (const [k, v] of Object.entries(cache.data)) {
 			if (k.startsWith(`${year}-`)) dailyMap[k] = v;
 		}
-		(data as any)._dailyReadTimes = dailyMap;
+		data._dailyReadTimes = dailyMap;
 		this.render();
 	}
 
 	// ── Overall Heatmap (all years) ────────────────────────────────────
-	private renderOverallHeatmap(parent: HTMLElement, data: ReadingStatsResponse) {
-		if ((data as any)._allDailyReadTimes) {
-			this.renderAllYearsHeatmap(parent, (data as any)._allDailyReadTimes, data);
+	private renderOverallHeatmap(parent: HTMLElement, data: ReadingStatsResponseWithCache) {
+		if (data._allDailyReadTimes) {
+			this.renderAllYearsHeatmap(parent, data._allDailyReadTimes, data);
 		} else {
 			const placeholder = parent.createDiv({ cls: 'weread-heatmap-loading' });
 			placeholder.createDiv({ cls: 'weread-stats-spinner weread-stats-spinner-sm' });
 			placeholder.createDiv({ text: '正在加载全部阅读数据…', cls: 'weread-stats-empty-text' });
-			this.loadOverallDailyData(data);
+			void this.loadOverallDailyData(data);
 		}
 	}
 
-	private async loadOverallDailyData(data: ReadingStatsResponse) {
+	private async loadOverallDailyData(data: ReadingStatsResponseWithCache) {
 		const generation = this.loadGeneration;
 		if (!this.isCurrentData(data, generation)) return;
 		const today = new Date();
@@ -1016,8 +1021,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		// If cache has data, render immediately with cached data, then refresh current month in background
 		const hasCachedData = Object.keys(cache.data).length > 0;
 		if (hasCachedData) {
-			(data as any)._allDailyReadTimes = { ...cache.data };
-			(data as any)._statsStartYear = startYear;
+			data._allDailyReadTimes = { ...cache.data };
+			data._statsStartYear = startYear;
 			this.render();
 		}
 
@@ -1033,8 +1038,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (toFetch.length === 0) {
 			// Everything cached, just ensure rendered
 			if (!hasCachedData) {
-				(data as any)._allDailyReadTimes = cache.data;
-				(data as any)._statsStartYear = startYear;
+				data._allDailyReadTimes = cache.data;
+				data._statsStartYear = startYear;
 				this.render();
 			}
 			return;
@@ -1053,7 +1058,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				if (!res?.readTimes) continue;
 				for (const [dayTs, secs] of Object.entries(res.readTimes)) {
 					const dd = new Date(Number(dayTs) * 1000);
-					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs as number;
+					cache.data[`${dd.getFullYear()}-${dd.getMonth()}-${dd.getDate()}`] = secs;
 				}
 				// 同 loadAnnualDailyData：未过完的当月不打标记，避免跨月后无法补全
 				if (isMonthOver(d, today) && !cache.fetchedMonths.includes(monthKey)) {
@@ -1062,7 +1067,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				dirty = true;
 			}
 			if (i + BATCH < toFetch.length) {
-				await new Promise(r => setTimeout(r, 200));
+				await new Promise(r => window.setTimeout(r, 200));
 				if (!this.isCurrentData(data, generation)) return;
 			}
 		}
@@ -1070,16 +1075,16 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		if (dirty) await saveDailyCache(this.app.vault, cache);
 		if (!this.isCurrentData(data, generation)) return;
 
-		(data as any)._allDailyReadTimes = cache.data;
-		(data as any)._statsStartYear = startYear;
+		data._allDailyReadTimes = cache.data;
+		data._statsStartYear = startYear;
 		this.render();
 	}
 
-	private renderAllYearsHeatmap(parent: HTMLElement, dailyMap: Record<string, number>, data: ReadingStatsResponse) {
+	private renderAllYearsHeatmap(parent: HTMLElement, dailyMap: Record<string, number>, data: ReadingStatsResponseWithCache) {
 		const today = new Date();
 		const endYear = today.getFullYear();
 		const settings = get(settingsStore);
-		const startYear = (data as any)._statsStartYear
+		const startYear = data._statsStartYear
 			?? (settings.statsStartYear && settings.statsStartYear > 2000
 				? settings.statsStartYear
 				: data.registTime
@@ -1309,7 +1314,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 				rect.addEventListener(event, () => selectBar(i));
 			}
 			rect.addEventListener('keydown', event => {
-				const key = (event as KeyboardEvent).key;
+				const key = (event).key;
 				let next = i;
 				if (key === 'ArrowRight') next = Math.min(n - 1, i + 1);
 				else if (key === 'ArrowLeft') next = Math.max(0, i - 1);
@@ -1446,7 +1451,7 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			if (data.preferTimeWord) {
 				timeCard.createDiv({ cls: 'weread-stats-pref-subtitle', text: data.preferTimeWord });
 			}
-			this.renderHourBarChart(timeCard, data.preferTime!);
+			this.renderHourBarChart(timeCard, data.preferTime);
 		}
 
 		// 分类在左，出版方与作者在右侧纵向排列。
@@ -1464,13 +1469,14 @@ export class WereadReadingStatsPanel extends WereadPanel {
 		const secondary = hasPublisher || hasAuthor
 			? prefGrid.createDiv({ cls: 'weread-stats-pref-secondary' })
 			: prefGrid;
-		if (!hasCat && (hasPublisher || hasAuthor)) secondary.style.gridColumn = '1 / -1';
+		const GRID_FULL_SPAN = '1 / -1';
+		if (!hasCat && (hasPublisher || hasAuthor)) secondary.style.gridColumn = GRID_FULL_SPAN;
 		if (hasPublisher) {
 			const pubCard = secondary.createDiv({ cls: 'weread-stats-pref-card' });
 			const pubHeader = pubCard.createDiv({ cls: 'weread-stats-pref-card-header' });
 			setIcon(pubHeader.createSpan(), 'building-2');
 			pubHeader.createSpan({ text: '偏好出版方' });
-			this.renderTagCloud(pubCard, data.preferPublisher!.slice(0, 20));
+			this.renderTagCloud(pubCard, data.preferPublisher.slice(0, 20));
 		}
 
 		// ── 偏好作者（进度条）
@@ -1479,8 +1485,8 @@ export class WereadReadingStatsPanel extends WereadPanel {
 			const authorHeader = authorCard.createDiv({ cls: 'weread-stats-pref-card-header' });
 			setIcon(authorHeader.createSpan(), 'user');
 			authorHeader.createSpan({ text: '偏好作者' });
-			const maxCount = Math.max(...data.preferAuthor!.map(a => a.count), 1);
-			data.preferAuthor!.slice(0, 6).forEach(a => {
+			const maxCount = Math.max(...data.preferAuthor.map(a => a.count), 1);
+			data.preferAuthor.slice(0, 6).forEach(a => {
 				const row = authorCard.createDiv({ cls: 'weread-stats-pref-row weread-stats-pref-row-author' });
 				row.createSpan({ cls: 'weread-stats-pref-name', text: a.name });
 				const barWrap = row.createDiv({ cls: 'weread-stats-pref-bar-track' });

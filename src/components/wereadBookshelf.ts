@@ -8,9 +8,9 @@ import {
 	WorkspaceLeaf,
 	moment,
 	setIcon,
-	setTooltip,
 	Menu
 } from 'obsidian';
+import { applyTooltip } from '../utils/tooltip';
 import WereadPlugin from '../../main';
 import WereadBookshelfService, { getBookshelfCategory } from '../bookshelf';
 import type { BookshelfCollection, BookshelfSourceMode, ShelfBook } from '../bookshelf';
@@ -178,7 +178,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				.setTitle('刷新书架')
 				.setIcon('refresh-ccw')
 				.onClick(() => {
-					this.loadBookshelf(true);
+					void this.loadBookshelf(true);
 				})
 		);
 		menu.addSeparator();
@@ -228,7 +228,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			attr: { 'aria-label': '筛选书籍分类' }
 		});
 		this.genreSelect.onchange = () => {
-			this.genreFilter = this.genreSelect!.value;
+			this.genreFilter = this.genreSelect.value;
 			this.activeFolderId = null;
 			this.renderBooks();
 		};
@@ -294,7 +294,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 		});
 
 		// 点击外部关闭popover
-		this.registerDomEvent(document, 'click', (event) => {
+		this.registerDomEvent(activeDocument, 'click', (event) => {
 			if (!toolbarFilters.contains(event.target as Node)) {
 				filterDropdowns.classList.remove('is-open');
 			}
@@ -317,15 +317,15 @@ export class WereadBookshelfPanel extends WereadPanel {
 				setIcon(syncButton, 'refresh-ccw-dot');
 				syncButton.addClass('mod-warning');
 				syncButton.removeClass('mod-cta');
-				setTooltip(syncButton, '强制同步（重新同步所有书籍）');
+				applyTooltip(syncButton, '强制同步（重新同步所有书籍）');
 			} else {
 				setIcon(syncButton, 'refresh-ccw');
 				syncButton.addClass('mod-cta');
 				syncButton.removeClass('mod-warning');
-				setTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
+				applyTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
 			}
 		};
-		setTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
+		applyTooltip(syncButton, `同步 (按住 ${modKey} 强制同步)`);
 		syncButton.addEventListener('mouseenter', () => {
 			isHovering = true;
 			updateSyncButton(isAltPressed);
@@ -335,13 +335,13 @@ export class WereadBookshelfPanel extends WereadPanel {
 			updateSyncButton(false);
 		});
 		// 用 e.code 追踪 Alt 键，比 e.key 在 macOS Electron 下更可靠
-		this.registerDomEvent(document, 'keydown', (e: KeyboardEvent) => {
+		this.registerDomEvent(activeDocument, 'keydown', (e: KeyboardEvent) => {
 			if (e.code === 'AltLeft' || e.code === 'AltRight') {
 				isAltPressed = true;
 				if (isHovering) updateSyncButton(true);
 			}
 		});
-		this.registerDomEvent(document, 'keyup', (e: KeyboardEvent) => {
+		this.registerDomEvent(activeDocument, 'keyup', (e: KeyboardEvent) => {
 			if (e.code === 'AltLeft' || e.code === 'AltRight') {
 				isAltPressed = false;
 				if (isHovering) updateSyncButton(false);
@@ -362,7 +362,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			isSyncing = true;
 			const signal = { cancelled: false };
 			setIcon(syncButton, 'square');
-			setTooltip(syncButton, '取消同步');
+			applyTooltip(syncButton, '取消同步');
 			syncButton.removeClass('mod-cta');
 			syncButton.addClass('mod-warning');
 
@@ -377,7 +377,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				if ((updatedCount ?? 0) > 0) {
 					this.bookshelfService.clearProgressCache();
 					// 等待 Obsidian 的 metadataCache 更新新创建的文件
-					await new Promise((resolve) => setTimeout(resolve, 500));
+					await new Promise((resolve) => window.setTimeout(resolve, 500));
 					await this.loadBookshelf();
 				}
 			} catch (error: unknown) {
@@ -689,7 +689,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			const folderIds = bookToFolders.get(book.bookId);
 			if (!folderIds) continue;
 			for (const folderId of folderIds) {
-				folderBooksMap.get(folderId)!.push(book);
+				folderBooksMap.get(folderId).push(book);
 			}
 		}
 		return { bookToFolders, folderBooksMap, groupedIds };
@@ -835,7 +835,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 					attr: { 'data-count': String(previews.length), 'aria-hidden': 'true' }
 				});
 				for (const book of previews) {
-					const cell = collage.createEl('span', { cls: 'weread-bookshelf-folder-cell' });
+					const cell = collage.createSpan({ cls: 'weread-bookshelf-folder-cell' });
 					const image = cell.createEl('img', {
 						cls: 'weread-bookshelf-folder-cover',
 						attr: { src: book.cover, alt: '', loading: 'lazy', decoding: 'async' }
@@ -846,14 +846,14 @@ export class WereadBookshelfPanel extends WereadPanel {
 					};
 				}
 				if (!previews.length) {
-					const fallback = collage.createEl('span', {
+					const fallback = collage.createSpan({
 						cls: 'weread-bookshelf-folder-placeholder'
 					});
 					setIcon(fallback, 'folder');
 				}
-				const mark = collage.createEl('span', { cls: 'weread-bookshelf-folder-mark' });
+				const mark = collage.createSpan({ cls: 'weread-bookshelf-folder-mark' });
 				setIcon(mark, 'folder');
-				collage.createEl('span', {
+				collage.createSpan({
 					cls: 'weread-bookshelf-folder-count',
 					text: String(availableCount)
 				});
@@ -862,7 +862,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 					text: folder.name
 				});
 				if (hasFilter) {
-					button.createEl('span', {
+					button.createSpan({
 						cls: 'weread-bookshelf-folder-caption',
 						text: `匹配 ${matchedCount} 本`
 					});
@@ -891,7 +891,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 					? `书籍 ${this.collection.books.filter((book) => book.remoteExists).length} 本`
 					: `${filteredBooks.length} 本书`
 		});
-		setTooltip(
+		applyTooltip(
 			bookSection,
 			this.sourceMode === 'bookshelf'
 				? `书籍 ${this.collection.books.filter((book) => book.remoteExists).length} · 文件夹 ${this.collection.folders.length}；本地笔记 ${this.shelfBooks.filter((book) => book.isLocalOnly).length}；筛选匹配 ${filteredBooks.length} 本`
@@ -913,7 +913,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 					? `${totalNotes} 个本地笔记`
 					: `${totalNotes} 个笔记`
 		});
-		setTooltip(noteSection, `笔记总数: ${totalNotes}`);
+		applyTooltip(noteSection, `笔记总数: ${totalNotes}`);
 
 		// Year groups section (only show when grouping by year)
 		if (this.shouldGroupByYear()) {
@@ -925,7 +925,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				cls: 'weread-bookshelf-summary-value',
 				text: `${groupedBooks.length} 年`
 			});
-			setTooltip(yearSection, `年份分组: ${groupedBooks.length} 年`);
+			applyTooltip(yearSection, `年份分组: ${groupedBooks.length} 年`);
 		}
 
 		// Last sync time section
@@ -945,7 +945,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			cls: 'weread-bookshelf-summary-value',
 			text: syncText
 		});
-		setTooltip(syncSection, syncTooltip);
+		applyTooltip(syncSection, syncTooltip);
 
 		// Updated books count section
 		const updateSection = card.createDiv({ cls: 'weread-bookshelf-summary-item' });
@@ -955,7 +955,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			cls: 'weread-bookshelf-summary-value',
 			text: `${settings.lastSyncBookCount} 本`
 		});
-		setTooltip(updateSection, `更新数量: ${settings.lastSyncBookCount} 本`);
+		applyTooltip(updateSection, `更新数量: ${settings.lastSyncBookCount} 本`);
 	}
 
 	private renderCoverCard(book: BookshelfBook, container: HTMLElement): void {
@@ -1083,7 +1083,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				try {
 					await this.plugin.syncBookById(book.bookId);
 					// 等待 Obsidian 的 metadataCache 更新新创建的文件
-					await new Promise((resolve) => setTimeout(resolve, 500));
+					await new Promise((resolve) => window.setTimeout(resolve, 500));
 					await this.loadBookshelf();
 				} catch (error: unknown) {
 					new Notice(error instanceof Error ? error.message : '同步失败');
@@ -1338,6 +1338,6 @@ export class WereadBookshelfPanel extends WereadPanel {
 		}
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.openFile(book.localFile.file);
-		this.app.workspace.revealLeaf(leaf);
+		void this.app.workspace.revealLeaf(leaf);
 	}
 }

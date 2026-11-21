@@ -1,4 +1,4 @@
-import { Vault, TFile, TFolder } from 'obsidian';
+import { Vault, TFile, TFolder, type FileManager } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
 import type { PopularHighlight, PopularHighlightCache } from './models';
@@ -6,9 +6,19 @@ import type { PopularHighlight, PopularHighlightCache } from './models';
 export default class PopularHighlightsCacheManager {
 	private cacheDir: string = '.weread-cache';
 	private vault: Vault;
+	private fileManager?: FileManager;
 
-	constructor(vault: Vault) {
+	constructor(vault: Vault, fileManager?: FileManager) {
 		this.vault = vault;
+		this.fileManager = fileManager;
+	}
+
+	private async removeFile(file: TFile): Promise<void> {
+		if (this.fileManager) {
+			await this.fileManager.trashFile(file);
+		} else {
+			await this.vault.delete(file);
+		}
 	}
 
 	private getCachePath(bookId: string): string {
@@ -31,11 +41,11 @@ export default class PopularHighlightsCacheManager {
 			const cache: PopularHighlightCache = JSON.parse(content);
 
 			if (this.isCacheExpired(cache)) {
-				console.log(`[weread plugin] 热门划线缓存已过期: ${bookId}`);
+				console.debug(`[weread plugin] 热门划线缓存已过期: ${bookId}`);
 				return null;
 			}
 
-			console.log(`[weread plugin] 热门划线缓存命中: ${bookId}`);
+			console.debug(`[weread plugin] 热门划线缓存命中: ${bookId}`);
 			return cache;
 		} catch (e) {
 			console.error(`[weread plugin] 读取热门划线缓存失败: ${bookId}`, e);
@@ -62,7 +72,7 @@ export default class PopularHighlightsCacheManager {
 			await this.ensureCacheDir();
 			// 使用 adapter.write，它会自动覆盖已存在的文件
 			await this.vault.adapter.write(cachePath, JSON.stringify(cache, null, 2));
-			console.log(`[weread plugin] 热门划线缓存已写入: ${bookId}`);
+			console.debug(`[weread plugin] 热门划线缓存已写入: ${bookId}`);
 		} catch (e) {
 			console.error(`[weread plugin] 写入热门划线缓存失败: ${bookId}`, e);
 		}
@@ -75,8 +85,8 @@ export default class PopularHighlightsCacheManager {
 			if (exists) {
 				const file = this.vault.getAbstractFileByPath(cachePath);
 				if (file instanceof TFile) {
-					await this.vault.delete(file);
-					console.log(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
+					await this.removeFile(file);
+					console.debug(`[weread plugin] 热门划线缓存已清除: ${bookId}`);
 				}
 			}
 		} catch (e) {
@@ -103,17 +113,17 @@ export default class PopularHighlightsCacheManager {
 						const filePath = `${cacheDirPath}/${file}`;
 						const abstractFile = this.vault.getAbstractFileByPath(filePath);
 						if (abstractFile instanceof TFile) {
-							await this.vault.delete(abstractFile);
+							await this.removeFile(abstractFile);
 						}
 						cleared++;
 					}
-				} catch (e) {
+				} catch {
 					// 忽略解析失败的文件
 				}
 			}
 
 			if (cleared > 0) {
-				console.log(`[weread plugin] 已清除 ${cleared} 个过期热门划线缓存`);
+				console.debug(`[weread plugin] 已清除 ${cleared} 个过期热门划线缓存`);
 			}
 			return cleared;
 		} catch (e) {
@@ -128,7 +138,7 @@ export default class PopularHighlightsCacheManager {
 			if (!exists) {
 				await this.vault.createFolder(this.cacheDir);
 			}
-		} catch (e) {
+		} catch {
 			// 目录已存在或其他错误，忽略
 		}
 	}
@@ -139,8 +149,8 @@ export default class PopularHighlightsCacheManager {
 			if (!(folder instanceof TFolder)) return [];
 			return folder.children
 				.filter((f) => f instanceof TFile)
-				.map((f) => (f as TFile).name);
-		} catch (e) {
+				.map((f) => (f).name);
+		} catch {
 			return [];
 		}
 	}

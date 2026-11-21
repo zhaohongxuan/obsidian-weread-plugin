@@ -113,7 +113,6 @@ class ApiRouter {
 	 * 公众号类型必须使用 V1 接口（依赖 Cookie）
 	 */
 	private isArticleBook(bookId: string): boolean {
-		const settings = get(settingsStore);
 		// 通过书架缓存或实时检查判断是否为公众号
 		// 这里简单通过 bookId 特征判断，公众号 bookId 通常以特定格式存在
 		// 实际使用时通过 metaData.bookType 判断
@@ -139,7 +138,7 @@ class ApiRouter {
 	): Promise<HighlightResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
-			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取划线');
+			console.debug('[weread plugin] 公众号类型，强制使用 V1 接口获取划线');
 			return this.v1Manager.getNotebookHighlights(bookId);
 		}
 
@@ -164,7 +163,7 @@ class ApiRouter {
 	): Promise<BookReviewResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
-			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取笔记');
+			console.debug('[weread plugin] 公众号类型，强制使用 V1 接口获取笔记');
 			return this.v1Manager.getNotebookReviews(bookId);
 		}
 
@@ -177,14 +176,14 @@ class ApiRouter {
 	async getChapters(bookId: string, isArticle = false): Promise<ChapterResponse | undefined> {
 		// 公众号类型强制使用 V1 接口（依赖 Cookie）
 		if (isArticle) {
-			console.log('[weread plugin] 公众号类型，强制使用 V1 接口获取章节');
+			console.debug('[weread plugin] 公众号类型，强制使用 V1 接口获取章节');
 			return this.v1Manager.getChapters(bookId);
 		}
 
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getChapters(bookId);
-				if (result) return result as ChapterResponse;
+				if (result) return result;
 			} catch (e) {
 				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getChapters 调用失败，回退到 V1', e);
@@ -241,7 +240,7 @@ class ApiRouter {
 		if (this.useV2()) {
 			try {
 				const result = await this.v2Manager.getCurrentUser();
-				if (result) return result as Record<string, unknown>;
+				if (result) return result;
 			} catch (e) {
 				if (e instanceof WereadUpgradeRequiredError) throw e;
 				console.warn('V2 getCurrentUser 调用失败', e);
@@ -288,7 +287,10 @@ class ApiRouter {
 					return { chapterUid, items: resp?.items ?? [] };
 				} catch (e) {
 					if (e instanceof WereadUpgradeRequiredError) throw e;
-					throw { chapterUid, error: e };
+					throw Object.assign(new Error(`获取章节热门划线失败: chapterUid=${chapterUid}`), {
+						chapterUid,
+						error: e
+					});
 				}
 			});
 
@@ -385,7 +387,7 @@ class ApiRouter {
 		apiName: string,
 		params: Record<string, unknown> = {}
 	): Promise<T | undefined> {
-		return this.v1Manager.callAgentGateway<T>(apiName, params) as Promise<T | undefined>;
+		return this.v1Manager.callAgentGateway<T>(apiName, params);
 	}
 }
 

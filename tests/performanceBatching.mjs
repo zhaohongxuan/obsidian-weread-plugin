@@ -127,6 +127,7 @@ const Panel = load('src/components/wereadBookshelf.ts', {
 	'./wereadPanel': { WereadPanel: class {} },
 	'svelte/store': { get: (store) => store.value },
 	'./syncLogModal': { SyncLogModal: class {} },
+	'../utils/tooltip': { applyTooltip: () => {} },
 	'../parser/parseResponse': {}
 }).WereadBookshelfPanel;
 

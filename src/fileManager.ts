@@ -20,6 +20,10 @@ export default class FileManager {
 		this.renderer = new Renderer();
 	}
 
+	get appInstance(): App {
+		return this.app;
+	}
+
 	public async saveDailyNotes(dailyNotePath: string, dailyNoteRefs: DailyNoteReferenece[]) {
 		const fileExist = await this.fileExists(dailyNotePath);
 		const toInsertContent = this.buildAppendContent(dailyNoteRefs);
@@ -213,6 +217,7 @@ export default class FileManager {
 	}
 
 	public async deleteNotebookFile(file: TFile): Promise<void> {
+		// Respect the user's file-deletion preference (system vs. local trash).
 		await this.app.fileManager.trashFile(file);
 	}
 
@@ -221,7 +226,7 @@ export default class FileManager {
 			notebook.metaData
 		)}`;
 		if (!(await this.vault.adapter.exists(folderPath))) {
-			console.info(`Folder ${folderPath} not found. Will be created`);
+			console.debug(`Folder ${folderPath} not found. Will be created`);
 			await this.vault.createFolder(folderPath);
 		}
 		const fileName = this.getFileName(notebook.metaData);

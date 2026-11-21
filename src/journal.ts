@@ -236,7 +236,7 @@ export class WereadJournalService {
 				books.set(book.bookId, {
 					bookId: book.bookId,
 					complete: book.complete,
-					notes: book.notes as JournalNote[],
+					notes: book.notes,
 					revision: journalRevision(journalObject(book.revision))
 				});
 			}

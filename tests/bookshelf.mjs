@@ -255,6 +255,9 @@ class Element {
 		element.tag = tag;
 		return element;
 	}
+	createSpan(options = {}) {
+		return this.createEl('span', options);
+	}
 	setAttr(name, value) {
 		this.options.attr = { ...this.options.attr, [name]: value };
 	}
@@ -284,6 +287,7 @@ const Panel = load('src/components/wereadBookshelf.ts', {
 	'./wereadPanel': { WereadPanel: class {} },
 	'svelte/store': mocks['svelte/store'],
 	'./syncLogModal': { SyncLogModal: class {} },
+	'../utils/tooltip': { applyTooltip: () => {} },
 	'../parser/parseResponse': {}
 }).WereadBookshelfPanel;
 

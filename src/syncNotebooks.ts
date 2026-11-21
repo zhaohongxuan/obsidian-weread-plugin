@@ -33,7 +33,10 @@ export default class SyncNotebooks {
 	constructor(fileManager: FileManager, apiManager: ApiRouter, vault: Vault) {
 		this.fileManager = fileManager;
 		this.apiManager = apiManager;
-		this.cacheManager = new PopularHighlightsCacheManager(vault);
+		this.cacheManager = new PopularHighlightsCacheManager(
+			vault,
+			fileManager.appInstance?.fileManager
+		);
 	}
 
 	async syncNotebook(noteFile: AnnotationFile) {
@@ -92,7 +95,7 @@ export default class SyncNotebooks {
 		let lastError: string | undefined;
 
 		// 一次性建好固定尺寸骨架，后续只更新内容，不触发 reflow
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		const container = frag.createDiv({ cls: 'weread-notice-progress' });
 		const headerEl = container.createDiv({ cls: 'weread-notice-progress-header' });
 		const barTrack = container.createDiv({ cls: 'weread-notice-progress-track' });
@@ -181,8 +184,10 @@ export default class SyncNotebooks {
 		const icon = wasCancelled ? '🚫' : lastError ? '⚠️' : '✅';
 		const verb = wasCancelled ? '已取消，已更新' : lastError ? '结束，更新' : '完成！更新';
 		headerEl.setText(`${icon} 同步${verb} ${syncedNotebooks} 本书`);
-		barFill.style.width = '100%';
-		if (wasCancelled) barFill.style.background = 'var(--text-muted)';
+		const WIDTH_COMPLETE = '100%';
+		const BG_CANCELLED = 'var(--text-muted)';
+		barFill.style.width = WIDTH_COMPLETE;
+		if (wasCancelled) barFill.style.background = BG_CANCELLED;
 		const summaryParts = [
 			`📚 书架共 ${metaDataArr.length} 本 · 本次处理 ${total} 本`,
 			failures.length > 0 ? `⚠️ ${failures.length} 本同步失败` : '',
@@ -190,7 +195,7 @@ export default class SyncNotebooks {
 			`⏱ 耗时 ${syncTimeInSeconds.toFixed(1)} 秒`
 		].filter(Boolean);
 		titleEl.setText(summaryParts.join(' · '));
-		setTimeout(() => progressNotice.hide(), 5000);
+		window.setTimeout(() => progressNotice.hide(), 5000);
 		return syncedNotebooks;
 	}
 
@@ -238,9 +243,9 @@ export default class SyncNotebooks {
 		let chapterHighlightReview;
 		if (metaData.bookType === 3) {
 			//公众号文章
-			console.log('sync 公众号：', metaData.title);
+			console.debug('sync 公众号：', metaData.title);
 			chapterHighlightReview = parseArticleHighlightReview(chapters, highlights, reviews);
-			console.log('sync 公众号 result', metaData.title, chapterHighlightReview);
+			console.debug('sync 公众号 result', metaData.title, chapterHighlightReview);
 		} else {
 			chapterHighlightReview = parseChapterHighlightReview(chapters, highlights, reviews);
 		}
@@ -369,10 +374,10 @@ export default class SyncNotebooks {
 			chapterIdx: c.chapterIdx,
 			title: c.title
 		}));
-		await this.cacheManager.set(bookId, items as PopularHighlight[], cacheChapters);
+		await this.cacheManager.set(bookId, items, cacheChapters);
 
 		// 5. 按章节分组返回
-		return this.groupPopularByChapter(items as PopularHighlight[], cacheChapters);
+		return this.groupPopularByChapter(items, cacheChapters);
 	}
 
 	/**
@@ -467,7 +472,7 @@ export default class SyncNotebooks {
 		if (!signal?.cancelled && get(settingsStore).dailyNotesToggle) {
 			const dailyNoteRefereneces = parseDailyNoteReferences(notebooksInDate);
 			const dailyNotePath = this.fileManager.getDailyNotePath(window.moment());
-			console.log(
+			console.debug(
 				'get daily note path',
 				dailyNotePath,
 				' size:',

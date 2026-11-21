@@ -64,15 +64,15 @@ function getCachedDetail(
 	const entry = map?.get(bookId);
 	if (!entry) return undefined;
 	if (entry.credentialKey !== credentialKey) {
-		map!.clear();
+		map.clear();
 		return undefined;
 	}
 	if (Date.now() - entry.cachedAt > DETAIL_CACHE_TTL_MS) {
-		map!.delete(bookId);
+		map.delete(bookId);
 		return undefined;
 	}
-	map!.delete(bookId);
-	map!.set(bookId, entry);
+	map.delete(bookId);
+	map.set(bookId, entry);
 	return entry;
 }
 
@@ -144,7 +144,7 @@ function compactReviewResponse(resp: BookReviewResponse | undefined): BookReview
 		totalCount: resp.totalCount,
 		hasMore: resp.hasMore,
 		reviews: resp.reviews.map((wrapper) => {
-			const raw = ((wrapper?.review as any)?.review || wrapper?.review || wrapper) as any;
+			const raw = ((wrapper?.review as { review?: Record<string, unknown> } | undefined)?.review || wrapper?.review || wrapper) as Record<string, unknown> & { author?: { name?: string } };
 			return {
 				reviewId: wrapper?.reviewId ?? raw?.reviewId,
 				review: {
@@ -323,7 +323,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 			this.pending.clear();
 		}
 		for (const key of ['bookTitle', 'bookCover', 'localFilePath'] as const) {
-			if (typeof state[key] === 'string') this[key] = state[key] as string;
+			if (typeof state[key] === 'string') this[key] = state[key];
 			else if (changed) this[key] = '';
 		}
 		this.currentTab = TABS.some(([tab]) => tab === state.currentTab)
@@ -736,7 +736,7 @@ export class WereadBookDetailPanel extends WereadPanel {
 		for (const item of items) {
 			const key = String(item.chapterUid);
 			if (!groups.has(key)) groups.set(key, []);
-			groups.get(key)!.push(item);
+			groups.get(key).push(item);
 		}
 		const ordered = [...groups].sort(
 			([a], [b]) =>

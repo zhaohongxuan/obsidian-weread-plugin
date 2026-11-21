@@ -18,7 +18,6 @@ import { settingsStore } from './settings';
 import type { QuoteShareTemplate } from './quoteShareCard';
 import { get } from 'svelte/store';
 import WereadLoginModel from './components/wereadLoginModel';
-import WereadLogoutModel from './components/wereadLogoutModel';
 import CookieCloudConfigModal from './components/cookieCloudConfigModel';
 import { ThemeManagerModal } from './components/themeManagerModal';
 import { WereadReencounterBooksModal } from './components/wereadReencounterBooksModal';
@@ -67,7 +66,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 		this.syncSettingsHeadingEl = null;
-		containerEl.createEl('h2', { text: '设置微信读书插件' });
+		new Setting(containerEl).setName('设置微信读书插件').setHeading();
 		this.preloadSelectableBooks();
 
 		// API Key 设置始终可见（桌面端和移动端）
@@ -402,7 +401,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 	}
 
 	private syncModeSettings(): void {
-		this.syncSettingsHeadingEl = this.containerEl.createEl('h3', { text: '同步设置' });
+		this.syncSettingsHeadingEl = new Setting(this.containerEl).setName('同步设置').setHeading().settingEl;
 
 		new Setting(this.containerEl)
 			.setName('同步模式')
@@ -562,7 +561,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 			cls: 'weread-login-title',
 			text: '微信读书未登录'
 		});
-		const desc = document
+		const desc = activeDocument
 			.createRange()
 			.createContextualFragment(`点击【登录】按钮，在弹出页面【扫码登录】`);
 		textInfo
@@ -716,7 +715,9 @@ export class WereadSettingsTab extends PluginSettingTab {
 				});
 			})
 			.addButton((btn) => {
-				return (btn.setButtonText('至').buttonEl.style.borderStyle = 'none');
+				btn.setButtonText('至');
+				btn.buttonEl.addClass('weread-range-sep-btn');
+				return btn;
 			})
 			.addText((input) => {
 				input.setValue(get(settingsStore).insertBefore).onChange((value: string) => {
@@ -847,7 +848,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 					})
 					.setValue(get(settingsStore).noteCountLimit.toString())
 					.onChange(async (value) => {
-						console.log('[weread plugin] new note count limit', value);
+						console.debug('[weread plugin] new note count limit', value);
 						settingsStore.actions.setNoteCountLimit(+value);
 					});
 			});
@@ -879,17 +880,16 @@ export class WereadSettingsTab extends PluginSettingTab {
 			if (!b) return;
 			if (valid === true) {
 				b.setIcon('check-circle').setTooltip('API Key 有效');
-				b.extraSettingsEl.style.color = 'var(--color-green)';
+				b.extraSettingsEl.addClass('weread-status-ok');
 			} else if (valid === false) {
 				b.setIcon('x-circle').setTooltip('API Key 无效，请检查或重新获取');
-				b.extraSettingsEl.style.color = 'var(--color-red)';
+				b.extraSettingsEl.addClass('weread-status-error');
 			} else {
 				b.setIcon('help-circle').setTooltip('API Key 状态未知，点击验证');
-				b.extraSettingsEl.style.color = 'var(--text-muted)';
+				b.extraSettingsEl.addClass('weread-status-muted');
 			}
 		};
-
-		const descFrag = document
+		const descFrag = activeDocument
 			.createRange()
 			.createContextualFragment(
 				`点击「扫码获取」扫码登录后自动获取API Key，也可在 <a href="https://weread.qq.com/r/weread-skills">weread.qq.com/r/weread-skills</a> 手动申请,格式：wrk-xxxxxxxx。<br><strong>注意：</strong> 一些额外的功能需要依赖Cookie，建议使用扫码登录！！`
@@ -907,7 +907,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 						applyStatus(null);
 					});
 				text.inputEl.type = 'password';
-				text.inputEl.style.width = '220px';
+				text.inputEl.addClass('weread-apikey-input');
 				apiKeyText = text;
 				return text;
 			})
@@ -939,10 +939,10 @@ export class WereadSettingsTab extends PluginSettingTab {
 				setting.addExtraButton((button) => {
 					if (isCookieValid) {
 						button.setIcon('cookie').setTooltip('Cookie 有效');
-						button.extraSettingsEl.style.color = 'var(--color-green)';
+						button.extraSettingsEl.addClass('weread-status-ok');
 					} else {
 						button.setIcon('cookie').setTooltip('Cookie 已失效');
-						button.extraSettingsEl.style.color = 'var(--color-red)';
+						button.extraSettingsEl.addClass('weread-status-error');
 					}
 					return button;
 				});
@@ -976,8 +976,8 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 			// 进入设置页时自动校验一次，结果更新到状态图标
 			statusBtn.setIcon('loader-2').setTooltip('验证中...');
-			statusBtn.extraSettingsEl.style.color = 'var(--text-muted)';
-			new ApiRouter().validateApiKey().then((result) => {
+			statusBtn.extraSettingsEl.addClass('weread-status-muted');
+			void new ApiRouter().validateApiKey().then((result) => {
 				settingsStore.actions.setApiKeyValid(result.valid);
 				applyStatus(result.valid);
 			});
@@ -1038,7 +1038,7 @@ export class WereadSettingsTab extends PluginSettingTab {
 
 		const keys = this.containerEl.createDiv();
 		keys.setAttr('align', 'center');
-		keys.style.margin = '10px';
+		keys.addClass('weread-shortcuts-keys');
 		if (Platform.isMacOS === true) {
 			keys.createEl('kbd', { text: 'CMD (⌘) + OPTION (⌥) + I' });
 		} else {
@@ -1298,10 +1298,6 @@ class ManualSyncBookSelectorModal extends Modal {
 		const { contentEl, modalEl } = this;
 		contentEl.empty();
 		modalEl.addClass('weread-book-selector-modal');
-		modalEl.style.width = '90vw';
-		modalEl.style.maxWidth = '960px';
-		modalEl.style.height = '80vh';
-		modalEl.style.maxHeight = '80vh';
 		const isBlacklistMode = this.syncMode === 'blacklist';
 		if (isBlacklistMode) {
 			for (const book of this.books) {
