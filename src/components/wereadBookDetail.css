@@ -253,6 +253,12 @@
 	border-bottom: 1px solid var(--background-modifier-border);
 	min-width: 0;
 }
+.weread-detail-panel .weread-detail-highlight,
+.weread-detail-panel .weread-detail-popular,
+.weread-detail-panel .weread-detail-note {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 150px;
+}
 .weread-detail-panel .weread-detail-highlight:last-child,
 .weread-detail-panel .weread-detail-popular:last-child {
 	border-bottom: 0;
@@ -407,6 +413,25 @@
 }
 .weread-detail-panel .weread-detail-favorite-status:empty {
 	display: none;
+}
+.weread-detail-panel .weread-detail-more-bar {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 12px;
+	padding: 20px 0 8px;
+}
+.weread-detail-panel button.weread-detail-more-btn {
+	max-width: 100%;
+	padding: 6px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+}
+.weread-detail-panel button.weread-detail-more-btn:hover {
+	background: var(--background-modifier-hover);
+	text-decoration: none;
 }
 @media (max-width: 600px) {
 	.weread-detail-panel .weread-detail-page {

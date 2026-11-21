@@ -56,6 +56,7 @@ type ReadingStatusFilter = 'all' | 'reading' | 'finished';
 type BookshelfSort = 'recent' | 'title';
 type BookshelfViewMode = 'list' | 'cover';
 const UNKNOWN_YEAR_LABEL = '未知年份';
+const BOOKSHELF_PAGE_SIZE = 60;
 
 class ConfirmDeleteModal extends Modal {
 	constructor(
@@ -152,6 +153,8 @@ export class WereadBookshelfPanel extends WereadPanel {
 	private summaryEl: HTMLElement;
 	private gridEl: HTMLElement;
 	private settingsUnsubscribe: (() => void) | null = null;
+	private batchObserver?: IntersectionObserver;
+	private renderEpoch = 0;
 
 	constructor(
 		contentEl: HTMLElement,
@@ -415,10 +418,22 @@ export class WereadBookshelfPanel extends WereadPanel {
 		await this.loadBookshelf();
 	}
 
+	private disconnectBatchObserver(): void {
+		this.batchObserver?.disconnect();
+		this.batchObserver = undefined;
+	}
+
+	private nextRenderEpoch(): number {
+		this.disconnectBatchObserver();
+		this.renderEpoch = (this.renderEpoch ?? 0) + 1;
+		return this.renderEpoch;
+	}
+
 	async onClose() {
 		if (this.closed) return;
 		this.closed = true;
 		this.loadGeneration++;
+		this.nextRenderEpoch();
 		if (this.settingsUnsubscribe) {
 			this.settingsUnsubscribe();
 			this.settingsUnsubscribe = null;
@@ -429,6 +444,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 	private async loadBookshelf(force = false): Promise<void> {
 		if (this.closed) return;
 		const generation = ++this.loadGeneration;
+		this.nextRenderEpoch();
 		this.shelfBooks = [];
 		this.collection = {
 			books: [],
@@ -483,6 +499,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 				if (generation !== this.loadGeneration) return;
 				console.error('[weread plugin] 本地书架加载失败', localError);
 				this.shelfBooks = [];
+				this.nextRenderEpoch();
 				this.gridEl.empty();
 			}
 			this.summaryEl.empty();
@@ -550,16 +567,57 @@ export class WereadBookshelfPanel extends WereadPanel {
 		this.genreSelect.value = this.genreFilter;
 	}
 
+	private renderBatched<T>(items: T[], renderItem: (item: T) => void, epoch: number): void {
+		let rendered = 0;
+		let moreBar: HTMLElement | undefined;
+		const appendNext = (count = BOOKSHELF_PAGE_SIZE): void => {
+			if (this.closed || (this.renderEpoch ?? 0) !== epoch) return;
+			moreBar?.remove();
+			moreBar = undefined;
+			this.disconnectBatchObserver();
+			const end = Math.min(rendered + count, items.length);
+			for (; rendered < end; rendered++) {
+				renderItem(items[rendered]);
+			}
+			const remaining = items.length - rendered;
+			if (remaining <= 0) return;
+			moreBar = this.gridEl.createDiv({ cls: 'weread-bookshelf-more-bar' });
+			const moreBtn = moreBar.createEl('button', {
+				cls: 'weread-bookshelf-more-btn',
+				text: `加载更多（剩余 ${remaining} 项）`,
+				attr: { type: 'button' }
+			});
+			moreBtn.onclick = () => appendNext(BOOKSHELF_PAGE_SIZE);
+			if (typeof IntersectionObserver !== 'undefined') {
+				this.batchObserver = new IntersectionObserver(
+					(entries) => {
+						if (
+							!this.closed &&
+							(this.renderEpoch ?? 0) === epoch &&
+							entries.some((entry) => entry.isIntersecting)
+						) {
+							appendNext(BOOKSHELF_PAGE_SIZE);
+						}
+					},
+					{ rootMargin: '400px 0px' }
+				);
+				this.batchObserver.observe(moreBar);
+			}
+		};
+		appendNext(BOOKSHELF_PAGE_SIZE);
+	}
+
 	private renderBooks(): void {
+		const epoch = this.nextRenderEpoch();
 		this.updateGenreFilter();
-		let filteredBooks = this.getFilteredBooks();
+		const filteredBooks = this.getFilteredBooks();
 		this.gridEl.empty();
 		this.emptyStateEl.empty();
 
 		const settings = get(settingsStore);
 		this.renderSummaryCard(filteredBooks, settings);
 		if (this.sourceMode === 'bookshelf') {
-			this.renderShelfNavigation(filteredBooks);
+			this.renderShelfNavigation(filteredBooks, epoch);
 			return;
 		}
 
@@ -571,60 +629,112 @@ export class WereadBookshelfPanel extends WereadPanel {
 
 		if (this.viewMode === 'cover') {
 			const coverGrid = this.gridEl.createDiv({ cls: 'weread-bookshelf-cover-grid' });
-			for (const book of filteredBooks) {
-				this.renderCoverCard(book, coverGrid);
-			}
+			this.renderBatched(filteredBooks, (book) => this.renderCoverCard(book, coverGrid), epoch);
 			return;
 		}
 
 		if (this.shouldGroupByYear()) {
-			for (const group of this.groupBooksByYear(filteredBooks)) {
-				const section = this.gridEl.createDiv({ cls: 'weread-bookshelf-group' });
-				section.createEl('h3', {
-					cls: 'weread-bookshelf-group-title',
-					text: group.year === UNKNOWN_YEAR_LABEL ? group.year : `${group.year} 年`
-				});
-				const groupGrid = section.createDiv({ cls: 'weread-bookshelf-group-grid' });
-				for (const book of group.books) {
-					this.renderBookCard(book, groupGrid);
-				}
-			}
+			const yearEntries = this.groupBooksByYear(filteredBooks).flatMap((group) =>
+				group.books.map((book) => ({ year: group.year, book }))
+			);
+			let currentYear: string | null = null;
+			let currentGroupGrid: HTMLElement | null = null;
+			this.renderBatched(
+				yearEntries,
+				(entry) => {
+					if (entry.year !== currentYear || !currentGroupGrid) {
+						currentYear = entry.year;
+						const section = this.gridEl.createDiv({ cls: 'weread-bookshelf-group' });
+						section.createEl('h3', {
+							cls: 'weread-bookshelf-group-title',
+							text: entry.year === UNKNOWN_YEAR_LABEL ? entry.year : `${entry.year} 年`
+						});
+						currentGroupGrid = section.createDiv({
+							cls: 'weread-bookshelf-group-grid'
+						});
+					}
+					this.renderBookCard(entry.book, currentGroupGrid);
+				},
+				epoch
+			);
 			return;
 		}
 
 		const defaultGrid = this.gridEl.createDiv({ cls: 'weread-bookshelf-group-grid' });
-		for (const book of filteredBooks) {
-			this.renderBookCard(book, defaultGrid);
+		this.renderBatched(filteredBooks, (book) => this.renderBookCard(book, defaultGrid), epoch);
+	}
+
+	private buildFolderBookIndex(): {
+		bookToFolders: Map<string, string[]>;
+		folderBooksMap: Map<string, BookshelfBook[]>;
+		groupedIds: Set<string>;
+	} {
+		const bookToFolders = new Map<string, string[]>();
+		const folderBooksMap = new Map<string, BookshelfBook[]>();
+		const groupedIds = new Set<string>();
+		for (const folder of this.collection.folders) {
+			folderBooksMap.set(folder.id, []);
+			for (const id of new Set(folder.bookIds)) {
+				groupedIds.add(id);
+				let list = bookToFolders.get(id);
+				if (!list) {
+					list = [];
+					bookToFolders.set(id, list);
+				}
+				list.push(folder.id);
+			}
 		}
+		for (const book of this.shelfBooks) {
+			if (!book.remoteExists) continue;
+			const folderIds = bookToFolders.get(book.bookId);
+			if (!folderIds) continue;
+			for (const folderId of folderIds) {
+				folderBooksMap.get(folderId).push(book);
+			}
+		}
+		return { bookToFolders, folderBooksMap, groupedIds };
 	}
 
 	/** Folders inherit their latest book date and participate in the same sort as books. */
-	private getShelfItems(filteredBooks: BookshelfBook[]): ShelfGridItem[] {
+	private getShelfItems(
+		filteredBooks: BookshelfBook[],
+		index = this.buildFolderBookIndex()
+	): ShelfGridItem[] {
 		if (this.genreFilter && this.genreFilter !== 'all')
 			return filteredBooks.map((book) => ({ kind: 'book', book }));
-		const groupedIds = new Set(this.collection.folders.flatMap((folder) => folder.bookIds));
+		const { bookToFolders, folderBooksMap, groupedIds } = index;
 		const items: ShelfGridItem[] = filteredBooks
 			.filter((book) => !book.remoteExists || !groupedIds.has(book.bookId))
 			.map((book) => ({ kind: 'book', book }));
-		const eligible = this.getFilteredBooks('');
 		const hasStatusFilter =
 			this.categoryFilter !== 'all' ||
 			this.syncStatusFilter !== 'all' ||
 			this.readingStatusFilter !== 'all';
+		const eligibleFolderIds = new Set<string>();
+		if (hasStatusFilter) {
+			for (const book of this.getFilteredBooks('')) {
+				if (!book.remoteExists) continue;
+				for (const folderId of bookToFolders.get(book.bookId) ?? []) {
+					eligibleFolderIds.add(folderId);
+				}
+			}
+		}
+		const filteredFolderIds = new Set<string>();
+		if (this.searchKeyword) {
+			for (const book of filteredBooks) {
+				if (!book.remoteExists) continue;
+				for (const folderId of bookToFolders.get(book.bookId) ?? []) {
+					filteredFolderIds.add(folderId);
+				}
+			}
+		}
 		for (const folder of this.collection.folders) {
-			const ids = new Set(folder.bookIds);
-			const books = this.shelfBooks.filter(
-				(book) => book.remoteExists && ids.has(book.bookId)
-			);
-			if (
-				hasStatusFilter &&
-				!eligible.some((book) => book.remoteExists && ids.has(book.bookId))
-			)
-				continue;
+			const books = folderBooksMap.get(folder.id) ?? [];
+			if (hasStatusFilter && !eligibleFolderIds.has(folder.id)) continue;
 			if (
 				this.searchKeyword &&
 				!folder.name.toLowerCase().includes(this.searchKeyword) &&
-				!filteredBooks.some((book) => book.remoteExists && ids.has(book.bookId))
+				!filteredFolderIds.has(folder.id)
 			)
 				continue;
 			items.push({ kind: 'folder', folder, books });
@@ -645,9 +755,13 @@ export class WereadBookshelfPanel extends WereadPanel {
 		);
 	}
 
-	private renderShelfNavigation(filteredBooks: BookshelfBook[]): void {
+	private renderShelfNavigation(
+		filteredBooks: BookshelfBook[],
+		epoch = this.nextRenderEpoch()
+	): void {
 		const folders = this.collection.folders;
 		const activeFolder = folders.find((folder) => folder.id === this.activeFolderId);
+		const folderIndex = activeFolder ? undefined : this.buildFolderBookIndex();
 		let items: ShelfGridItem[];
 		if (activeFolder) {
 			const navigation = this.gridEl.createDiv({ cls: 'weread-bookshelf-folder-navigation' });
@@ -667,7 +781,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			if (!items.length) navigation.createEl('p', { text: '此文件夹没有匹配的书籍' });
 		} else {
 			this.activeFolderId = null;
-			items = this.getShelfItems(filteredBooks);
+			items = this.getShelfItems(filteredBooks, folderIndex);
 		}
 		if (!items.length) {
 			if (!activeFolder)
@@ -676,78 +790,90 @@ export class WereadBookshelfPanel extends WereadPanel {
 				);
 			return;
 		}
+		const hasFilter =
+			Boolean(this.searchKeyword) ||
+			this.categoryFilter !== 'all' ||
+			this.syncStatusFilter !== 'all' ||
+			this.readingStatusFilter !== 'all';
+		const filteredCountByFolder = new Map<string, number>();
+		if (!activeFolder && hasFilter && folderIndex) {
+			for (const book of filteredBooks) {
+				if (!book.remoteExists) continue;
+				for (const folderId of folderIndex.bookToFolders.get(book.bookId) ?? []) {
+					filteredCountByFolder.set(
+						folderId,
+						(filteredCountByFolder.get(folderId) ?? 0) + 1
+					);
+				}
+			}
+		}
 		const folderGrid = this.gridEl.createDiv({
 			cls: 'weread-bookshelf-folder-grid weread-bookshelf-mixed-grid'
 		});
-		for (const item of items) {
-			if (item.kind === 'book') {
-				if (this.viewMode === 'cover') this.renderCoverCard(item.book, folderGrid);
-				else this.renderBookCard(item.book, folderGrid);
-				continue;
-			}
-			const folder = item.folder;
-			const ids = new Set(folder.bookIds);
-			const members = filteredBooks.filter(
-				(book) => book.remoteExists && ids.has(book.bookId)
-			);
-			const hasFilter =
-				Boolean(this.searchKeyword) ||
-				this.categoryFilter !== 'all' ||
-				this.syncStatusFilter !== 'all' ||
-				this.readingStatusFilter !== 'all';
-			const availableCount = this.shelfBooks.filter(
-				(book) => book.remoteExists && ids.has(book.bookId)
-			).length;
-			const button = folderGrid.createEl('button', {
-				cls: 'weread-bookshelf-folder-card',
-				attr: {
-					type: 'button',
-					title: folder.name,
-					'aria-label': `打开文件夹 ${folder.name}，${availableCount} 本`
+		this.renderBatched(
+			items,
+			(item) => {
+				if (item.kind === 'book') {
+					if (this.viewMode === 'cover') this.renderCoverCard(item.book, folderGrid);
+					else this.renderBookCard(item.book, folderGrid);
+					return;
 				}
-			});
-			const previews = this.shelfBooks
-				.filter((book) => book.remoteExists && ids.has(book.bookId) && book.cover)
-				.slice(0, 4);
-			const collage = button.createDiv({
-				cls: 'weread-bookshelf-folder-covers',
-				attr: { 'data-count': String(previews.length), 'aria-hidden': 'true' }
-			});
-			for (const book of previews) {
-				const cell = collage.createSpan({ cls: 'weread-bookshelf-folder-cell' });
-				const image = cell.createEl('img', {
-					cls: 'weread-bookshelf-folder-cover',
-					attr: { src: book.cover, alt: '', loading: 'lazy', decoding: 'async' }
+				const folder = item.folder;
+				const availableCount = item.books.length;
+				const matchedCount = filteredCountByFolder.get(folder.id) ?? 0;
+				const button = folderGrid.createEl('button', {
+					cls: 'weread-bookshelf-folder-card',
+					attr: {
+						type: 'button',
+						title: folder.name,
+						'aria-label': `打开文件夹 ${folder.name}，${availableCount} 本`
+					}
 				});
-				image.onerror = () => {
-					image.remove();
-					setIcon(cell, 'book-open');
+				const previews = item.books.filter((book) => book.cover).slice(0, 4);
+				const collage = button.createDiv({
+					cls: 'weread-bookshelf-folder-covers',
+					attr: { 'data-count': String(previews.length), 'aria-hidden': 'true' }
+				});
+				for (const book of previews) {
+					const cell = collage.createSpan({ cls: 'weread-bookshelf-folder-cell' });
+					const image = cell.createEl('img', {
+						cls: 'weread-bookshelf-folder-cover',
+						attr: { src: book.cover, alt: '', loading: 'lazy', decoding: 'async' }
+					});
+					image.onerror = () => {
+						image.remove();
+						setIcon(cell, 'book-open');
+					};
+				}
+				if (!previews.length) {
+					const fallback = collage.createSpan({
+						cls: 'weread-bookshelf-folder-placeholder'
+					});
+					setIcon(fallback, 'folder');
+				}
+				const mark = collage.createSpan({ cls: 'weread-bookshelf-folder-mark' });
+				setIcon(mark, 'folder');
+				collage.createSpan({
+					cls: 'weread-bookshelf-folder-count',
+					text: String(availableCount)
+				});
+				button.createEl('strong', {
+					cls: 'weread-bookshelf-folder-title',
+					text: folder.name
+				});
+				if (hasFilter) {
+					button.createSpan({
+						cls: 'weread-bookshelf-folder-caption',
+						text: `匹配 ${matchedCount} 本`
+					});
+				}
+				button.onclick = () => {
+					this.activeFolderId = folder.id;
+					this.renderBooks();
 				};
-			}
-			if (!previews.length) {
-				const fallback = collage.createSpan({
-					cls: 'weread-bookshelf-folder-placeholder'
-				});
-				setIcon(fallback, 'folder');
-			}
-			const mark = collage.createSpan({ cls: 'weread-bookshelf-folder-mark' });
-			setIcon(mark, 'folder');
-			collage.createSpan({
-				cls: 'weread-bookshelf-folder-count',
-				text: String(availableCount)
-			});
-			button.createEl('strong', { cls: 'weread-bookshelf-folder-title', text: folder.name });
-			if (hasFilter) {
-				button.createSpan({
-					cls: 'weread-bookshelf-folder-caption',
-					text: `匹配 ${members.length} 本`
-				});
-			}
-			button.onclick = () => {
-				this.activeFolderId = folder.id;
-				this.renderBooks();
-			};
-		}
+			},
+			epoch
+		);
 	}
 
 	private renderSummaryCard(filteredBooks: BookshelfBook[], settings: any): void {
@@ -850,6 +976,7 @@ export class WereadBookshelfPanel extends WereadPanel {
 			cover.src = book.cover;
 			cover.alt = book.title;
 			cover.loading = 'lazy';
+			cover.decoding = 'async';
 		} else {
 			card.createDiv({
 				cls: 'weread-bookshelf-card-cover-placeholder',
@@ -899,6 +1026,8 @@ export class WereadBookshelfPanel extends WereadPanel {
 			});
 			cover.src = book.cover;
 			cover.alt = book.title;
+			cover.loading = 'lazy';
+			cover.decoding = 'async';
 		} else {
 			coverWrap.createDiv({
 				cls: 'weread-bookshelf-card-cover-placeholder',

@@ -264,3 +264,29 @@
 .weread-bookshelf-view .weread-bookshelf-summary {
 	margin: 8px 0 12px;
 }
+
+.weread-bookshelf-card {
+	content-visibility: auto;
+	contain-intrinsic-size: auto 140px;
+}
+
+.weread-bookshelf-more-bar {
+	display: flex;
+	justify-content: center;
+	padding: 16px 0 8px;
+}
+
+.weread-bookshelf-more-btn {
+	max-width: 100%;
+	padding: 6px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.weread-bookshelf-more-btn:hover {
+	background: var(--background-modifier-hover);
+}
