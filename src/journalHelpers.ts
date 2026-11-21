@@ -20,6 +20,8 @@ export interface JournalRevision {
 	reviewCount: number;
 	bookmarkCount?: number;
 	sort?: number;
+	/** Listed book's own `updatedAt` (seconds); upstream bumps it when notes change. */
+	updatedAt?: number;
 }
 
 export const journalObject = (value: unknown): JournalObject =>
@@ -58,10 +60,18 @@ export function journalRevision(book: JournalObject): JournalRevision | undefine
 		noteCount: book.noteCount,
 		reviewCount: book.reviewCount,
 		...(count(book.bookmarkCount) ? { bookmarkCount: book.bookmarkCount } : {}),
-		...(count(book.sort) && book.sort > 0 ? { sort: book.sort } : {})
+		...(count(book.sort) && book.sort > 0 ? { sort: book.sort } : {}),
+		...(count(book.updatedAt) && book.updatedAt > 0 ? { updatedAt: book.updatedAt } : {})
 	};
 }
 
+/**
+ * Decide whether a book's cached detail may be reused. Only upstream change
+ * signals matter: noteCount (划线数), reviewCount (想法数) and bookmarkCount
+ * (书签数). Reading recency (`sort`) and exact-edit `updatedAt` are ignored so
+ * bumping `sort` after reading an existing highlight no longer forces a full
+ * refetch — mirroring how the Markdown frontmatter count fields behave.
+ */
 export function sameJournalRevision(
 	left: JournalRevision | undefined,
 	right: JournalRevision | undefined
@@ -71,8 +81,7 @@ export function sameJournalRevision(
 		right !== undefined &&
 		left.noteCount === right.noteCount &&
 		left.reviewCount === right.reviewCount &&
-		left.bookmarkCount === right.bookmarkCount &&
-		left.sort === right.sort
+		left.bookmarkCount === right.bookmarkCount
 	);
 }
 
@@ -199,17 +208,27 @@ export function sortJournalNotes(notes: JournalNote[]): JournalNote[] {
 	return notes.sort((a, b) => b.createTime - a.createTime || a.id.localeCompare(b.id));
 }
 
-/** Existing router methods can return undefined or a truncated first review page. */
-export function journalSourceComplete(
+/**
+ * Why one source (highlights or reviews) of a book is considered incomplete.
+ * Returns '' when the response is complete. Shared by the completeness check and
+ * the user-visible failure breakdown so the two never disagree.
+ */
+export function journalSourceFailureReason(
 	response: unknown,
 	kind: 'highlight' | 'thought',
 	expected?: number
-): boolean {
+): string {
+	const label = kind === 'highlight' ? '划线' : '想法';
 	const root = journalObject(response);
-	if (root.errcode !== undefined && root.errcode !== 0) return false;
-	if (root.hasMore === true || root.hasMore === 1 || root.hasMore === '1') return false;
+	if (response === undefined || response === null) return `${label}请求失败`;
+	if (typeof root.errcode === 'number' && root.errcode !== 0) {
+		return `${label}接口返回错误（errcode ${root.errcode}）`;
+	}
+	if (root.hasMore === true || root.hasMore === 1 || root.hasMore === '1') {
+		return `${label}分页未取完（还有更多）`;
+	}
 	const items = kind === 'highlight' ? root.updated : root.reviews;
-	if (!Array.isArray(items)) return false;
+	if (!Array.isArray(items)) return `${label}数据缺失`;
 	const ids = new Set<string>();
 	for (const value of items) {
 		const wrapper = journalObject(value);
@@ -218,14 +237,22 @@ export function journalSourceComplete(
 		const id = journalId(
 			kind === 'highlight' ? item.bookmarkId : (item.reviewId ?? wrapper.reviewId)
 		);
-		if (!id) return false;
+		if (!id) return `${label}数据格式异常`;
 		ids.add(id);
 	}
-	const total = root.totalCount;
-	return (
-		(expected === undefined || ids.size >= expected) &&
-		(typeof total !== 'number' || ids.size >= total)
-	);
+	const total = typeof root.totalCount === 'number' ? root.totalCount : undefined;
+	const want = Math.max(expected ?? 0, total ?? 0);
+	if (want > ids.size) return `${label}数量不足（${ids.size}/${want}）`;
+	return '';
+}
+
+/** Existing router methods can return undefined or a truncated first review page. */
+export function journalSourceComplete(
+	response: unknown,
+	kind: 'highlight' | 'thought',
+	expected?: number
+): boolean {
+	return journalSourceFailureReason(response, kind, expected) === '';
 }
 
 export function validJournalNote(value: unknown, bookId: string): value is JournalNote {

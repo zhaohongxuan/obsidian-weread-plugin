@@ -34,6 +34,7 @@ export class WereadReadingView extends ItemView {
 	private pendingUrl: string | null = null;
 	private pendingBookmark: WereadBookmarkLocation | null = null;
 	private isBootstrapped = false;
+	private isWebviewReady = false;
 	private bookmarkNavigationTimer: number | null = null;
 	private bookmarkNavigationGeneration = 0;
 
@@ -58,9 +59,13 @@ export class WereadReadingView extends ItemView {
 		// A hook in the previous document is discarded during navigation. Install in
 		// the new document before the asynchronous reader paints its first page.
 		this.webviewEl.addEventListener('dom-ready', () => {
+			this.isWebviewReady = true;
 			if (this.pendingBookmark) void this.installEarlyCanvasHooks();
 		});
 		this.webviewEl.addEventListener('did-finish-load', () => {
+			// A completed load implies the webview is attached and dom-ready even if
+			// that event was missed; safe to execute scripts from here on.
+			this.isWebviewReady = true;
 			if (!this.isBootstrapped) {
 				this.isBootstrapped = true;
 				if (this.pendingUrl) {
@@ -130,15 +135,32 @@ export class WereadReadingView extends ItemView {
 			this.bookmarkNavigationTimer = null;
 		}
 		// Stop a pending page scan before a newer highlight or another book opens.
-		void this.webviewEl
-			?.executeJavaScript?.('window.__wereadBookmarkNavigationToken = null;')
-			.catch((): void => undefined);
+		this.runInWebview('window.__wereadBookmarkNavigationToken = null;');
+	}
+
+	/**
+	 * Run script inside the webview only once it is attached and dom-ready.
+	 * Electron's executeJavaScript throws synchronously (not a rejected promise)
+	 * before that point, e.g. when setState runs before onOpen restores the view;
+	 * calling it there crashed the reader into a half blank page.
+	 */
+	private runInWebview(code: string): Promise<unknown> {
+		if (!this.webviewEl || !this.isWebviewReady || !this.webviewEl.executeJavaScript) {
+			return Promise.resolve();
+		}
+		try {
+			return Promise.resolve(this.webviewEl.executeJavaScript(code)).catch(
+				(): unknown => undefined
+			);
+		} catch {
+			return Promise.resolve();
+		}
 	}
 
 	private async installEarlyCanvasHooks(): Promise<void> {
-		if (!this.pendingBookmark || !this.webviewEl?.executeJavaScript) return;
+		if (!this.pendingBookmark || !this.webviewEl) return;
 		try {
-			await this.webviewEl.executeJavaScript(BOOKMARK_CANVAS_HOOK_SCRIPT);
+			await this.runInWebview(BOOKMARK_CANVAS_HOOK_SCRIPT);
 		} catch (error) {
 			console.debug('[weread plugin] early canvas hook failed', error);
 		}
@@ -176,13 +198,11 @@ export class WereadReadingView extends ItemView {
 		bookmark: WereadBookmarkLocation,
 		generation = this.bookmarkNavigationGeneration
 	): Promise<void> {
-		if (!this.webviewEl?.executeJavaScript) return;
+		if (!this.webviewEl || !this.isWebviewReady) return;
 		try {
 			await this.installEarlyCanvasHooks();
 			if (generation !== this.bookmarkNavigationGeneration) return;
-			const result = await this.webviewEl.executeJavaScript(
-				buildBookmarkNavigationScript(bookmark)
-			);
+			const result = await this.runInWebview(buildBookmarkNavigationScript(bookmark));
 			if (
 				generation !== this.bookmarkNavigationGeneration ||
 				this.pendingBookmark !== bookmark
