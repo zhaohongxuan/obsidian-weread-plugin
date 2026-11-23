@@ -135,7 +135,7 @@ export class WereadReadingView extends ItemView {
 			this.bookmarkNavigationTimer = null;
 		}
 		// Stop a pending page scan before a newer highlight or another book opens.
-		this.runInWebview('window.__wereadBookmarkNavigationToken = null;');
+		void this.runInWebview('window.__wereadBookmarkNavigationToken = null;');
 	}
 
 	/**

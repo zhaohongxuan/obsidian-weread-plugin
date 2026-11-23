@@ -316,13 +316,13 @@ export class WereadJournalService {
 		previous: JournalState
 	): Promise<void> {
 		const startedAt = Date.now();
-		console.log('[weread journal] 开始刷新笔记…');
+		console.debug('[weread journal] 开始刷新笔记…');
 		try {
 			if (!this.current(generation)) return;
 			const listStart = Date.now();
 			const response: unknown = await this.api.getNotebooksWithRetry();
 			const listMs = Date.now() - listStart;
-			console.log(`[weread journal] 笔记本列表请求耗时 ${listMs}ms`);
+			console.debug(`[weread journal] 笔记本列表请求耗时 ${listMs}ms`);
 			if (!this.current(generation)) return;
 			if (!Array.isArray(response)) throw new Error('Missing notebooks');
 			const books = journalBooks(response);
@@ -424,7 +424,7 @@ export class WereadJournalService {
 				error: failedBooks ? `${failedBooks} 本书的笔记未完整同步，请稍后重试` : '',
 				hasCache: true
 			};
-			console.log(
+			console.debug(
 				`[weread journal] 刷新完成：共 ${books.length} 本，复用 ${reusedBooks} 本，重取 ${refetchedBooks} 本，跳过公众号 ${skippedArticles} 本，失败 ${failedBooks} 本，耗时 ${Date.now() - startedAt}ms`
 			);
 			const record: JournalRecord = {
@@ -455,7 +455,7 @@ export class WereadJournalService {
 			if (this.current(generation)) this.emit();
 		} catch {
 			if (!this.current(generation)) return;
-			console.warn(`[weread journal] 刷新失败，耗时 ${Date.now() - startedAt}ms`);
+			console.debug(`[weread journal] 刷新失败，耗时 ${Date.now() - startedAt}ms`);
 			this.state = {
 				...previous,
 				syncing: false,

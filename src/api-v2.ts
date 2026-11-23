@@ -217,7 +217,7 @@ class ApiV2Manager {
 				books: any[];
 				hasMore?: number | string | boolean;
 			}>('/user/notebooks', params, true);
-			console.log(
+			console.debug(
 				`[weread journal] /user/notebooks 第 ${pageIndex + 1} 页耗时 ${Date.now() - pageStart}ms`
 			);
 			if (!page || !Array.isArray(page.books))

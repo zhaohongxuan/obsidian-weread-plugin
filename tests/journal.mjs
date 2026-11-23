@@ -821,13 +821,13 @@ test('refresh logs reuse/refetch/skip counts so duration can be explained', asyn
 		book('two', { noteCount: 1, reviewCount: 1 })
 	]);
 	const logs = [];
-	const original = console.log;
-	console.log = (...args) => logs.push(args.join(' '));
+	const original = console.debug;
+	console.debug = (...args) => logs.push(args.join(' '));
 	try {
 		await service.load(true);
 		await settled(service);
 	} finally {
-		console.log = original;
+		console.debug = original;
 	}
 	const line = logs.find((l) => l.includes('刷新完成'));
 	assert(line, 'refresh logs a completion line');
