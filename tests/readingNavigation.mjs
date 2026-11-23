@@ -146,3 +146,31 @@ test('stale async navigation cannot consume a newer bookmark or notify after rep
   assert.deepEqual(f.notices, [], 'Closing suppresses late fallback notices from an in-flight guest script');
   assert.equal(f.requests.length, 2, 'Closing prevents the queued bookmark from executing');
 });
+
+test('setState before onOpen must not execute in an unattached webview or throw', async t => {
+  const f = fixture(t);
+  // Obsidian restores a view by calling setState before onOpen runs; there is no
+  // webview element yet. This previously threw "The WebView must be attached to
+  // the DOM and the dom-ready event emitted..." and blanked the reader.
+  await f.view.setState({ url: READER_URL, bookmark: bookmark(100, 'Restored quote') });
+  assert.deepEqual(f.guestScripts, [], 'No guest script is executed before the webview exists');
+  assert.equal(f.requests.length, 0, 'No bookmark navigation happens before the webview is attached');
+  // Opening afterwards must bootstrap from the shelf and still reach the bookmark.
+  await f.view.onOpen();
+  f.webview.finish();
+  f.webview.finish();
+  await f.runUntilRequests(1);
+  assert.deepEqual(f.requests[0].bookmark, bookmark(100, 'Restored quote'), 'The restored bookmark survives the deferred open');
+});
+
+test('a synchronous throw from executeJavaScript before dom-ready is swallowed', async t => {
+  const f = fixture(t);
+  await f.view.onOpen();
+  // Not finished loading yet: simulate Electron throwing synchronously.
+  f.webview.executeJavaScript = () => {
+    throw new Error('The WebView must be attached to the DOM and the dom-ready event emitted before this method can be called.');
+  };
+  // cancelBookmarkNavigation runs here (via navigate/setState) and must not throw.
+  assert.doesNotThrow(() => f.view.navigate(READER_URL, bookmark(100, 'Quote')));
+  await flush();
+});

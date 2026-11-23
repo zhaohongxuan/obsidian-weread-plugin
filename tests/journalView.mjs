@@ -585,15 +585,23 @@ window.smoke = {
     check(document.body.textContent.includes('1小时1分钟'), 'Today reads local-day duration');
     check(document.querySelector('.weread-journal-summary').textContent.includes('今日划线1 条'), 'Today counts highlight after UTC midnight boundary');
     const completeState = { ...state, syncing: false, failedBooks: 0, error: '' };
+    journal.publish({ ...completeState, lastDurationMs: 8300 });
+    check(status.textContent.includes('上次耗时 8 秒'), 'Completed sync shows how long the last refresh took');
+    journal.publish({ ...completeState, lastDurationMs: 65000 });
+    check(document.querySelector('.weread-journal-status').textContent.includes('上次耗时 1 分 5 秒'), 'Longer refreshes render minutes and seconds');
+    journal.publish({ ...completeState, syncing: true, lastDurationMs: 8300 });
+    check(!document.querySelector('.weread-journal-status').textContent.includes('上次耗时'), 'No stale duration hint while a new sync is running');
+    journal.publish({ ...completeState, lastDurationMs: 0 });
+    check(!document.querySelector('.weread-journal-status').textContent.includes('上次耗时'), 'Unknown duration shows no duration label');
     const metricCards = () => [...document.querySelector('.weread-journal-today-metrics-grid').children];
     journal.publish({ ...completeState, notes: [], syncing: true, scannedBooks: 428, totalBooks: 565 });
     check(refresh.disabled && status.textContent.includes('正在更新 428/565 本'), 'Background syncing disables refresh and retains visible cache coverage');
     check(metricCards().slice(1).every(card => card.querySelector('strong').textContent === '0 条'), 'Partial zero counts contain only numbers and units');
-    check(metricCards().slice(1).every(card => card.querySelector('small.weread-journal-metric-status')?.textContent === '统计中，当前为部分结果'), 'In-progress counts explain partial coverage below the value');
-    check(!metricCards()[0].querySelector('.weread-journal-metric-status'), 'Note coverage does not qualify the independent reading duration');
-    check(metricCards().slice(1).every(card => parseFloat(getComputedStyle(card.querySelector('small')).fontSize) < parseFloat(getComputedStyle(card.querySelector('strong')).fontSize)), 'Coverage uses smaller type than the metric value');
+    check(metricCards().slice(1).every(card => !card.querySelector('.weread-journal-metric-status')), 'In-progress sync shows no partial-result hint under the counts');
+    check(!metricCards()[0].querySelector('.weread-journal-metric-status'), 'Duration card carries no coverage hint');
     journal.publish({ ...completeState, notes: [], syncing: false, failedBooks: 1 });
-    check(metricCards().slice(1).every(card => card.querySelector('strong').textContent === '0 条' && card.querySelector('small')?.textContent === '部分书籍加载失败，当前为部分结果'), 'Failed coverage stays distinct from a complete zero count');
+    check(metricCards().slice(1).every(card => card.querySelector('strong').textContent === '0 条' && !card.querySelector('.weread-journal-metric-status')), 'Failed coverage never adds a hint under the counts');
+    check(!document.body.textContent.includes('部分书籍加载失败'), 'Failed-coverage hint text is removed entirely');
     journal.publish({ ...completeState, notes: [], hasCache: false, syncing: true });
     check(metricCards().slice(1).every(card => card.querySelector('strong').textContent === '加载中…'), 'No initial cache never claims a known zero');
     journal.publish(completeState);
@@ -605,6 +613,7 @@ window.smoke = {
     const metrics = summary.querySelector('.weread-journal-today-metrics');
     check(summary.children.length === 2 && metrics.querySelector('.weread-journal-today-metrics-grid').children.length === 3 && summary.lastElementChild.classList.contains('weread-journal-today-books'), 'Today overview groups three metrics and books into two halves');
     check(metrics.querySelector('span').textContent === '阅读时长', 'Duration uses the requested reading-only label');
+    check(metrics.querySelector('.weread-journal-metric-hint')?.textContent.includes('延迟'), 'Duration card shows a small note that WeRead stats lag');
     const titles = [...summary.querySelectorAll('.weread-journal-today-book-list .weread-journal-source')].map((node) => node.textContent);
     check(JSON.stringify(titles) === JSON.stringify(['《新书》', '《山间的阅读》', '《第三本今日书》']), 'Today books are sorted by recency and limited to the latest three');
     check(!summary.textContent.includes('OLDER BOOK SENTINEL') && !summary.textContent.includes('FOURTH BOOK SENTINEL'), 'Older same-day books are omitted');
@@ -673,6 +682,42 @@ window.smoke = {
     journal.publish({ ...state, syncing: false, failedBooks: 1, error: '1 本书未完整获取' });
     check(document.querySelector('.weread-journal-status').textContent.includes('1 本未完整获取'), 'Partial state is visible beside cached content');
     return assertions;
+  },
+  async failures() {
+    const assertionStart = assertions.length;
+    await mount('today');
+    const failures = [
+      { bookId: 'a', title: '山间的阅读', reason: '划线分页未取完（还有更多）' },
+      { bookId: 'b', title: '城市与记忆', reason: '想法请求失败' }
+    ];
+    journal.publish({ ...state, syncing: false, failedBooks: 2, failures, error: '2 本书的笔记未完整同步，请稍后重试' });
+    let status = document.querySelector('.weread-journal-status');
+    check(status.textContent.includes('2 本未完整获取'), 'Failure count stays visible in the header');
+    check(status.classList.contains('is-clickable') && status.getAttribute('role') === 'button' && status.tabIndex === 0, 'Status becomes an accessible button when failures exist');
+    check(status.title.includes('点击查看失败原因'), 'Tooltip invites the user to open the failure breakdown');
+    check(!document.querySelector('.modal-content'), 'No failure dialog before the user clicks');
+    status.click();
+    const modal = document.querySelector('.modal-content');
+    check(Boolean(modal), 'Clicking the status opens the failure breakdown dialog');
+    const modalRoot = modal.closest('.modal') || modal.parentElement;
+    check(modalRoot.querySelector('.modal-title').textContent.includes('2 本'), 'Dialog title states how many books failed');
+    const rows = [...modal.querySelectorAll('.weread-journal-failure-row')];
+    check(rows.length === 2, 'Every failed book is listed');
+    check(rows.every((row) => row.querySelector('strong')) && rows.every((row) => row.querySelector('small')), 'Each row shows the book and the reason');
+    check(rows.some((row) => row.textContent.includes('山间的阅读') && row.textContent.includes('划线分页未取完')), 'Highlight pagination failure reason is shown per book');
+    check(rows.some((row) => row.textContent.includes('城市与记忆') && row.textContent.includes('想法请求失败')), 'Review request failure reason is shown per book');
+    const retry = [...modal.querySelectorAll('button')].find((b) => b.textContent === '重新同步');
+    check(Boolean(retry), 'Dialog offers a retry action');
+    const before = journalLoads;
+    retry.click();
+    check(!document.querySelector('.modal-content'), 'Retry closes the dialog');
+    await tick();
+    check(journalLoads === before + 1, 'Retry triggers a fresh journal load');
+    journal.publish({ ...state, syncing: false, failedBooks: 0, failures: [], error: '' });
+    status = document.querySelector('.weread-journal-status');
+    check(!status.classList.contains('is-clickable') && status.getAttribute('role') !== 'button', 'Status stops being clickable once nothing has failed');
+    await mount('review');
+    return assertions.length - assertionStart;
   },
   async layout() {
     await mount('review');
@@ -1139,7 +1184,7 @@ async function browserBundle() {
 					builder.onLoad({ filter: /.*/, namespace: 'mock' }, ({ path: name }) => ({
 						contents:
 							name === 'obsidian'
-								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); svg.setAttribute('class', 'svg-icon'); svg.setAttribute('width', '24'); svg.setAttribute('height', '24'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'refresh-cw' ? 'M3 11a9 9 0 0 1 15.4-6.4L21 7 M21 3v4h-4 M21 13a9 9 0 0 1-15.4 6.4L3 17 M3 21v-4h4' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
+								? `export const Platform = {isDesktopApp: true}; export class Component { constructor() { this.children = new Set(); } addChild(child) { this.children.add(child); return child; } removeChild(child) { if (this.children.delete(child)) child.onunload?.(); return child; } } export class ItemView extends Component { constructor() { super(); this.contentEl = document.createElement('main'); document.body.append(this.contentEl); } } export class Modal { constructor(app) { this.app = app; this.contentEl = document.createElement('div'); this.contentEl.className = 'modal-content'; this.titleEl = document.createElement('div'); this.titleEl.className = 'modal-title'; this.modalEl = document.createElement('div'); this.modalEl.className = 'modal'; this.modalEl.append(this.titleEl, this.contentEl); } open() { document.body.append(this.modalEl); this.onOpen?.(); return this; } close() { this.onClose?.(); this.modalEl.remove(); } } export class Notice { constructor(text) { (window.journalNotices ||= []).push(text); } } export function setIcon(element, name) { const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('data-icon', name); svg.setAttribute('class', 'svg-icon'); svg.setAttribute('width', '24'); svg.setAttribute('height', '24'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2'); const path = document.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', name === 'star' ? 'm12 3 2.8 5.7 6.3.9-4.5 4.4 1.1 6.2-5.7-3-5.7 3 1.1-6.2L3.2 9.6l6.3-.9Z' : name === 'refresh-cw' ? 'M3 11a9 9 0 0 1 15.4-6.4L21 7 M21 3v4h-4 M21 13a9 9 0 0 1-15.4 6.4L3 17 M3 21v-4h4' : name === 'copy' ? 'M9 9h12v12H9z M5 15H3V3h12v2' : 'M15 3h6v6 M10 14 21 3 M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6'); svg.append(path); element.append(svg); } export class WorkspaceLeaf {}`
 								: name === 'electron'
 									? `export const shell = {async openExternal(url) { window.journalExternalOpens.push(url); }};`
 									: `let value, persisted; const listeners = new Set(), actionCalls = []; const set = (next) => { value = next; for (const fn of listeners) fn(value); }; const save = (key, next) => { actionCalls.push([key, structuredClone(next)]); persisted = structuredClone({...value, [key]: next}); set(structuredClone(persisted)); }; export const settingsStore = { subscribe(fn) { listeners.add(fn); fn(value); return () => listeners.delete(fn); }, set, current: () => value, reload() { set(structuredClone(persisted)); }, saved: () => structuredClone(persisted), actionCalls, actions: { setJournalExcludedBookIds(ids) { save('journalExcludedBookIds', ids); }, setJournalIncludeArticles(include) { save('journalIncludeArticles', include); }, setFavoritesViewMode(mode) { save('favoritesViewMode', mode); } }, listenerCount: () => listeners.size };`
@@ -1366,6 +1411,7 @@ test(
 		await writeFile('/tmp/obsidian-weread-today.png', Buffer.from(screenshot.data, 'base64'));
 		await evaluate('smoke.review()');
 		await evaluate('smoke.layout()');
+		await evaluate('smoke.failures()');
 		screenshot = await send('Page.captureScreenshot', {
 			format: 'png',
 			captureBeyondViewport: true
