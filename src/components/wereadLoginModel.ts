@@ -38,6 +38,7 @@ export default class WereadLoginModel {
 			const isCookieSynced = await this.syncCookiesFromSession();
 			if (isCookieSynced) {
 				this.isHandled = true;
+				new Notice('微信读书登录成功');
 				this.settingTab.display();
 				this.modal.close();
 			}
@@ -59,18 +60,26 @@ export default class WereadLoginModel {
 			urls: ['https://weread.qq.com/web/user?userVid=*']
 		};
 		session.webRequest.onSendHeaders(filter, (details: OnSendHeadersListenerDetails) => {
-			const cookies = details.requestHeaders['Cookie'];
-			const cookieArr = parseCookies(cookies);
-			const wrName = cookieArr.find((cookie) => cookie.name == 'wr_name');
-			const wrVid = cookieArr.find((cookie) => cookie.name == 'wr_vid');
-			if ((wrName && wrName.value !== '') || (wrVid && wrVid.value !== '')) {
-				settingsStore.actions.setCookies(cookieArr);
-				settingTab.display();
-				this.isHandled = true;
-				this.modal.close();
-			} else {
+			void (async () => {
+				const cookies = details.requestHeaders['Cookie'];
+				const cookieArr = parseCookies(cookies);
+				const wrName = cookieArr.find((cookie) => cookie.name == 'wr_name');
+				const wrVid = cookieArr.find((cookie) => cookie.name == 'wr_vid');
+				if ((wrName && wrName.value !== '') || (wrVid && wrVid.value !== '')) {
+					// 持久分区可能残留旧会话 Cookie：先落库再走接口校验，
+					// 校验通过才关窗，否则窗口会带着失效 Cookie“无声消失”。
+					settingsStore.actions.setCookies(cookieArr);
+					const apiManager = new ApiManager();
+					if (await apiManager.verifyCookieValidity()) {
+						new Notice('微信读书登录成功');
+						settingTab.display();
+						this.isHandled = true;
+						this.modal.close();
+					}
+					return;
+				}
 				this.modal.reload();
-			}
+			})();
 		});
 
 		this.modal.webContents.on('did-navigate', () => {

@@ -146,11 +146,15 @@ export default class ApiManager {
 				return true;
 			}
 
-			if (resp.json && resp.json.errcode === -2012) {
-				console.debug('[weread plugin] Cookie 超时错误 (-2012)');
-				settingsStore.actions.setIsCookieValid(false);
-				return false;
-			}
+			// 微信读书各接口对登录态失效的响应大小写与码值不统一
+			// （errCode / errcode，-2012 / -2010 等）：只要响应没带 books，
+			// 一律按失效处理。不能落回 isCookieValid——setCookies 刚把它
+			// 置为 true，落回会让失效 Cookie 被误判为有效。
+			const respJson = resp.json as { errCode?: number; errcode?: number } | null;
+			const errCode = respJson?.errCode ?? respJson?.errcode;
+			console.debug('[weread plugin] Cookie 校验失败，status:', resp.status, 'errCode:', errCode);
+			settingsStore.actions.setIsCookieValid(false);
+			return false;
 		} catch (e) {
 			const err = e as { message?: string; status?: number };
 			console.error('[weread plugin] 验证异常 - 错误信息:', err.message);
@@ -165,7 +169,7 @@ export default class ApiManager {
 			}
 		}
 
-		// Network error or ambiguous response — preserve current state and log a warning
+		// 网络异常（请求未返回）时保留当前状态
 		const currentValidity = get(settingsStore).isCookieValid;
 		return currentValidity;
 	}
@@ -203,9 +207,11 @@ export default class ApiManager {
 
 		try {
 			const resp = await requestUrl(req);
+			const respJson = resp.json as { errCode?: number; errcode?: number } | null;
+			const errCode = respJson?.errCode ?? respJson?.errcode;
 			if (resp.status === 401) {
-				if (resp.json.errcode == -2012) {
-					// 登录超时 -2012
+				if ([-2012, -2010].includes(errCode ?? Number.NaN)) {
+					// 登录态失效 -2012 / -2010（各接口大小写、码值不统一）
 					console.debug('weread cookie expire retry refresh cookie... ');
 					await this.refreshCookie();
 				} else {
@@ -225,7 +231,7 @@ export default class ApiManager {
 					}
 				}
 			} else {
-				if (resp.json.errcode == -2012) {
+				if ([-2012, -2010].includes(errCode ?? Number.NaN)) {
 					console.debug('weread cookie expire retry refresh cookie... ');
 					await this.refreshCookie();
 				}
