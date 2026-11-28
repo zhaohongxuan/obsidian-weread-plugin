@@ -1,7 +1,11 @@
 import { Notice, requestUrl, RequestUrlParam, Platform } from 'obsidian';
 import { settingsStore } from './settings';
 import { get } from 'svelte/store';
-import { WEREAD_SKILL_VERSION, assertWereadProtocol, WereadUpgradeRequiredError } from './wereadProtocol';
+import {
+	WEREAD_SKILL_VERSION,
+	assertWereadProtocol,
+	WereadUpgradeRequiredError
+} from './wereadProtocol';
 import { getCookieString } from './utils/cookiesUtil';
 import { Cookie, parse, splitCookiesString } from 'set-cookie-parser';
 import {
@@ -141,7 +145,9 @@ export default class ApiManager {
 				settingsStore.actions.setIsCookieValid(true);
 				// 只有在未配置 API Key 时才自动获取
 				if (!get(settingsStore).wereadApiKey) {
-					this.fetchAndSaveApiKey().catch((e) => console.debug('[weread plugin] 自动获取 API Key 失败', e));
+					this.fetchAndSaveApiKey().catch((e) =>
+						console.debug('[weread plugin] 自动获取 API Key 失败', e)
+					);
 				}
 				return true;
 			}
@@ -152,7 +158,12 @@ export default class ApiManager {
 			// 置为 true，落回会让失效 Cookie 被误判为有效。
 			const respJson = resp.json as { errCode?: number; errcode?: number } | null;
 			const errCode = respJson?.errCode ?? respJson?.errcode;
-			console.debug('[weread plugin] Cookie 校验失败，status:', resp.status, 'errCode:', errCode);
+			console.debug(
+				'[weread plugin] Cookie 校验失败，status:',
+				resp.status,
+				'errCode:',
+				errCode
+			);
 			settingsStore.actions.setIsCookieValid(false);
 			return false;
 		} catch (e) {
@@ -433,7 +444,13 @@ export default class ApiManager {
 	 * 扫码登录后自动获取/创建 API Key，返回 Key 及元数据
 	 * 移除 only_show=1 参数，允许自动创建 API Key
 	 */
-	async fetchAndSaveApiKey(): Promise<{ apikey: string; expireTime?: number; lastUsedTime?: number; createdAt?: number; lastUsedAt?: number } | null> {
+	async fetchAndSaveApiKey(): Promise<{
+		apikey: string;
+		expireTime?: number;
+		lastUsedTime?: number;
+		createdAt?: number;
+		lastUsedAt?: number;
+	} | null> {
 		try {
 			const req: RequestUrlParam = {
 				url: `${this.baseUrl}/api/skills/apikeyGet`,
@@ -441,7 +458,10 @@ export default class ApiManager {
 				headers: this.getHeaders()
 			};
 			const resp = await requestUrl(req);
-			console.debug('[weread plugin] /api/skills/apikeyGet 完整响应:', JSON.stringify(resp.json));
+			console.debug(
+				'[weread plugin] /api/skills/apikeyGet 完整响应:',
+				JSON.stringify(resp.json)
+			);
 			if (resp.json?.apikey) {
 				console.debug('[weread plugin] 自动获取/创建 API Key 成功');
 				settingsStore.actions.setWereadApiKey(resp.json.apikey);
@@ -465,7 +485,10 @@ export default class ApiManager {
 		}
 	}
 
-	async callAgentGateway<T = unknown>(apiName: string, params: Record<string, unknown> = {}): Promise<T | undefined> {
+	async callAgentGateway<T = unknown>(
+		apiName: string,
+		params: Record<string, unknown> = {}
+	): Promise<T | undefined> {
 		const apiKey = get(settingsStore).wereadApiKey;
 		if (!apiKey) {
 			new Notice('未配置微信读书 API Key，请在设置中填写');
@@ -481,7 +504,7 @@ export default class ApiManager {
 				url: 'https://i.weread.qq.com/api/agent/gateway',
 				method: 'POST',
 				headers: {
-					'Authorization': `Bearer ${apiKey}`,
+					Authorization: `Bearer ${apiKey}`,
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(body)
@@ -520,7 +543,10 @@ export default class ApiManager {
 	/**
 	 * 获取阅读统计数据
 	 */
-	async getReadingStats(mode: ReadingStatsMode, baseTime?: number): Promise<ReadingStatsResponse | undefined> {
+	async getReadingStats(
+		mode: ReadingStatsMode,
+		baseTime?: number
+	): Promise<ReadingStatsResponse | undefined> {
 		const params: Record<string, unknown> = { mode };
 		if (baseTime !== undefined) params.baseTime = baseTime;
 		return this.callAgentGateway<ReadingStatsResponse>('/readdata/detail', params);

@@ -4,7 +4,11 @@ import { settingsStore } from '../settings';
 import { WereadSettingsTab } from '../settingTab';
 import ApiManager from '../api';
 import type { Cookie } from 'set-cookie-parser';
-import type { BrowserWindow, OnCompletedListenerDetails, OnSendHeadersListenerDetails } from 'electron';
+import type {
+	BrowserWindow,
+	OnCompletedListenerDetails,
+	OnSendHeadersListenerDetails
+} from 'electron';
 
 export default class WereadLoginModel {
 	private modal: BrowserWindow;
